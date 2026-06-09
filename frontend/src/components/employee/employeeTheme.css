@@ -1,0 +1,185 @@
+.employee-app {
+  background: linear-gradient(180deg, #eef2ff 0%, #f1f5f9 24%, #e2e8f0 100%);
+}
+
+.employee-app .emp-surface {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+}
+
+.employee-app .emp-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.8rem;
+  border: 1px solid #dbeafe;
+  padding: 0.5rem;
+  color: #334155;
+  background: linear-gradient(180deg, #f5f3ff, #e0e7ff);
+  box-shadow: 0 4px 10px rgba(99, 102, 241, 0.18);
+  transition: transform 0.16s ease, filter 0.16s ease;
+}
+
+.employee-app .emp-icon-btn:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.employee-app .emp-icon-btn:hover:not(:disabled) {
+  filter: brightness(0.98);
+}
+
+.employee-app .emp-cta-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  border-radius: 0.75rem;
+  border: 1px solid transparent;
+  padding: 0.5rem 0.85rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  transition: transform 0.16s ease, filter 0.16s ease;
+}
+
+.employee-app .emp-cta-btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.employee-app .emp-cta-btn:disabled {
+  opacity: 0.68;
+}
+
+.employee-app .emp-cta-btn-primary {
+  color: #3730a3;
+  border-color: #c7d2fe;
+  background: linear-gradient(180deg, #e0e7ff, #c7d2fe);
+}
+
+.employee-app .emp-cta-btn-success {
+  color: #166534;
+  border-color: #bbf7d0;
+  background: linear-gradient(180deg, #dcfce7, #bbf7d0);
+}
+
+.employee-app .emp-cta-btn-danger {
+  color: #b91c1c;
+  border-color: #fecaca;
+  background: linear-gradient(180deg, #fee2e2, #fecaca);
+}
+
+.employee-app .emp-cta-btn-warning {
+  color: #92400e;
+  border-color: #fde68a;
+  background: linear-gradient(180deg, #fef3c7, #fde68a);
+}
+
+.employee-app .emp-loader {
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 9999px;
+  border: 2px solid rgba(30, 41, 59, 0.25);
+  border-top-color: #334155;
+  animation: emp-spin 0.75s linear infinite;
+}
+
+.employee-app .emp-loader-sm {
+  width: 0.7rem;
+  height: 0.7rem;
+}
+
+.employee-app .emp-loader-lg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.employee-app .emp-attendance-header {
+  border-radius: 0.75rem;
+  background: linear-gradient(92deg, #dbeafe 0%, #e0e7ff 52%, #ede9fe 100%);
+  color: #334155;
+}
+
+.employee-app .emp-attendance-table thead {
+  background: transparent;
+  color: inherit;
+}
+
+.employee-app .emp-table-row {
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.employee-app .emp-table-row:last-child {
+  border-bottom: 0;
+}
+
+.employee-app .emp-status-pill {
+  min-width: 2rem;
+  border-radius: 0.6rem;
+  border: 1px solid transparent;
+  padding: 0.3rem 0.45rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+  transition: transform 0.14s ease, filter 0.14s ease;
+}
+
+.employee-app .emp-status-pill:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.employee-app .emp-status-pill-p {
+  background: #dcfce7;
+  border-color: #86efac;
+  color: #166534;
+}
+
+.employee-app .emp-status-pill-a {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  color: #b91c1c;
+}
+
+.employee-app .emp-status-pill-h {
+  background: #fef3c7;
+  border-color: #fcd34d;
+  color: #92400e;
+}
+
+.employee-app .emp-status-pill-muted {
+  opacity: 0.45;
+  filter: saturate(0.55);
+}
+
+.employee-app .emp-modal-backdrop {
+  animation: emp-fade-in 0.2s ease-out;
+}
+
+.employee-app .emp-modal-card {
+  animation: emp-pop-in 0.2s ease-out;
+}
+
+@keyframes emp-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes emp-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes emp-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}

@@ -1,0 +1,22 @@
+Credentials for gT
+{
+  "familyID": 248,
+  "password": "yjylq9"
+}
+
+Cred for main
+{
+  "familyID": 3186,
+  "password": "pakistan"
+}
+
+
+Main - main
+GT Road - gt
+Model Town - mt
+Master City - mc
+Naseem Campus - nc
+DC Road - dc
+Wapda Town Lahore - wtl
+City Housing - ch
+Sui Gas Road - sgr
