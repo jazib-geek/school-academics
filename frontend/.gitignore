@@ -12,10 +12,12 @@ dist
 dist-ssr
 *.local
 
-# Environment (Vite)
+# Environment (Vite) — local overrides only; production URLs are committed
 .env
-.env.*
+.env.local
+.env.*.local
 !.env.example
+!.env.production
 
 # Editor directories and files
 .vscode/*
