@@ -1,0 +1,94 @@
+name: Build and deploy API to Plesk (FTP)
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+concurrency:
+  group: deploy-api-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_VERSION: "8.0.x"
+  API_PROJECT: School.API/School.API.csproj
+  PUBLISH_DIR: ./publish
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore
+        run: dotnet restore ${{ env.API_PROJECT }}
+
+      - name: Build
+        run: dotnet build ${{ env.API_PROJECT }} -c Release --no-restore
+
+      - name: Publish (verify)
+        run: dotnet publish ${{ env.API_PROJECT }} -c Release --no-build -o ${{ env.PUBLISH_DIR }}
+
+  deploy:
+    needs: build
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore and publish
+        run: |
+          dotnet restore ${{ env.API_PROJECT }}
+          dotnet publish ${{ env.API_PROJECT }} -c Release -o ${{ env.PUBLISH_DIR }}
+
+      - id: ftp-server-dir
+        name: Prepare FTP server-dir
+        env:
+          FTP_REMOTE_DIR: ${{ secrets.FTP_REMOTE_DIR }}
+        run: |
+          dir="${FTP_REMOTE_DIR// /}"
+          if [ -z "$dir" ]; then
+            echo "::error::Set FTP_REMOTE_DIR to the API site folder on Plesk (e.g. /httpdocs/)."
+            exit 1
+          fi
+          case "$dir" in /*) ;; *) dir="/$dir" ;; esac
+          case "$dir" in */) ;; *) dir="${dir}/" ;; esac
+          echo "Using server-dir: $dir"
+          echo "dir=$dir" >> "$GITHUB_OUTPUT"
+
+      - id: ftp-config
+        name: Prepare FTP options
+        env:
+          FTP_PROTOCOL: ${{ secrets.FTP_PROTOCOL }}
+        run: |
+          protocol="${FTP_PROTOCOL:-ftp}"
+          echo "protocol=$protocol" >> "$GITHUB_OUTPUT"
+
+      - name: Upload publish output to Plesk via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ${{ steps.ftp-config.outputs.protocol }}
+          port: 21
+          security: loose
+          timeout: 300000
+          local-dir: ${{ env.PUBLISH_DIR }}/
+          server-dir: ${{ steps.ftp-server-dir.outputs.dir }}
+          dangerous-clean-slate: false
+          log-level: standard
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/appsettings.json
+            **/appsettings.*.json
