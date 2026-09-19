@@ -8,12 +8,14 @@ public class ClassDiaryConfiguration : IEntityTypeConfiguration<ClassDiary>
 {
     public void Configure(EntityTypeBuilder<ClassDiary> entity)
     {
-        entity.ToTable("tblClassDiary");
+        entity.ToTable("tblClassDiary", "dbo");
         entity.HasKey(e => e.ID);
 
         entity.Property(e => e.Date).HasColumnType("date");
         entity.Property(e => e.Description).HasColumnType("nvarchar(max)");
         entity.Property(e => e.ImgURL).HasColumnType("nvarchar(max)");
+        entity.Property(e => e.LastUpdatedBy).HasMaxLength(150);
+        entity.Property(e => e.LastUpdatedAt).HasColumnType("datetime2");
 
         entity.HasOne(e => e.Class)
             .WithMany()

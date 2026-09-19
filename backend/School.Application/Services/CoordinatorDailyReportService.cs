@@ -1,6 +1,8 @@
+using Microsoft.EntityFrameworkCore;
 using School.Application.Common;
 using School.Application.DTOs;
 using School.Application.Interfaces;
+using School.Infrastructure.Data;
 using School.Infrastructure.Entities;
 using School.Infrastructure.Repositories;
 
@@ -10,13 +12,16 @@ public class CoordinatorDailyReportService : ICoordinatorDailyReportService
 {
     private readonly ICoordinatorDailyReportRepository _repository;
     private readonly IAttendanceService _attendanceService;
+    private readonly AppDbContext _context;
 
     public CoordinatorDailyReportService(
         ICoordinatorDailyReportRepository repository,
-        IAttendanceService attendanceService)
+        IAttendanceService attendanceService,
+        AppDbContext context)
     {
         _repository = repository;
         _attendanceService = attendanceService;
+        _context = context;
     }
 
     public async Task<CoordinatorDailyReportDto?> GetReportAsync(
@@ -56,12 +61,16 @@ public class CoordinatorDailyReportService : ICoordinatorDailyReportService
         var summaries = await BuildClassAttendanceSummariesAsync(reportDate, cancellationToken);
         var entities = await _repository.GetAllForReportDateAsync(reportDate, cancellationToken);
         var reports = entities.Select(MapToDto).ToList();
+        var checkIns = await BuildCoordinatorCheckInsAsync(reportDate, cancellationToken);
+        var absentTeachers = await BuildAbsentTeachersMonitorAsync(reportDate, reports, cancellationToken);
 
         return new CoordinatorDailyReportCampusMonitorDto
         {
             ReportDate = reportDate,
             ClassAttendanceSummaries = summaries,
-            CoordinatorReports = reports
+            CoordinatorReports = reports,
+            CoordinatorCheckIns = checkIns,
+            AbsentTeachers = absentTeachers,
         };
     }
 
@@ -291,10 +300,161 @@ public class CoordinatorDailyReportService : ICoordinatorDailyReportService
             {
                 ClassSectionCompositeId = g.Key,
                 ClassName = g.Select(x => x.ClassName).FirstOrDefault() ?? string.Empty,
-                PresentCount = g.Count(x => x.Status == "P"),
+                PresentCount = g.Count(x =>
+                    x.Status == StudentAttendanceStatuses.Present ||
+                    x.Status == StudentAttendanceStatuses.Late),
                 TotalCount = g.Count()
             })
             .OrderBy(x => x.ClassName)
             .ToList();
+    }
+
+    private async Task<IReadOnlyList<CoordinatorCiFromAttendanceDto>> BuildCoordinatorCheckInsAsync(
+        DateOnly reportDate,
+        CancellationToken cancellationToken)
+    {
+        var targetDate = reportDate.ToDateTime(TimeOnly.MinValue);
+        var dayEnd = targetDate.AddDays(1);
+
+        var coordinators = await (
+            from employee in _context.Employees.AsNoTracking()
+            where employee.IsActive == true &&
+                  employee.DesignationID == EmployeeDesignations.Coordinator
+            orderby employee.EmployeeName
+            select new { employee.ID, employee.EmployeeName })
+            .ToListAsync(cancellationToken);
+
+        if (coordinators.Count == 0)
+            return Array.Empty<CoordinatorCiFromAttendanceDto>();
+
+        var coordinatorIds = coordinators.Select(c => c.ID).ToList();
+
+        var punches = await _context.EmployeeAttendances
+            .AsNoTracking()
+            .Where(a =>
+                a.EmpID != null &&
+                coordinatorIds.Contains(a.EmpID.Value) &&
+                a.Date.HasValue &&
+                a.Date.Value >= targetDate &&
+                a.Date.Value < dayEnd)
+            .Select(a => new { EmpId = a.EmpID!.Value, a.Time })
+            .ToListAsync(cancellationToken);
+
+        var timeByEmp = punches
+            .GroupBy(p => p.EmpId)
+            .ToDictionary(g => g.Key, g => g.Select(x => x.Time).FirstOrDefault(t => !string.IsNullOrWhiteSpace(t)));
+
+        return coordinators
+            .Select(c => new CoordinatorCiFromAttendanceDto
+            {
+                EmployeeId = c.ID,
+                EmployeeName = c.EmployeeName?.Trim() ?? string.Empty,
+                CheckInTime = timeByEmp.TryGetValue(c.ID, out var time) ? NormalizeCheckInTime(time) : null,
+            })
+            .ToList();
+    }
+
+    private async Task<IReadOnlyList<CampusAbsentTeacherMonitorDto>> BuildAbsentTeachersMonitorAsync(
+        DateOnly reportDate,
+        IReadOnlyList<CoordinatorDailyReportDto> reports,
+        CancellationToken cancellationToken)
+    {
+        var targetDate = reportDate.ToDateTime(TimeOnly.MinValue);
+        var dayEnd = targetDate.AddDays(1);
+
+        var presentEmpIds = await _context.EmployeeAttendances
+            .AsNoTracking()
+            .Where(a =>
+                a.EmpID != null &&
+                a.Date.HasValue &&
+                a.Date.Value >= targetDate &&
+                a.Date.Value < dayEnd)
+            .Select(a => a.EmpID!.Value)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        var presentSet = presentEmpIds.ToHashSet();
+
+        var detected = await (
+            from employee in _context.Employees.AsNoTracking()
+            join designation in _context.Designations.AsNoTracking()
+                on employee.DesignationID equals designation.ID into designationJoin
+            from designation in designationJoin.DefaultIfEmpty()
+            where employee.IsActive == true &&
+                  employee.DesignationID != EmployeeDesignations.Coordinator &&
+                  designation != null &&
+                  designation.DesignationName != null &&
+                  designation.DesignationName.Contains("Teacher")
+            orderby employee.EmployeeName
+            select new { employee.ID, employee.EmployeeName })
+            .ToListAsync(cancellationToken);
+
+        var map = new Dictionary<int, CampusAbsentTeacherMonitorDto>();
+
+        foreach (var row in detected.Where(e => !presentSet.Contains(e.ID)))
+        {
+            map[row.ID] = new CampusAbsentTeacherMonitorDto
+            {
+                EmployeeId = row.ID,
+                EmployeeName = row.EmployeeName?.Trim() ?? $"ID {row.ID}",
+                LoggedBy = new[] { "Attendance" },
+                Notes = Array.Empty<string>(),
+            };
+        }
+
+        foreach (var report in reports)
+        {
+            var coord = report.CoordinatorEmployeeName?.Trim();
+            if (string.IsNullOrWhiteSpace(coord))
+                coord = $"ID {report.CoordinatorEmployeeId}";
+
+            foreach (var absent in report.AbsentTeachers)
+            {
+                if (!map.TryGetValue(absent.EmployeeId, out var entry))
+                {
+                    entry = new CampusAbsentTeacherMonitorDto
+                    {
+                        EmployeeId = absent.EmployeeId,
+                        EmployeeName = absent.EmployeeName?.Trim() ?? $"ID {absent.EmployeeId}",
+                        LoggedBy = Array.Empty<string>(),
+                        Notes = Array.Empty<string>(),
+                    };
+                    map[absent.EmployeeId] = entry;
+                }
+
+                var loggedBy = entry.LoggedBy.ToList();
+                if (!loggedBy.Contains(coord, StringComparer.OrdinalIgnoreCase))
+                    loggedBy.Add(coord);
+                entry.LoggedBy = loggedBy;
+
+                if (!string.IsNullOrWhiteSpace(absent.Notes))
+                {
+                    var notes = entry.Notes.ToList();
+                    var note = absent.Notes.Trim();
+                    if (!notes.Contains(note, StringComparer.OrdinalIgnoreCase))
+                        notes.Add(note);
+                    entry.Notes = notes;
+                }
+
+                if (string.IsNullOrWhiteSpace(entry.EmployeeName) || entry.EmployeeName.StartsWith("ID ", StringComparison.Ordinal))
+                {
+                    var name = absent.EmployeeName?.Trim();
+                    if (!string.IsNullOrWhiteSpace(name))
+                        entry.EmployeeName = name;
+                }
+            }
+        }
+
+        return map.Values
+            .OrderBy(x => x.EmployeeName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private static string? NormalizeCheckInTime(string? time)
+    {
+        if (string.IsNullOrWhiteSpace(time))
+            return null;
+        var trimmed = time.Trim();
+        return trimmed.Length >= 5 ? trimmed[..5] : trimmed;
     }
 }

@@ -17,6 +17,7 @@ namespace School.Application.DTOs
 
         public int? ClassCompositeID { get; set; }
         public string? ClassName { get; set; }
+        public string? Gender { get; set; }
         public int? Fee { get; set; }
         public decimal? FeeConcession { get; set; }
         public decimal? TutionFee { get; set; }

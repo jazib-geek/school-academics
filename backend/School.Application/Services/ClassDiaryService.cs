@@ -1,7 +1,10 @@
+using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using School.Application.Common;
 using School.Application.DTOs;
 using School.Application.Interfaces;
+using School.Infrastructure.Data;
 using School.Infrastructure.Entities;
 using School.Infrastructure.Repositories;
 
@@ -14,15 +17,24 @@ public class ClassDiaryService : IClassDiaryService
 
     private readonly IClassDiaryRepository _repository;
     private readonly IObjectStorageService _objectStorage;
+    private readonly ICampusNotificationService _notificationService;
+    private readonly IActivityLogService _activityLogService;
+    private readonly AppDbContext _context;
     private readonly ILogger<ClassDiaryService> _logger;
 
     public ClassDiaryService(
         IClassDiaryRepository repository,
         IObjectStorageService objectStorage,
+        ICampusNotificationService notificationService,
+        IActivityLogService activityLogService,
+        AppDbContext context,
         ILogger<ClassDiaryService> logger)
     {
         _repository = repository;
         _objectStorage = objectStorage;
+        _notificationService = notificationService;
+        _activityLogService = activityLogService;
+        _context = context;
         _logger = logger;
     }
 
@@ -62,11 +74,14 @@ public class ClassDiaryService : IClassDiaryService
         DateOnly date,
         IReadOnlyList<ClassDiaryFileUpload> files,
         string? description,
+        ClassDiaryUploadActorDto actor,
+        bool notifyCampusUsers = false,
+        int? actorEmployeeId = null,
         CancellationToken cancellationToken = default)
     {
-        if (!PakistanTime.IsTodayOrYesterday(date))
+        if (!PakistanTime.IsAllowedDiaryDate(date))
         {
-            throw new ArgumentException("Diary date must be today or yesterday (Pakistan time).");
+            throw new ArgumentException("Diary date must be yesterday, today, or tomorrow (Pakistan time).");
         }
 
         if (files.Count is < 1 or > MaxImagesPerClassDate)
@@ -96,12 +111,16 @@ public class ClassDiaryService : IClassDiaryService
         }
 
         var existing = await _repository.GetByClassAndDateAsync(classId, date, cancellationToken);
+        var previousUpdatedBy = existing.FirstOrDefault()?.LastUpdatedBy;
+        var previousUpdatedAt = existing.FirstOrDefault()?.LastUpdatedAt;
+        var isReplace = existing.Count > 0;
+
         foreach (var entry in existing)
         {
             await DeleteStoredImageOrThrowAsync(entry.ImgURL, cancellationToken);
         }
 
-        if (existing.Count > 0)
+        if (isReplace)
         {
             _repository.RemoveRange(existing);
             await _repository.SaveChangesAsync(cancellationToken);
@@ -133,6 +152,10 @@ public class ClassDiaryService : IClassDiaryService
             uploadedKeys.Add(upload.Key);
         }
 
+        var performedByName = string.IsNullOrWhiteSpace(actor.DisplayName) ? "Staff" : actor.DisplayName.Trim();
+        var updatedAtPkt = PakistanTime.Now;
+        var diaryDateKey = date.ToString("yyyy-MM-dd");
+
         var newRows = uploadedKeys.Select(key => new ClassDiary
         {
             ClassID = classId,
@@ -140,20 +163,148 @@ public class ClassDiaryService : IClassDiaryService
             Date = date,
             Description = description,
             ImgURL = key,
+            LastUpdatedBy = performedByName,
+            LastUpdatedAt = updatedAtPkt,
         }).ToList();
 
         await _repository.AddRangeAsync(newRows, cancellationToken);
+
+        if (isReplace)
+        {
+            var entityLabel = $"{className} — {date:dd MMM yyyy}";
+            int? campusUserId = string.Equals(actor.ActorSource, "campusUser", StringComparison.OrdinalIgnoreCase)
+                ? actor.CampusUserId
+                : null;
+
+            await _activityLogService.WriteAsync(
+                ActivityLogTypes.ClassDiaryReplace,
+                ActivityLogEntityTypes.ClassDiary,
+                classId,
+                entityLabel,
+                campusUserId,
+                new
+                {
+                    diaryDate = diaryDateKey,
+                    previousUpdatedBy,
+                    previousUpdatedAt,
+                    actorSource = actor.ActorSource,
+                    employeeId = actor.EmployeeId,
+                    performedByName,
+                    pageCount = files.Count,
+                },
+                cancellationToken,
+                string.Equals(actor.ActorSource, "employee", StringComparison.OrdinalIgnoreCase)
+                    ? performedByName
+                    : null);
+        }
+
         await _repository.SaveChangesAsync(cancellationToken);
 
         await EnforceRetentionAsync(classId, cancellationToken);
 
         var saved = await _repository.GetByClassAndDateAsync(classId, date, cancellationToken);
-        return MapGroupToDto(classId, date, saved, description);
+        var dto = MapGroupToDto(classId, date, saved, description);
+
+        if (notifyCampusUsers)
+        {
+            var actorName = "Staff";
+            if (actorEmployeeId is > 0)
+            {
+                actorName = await _repository.GetEmployeeNameAsync(actorEmployeeId.Value, cancellationToken)
+                    ?? "Staff";
+            }
+
+            await _notificationService.PublishAsync(
+                CampusNotificationFactory.Create(
+                    CampusNotificationTypes.DiaryUpload,
+                    "Diary uploaded",
+                    $"{actorName} uploaded diary for {className} ({date:dd MMM yyyy}).",
+                    "/campus/daily-diary/list",
+                    CampusNotificationSeverities.Info,
+                    ["view_daily_diary"]),
+                cancellationToken);
+        }
+
+        return dto;
+    }
+
+    public async Task<IReadOnlyList<ClassDiaryUploadHistoryItemDto>> GetUploadHistoryAsync(
+        int classId,
+        DateOnly date,
+        CancellationToken cancellationToken = default)
+    {
+        if (classId <= 0)
+            throw new ArgumentException("Invalid class.");
+
+        var diaryDateKey = date.ToString("yyyy-MM-dd");
+        var dateMarker = $"\"diaryDate\":\"{diaryDateKey}\"";
+
+        var logs = await _context.ActivityLogs
+            .AsNoTracking()
+            .Where(x =>
+                x.ActivityType == ActivityLogTypes.ClassDiaryReplace &&
+                x.EntityType == ActivityLogEntityTypes.ClassDiary &&
+                x.EntityId == classId &&
+                x.DetailsJson != null &&
+                x.DetailsJson.Contains(dateMarker))
+            .OrderByDescending(x => x.OccurredAtPkt)
+            .ThenByDescending(x => x.ID)
+            .ToListAsync(cancellationToken);
+
+        return logs.Select(MapReplaceLogToHistoryItem).ToList();
+    }
+
+    private static ClassDiaryUploadHistoryItemDto MapReplaceLogToHistoryItem(ActivityLog log)
+    {
+        string? previousUpdatedBy = null;
+        DateTime? previousUpdatedAt = null;
+        string? performedByName = log.UserName;
+
+        if (!string.IsNullOrWhiteSpace(log.DetailsJson))
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(log.DetailsJson);
+                var root = doc.RootElement;
+                if (root.TryGetProperty("previousUpdatedBy", out var prevBy) &&
+                    prevBy.ValueKind == JsonValueKind.String)
+                {
+                    previousUpdatedBy = prevBy.GetString();
+                }
+
+                if (root.TryGetProperty("previousUpdatedAt", out var prevAt) &&
+                    prevAt.ValueKind == JsonValueKind.String &&
+                    DateTime.TryParse(prevAt.GetString(), out var parsedPrevAt))
+                {
+                    previousUpdatedAt = parsedPrevAt;
+                }
+
+                if (root.TryGetProperty("performedByName", out var perf) &&
+                    perf.ValueKind == JsonValueKind.String &&
+                    !string.IsNullOrWhiteSpace(perf.GetString()))
+                {
+                    performedByName = perf.GetString();
+                }
+            }
+            catch (JsonException)
+            {
+                // fall back to UserName only
+            }
+        }
+
+        return new ClassDiaryUploadHistoryItemDto
+        {
+            OccurredAtPkt = log.OccurredAtPkt,
+            PerformedByName = performedByName,
+            PreviousUpdatedBy = previousUpdatedBy,
+            PreviousUpdatedAt = previousUpdatedAt,
+        };
     }
 
     public async Task DeleteDiaryAsync(
         int classId,
         DateOnly date,
+        ClassDiaryUploadActorDto actor,
         CancellationToken cancellationToken = default)
     {
         if (!await _repository.ClassExistsAsync(classId, cancellationToken))
@@ -166,6 +317,16 @@ public class ClassDiaryService : IClassDiaryService
         {
             throw new ArgumentException("No diary found for this class and date.");
         }
+
+        var className = existing.FirstOrDefault()?.Class?.Class_Name
+            ?? await _repository.GetClassNameAsync(classId, cancellationToken)
+            ?? "Class";
+        var lastUpdatedBy = existing.FirstOrDefault()?.LastUpdatedBy;
+        var lastUpdatedAt = existing.FirstOrDefault()?.LastUpdatedAt;
+        var pageCount = existing.Count;
+        var diaryDateKey = date.ToString("yyyy-MM-dd");
+        var performedByName = string.IsNullOrWhiteSpace(actor.DisplayName) ? "Staff" : actor.DisplayName.Trim();
+        var entityLabel = $"{className} — {date:dd MMM yyyy}";
 
         _logger.LogInformation(
             "Deleting class diary from storage: classId={ClassId} date={Date} rows={RowCount}",
@@ -181,6 +342,31 @@ public class ClassDiaryService : IClassDiaryService
                 entry.ImgURL ?? "(empty)");
             await DeleteStoredImageOrThrowAsync(entry.ImgURL, cancellationToken);
         }
+
+        int? campusUserId = string.Equals(actor.ActorSource, "campusUser", StringComparison.OrdinalIgnoreCase)
+            ? actor.CampusUserId
+            : null;
+
+        await _activityLogService.WriteAsync(
+            ActivityLogTypes.ClassDiaryDelete,
+            ActivityLogEntityTypes.ClassDiary,
+            classId,
+            entityLabel,
+            campusUserId,
+            new
+            {
+                diaryDate = diaryDateKey,
+                lastUpdatedBy,
+                lastUpdatedAt,
+                actorSource = actor.ActorSource,
+                employeeId = actor.EmployeeId,
+                performedByName,
+                pageCount,
+            },
+            cancellationToken,
+            string.Equals(actor.ActorSource, "employee", StringComparison.OrdinalIgnoreCase)
+                ? performedByName
+                : null);
 
         _repository.RemoveRange(existing);
         await _repository.SaveChangesAsync(cancellationToken);
@@ -209,11 +395,15 @@ public class ClassDiaryService : IClassDiaryService
 
     private async Task EnforceRetentionAsync(int classId, CancellationToken cancellationToken)
     {
-        var today = PakistanTime.Today;
-        var yesterday = PakistanTime.Yesterday;
+        var allowed = new HashSet<DateOnly>
+        {
+            PakistanTime.Yesterday,
+            PakistanTime.Today,
+            PakistanTime.Tomorrow,
+        };
 
         var all = await _repository.GetByClassAsync(classId, cancellationToken);
-        var toRemove = all.Where(x => x.Date != today && x.Date != yesterday).ToList();
+        var toRemove = all.Where(x => x.Date is null || !allowed.Contains(x.Date.Value)).ToList();
 
         foreach (var entry in toRemove)
         {
@@ -257,6 +447,8 @@ public class ClassDiaryService : IClassDiaryService
             Date = date,
             ImgUrls = string.Join(",", urls),
             ImageCount = urls.Count,
+            LastUpdatedBy = rows.FirstOrDefault()?.LastUpdatedBy,
+            LastUpdatedAt = rows.FirstOrDefault()?.LastUpdatedAt,
         };
     }
 

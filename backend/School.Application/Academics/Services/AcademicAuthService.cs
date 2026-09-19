@@ -12,15 +12,18 @@ public class AcademicAuthService : IAcademicAuthService
     private readonly AcademicContext _academicContext;
     private readonly ITokenService _tokenService;
     private readonly IInstituteSettingsRepository _instituteSettingsRepository;
+    private readonly IAcademicUserService _academicUserService;
 
     public AcademicAuthService(
         AcademicContext academicContext,
         ITokenService tokenService,
-        IInstituteSettingsRepository instituteSettingsRepository)
+        IInstituteSettingsRepository instituteSettingsRepository,
+        IAcademicUserService academicUserService)
     {
         _academicContext = academicContext;
         _tokenService = tokenService;
         _instituteSettingsRepository = instituteSettingsRepository;
+        _academicUserService = academicUserService;
     }
 
     public async Task<AcademicLoginResponseDto?> LoginAsync(AcademicLoginRequestDto request)
@@ -33,7 +36,10 @@ public class AcademicAuthService : IAcademicAuthService
 
         var user = await _academicContext.AcademicUsers
             .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.UserName == userName && x.Password == request.Password);
+            .FirstOrDefaultAsync(x =>
+                x.UserName == userName
+                && x.Password == request.Password
+                && x.IsActive);
 
         if (user == null)
         {
@@ -45,12 +51,15 @@ public class AcademicAuthService : IAcademicAuthService
             ? null
             : AcademicInstituteSettingsService.MapToDto(instituteRow);
 
+        var granted = await _academicUserService.GetGrantedPermissionCodesAsync(user.Id);
+
         return new AcademicLoginResponseDto
         {
             Id = user.Id,
             UserName = user.UserName,
             Token = _tokenService.GenerateAcademicToken(user.Id, user.UserName),
             InstituteSettings = instituteSettings,
+            GrantedPermissionCodes = granted,
         };
     }
 }

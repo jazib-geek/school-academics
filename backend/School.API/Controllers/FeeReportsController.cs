@@ -11,10 +11,45 @@ namespace School.API.Controllers;
 public class FeeReportsController : ControllerBase
 {
     private readonly IFeeReportService _service;
+    private readonly ISmartFeeReportService _smart;
 
-    public FeeReportsController(IFeeReportService service)
+    public FeeReportsController(IFeeReportService service, ISmartFeeReportService smart)
     {
         _service = service;
+        _smart = smart;
+    }
+
+    [HttpGet("smart/catalog")]
+    public async Task<IActionResult> GetSmartCatalog()
+    {
+        var catalog = await _smart.GetCatalogAsync();
+        return Ok(ApiResponse<object>.SuccessResponse(catalog));
+    }
+
+    [HttpGet("smart/executive-snapshot")]
+    public async Task<IActionResult> GetExecutiveSnapshot()
+    {
+        var snapshot = await _smart.GetExecutiveSnapshotAsync();
+        return Ok(ApiResponse<object>.SuccessResponse(snapshot));
+    }
+
+    [HttpPost("smart/run")]
+    public async Task<IActionResult> RunSmartReport([FromBody] School.Application.DTOs.SmartFeeReportRunRequestDto? request)
+    {
+        if (request is null || string.IsNullOrWhiteSpace(request.ReportId))
+        {
+            return BadRequest(ApiResponse<object>.FailureResponse("reportId is required."));
+        }
+
+        try
+        {
+            var result = await _smart.RunAsync(request.ReportId, request.Parameters ?? new());
+            return Ok(ApiResponse<object>.SuccessResponse(result));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ApiResponse<object>.FailureResponse(ex.Message));
+        }
     }
 
     [HttpGet("collection-by-date")]
@@ -95,20 +130,17 @@ public class FeeReportsController : ControllerBase
     }
 
     [HttpGet("expected-income")]
-    public async Task<IActionResult> GetExpectedIncome([FromQuery] DateTime? dateFrom, [FromQuery] DateTime? dateTo)
+    public async Task<IActionResult> GetExpectedIncome()
     {
-        if (!dateFrom.HasValue || !dateTo.HasValue)
+        try
         {
-            return BadRequest(ApiResponse<object>.FailureResponse("dateFrom and dateTo are required."));
+            var result = await _service.GetExpectedIncomeReportAsync();
+            return Ok(ApiResponse<object>.SuccessResponse(result));
         }
-
-        if (dateFrom.Value.Date > dateTo.Value.Date)
+        catch (InvalidOperationException ex)
         {
-            return BadRequest(ApiResponse<object>.FailureResponse("dateFrom cannot be greater than dateTo."));
+            return BadRequest(ApiResponse<object>.FailureResponse(ex.Message));
         }
-
-        var result = await _service.GetExpectedIncomeReportAsync(dateFrom.Value, dateTo.Value);
-        return Ok(ApiResponse<object>.SuccessResponse(result));
     }
 
     [HttpGet("income-statement")]
@@ -126,5 +158,19 @@ public class FeeReportsController : ControllerBase
 
         var result = await _service.GetIncomeStatementAsync(month.Value, year.Value);
         return Ok(ApiResponse<object>.SuccessResponse(result));
+    }
+
+    [HttpGet("balance-sheet")]
+    public async Task<IActionResult> GetBalanceSheet()
+    {
+        try
+        {
+            var result = await _service.GetBalanceSheetAsync();
+            return Ok(ApiResponse<object>.SuccessResponse(result));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<object>.FailureResponse(ex.Message));
+        }
     }
 }

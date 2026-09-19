@@ -52,6 +52,8 @@ public class ExamTitlesController : ControllerBase
         }
     }
 
+    /// <summary>POST delete route for Plesk/proxies that block HTTP DELETE.</summary>
+    [HttpPost("{id:int}/delete")]
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
     {

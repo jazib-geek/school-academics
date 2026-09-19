@@ -18,16 +18,16 @@ namespace School.API.Controllers;
 public class CoordinatorDailyReportController : ControllerBase
 {
     private readonly ICoordinatorDailyReportService _coordinatorDailyReportService;
-    private readonly IEmployeeAuthRepository _employeeAuthRepository;
+    private readonly ICoordinatorAccessService _coordinatorAccessService;
     private readonly ICoordinatorStaffReadRepository _staffReadRepository;
 
     public CoordinatorDailyReportController(
         ICoordinatorDailyReportService coordinatorDailyReportService,
-        IEmployeeAuthRepository employeeAuthRepository,
+        ICoordinatorAccessService coordinatorAccessService,
         ICoordinatorStaffReadRepository staffReadRepository)
     {
         _coordinatorDailyReportService = coordinatorDailyReportService;
-        _employeeAuthRepository = employeeAuthRepository;
+        _coordinatorAccessService = coordinatorAccessService;
         _staffReadRepository = staffReadRepository;
     }
 
@@ -35,7 +35,7 @@ public class CoordinatorDailyReportController : ControllerBase
     [HttpGet("me/staff-for-pick")]
     public async Task<IActionResult> GetStaffForPick(CancellationToken cancellationToken)
     {
-        var auth = await TryAuthorizeCoordinatorAsync(cancellationToken);
+        var auth = await EnsureCoordinatorAsync(cancellationToken);
         if (!auth.Success)
         {
             return auth.ErrorResult!;
@@ -53,7 +53,7 @@ public class CoordinatorDailyReportController : ControllerBase
     [HttpGet("me")]
     public async Task<IActionResult> GetMyReport([FromQuery] DateOnly? reportDate, CancellationToken cancellationToken)
     {
-        var auth = await TryAuthorizeCoordinatorAsync(cancellationToken);
+        var auth = await EnsureCoordinatorAsync(cancellationToken);
         if (!auth.Success)
         {
             return auth.ErrorResult!;
@@ -82,7 +82,7 @@ public class CoordinatorDailyReportController : ControllerBase
     [HttpGet("me/head-office-bundle")]
     public async Task<IActionResult> GetMyHeadOfficeBundle([FromQuery] DateOnly? reportDate, CancellationToken cancellationToken)
     {
-        var auth = await TryAuthorizeCoordinatorAsync(cancellationToken);
+        var auth = await EnsureCoordinatorAsync(cancellationToken);
         if (!auth.Success)
         {
             return auth.ErrorResult!;
@@ -96,7 +96,7 @@ public class CoordinatorDailyReportController : ControllerBase
     [HttpPost("me/arrival")]
     public async Task<IActionResult> PostMyArrival([FromBody] CoordinatorArrivalPostRequestDto request, CancellationToken cancellationToken)
     {
-        var auth = await TryAuthorizeCoordinatorAsync(cancellationToken);
+        var auth = await EnsureCoordinatorAsync(cancellationToken);
         if (!auth.Success)
         {
             return auth.ErrorResult!;
@@ -121,7 +121,7 @@ public class CoordinatorDailyReportController : ControllerBase
     [HttpPost("me/assembly")]
     public async Task<IActionResult> PostMyAssembly([FromBody] CoordinatorAssemblyPostRequestDto request, CancellationToken cancellationToken)
     {
-        var auth = await TryAuthorizeCoordinatorAsync(cancellationToken);
+        var auth = await EnsureCoordinatorAsync(cancellationToken);
         if (!auth.Success)
         {
             return auth.ErrorResult!;
@@ -156,7 +156,7 @@ public class CoordinatorDailyReportController : ControllerBase
     [HttpPost("me/mod-duties")]
     public async Task<IActionResult> PostMyModDuties([FromBody] CoordinatorModDutiesPostRequestDto request, CancellationToken cancellationToken)
     {
-        var auth = await TryAuthorizeCoordinatorAsync(cancellationToken);
+        var auth = await EnsureCoordinatorAsync(cancellationToken);
         if (!auth.Success)
         {
             return auth.ErrorResult!;
@@ -186,7 +186,7 @@ public class CoordinatorDailyReportController : ControllerBase
     [HttpPost("me/absent-teachers")]
     public async Task<IActionResult> PostMyAbsentTeachers([FromBody] CoordinatorAbsentTeachersPostRequestDto request, CancellationToken cancellationToken)
     {
-        var auth = await TryAuthorizeCoordinatorAsync(cancellationToken);
+        var auth = await EnsureCoordinatorAsync(cancellationToken);
         if (!auth.Success)
         {
             return auth.ErrorResult!;
@@ -216,7 +216,7 @@ public class CoordinatorDailyReportController : ControllerBase
     [HttpPost("me/working-report-lines")]
     public async Task<IActionResult> PostMyWorkingReportLines([FromBody] CoordinatorWorkingReportLinesPostRequestDto request, CancellationToken cancellationToken)
     {
-        var auth = await TryAuthorizeCoordinatorAsync(cancellationToken);
+        var auth = await EnsureCoordinatorAsync(cancellationToken);
         if (!auth.Success)
         {
             return auth.ErrorResult!;
@@ -242,36 +242,24 @@ public class CoordinatorDailyReportController : ControllerBase
         }
     }
 
-    private bool TryGetEmployeeId(out int employeeId)
-    {
-        var claim = User.FindFirst("FamilyDbId")?.Value;
-        if (string.IsNullOrWhiteSpace(claim) || !int.TryParse(claim, out employeeId))
-        {
-            employeeId = 0;
-            return false;
-        }
-
-        return true;
-    }
-
-    private async Task<(bool Success, int EmployeeId, IActionResult? ErrorResult)> TryAuthorizeCoordinatorAsync(
+    private async Task<(bool Success, int EmployeeId, IActionResult? ErrorResult)> EnsureCoordinatorAsync(
         CancellationToken cancellationToken)
     {
-        if (!TryGetEmployeeId(out var employeeId))
+        var auth = await _coordinatorAccessService.EnsureCoordinatorAsync(User, cancellationToken);
+        if (auth.Success)
         {
-            return (false, 0, Unauthorized(ApiResponse<object>.FailureResponse("Invalid employee token.")));
+            return (true, auth.EmployeeId, null);
         }
 
-        var isCoordinator = await _employeeAuthRepository.IsActiveEmployeeWithDesignationAsync(
-            employeeId,
-            EmployeeDesignations.Coordinator,
-            cancellationToken);
-
-        if (!isCoordinator)
+        IActionResult error = auth.StatusCode switch
         {
-            return (false, 0, StatusCode(StatusCodes.Status403Forbidden, ApiResponse<object>.FailureResponse("Coordinator access only.")));
-        }
+            StatusCodes.Status401Unauthorized => Unauthorized(
+                ApiResponse<object>.FailureResponse(auth.ErrorMessage ?? "Unauthorized.")),
+            _ => StatusCode(
+                auth.StatusCode,
+                ApiResponse<object>.FailureResponse(auth.ErrorMessage ?? "Forbidden.")),
+        };
 
-        return (true, employeeId, null);
+        return (false, 0, error);
     }
 }

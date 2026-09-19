@@ -16,4 +16,7 @@ public class LoginResponseDto
     public string Token { get; set; } = string.Empty;
 
     public List<StudentDto> Students { get; set; } = new();
+
+    /// <summary>Unread conduct summary for Family Portal (Android) login popup / badges.</summary>
+    public ParentConductInboxDto ConductInbox { get; set; } = new();
 }

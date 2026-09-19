@@ -10,4 +10,9 @@ public class StudentFamilyMemberDto
     public string? FatherContact { get; set; }
     /// <summary>Family joining / registration date from family record when available.</summary>
     public DateTime? RegDate { get; set; }
+    /// <summary>Gross fee (before concession).</summary>
+    public int Fee { get; set; }
+    public decimal Concession { get; set; }
+    /// <summary>Net fee after concession (tuition).</summary>
+    public decimal ActualFee { get; set; }
 }

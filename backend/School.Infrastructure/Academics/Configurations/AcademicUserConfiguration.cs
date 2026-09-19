@@ -8,7 +8,7 @@ public class AcademicUserConfiguration : IEntityTypeConfiguration<AcademicUser>
 {
     public void Configure(EntityTypeBuilder<AcademicUser> builder)
     {
-        builder.ToTable("AcademicLogin");
+        builder.ToTable("AcademicLogin", "dbo");
         builder.HasKey(x => x.Id);
 
         builder.Property(x => x.UserName)
@@ -18,6 +18,10 @@ public class AcademicUserConfiguration : IEntityTypeConfiguration<AcademicUser>
         builder.Property(x => x.Password)
             .IsRequired()
             .HasMaxLength(200);
+
+        builder.Property(x => x.IsActive)
+            .IsRequired()
+            .HasDefaultValue(true);
 
         builder.HasIndex(x => x.UserName)
             .IsUnique();

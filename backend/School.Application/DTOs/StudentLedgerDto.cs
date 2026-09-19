@@ -8,6 +8,12 @@ public class StudentLedgerDto
 
     public string? Description { get; set; }
 
+    public string? FundTypeName { get; set; }
+
+    public string? FeeMonth { get; set; }
+
+    public string? ReceiptNo { get; set; }
+
     public decimal Debit { get; set; }
 
     public decimal Credit { get; set; }

@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
+using School.Application.Common;
 using School.Application.Interfaces;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -16,7 +17,7 @@ public class TokenService : ITokenService
         _configuration = configuration;
     }
 
-    public string GenerateToken(int familyDbId, int? familyId, string campus)
+    public string GenerateToken(int familyDbId, int? familyId, string campus, string? authSource = null)
     {
         var jwtSettings = _configuration.GetSection("JwtSettings");
 
@@ -27,12 +28,17 @@ public class TokenService : ITokenService
             key,
             SecurityAlgorithms.HmacSha256);
 
-        var claims = new[]
+        var claims = new List<Claim>
         {
             new Claim("FamilyDbId", familyDbId.ToString()),
             new Claim("FamilyID", familyId?.ToString() ?? ""),
             new Claim("Campus", campus)
         };
+
+        if (!string.IsNullOrWhiteSpace(authSource))
+        {
+            claims.Add(new Claim(AuthSourceClaims.ClaimType, authSource.Trim()));
+        }
 
         var token = new JwtSecurityToken(
             issuer: jwtSettings["Issuer"],

@@ -7,6 +7,8 @@ public class QuestionCatalog
     public string Category { get; set; } = string.Empty;
     public int ChapterId { get; set; }
     public string DescriptionText { get; set; } = string.Empty;
+    /// <summary>Optional structure diagram as data URL (data:image/...;base64,...).</summary>
+    public string? StemImage { get; set; }
     public string? McqOpt1 { get; set; }
     public string? McqOpt2 { get; set; }
     public string? McqOpt3 { get; set; }

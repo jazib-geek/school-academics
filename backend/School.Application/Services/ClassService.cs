@@ -18,14 +18,16 @@ public class ClassService : IClassService
     {
         return await _context.Sections
             .AsNoTracking()
-            .Where(x => x.ClassName != null && x.ClassName != "")
-            .GroupBy(x => new { x.ID, x.ClassName })
-            .Select(g => new ClassLookupDto
-            {
-                ID = g.Key.ID,
-                ClassName = g.Key.ClassName!
-            })
+            .Where(x => x.ClassName != null && x.ClassName != "" && x.IsActive != false)
             .OrderBy(x => x.ClassName)
+            .Select(x => new ClassLookupDto
+            {
+                Id = x.ID,
+                ClassName = x.ClassName!,
+                Fee = x.Fee,
+                Branch = x.Branch,
+                BranchId = x.BranchID
+            })
             .ToListAsync();
     }
 
@@ -38,7 +40,7 @@ public class ClassService : IClassService
             .ThenBy(x => x.Class_Name)
             .Select(x => new ClassLookupDto
             {
-                ID = x.Class_ID,
+                Id = x.Class_ID,
                 ClassName = x.Class_Name!,
             })
             .ToListAsync();

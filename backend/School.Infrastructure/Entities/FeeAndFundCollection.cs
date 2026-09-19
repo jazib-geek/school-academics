@@ -44,6 +44,8 @@ public class FeeAndFundCollection
 
     public decimal? AugustGen { get; set; }
 
+    public string? Type { get; set; }
+
     // Navigation
     public Student? Student { get; set; }
     public FundType? FundType { get; set; }

@@ -92,6 +92,7 @@ public class QuestionChapterAvailabilityDto
     public int McqCount { get; set; }
     public int SaqCount { get; set; }
     public int LaqCount { get; set; }
+    public int NumericalCount { get; set; }
 }
 
 public class RandomizeExamPaperRequestDto
@@ -127,6 +128,7 @@ public class PaperQuestionItemDto
     public string ChapterName { get; set; } = string.Empty;
     public int ChapterNo { get; set; }
     public string DescriptionText { get; set; } = string.Empty;
+    public string? StemImage { get; set; }
     public string? McqOpt1 { get; set; }
     public string? McqOpt2 { get; set; }
     public string? McqOpt3 { get; set; }

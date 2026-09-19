@@ -10,6 +10,7 @@ public interface IFeeReportService
     Task<FeeReportResponseDto<FeeDefaulterItemDto>> GetFundDefaultersAsync(int fundTypeId);
     Task<FeeReportResponseDto<ReceivableItemDto>> GetOverallReceivableAsync();
     Task<List<FundTypeOptionDto>> GetFundTypesAsync();
-    Task<ExpectedIncomeReportDto> GetExpectedIncomeReportAsync(DateTime dateFrom, DateTime dateTo);
+    Task<ExpectedIncomeReportDto> GetExpectedIncomeReportAsync();
     Task<IncomeStatementReportDto> GetIncomeStatementAsync(int month, int year);
+    Task<BalanceSheetReportDto> GetBalanceSheetAsync();
 }

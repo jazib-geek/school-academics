@@ -24,6 +24,8 @@ public class SubjectService : ISubjectService
             {
                 ID = x.ID,
                 SubjectName = x.SubjectName!,
+                SubjectShortName = x.ShortName!
+
             })
             .ToListAsync();
     }

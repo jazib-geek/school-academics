@@ -81,6 +81,7 @@ public class AcademicExamMakerService : IAcademicExamMakerService
                 Category = x.Category,
                 ChapterId = x.ChapterId,
                 DescriptionText = x.DescriptionText,
+                StemImage = x.StemImage,
                 McqOpt1 = x.McqOpt1,
                 McqOpt2 = x.McqOpt2,
                 McqOpt3 = x.McqOpt3,
@@ -103,7 +104,7 @@ public class AcademicExamMakerService : IAcademicExamMakerService
                 x.Chapter != null &&
                 x.Chapter.ClassId == classId &&
                 x.Chapter.SubjectId == subjectId &&
-                (x.Type == "mcq" || x.Type == "saq" || x.Type == "laq"))
+                (x.Type == "mcq" || x.Type == "saq" || x.Type == "laq" || x.Type == "numerical"))
             .GroupBy(x => new { x.ChapterId, x.Type })
             .Select(group => new
             {
@@ -120,7 +121,8 @@ public class AcademicExamMakerService : IAcademicExamMakerService
                 ChapterId = group.Key,
                 McqCount = group.Where(x => x.Type == "mcq").Sum(x => x.Count),
                 SaqCount = group.Where(x => x.Type == "saq").Sum(x => x.Count),
-                LaqCount = group.Where(x => x.Type == "laq").Sum(x => x.Count)
+                LaqCount = group.Where(x => x.Type == "laq").Sum(x => x.Count),
+                NumericalCount = group.Where(x => x.Type == "numerical").Sum(x => x.Count)
             })
             .ToList();
     }
@@ -226,6 +228,7 @@ public class AcademicExamMakerService : IAcademicExamMakerService
                     ChapterName = item.Chapter?.ChapterName ?? string.Empty,
                     ChapterNo = item.Chapter?.ChapterNo ?? 0,
                     DescriptionText = item.DescriptionText,
+                    StemImage = item.StemImage,
                     McqOpt1 = item.McqOpt1,
                     McqOpt2 = item.McqOpt2,
                     McqOpt3 = item.McqOpt3,
@@ -403,6 +406,7 @@ public class AcademicExamMakerService : IAcademicExamMakerService
                 ChapterName = entity.Chapter?.ChapterName ?? string.Empty,
                 ChapterNo = entity.Chapter?.ChapterNo ?? 0,
                 DescriptionText = entity.DescriptionText,
+                StemImage = entity.StemImage,
                 McqOpt1 = entity.McqOpt1,
                 McqOpt2 = entity.McqOpt2,
                 McqOpt3 = entity.McqOpt3,
@@ -971,6 +975,7 @@ public class AcademicExamMakerService : IAcademicExamMakerService
                     ChapterName = x.Question?.Chapter?.ChapterName ?? string.Empty,
                     ChapterNo = x.Question?.Chapter?.ChapterNo ?? 0,
                     DescriptionText = x.Question?.DescriptionText ?? string.Empty,
+                    StemImage = x.Question?.StemImage,
                     McqOpt1 = x.Question?.McqOpt1,
                     McqOpt2 = x.Question?.McqOpt2,
                     McqOpt3 = x.Question?.McqOpt3,
@@ -1141,7 +1146,7 @@ public class AcademicExamMakerService : IAcademicExamMakerService
             }
 
             var normalized = type.Trim().ToLowerInvariant();
-            if (normalized is not ("saq" or "laq"))
+            if (normalized is not ("saq" or "laq" or "numerical"))
             {
                 return false;
             }
@@ -1311,7 +1316,7 @@ public class AcademicExamMakerService : IAcademicExamMakerService
             return $"{key}: Choose correct option:";
         }
 
-        return mode == "laq"
+        return mode is "laq" or "numerical"
             ? $"{key}: Attempt following questions."
             : $"{key}: Write short answers of following questions.";
     }

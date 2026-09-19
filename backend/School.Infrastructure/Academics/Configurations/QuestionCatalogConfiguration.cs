@@ -22,6 +22,8 @@ public class QuestionCatalogConfiguration : IEntityTypeConfiguration<QuestionCat
         builder.Property(x => x.DescriptionText)
             .IsRequired();
 
+        builder.Property(x => x.StemImage).HasColumnType("varchar(max)");
+
         builder.Property(x => x.McqOpt1).HasColumnName("mcq_opt_1").HasMaxLength(300);
         builder.Property(x => x.McqOpt2).HasColumnName("mcq_opt_2").HasMaxLength(300);
         builder.Property(x => x.McqOpt3).HasColumnName("mcq_opt_3").HasMaxLength(300);

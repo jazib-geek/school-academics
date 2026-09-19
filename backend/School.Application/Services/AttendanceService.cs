@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using School.Application.Common;
 using School.Application.DTOs;
 using School.Application.Interfaces;
 using School.Infrastructure.Data;
@@ -10,7 +11,6 @@ namespace School.Application.Services
     public class AttendanceService : IAttendanceService
     {
         private readonly AppDbContext _context;
-    private static readonly HashSet<string> AllowedStatuses = new(StringComparer.OrdinalIgnoreCase) { "P", "A", "H" };
 
         public AttendanceService(AppDbContext context)
         {
@@ -42,8 +42,11 @@ namespace School.Application.Services
                     x.IsPresent,
                     x.Month,
                     x.Year,
-                    SectionName = x.Section != null
-                        ? x.Section.ClassName   // adjust if needed
+                    SectionClassName = x.Student != null && x.Student.Section != null
+                        ? x.Student.Section.ClassName
+                        : null,
+                    SectionSectionName = x.Student != null && x.Student.Section != null
+                        ? x.Student.Section.SectionName
                         : null
                 })
                 .ToListAsync();
@@ -60,14 +63,15 @@ namespace School.Application.Services
                     monthYear = dt.ToString("MMMM yyyy", CultureInfo.InvariantCulture);
                 }
 
+                var sectionName = FormatClassSectionDisplayName(r.SectionClassName, r.SectionSectionName);
                 result.Add(new AttendanceDto
                 {
                     Id = r.ID,
                     Date = r.Date,
-                    Status = r.Status,
+                    Status = NormalizeStatusForOutput(r.Status),
                     IsPresent = r.IsPresent,
                     MonthYear = monthYear,
-                    SectionName = r.SectionName
+                    SectionName = sectionName == "-" ? null : sectionName
                 });
             }
 
@@ -116,18 +120,16 @@ namespace School.Application.Services
                 .Where(a =>
                     a.Date.HasValue &&
                     a.Date.Value.Date == normalizedDate &&
-                    a.StudentID.HasValue &&
-                    a.ClassSectionCompositeID.HasValue)
+                    a.StudentID.HasValue)
                 .Select(a => new
                 {
                     StudentId = a.StudentID!.Value,
-                    ClassId = a.ClassSectionCompositeID!.Value,
                     a.Status,
                 })
                 .ToListAsync();
 
-            var statusByStudentClass = attendanceRows
-                .GroupBy(x => (x.StudentId, x.ClassId))
+            var statusByStudent = attendanceRows
+                .GroupBy(x => x.StudentId)
                 .ToDictionary(g => g.Key, g => g.First().Status);
 
             var students = studentRows
@@ -135,7 +137,7 @@ namespace School.Application.Services
                 .ThenBy(r => r.FullName)
                 .Select(r =>
                 {
-                    statusByStudentClass.TryGetValue((r.Reg_Id, r.ClassId), out var rawStatus);
+                    statusByStudent.TryGetValue(r.Reg_Id, out var rawStatus);
                     return new ClassAttendanceStudentDto
                     {
                         StudentId = r.Reg_Id,
@@ -159,7 +161,7 @@ namespace School.Application.Services
         public async Task<ClassAttendanceSheetDto> SetSchoolAttendancePresentForAllAsync(DateTime date)
         {
             var normalizedDate = date.Date;
-            var normalizedStatus = NormalizeStatus("P");
+            var normalizedStatus = StudentAttendanceStatuses.Present;
 
             var classIds = await _context.Students
                 .AsNoTracking()
@@ -173,12 +175,18 @@ namespace School.Application.Services
                 await EnsureAttendanceRowsAsync(normalizedDate, cid);
             }
 
+            var activeStudentIds = await _context.Students
+                .AsNoTracking()
+                .Where(s => s.IsActive == true && s.ClassCompositeID != null)
+                .Select(s => s.Reg_Id)
+                .ToListAsync();
+
             var rows = await _context.Attendances
                 .Where(x =>
                     x.Date.HasValue &&
                     x.Date.Value.Date == normalizedDate &&
-                    x.ClassSectionCompositeID.HasValue &&
-                    classIds.Contains(x.ClassSectionCompositeID.Value))
+                    x.StudentID.HasValue &&
+                    activeStudentIds.Contains(x.StudentID.Value))
                 .ToListAsync();
 
             foreach (var row in rows)
@@ -193,13 +201,23 @@ namespace School.Application.Services
 
         public async Task<ClassAttendanceSheetDto> SetClassAttendanceStatusForAllAsync(DateTime date, int classSectionCompositeId, string status)
         {
-            var normalizedStatus = NormalizeStatus(status);
+            var normalizedStatus = StudentAttendanceStatuses.RequireBulk(status);
             var normalizedDate = date.Date;
 
             await EnsureAttendanceRowsAsync(normalizedDate, classSectionCompositeId);
 
+            var studentIds = await _context.Students
+                .AsNoTracking()
+                .Where(s => s.ClassCompositeID == classSectionCompositeId && s.IsActive == true)
+                .Select(s => s.Reg_Id)
+                .ToListAsync();
+
             var rows = await _context.Attendances
-                .Where(x => x.ClassSectionCompositeID == classSectionCompositeId && x.Date.HasValue && x.Date.Value.Date == normalizedDate)
+                .Where(x =>
+                    x.Date.HasValue &&
+                    x.Date.Value.Date == normalizedDate &&
+                    x.StudentID.HasValue &&
+                    studentIds.Contains(x.StudentID.Value))
                 .ToListAsync();
 
             foreach (var row in rows)
@@ -218,14 +236,13 @@ namespace School.Application.Services
             int studentId,
             string status)
         {
-            var normalizedStatus = NormalizeStatus(status);
+            var normalizedStatus = StudentAttendanceStatuses.Require(status);
             var normalizedDate = date.Date;
 
             await EnsureAttendanceRowsAsync(normalizedDate, classSectionCompositeId);
 
             var row = await _context.Attendances
                 .FirstOrDefaultAsync(x =>
-                    x.ClassSectionCompositeID == classSectionCompositeId &&
                     x.StudentID == studentId &&
                     x.Date.HasValue &&
                     x.Date.Value.Date == normalizedDate);
@@ -253,10 +270,12 @@ namespace School.Application.Services
             var totalMarked = await dayRows.CountAsync();
             var presentCount = await dayRows.CountAsync(x => x.Status != null && x.Status.ToUpper() == "P");
             var absentCount = await dayRows.CountAsync(x => x.Status != null && x.Status.ToUpper() == "A");
+            var lateCount = await dayRows.CountAsync(x => x.Status != null && x.Status.ToUpper() == "LT");
+            var leaveCount = await dayRows.CountAsync(x => x.Status != null && x.Status.ToUpper() == "LV");
             var holidayCount = await dayRows.CountAsync(x => x.Status != null && x.Status.ToUpper() == "H");
             var classCount = await dayRows
-                .Where(x => x.ClassSectionCompositeID.HasValue)
-                .Select(x => x.ClassSectionCompositeID!.Value)
+                .Where(x => x.Student != null && x.Student.ClassCompositeID.HasValue)
+                .Select(x => x.Student!.ClassCompositeID!.Value)
                 .Distinct()
                 .CountAsync();
 
@@ -266,6 +285,8 @@ namespace School.Application.Services
                 TotalMarked = totalMarked,
                 PresentCount = presentCount,
                 AbsentCount = absentCount,
+                LateCount = lateCount,
+                LeaveCount = leaveCount,
                 HolidayCount = holidayCount,
                 ClassCount = classCount
             };
@@ -284,7 +305,8 @@ namespace School.Application.Services
                 throw new ArgumentException("dateTo must be greater than or equal to dateFrom.");
             }
 
-            var normalizedStatus = string.IsNullOrWhiteSpace(status) ? null : NormalizeStatus(status);
+            var normalizedStatus = string.IsNullOrWhiteSpace(status) ? null : StudentAttendanceStatuses.Require(status);
+            var statusSqlKey = normalizedStatus?.ToUpperInvariant();
 
             var query = _context.Attendances
                 .AsNoTracking()
@@ -292,24 +314,32 @@ namespace School.Application.Services
 
             if (classSectionCompositeId.HasValue)
             {
-                query = query.Where(x => x.ClassSectionCompositeID == classSectionCompositeId.Value);
+                query = query.Where(x =>
+                    x.Student != null &&
+                    x.Student.ClassCompositeID == classSectionCompositeId.Value);
             }
 
-            if (!string.IsNullOrWhiteSpace(normalizedStatus))
+            if (!string.IsNullOrWhiteSpace(statusSqlKey))
             {
-                query = query.Where(x => x.Status != null && x.Status.ToUpper() == normalizedStatus);
+                query = query.Where(x => x.Status != null && x.Status.ToUpper() == statusSqlKey);
             }
 
             var rows = await query
                 .OrderByDescending(x => x.Date)
-                .ThenBy(x => x.ClassSectionCompositeID)
+                .ThenBy(x => x.Student != null ? x.Student.ClassCompositeID : null)
                 .ThenBy(x => x.StudentID)
                 .Select(x => new
                 {
                     Date = x.Date!.Value.Date,
-                    ClassSectionCompositeId = x.ClassSectionCompositeID ?? 0,
-                    SectionClassName = x.Section != null ? x.Section.ClassName : null,
-                    SectionSectionName = x.Section != null ? x.Section.SectionName : null,
+                    ClassSectionCompositeId = x.Student != null && x.Student.ClassCompositeID.HasValue
+                        ? x.Student.ClassCompositeID.Value
+                        : 0,
+                    SectionClassName = x.Student != null && x.Student.Section != null
+                        ? x.Student.Section.ClassName
+                        : null,
+                    SectionSectionName = x.Student != null && x.Student.Section != null
+                        ? x.Student.Section.SectionName
+                        : null,
                     StudentId = x.StudentID ?? 0,
                     StudentName = x.Student != null && !string.IsNullOrWhiteSpace(x.Student.FullName) ? x.Student.FullName : "-",
                     StatusRaw = x.Status
@@ -333,9 +363,11 @@ namespace School.Application.Services
                 DateFrom = fromDate,
                 DateTo = toDate,
                 TotalRecords = items.Count,
-                PresentCount = items.Count(x => x.Status == "P"),
-                AbsentCount = items.Count(x => x.Status == "A"),
-                HolidayCount = items.Count(x => x.Status == "H"),
+                PresentCount = items.Count(x => x.Status == StudentAttendanceStatuses.Present),
+                AbsentCount = items.Count(x => x.Status == StudentAttendanceStatuses.Absent),
+                LateCount = items.Count(x => x.Status == StudentAttendanceStatuses.Late),
+                LeaveCount = items.Count(x => x.Status == StudentAttendanceStatuses.Leave),
+                HolidayCount = items.Count(x => x.Status == StudentAttendanceStatuses.Holiday),
                 ClassCount = items.Select(x => x.ClassSectionCompositeId).Distinct().Count(),
                 StudentCount = items.Select(x => x.StudentId).Distinct().Count(),
                 Items = items
@@ -355,11 +387,14 @@ namespace School.Application.Services
                 return;
             }
 
+            var studentIds = activeStudents.Select(x => x.Reg_Id).ToList();
             var existingStudentIds = await _context.Attendances
-                .Where(x => x.ClassSectionCompositeID == classSectionCompositeId && x.Date.HasValue && x.Date.Value.Date == date)
-                .Select(x => x.StudentID)
-                .Where(x => x.HasValue)
-                .Select(x => x!.Value)
+                .Where(x =>
+                    x.Date.HasValue &&
+                    x.Date.Value.Date == date &&
+                    x.StudentID.HasValue &&
+                    studentIds.Contains(x.StudentID.Value))
+                .Select(x => x.StudentID!.Value)
                 .ToListAsync();
 
             var existingSet = existingStudentIds.ToHashSet();
@@ -375,7 +410,6 @@ namespace School.Application.Services
                 missingRows.Add(new Attendance
                 {
                     StudentID = student.Reg_Id,
-                    ClassSectionCompositeID = classSectionCompositeId,
                     Date = date,
                     Day = date.Day,
                     Month = date.Month,
@@ -414,7 +448,6 @@ namespace School.Application.Services
                     x.FullName,
                     Attendance = _context.Attendances
                         .Where(a => a.StudentID == x.Reg_Id &&
-                                    a.ClassSectionCompositeID == classSectionCompositeId &&
                                     a.Date.HasValue &&
                                     a.Date.Value.Date == date)
                         .Select(a => a.Status)
@@ -463,29 +496,10 @@ namespace School.Application.Services
             return $"{cn} - {sn}";
         }
 
-        private static string NormalizeStatus(string status)
-        {
-            var normalized = (status ?? string.Empty).Trim().ToUpperInvariant();
-            if (!AllowedStatuses.Contains(normalized))
-            {
-                throw new ArgumentException("Status must be one of: P, A, H.");
-            }
-
-            return normalized;
-        }
-
         private static bool? IsPresentFromStatus(string status) =>
-            status.Equals("P", StringComparison.OrdinalIgnoreCase) ? true : false;
+            StudentAttendanceStatuses.IsInSchool(status);
 
-        private static string NormalizeStatusForOutput(string? status)
-        {
-            if (string.IsNullOrWhiteSpace(status))
-            {
-                return "A";
-            }
-
-            var normalized = status.Trim().ToUpperInvariant();
-            return AllowedStatuses.Contains(normalized) ? normalized : "A";
-        }
+        private static string NormalizeStatusForOutput(string? status) =>
+            StudentAttendanceStatuses.CanonicalizeOrDefault(status);
     }
 }

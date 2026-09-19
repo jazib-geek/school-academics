@@ -9,6 +9,7 @@ public class StudentListItemDto
     public string? FatherName { get; set; }
     public string? MotherName { get; set; }
     public string? FatherContact { get; set; }
+    public string? MotherContact { get; set; }
     public string? Gender { get; set; }
     public bool? IsActive { get; set; }
     public DateTime? RegDate { get; set; }

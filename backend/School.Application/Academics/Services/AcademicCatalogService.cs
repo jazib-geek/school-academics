@@ -9,7 +9,7 @@ namespace School.Application.Academics.Services;
 
 public class AcademicCatalogService : IAcademicCatalogService
 {
-    private static readonly HashSet<string> AllowedQuestionTypes = ["mcq", "saq", "laq"];
+    private static readonly HashSet<string> AllowedQuestionTypes = ["mcq", "saq", "laq", "numerical"];
     private static readonly HashSet<string> AllowedQuestionCategories = ["board", "text", "exercise"];
 
     private readonly AcademicContext _academicContext;
@@ -180,7 +180,7 @@ public class AcademicCatalogService : IAcademicCatalogService
 
         if (!AllowedQuestionTypes.Contains(type))
         {
-            throw new InvalidOperationException("Question type must be one of: mcq, saq, laq.");
+            throw new InvalidOperationException("Question type must be one of: mcq, saq, laq, numerical.");
         }
 
         if (!AllowedQuestionCategories.Contains(category))
@@ -215,10 +215,12 @@ public class AcademicCatalogService : IAcademicCatalogService
         entity.Category = category;
         entity.ChapterId = request.ChapterId;
         entity.DescriptionText = request.DescriptionText.Trim();
-        entity.McqOpt1 = NormalizeNullable(request.McqOpt1);
-        entity.McqOpt2 = NormalizeNullable(request.McqOpt2);
-        entity.McqOpt3 = NormalizeNullable(request.McqOpt3);
-        entity.McqOpt4 = NormalizeNullable(request.McqOpt4);
+        entity.StemImage = NormalizeStemImage(request.StemImage);
+        // Only MCQ stores options; clear them for SAQ / LAQ / Numerical.
+        entity.McqOpt1 = type == "mcq" ? NormalizeNullable(request.McqOpt1) : null;
+        entity.McqOpt2 = type == "mcq" ? NormalizeNullable(request.McqOpt2) : null;
+        entity.McqOpt3 = type == "mcq" ? NormalizeNullable(request.McqOpt3) : null;
+        entity.McqOpt4 = type == "mcq" ? NormalizeNullable(request.McqOpt4) : null;
 
         await _academicContext.SaveChangesAsync();
         return MapQuestionCatalog(entity);
@@ -333,6 +335,33 @@ public class AcademicCatalogService : IAcademicCatalogService
         return string.IsNullOrWhiteSpace(trimmed) ? null : trimmed;
     }
 
+    /// <summary>Max data-URL length (~500 KB binary after base64).</summary>
+    private const int MaxStemImageChars = 700_000;
+
+    private static string? NormalizeStemImage(string? value)
+    {
+        var trimmed = value?.Trim();
+        if (string.IsNullOrWhiteSpace(trimmed))
+        {
+            return null;
+        }
+
+        if (trimmed.Length > MaxStemImageChars)
+        {
+            throw new InvalidOperationException("Structure image is too large. Use a smaller or clearer photo.");
+        }
+
+        if (!System.Text.RegularExpressions.Regex.IsMatch(
+                trimmed,
+                @"^data:image\/(png|jpe?g|webp);base64,",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+        {
+            throw new InvalidOperationException("Structure image must be a PNG, JPEG, or WebP image.");
+        }
+
+        return trimmed;
+    }
+
     private static QuestionCatalogDto MapQuestionCatalog(QuestionCatalog x)
     {
         return new QuestionCatalogDto
@@ -342,6 +371,7 @@ public class AcademicCatalogService : IAcademicCatalogService
             Category = x.Category,
             ChapterId = x.ChapterId,
             DescriptionText = x.DescriptionText,
+            StemImage = x.StemImage,
             McqOpt1 = x.McqOpt1,
             McqOpt2 = x.McqOpt2,
             McqOpt3 = x.McqOpt3,

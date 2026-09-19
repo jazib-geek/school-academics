@@ -85,6 +85,17 @@ public class ClassDiaryRepository : IClassDiaryRepository
         return string.IsNullOrWhiteSpace(row) ? null : row.Trim();
     }
 
+    public async Task<string?> GetEmployeeNameAsync(int employeeId, CancellationToken cancellationToken = default)
+    {
+        var row = await _context.Employees
+            .AsNoTracking()
+            .Where(x => x.ID == employeeId)
+            .Select(x => x.EmployeeName)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return string.IsNullOrWhiteSpace(row) ? null : row.Trim();
+    }
+
     public Task SaveChangesAsync(CancellationToken cancellationToken = default) =>
         _context.SaveChangesAsync(cancellationToken);
 }

@@ -26,4 +26,8 @@ public class EmployeeAttendanceDayRowDto
     public string? CheckInTime { get; set; }
     public string? CheckOutTime { get; set; }
     public int? LateComings { get; set; }
+    public int LateMinutes { get; set; }
+    public int EarlyMinutes { get; set; }
+    public bool IsLate { get; set; }
+    public string Status { get; set; } = string.Empty;
 }

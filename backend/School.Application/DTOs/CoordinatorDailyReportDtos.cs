@@ -97,6 +97,30 @@ public class CoordinatorDailyReportCampusMonitorDto
     public DateOnly ReportDate { get; set; }
     public IReadOnlyList<CoordinatorClassAttendanceSummaryDto> ClassAttendanceSummaries { get; set; } = Array.Empty<CoordinatorClassAttendanceSummaryDto>();
     public IReadOnlyList<CoordinatorDailyReportDto> CoordinatorReports { get; set; } = Array.Empty<CoordinatorDailyReportDto>();
+    /// <summary>Active coordinators (designation ID 3) with biometric check-in for the day, if any.</summary>
+    public IReadOnlyList<CoordinatorCiFromAttendanceDto> CoordinatorCheckIns { get; set; } =
+        Array.Empty<CoordinatorCiFromAttendanceDto>();
+    /// <summary>Merged: teachers with no attendance row for the day + coordinator-reported absences.</summary>
+    public IReadOnlyList<CampusAbsentTeacherMonitorDto> AbsentTeachers { get; set; } =
+        Array.Empty<CampusAbsentTeacherMonitorDto>();
+}
+
+/// <summary>Coordinator biometric CI for the campus monitor card.</summary>
+public class CoordinatorCiFromAttendanceDto
+{
+    public int EmployeeId { get; set; }
+    public string EmployeeName { get; set; } = string.Empty;
+    public string? CheckInTime { get; set; }
+}
+
+/// <summary>Absent teacher row for the campus monitor (detected and/or logged by coordinators).</summary>
+public class CampusAbsentTeacherMonitorDto
+{
+    public int EmployeeId { get; set; }
+    public string EmployeeName { get; set; } = string.Empty;
+    /// <summary>Display labels such as "Attendance" and/or coordinator names.</summary>
+    public IReadOnlyList<string> LoggedBy { get; set; } = Array.Empty<string>();
+    public IReadOnlyList<string> Notes { get; set; } = Array.Empty<string>();
 }
 
 /// <summary>POST body: arrival time for the logged-in coordinator.</summary>

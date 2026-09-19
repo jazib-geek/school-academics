@@ -30,5 +30,7 @@ public interface IClassDiaryRepository
 
     Task<string?> GetClassNameAsync(int classId, CancellationToken cancellationToken = default);
 
+    Task<string?> GetEmployeeNameAsync(int employeeId, CancellationToken cancellationToken = default);
+
     Task SaveChangesAsync(CancellationToken cancellationToken = default);
 }

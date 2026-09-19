@@ -15,11 +15,20 @@ public interface IClassDiaryService
         DateOnly date,
         IReadOnlyList<ClassDiaryFileUpload> files,
         string? description,
+        ClassDiaryUploadActorDto actor,
+        bool notifyCampusUsers = false,
+        int? actorEmployeeId = null,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<ClassDiaryUploadHistoryItemDto>> GetUploadHistoryAsync(
+        int classId,
+        DateOnly date,
         CancellationToken cancellationToken = default);
 
     Task DeleteDiaryAsync(
         int classId,
         DateOnly date,
+        ClassDiaryUploadActorDto actor,
         CancellationToken cancellationToken = default);
 }
 

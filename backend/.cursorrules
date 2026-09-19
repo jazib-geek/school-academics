@@ -1,0 +1,72 @@
+# SchoolAPI Backend Rules
+
+## Database Contexts
+- `AppDbContext` is campus scoped. It is registered in `School.API/Program.cs` with `TenantContext.ConnectionString`.
+- `CampusMiddleware` runs after authentication and before authorization. It sets `TenantContext.Campus` and `TenantContext.ConnectionString`.
+- Campus resolution order:
+  1. Authenticated JWT claim `Campus`
+  2. Request header `X-Campus`
+  3. `CampusSettings:DefaultCampus`
+- Campus connection strings live under `CampusSettings:Campuses` in appsettings. Do not hard-code campus DB names or connection strings in services.
+- `AcademicContext` is not campus scoped. It uses the fixed `ConnectionStrings:AcademicContext` connection string and maps the separate academics database.
+
+## Login Flows
+- Parent/family login endpoint: `POST /api/Auth/login`
+  - DTO: `LoginRequestDto` with `FamilyID` and `Password`
+  - Service: `AuthService.LoginAsync`
+  - Context: `AppDbContext` for the selected campus
+  - Table/entity: `tblStudentFamilyDetail` / `StudentFamilyDetail`
+  - Match: `FamilyID == request.FamilyID` and `Password == request.Password`
+  - Returns active students through `tblStudent` and includes section/class data.
+  - Token: `TokenService.GenerateToken(family.ID, family.FamilyID, TenantContext.Campus)`
+
+- Campus/admin login endpoint: `POST /api/Auth/campus-login`
+  - DTO: `CampusLoginRequestDto` with `Username` and `Password`
+  - Service: `AuthService.CampusLoginAsync`
+  - Context: `AppDbContext` for the selected campus
+  - Table/entity: `tblUser` / `User`
+  - Match: trimmed username, raw password, and `IsActive == true`
+  - Returns `ID`, `Username`, `RoleID`, and token.
+  - Token: `TokenService.GenerateToken(user.ID, null, TenantContext.Campus)`
+
+- Employee login endpoint: `POST /api/Auth/employee-login`
+  - DTO: `EmployeeLoginRequestDto` with `ID` and `Password`
+  - Service: `EmployeeAuthService.LoginAsync`
+  - Repository: `EmployeeAuthRepository`
+  - Context: `AppDbContext` for the selected campus
+  - Table/entity: `tblEmployee` / `Employee`
+  - Joins `tblDesignation` / `Designation` for designation name.
+  - Match: `employee.ID == request.ID`, trimmed password, and `IsActive == true`
+  - Returns `ID`, `EmployeeName`, `Designation`, `BranchID`, `IsCoordinator`, and token.
+  - Token: `TokenService.GenerateToken(employee.ID, null, TenantContext.Campus)`
+
+- Academics login endpoint: `POST /api/academics/Auth/login`
+  - DTO: `AcademicLoginRequestDto` with `UserName` and `Password`
+  - Service: `AcademicAuthService.LoginAsync`
+  - Context: `AcademicContext`, separate from campus DBs
+  - Table/entity: `AcademicLogin` / `AcademicUser`
+  - Match: trimmed username and raw password.
+  - Also returns first institute settings row via `IInstituteSettingsRepository`.
+  - Token: `TokenService.GenerateAcademicToken(user.Id, user.UserName)`
+  - Academic JWTs include `App = Academics`; academics controllers use `[Authorize(Policy = "AcademicsOnly")]`.
+
+## Token Claims
+- Campus/family/admin/employee tokens include:
+  - `FamilyDbId`
+  - `FamilyID` (empty for campus/admin and employee logins)
+  - `Campus`
+- Academics tokens include:
+  - `AcademicUserId`
+  - `AcademicUserName`
+  - `App = Academics`
+
+## Schema Notes
+- Main/campus DB schema is represented by `School.Infrastructure/Data/AppDbContext.cs` and `School.Infrastructure/Entities`.
+- Academics DB schema is represented by `School.Infrastructure/Academics/Data/AcademicContext.cs`, `Entities`, and `Configurations`.
+- Both `AppDbContext` and `AcademicContext` call `HasDefaultSchema("dbo")`. New tables/migrations must create objects in `dbo` (never the SQL login default schema). See `.cursor/rules/dbo-schema-for-new-tables.mdc`.
+- Existing SQL reference files:
+  - `script.sql` for the legacy campus DB schema.
+  - `script_academics.sql` for the academics DB schema.
+  - `script_academics_login.sql` for `AcademicLogin`.
+- Prefer EF Core mappings and existing repositories/services over ad hoc SQL.
+- Preserve the tenant boundary: anything using campus data should use `AppDbContext`; anything in academics should use `AcademicContext`.

@@ -6,4 +6,5 @@ public class AcademicLoginResponseDto
     public string UserName { get; set; } = string.Empty;
     public string Token { get; set; } = string.Empty;
     public InstituteSettingsDto? InstituteSettings { get; set; }
+    public IReadOnlyList<string> GrantedPermissionCodes { get; set; } = [];
 }

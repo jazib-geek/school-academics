@@ -15,5 +15,11 @@ public class ClassDiary
 
     public string? ImgURL { get; set; }
 
+    /// <summary>Display name of whoever last uploaded/replaced this page (denormalized).</summary>
+    public string? LastUpdatedBy { get; set; }
+
+    /// <summary>When this page was last uploaded/replaced (Pakistan time).</summary>
+    public DateTime? LastUpdatedAt { get; set; }
+
     public virtual Class? Class { get; set; }
 }

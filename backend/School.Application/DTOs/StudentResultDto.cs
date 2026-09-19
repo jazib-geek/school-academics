@@ -8,8 +8,11 @@ public class StudentResultDto
     public string? StudentName { get; set; }
     public string? FatherName { get; set; }
     public string? ClassName { get; set; }
+    public string? Gender { get; set; }
+    public string? Address { get; set; }
     public string? ExamTypeName { get; set; }
     public string? AttendanceRatio { get; set; }
+    public string? LongRemarks { get; set; }
 
     public int TotalMarks { get; set; }
     public int TotalObtained { get; set; }
