@@ -68,3 +68,14 @@ export const getAttendanceReport = async ({ dateFrom, dateTo, classSectionCompos
 
   return response?.data?.data
 }
+
+export const getStudentAttendanceHistory = async (studentId, { month, year } = {}) => {
+  const response = await api.get(`/api/attendance/student/${studentId}`, {
+    params: {
+      month: month || undefined,
+      year: year || undefined,
+    },
+  })
+
+  return response?.data?.data || []
+}

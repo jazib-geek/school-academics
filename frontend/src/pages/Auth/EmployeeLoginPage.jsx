@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { employeeLoginWithCampus } from '../../services/employeeAuthService'
 import { CAMPUS_OPTIONS, SCHOOL_LOGO_PATH, SCHOOL_NAME } from '../../constants/branding'
 
@@ -9,15 +9,23 @@ function EmployeeLoginPage() {
     ? CAMPUS_OPTIONS.filter((item) => item.value !== 'local')
     : CAMPUS_OPTIONS
 
+  const savedCampus = localStorage.getItem('employeeCampus') || ''
+  const initialCampus = campusOptions.some((item) => item.value === savedCampus)
+    ? savedCampus
+    : campusOptions[0]?.value || ''
+
+  const navigate = useNavigate()
+  const location = useLocation()
   const [form, setForm] = useState({
-    campus: campusOptions[0]?.value || '',
-    employeeId: '',
+    campus: initialCampus,
+    username: '',
     password: '',
   })
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
-  const navigate = useNavigate()
-  const location = useLocation()
+  const [info, setInfo] = useState(
+    location.state?.passwordChanged ? 'Password updated. Sign in with your new password.' : '',
+  )
 
   const onChange = (event) => {
     const { name, value } = event.target
@@ -27,6 +35,7 @@ function EmployeeLoginPage() {
   const onSubmit = async (event) => {
     event.preventDefault()
     setError('')
+    setInfo('')
     setIsLoading(true)
 
     try {
@@ -38,7 +47,7 @@ function EmployeeLoginPage() {
       const message =
         requestError?.response?.data?.message ||
         requestError?.response?.data?.title ||
-        'Login failed. Please check campus, employee ID and password.'
+        'Login failed. Please check campus, username and password.'
       setError(message)
     } finally {
       setIsLoading(false)
@@ -78,13 +87,14 @@ function EmployeeLoginPage() {
             </label>
 
             <label className="block">
-              <span className="mb-1 block text-sm font-medium text-slate-700">Employee ID</span>
+              <span className="mb-1 block text-sm font-medium text-slate-700">Username</span>
               <input
                 className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-slate-800 outline-none ring-indigo-300 transition focus:ring"
-                name="employeeId"
-                value={form.employeeId}
+                name="username"
+                value={form.username}
                 onChange={onChange}
-                placeholder="Enter employee ID"
+                placeholder="Enter username"
+                autoComplete="username"
                 required
               />
             </label>
@@ -101,6 +111,10 @@ function EmployeeLoginPage() {
                 required
               />
             </label>
+
+            {info ? (
+              <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{info}</p>
+            ) : null}
 
             {error ? (
               <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-600">{error}</p>

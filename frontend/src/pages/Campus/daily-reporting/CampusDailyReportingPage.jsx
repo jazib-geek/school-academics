@@ -347,18 +347,18 @@ function CoordinatorReportCard({ report, accordionMode }) {
   )
 }
 
-function CoordinatorCiTimeTable({ reports, isLoading }) {
-  if (reports.length === 0 && !isLoading) {
+function CoordinatorCiTimeTable({ rows, isLoading }) {
+  if (rows.length === 0 && !isLoading) {
     return (
       <p className="flex h-full items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-4 text-center text-sm text-slate-500">
-        No coordinator reports for this date.
+        No coordinators found for this campus.
       </p>
     )
   }
 
   return (
     <div className="h-full w-full overflow-y-auto rounded-xl border border-slate-200">
-      <table className="min-w-full text-sm">
+      <table className="min-w-full text-[13px] leading-snug">
         <thead className="sticky top-0 z-10 bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
           <tr>
             <th className="px-3 py-2">Name</th>
@@ -366,13 +366,13 @@ function CoordinatorCiTimeTable({ reports, isLoading }) {
           </tr>
         </thead>
         <tbody>
-          {reports.map((r) => (
-            <tr key={r.id} className="border-t border-slate-100">
-              <td className="max-w-0 truncate px-3 py-2 font-medium text-slate-800" title={r.coordinatorEmployeeName?.trim()}>
-                {r.coordinatorEmployeeName?.trim() || `#${r.coordinatorEmployeeId}`}
+          {rows.map((r) => (
+            <tr key={r.employeeId} className="border-t border-slate-100">
+              <td className="max-w-0 truncate px-3 py-1.5 font-medium text-slate-800" title={r.employeeName?.trim()}>
+                {r.employeeName?.trim() || `#${r.employeeId}`}
               </td>
-              <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums text-slate-700">
-                {formatTime12Hour(r.arrivalTime)}
+              <td className="whitespace-nowrap px-3 py-1.5 text-right tabular-nums text-slate-700">
+                {formatTime12Hour(r.checkInTime)}
               </td>
             </tr>
           ))}
@@ -418,6 +418,8 @@ function CampusDailyReportingPage() {
 
   const summaries = bundle?.classAttendanceSummaries ?? []
   const reports = bundle?.coordinatorReports ?? []
+  const coordinatorCheckIns = bundle?.coordinatorCheckIns ?? []
+  const absentTeachers = bundle?.absentTeachers ?? []
 
   const attendanceRollup = useMemo(() => {
     let total = 0
@@ -447,34 +449,9 @@ function CampusDailyReportingPage() {
     return rows
   }, [reports])
 
-  const absentAggregated = useMemo(() => {
-    const map = new Map()
-    for (const r of reports) {
-      const coord = r.coordinatorEmployeeName?.trim() || `ID ${r.coordinatorEmployeeId}`
-      for (const a of r.absentTeachers || []) {
-        const id = a.employeeId
-        if (!map.has(id)) {
-          map.set(id, {
-            employeeId: id,
-            employeeName: a.employeeName?.trim() || `ID ${id}`,
-            coordinators: new Set(),
-            notes: [],
-          })
-        }
-        const entry = map.get(id)
-        entry.coordinators.add(coord)
-        if (a.notes?.trim()) entry.notes.push(a.notes.trim())
-      }
-    }
-    return [...map.values()].map((v) => ({
-      ...v,
-      coordinators: [...v.coordinators].sort(),
-    }))
-  }, [reports])
-
   return (
     <CampusShell headerContext="Daily reporting">
-      <div className="space-y-6 p-4 pt-20 md:p-6 md:pt-24 lg:p-7 lg:pt-24">
+      <div className="space-y-6 p-4 pt-[4.25rem] md:p-6 md:pt-[4.5rem] lg:p-7 lg:pt-[4.5rem]">
             <div className="flex flex-col gap-4 rounded-2xl border border-indigo-100 bg-white p-5 shadow-sm ring-1 ring-slate-100 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <h1 className="text-2xl font-bold tracking-tight text-slate-900">Daily coordinator reporting</h1>
@@ -552,9 +529,11 @@ function CampusDailyReportingPage() {
                   <Clock size={20} className="text-indigo-600" aria-hidden />
                   Coordinator CI time
                 </h2>
-                <p className="mt-1 min-h-5 text-sm leading-5 text-slate-500">Arrival time logged in the portal (12-hour clock).</p>
+                <p className="mt-1 min-h-5 text-sm leading-5 text-slate-500">
+                  Check-in from biometric attendance for Co-ordinator staff.
+                </p>
                 <div className={SNAPSHOT_CARD_BODY_CLASS}>
-                  <CoordinatorCiTimeTable reports={reports} isLoading={isLoading} />
+                  <CoordinatorCiTimeTable rows={coordinatorCheckIns} isLoading={isLoading} />
                 </div>
               </article>
             </section>
@@ -567,7 +546,7 @@ function CampusDailyReportingPage() {
                 </h2>
                 <p className="text-sm text-slate-500">One row per duty window logged in the portal.</p>
                 <div className="mt-4 max-h-[360px] overflow-auto rounded-xl border border-slate-200">
-                  <table className="min-w-full text-sm">
+                  <table className="min-w-full text-[13px] leading-snug">
                     <thead className="sticky top-0 z-10 bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                       <tr>
                         <th className="px-3 py-2">Coordinator</th>
@@ -586,12 +565,12 @@ function CampusDailyReportingPage() {
                       ) : null}
                       {modFlat.map((row) => (
                         <tr key={row.key} className="border-t border-slate-100">
-                          <td className="px-3 py-2 text-slate-800">{row.coordinator}</td>
-                          <td className="px-3 py-2">
+                          <td className="px-3 py-1.5 text-slate-800">{row.coordinator}</td>
+                          <td className="px-3 py-1.5">
                             <span className="rounded-md bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-900">{row.scope}</span>
                           </td>
-                          <td className="px-3 py-2 font-medium text-slate-800">{row.onDuty}</td>
-                          <td className="max-w-[200px] truncate px-3 py-2 text-xs text-slate-600" title={row.notes}>
+                          <td className="px-3 py-1.5 font-medium text-slate-800">{row.onDuty}</td>
+                          <td className="max-w-[200px] truncate px-3 py-1.5 text-xs text-slate-600" title={row.notes}>
                             {row.notes || '—'}
                           </td>
                         </tr>
@@ -604,11 +583,13 @@ function CampusDailyReportingPage() {
               <article className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
                 <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
                   <UserX size={20} className="text-rose-600" />
-                  Absent teachers (deduplicated)
+                  Absent teachers
                 </h2>
-                <p className="text-sm text-slate-500">Unique staff absent on at least one coordinator report for this date.</p>
+                <p className="text-sm text-slate-500">
+                  Teachers with no biometric punch for this date, plus any absences coordinators recorded.
+                </p>
                 <div className="mt-4 max-h-[360px] overflow-auto rounded-xl border border-slate-200">
-                  <table className="min-w-full text-sm">
+                  <table className="min-w-full text-[13px] leading-snug">
                     <thead className="sticky top-0 z-10 bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                       <tr>
                         <th className="px-3 py-2">Staff</th>
@@ -617,19 +598,21 @@ function CampusDailyReportingPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {absentAggregated.length === 0 && !isLoading ? (
+                      {absentTeachers.length === 0 && !isLoading ? (
                         <tr>
                           <td colSpan={3} className="px-3 py-8 text-center text-slate-500">
-                            No absent teachers recorded for this date.
+                            No absent teachers for this date.
                           </td>
                         </tr>
                       ) : null}
-                      {absentAggregated.map((row) => (
+                      {absentTeachers.map((row) => (
                         <tr key={row.employeeId} className="border-t border-slate-100">
-                          <td className="px-3 py-2 font-medium text-slate-800">{row.employeeName}</td>
-                          <td className="px-3 py-2 text-xs text-slate-600">{row.coordinators.join(', ')}</td>
-                          <td className="px-3 py-2 text-xs text-slate-600">
-                            {[...new Set(row.notes)].filter(Boolean).join(' · ') || '—'}
+                          <td className="px-3 py-1.5 font-medium text-slate-800">{row.employeeName}</td>
+                          <td className="px-3 py-1.5 text-xs text-slate-600">
+                            {(row.loggedBy || []).join(', ') || '—'}
+                          </td>
+                          <td className="px-3 py-1.5 text-xs text-slate-600">
+                            {(row.notes || []).filter(Boolean).join(' · ') || '—'}
                           </td>
                         </tr>
                       ))}

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import Select from 'react-select'
+import { EmployeeSelect as Select } from '../../components/employee/EmployeeSelect'
 import { toast } from 'sonner'
+import EmployeeBackButton from '../../components/employee/EmployeeBackButton'
 import EmployeeLayout from '../../components/employee/EmployeeLayout'
 import { getClasses } from '../../services/classService'
 import {
@@ -11,7 +12,8 @@ import {
   setStudentAttendanceStatus,
 } from '../../services/attendanceService'
 
-const STATUS_OPTIONS = ['P', 'A', 'H']
+const ROW_STATUS_OPTIONS = ['P', 'A', 'Lt', 'Lv', 'H']
+const BULK_STATUS_OPTIONS = ['P', 'A', 'H']
 
 /** Select value for whole-school attendance sheet (not a real section id). */
 const ALL_CLASSES_VALUE = '__all__'
@@ -180,8 +182,13 @@ function EmployeeAttendancePage() {
     await runSetAll(status)
   }
 
-  const getStatusLabel = (status) =>
-    status === 'P' ? 'Present (P)' : status === 'A' ? 'Absent (A)' : 'Holiday (H)'
+  const getStatusLabel = (status) => {
+    if (status === 'P') return 'Present (P)'
+    if (status === 'A') return 'Absent (A)'
+    if (status === 'Lt') return 'Late (Lt)'
+    if (status === 'Lv') return 'Leave (Lv)'
+    return 'Holiday (H)'
+  }
 
   const getSheetTitle = () => {
     if (isWholeSchoolSheet) {
@@ -244,12 +251,14 @@ function EmployeeAttendancePage() {
 
   return (
     <EmployeeLayout
-      title="Attendance"
-      subtitle="Mark student attendance"
+      title="Mark Student Attendance"
+      subtitle="Take register for your classes"
       showQuickTiles={false}
       showProfileCard={false}
       compactContentTop
     >
+      <EmployeeBackButton />
+
       <section className="emp-surface rounded-2xl p-4">
         <h2 className="text-sm font-semibold text-slate-900">Select class and date</h2>
         <p className="mt-1 text-xs text-slate-500">
@@ -324,7 +333,7 @@ function EmployeeAttendancePage() {
                   Mark whole school present
                 </button>
               ) : (
-                STATUS_OPTIONS.map((status) => (
+                BULK_STATUS_OPTIONS.map((status) => (
                   <button
                     key={status}
                     type="button"
@@ -358,41 +367,49 @@ function EmployeeAttendancePage() {
             />
           </div>
 
-          <div className="mt-4 overflow-x-auto">
-            <table className="emp-attendance-table w-full min-w-[420px] text-left text-sm">
+          <div className="mt-4">
+            <table className="emp-attendance-table w-full text-left text-sm">
               <thead>
                 <tr className="emp-attendance-header text-xs uppercase tracking-wide">
-                  <th className="rounded-l-xl px-3 py-2.5">Reg Id</th>
-                  {isWholeSchoolSheet ? <th className="px-3 py-2.5">Class</th> : null}
-                  <th className="px-3 py-2.5">Student Name</th>
-                  <th className="rounded-r-xl px-3 py-2.5">Status</th>
+                  <th className="rounded-l-xl px-2 py-2.5 sm:px-3">Reg Id</th>
+                  {isWholeSchoolSheet ? <th className="px-2 py-2.5 sm:px-3">Class</th> : null}
+                  <th className="px-2 py-2.5 sm:px-3">Student Name</th>
+                  <th className="emp-attendance-status-cell rounded-r-xl px-2 py-2.5 sm:px-3">Status</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredStudents.map((student) => (
                   <tr key={`${student.studentId}-${student.classSectionCompositeIdForStudent ?? classId}`} className="emp-table-row align-middle">
-                    <td className="px-3 py-2.5 text-slate-700">{student.studentId}</td>
+                    <td className="whitespace-nowrap px-2 py-2.5 text-slate-700 sm:px-3">{student.studentId}</td>
                     {isWholeSchoolSheet ? (
-                      <td className="px-3 py-2.5 text-slate-600">{student.classNameForStudent || '—'}</td>
+                      <td className="emp-attendance-name-cell px-2 py-2.5 text-slate-600 sm:px-3">
+                        {student.classNameForStudent || '—'}
+                      </td>
                     ) : null}
-                    <td className="px-3 py-2.5 text-slate-900">{student.studentName}</td>
-                    <td className="px-3 py-2.5">
-                      <div className="flex items-center gap-1">
-                        {STATUS_OPTIONS.map((status) => {
+                    <td className="emp-attendance-name-cell px-2 py-2.5 text-slate-900 sm:px-3">
+                      {student.studentName}
+                    </td>
+                    <td className="emp-attendance-status-cell px-2 py-2.5 sm:px-3">
+                      <div className="emp-status-pills">
+                        {ROW_STATUS_OPTIONS.map((status) => {
                           const isActive = student.status === status
+                          const pillClass =
+                            status === 'P'
+                              ? 'emp-status-pill-p'
+                              : status === 'A'
+                                ? 'emp-status-pill-a'
+                                : status === 'Lt'
+                                  ? 'emp-status-pill-lt'
+                                  : status === 'Lv'
+                                    ? 'emp-status-pill-lv'
+                                    : 'emp-status-pill-h'
                           return (
                             <button
                               key={status}
                               type="button"
                               onClick={() => onSetStudentStatus(student, status)}
                               disabled={savingBusy || loadingSheet}
-                              className={`emp-status-pill ${
-                                status === 'P'
-                                  ? 'emp-status-pill-p'
-                                  : status === 'A'
-                                    ? 'emp-status-pill-a'
-                                    : 'emp-status-pill-h'
-                              } ${isActive ? '' : 'emp-status-pill-muted'}`}
+                              className={`emp-status-pill ${pillClass} ${isActive ? '' : 'emp-status-pill-muted'}`}
                             >
                               {status}
                             </button>

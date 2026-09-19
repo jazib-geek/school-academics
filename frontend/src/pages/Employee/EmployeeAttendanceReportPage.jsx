@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import Select from 'react-select'
+import { EmployeeSelect as Select } from '../../components/employee/EmployeeSelect'
+import EmployeeBackButton from '../../components/employee/EmployeeBackButton'
 import EmployeeLayout from '../../components/employee/EmployeeLayout'
 import { getClasses } from '../../services/classService'
 import { getAttendanceReport } from '../../services/attendanceService'
@@ -8,8 +9,18 @@ const STATUS_OPTIONS = [
   { value: '', label: 'All Statuses' },
   { value: 'P', label: 'Present (P)' },
   { value: 'A', label: 'Absent (A)' },
+  { value: 'Lt', label: 'Late (Lt)' },
+  { value: 'Lv', label: 'Leave (Lv)' },
   { value: 'H', label: 'Holiday (H)' },
 ]
+
+const studentStatusTint = (status) => {
+  if (status === 'P') return 'bg-emerald-50'
+  if (status === 'A') return 'bg-rose-50'
+  if (status === 'Lt') return 'bg-sky-50'
+  if (status === 'Lv') return 'bg-violet-50'
+  return 'bg-amber-50'
+}
 
 const normalizeClassName = (className) => {
   const parts = (className || '')
@@ -39,9 +50,7 @@ const getPakistanToday = () => {
 }
 
 function EmployeeAttendanceReportPage() {
-  const today = getPakistanToday()
-  const [dateFrom, setDateFrom] = useState(today)
-  const [dateTo, setDateTo] = useState(today)
+  const [date, setDate] = useState(getPakistanToday)
   const [classId, setClassId] = useState('')
   const [status, setStatus] = useState('')
   const [classes, setClasses] = useState([])
@@ -81,17 +90,21 @@ function EmployeeAttendanceReportPage() {
     [status],
   )
 
-  const loadReport = async () => {
-    if (!dateFrom || !dateTo) return
+  const loadReport = async ({
+    reportDate = date,
+    reportClassId = classId,
+    reportStatus = status,
+  } = {}) => {
+    if (!reportDate) return
 
     setIsLoading(true)
     setError('')
     try {
       const data = await getAttendanceReport({
-        dateFrom,
-        dateTo,
-        classSectionCompositeId: classId ? Number(classId) : undefined,
-        status,
+        dateFrom: reportDate,
+        dateTo: reportDate,
+        classSectionCompositeId: reportClassId ? Number(reportClassId) : undefined,
+        status: reportStatus,
       })
       setReport(data)
     } catch (err) {
@@ -103,36 +116,30 @@ function EmployeeAttendanceReportPage() {
   }
 
   useEffect(() => {
-    loadReport()
+    void loadReport({ reportDate: getPakistanToday(), reportClassId: '', reportStatus: '' })
+    // Load today's report once when the screen opens.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return (
     <EmployeeLayout
-      title="Attendance Report"
-      subtitle="Filter and review attendance records"
+      title="Search Monthly Attendance"
+      subtitle="Filter and review attendance for one date"
       showQuickTiles={false}
       showProfileCard={false}
       compactContentTop
     >
+      <EmployeeBackButton />
+
       <section className="emp-surface rounded-2xl p-4">
         <h2 className="text-sm font-semibold text-slate-900">Filters</h2>
         <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <label className="text-xs font-medium text-slate-600">
-            Date From
+          <label className="text-xs font-medium text-slate-600 sm:col-span-2">
+            Date
             <input
               type="date"
-              value={dateFrom}
-              onChange={(event) => setDateFrom(event.target.value)}
-              className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-            />
-          </label>
-
-          <label className="text-xs font-medium text-slate-600">
-            Date To
-            <input
-              type="date"
-              value={dateTo}
-              onChange={(event) => setDateTo(event.target.value)}
+              value={date}
+              onChange={(event) => setDate(event.target.value)}
               className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
             />
           </label>
@@ -186,7 +193,7 @@ function EmployeeAttendanceReportPage() {
         </div>
 
         <div className="mt-3 flex justify-end">
-          <button type="button" onClick={loadReport} disabled={isLoading} className="emp-cta-btn emp-cta-btn-primary">
+          <button type="button" onClick={() => void loadReport()} disabled={isLoading} className="emp-cta-btn emp-cta-btn-primary">
             {isLoading ? <span className="emp-loader emp-loader-sm" /> : null}
             Apply Filters
           </button>
@@ -195,9 +202,18 @@ function EmployeeAttendanceReportPage() {
 
       {error ? <section className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</section> : null}
 
+      {isLoading && !report ? (
+        <section className="emp-surface rounded-2xl p-4 text-sm text-slate-600">
+          <div className="flex items-center gap-2">
+            <span className="emp-loader emp-loader-lg" />
+            <span>Loading attendance report…</span>
+          </div>
+        </section>
+      ) : null}
+
       {report ? (
         <section className="emp-surface rounded-2xl p-4">
-          <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
+          <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
             <div className="rounded-xl bg-indigo-50 px-3 py-2">
               <p className="text-xs text-indigo-600">Total Records</p>
               <p className="font-semibold text-indigo-900">{report.totalRecords}</p>
@@ -210,6 +226,14 @@ function EmployeeAttendanceReportPage() {
               <p className="text-xs text-rose-600">Absent</p>
               <p className="font-semibold text-rose-900">{report.absentCount}</p>
             </div>
+            <div className="rounded-xl bg-sky-50 px-3 py-2">
+              <p className="text-xs text-sky-700">Late</p>
+              <p className="font-semibold text-sky-900">{report.lateCount ?? 0}</p>
+            </div>
+            <div className="rounded-xl bg-violet-50 px-3 py-2">
+              <p className="text-xs text-violet-700">Leave</p>
+              <p className="font-semibold text-violet-900">{report.leaveCount ?? 0}</p>
+            </div>
             <div className="rounded-xl bg-amber-50 px-3 py-2">
               <p className="text-xs text-amber-700">Holiday</p>
               <p className="font-semibold text-amber-900">{report.holidayCount}</p>
@@ -218,9 +242,9 @@ function EmployeeAttendanceReportPage() {
               <p className="text-xs text-cyan-700">Classes</p>
               <p className="font-semibold text-cyan-900">{report.classCount}</p>
             </div>
-            <div className="rounded-xl bg-violet-50 px-3 py-2">
-              <p className="text-xs text-violet-700">Students</p>
-              <p className="font-semibold text-violet-900">{report.studentCount}</p>
+            <div className="rounded-xl bg-fuchsia-50 px-3 py-2">
+              <p className="text-xs text-fuchsia-700">Students</p>
+              <p className="font-semibold text-fuchsia-900">{report.studentCount}</p>
             </div>
           </div>
 
@@ -240,13 +264,7 @@ function EmployeeAttendanceReportPage() {
                     <td className="px-3 py-2.5 text-slate-900">{normalizeClassName(item.className)}</td>
                     <td className="px-3 py-2.5">
                       <span
-                        className={`inline-flex rounded-lg px-2.5 py-1 text-slate-900 ${
-                          item.status === 'P'
-                            ? 'bg-emerald-50'
-                            : item.status === 'A'
-                              ? 'bg-rose-50'
-                              : 'bg-amber-50'
-                        }`}
+                        className={`inline-flex rounded-lg px-2.5 py-1 text-slate-900 ${studentStatusTint(item.status)}`}
                       >
                         {item.studentName}
                       </span>

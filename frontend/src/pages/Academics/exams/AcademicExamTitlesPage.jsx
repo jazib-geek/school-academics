@@ -108,15 +108,15 @@ function AcademicExamTitlesPage() {
       ) : null}
 
       <section className="max-h-[65vh] overflow-auto rounded-xl border border-slate-200">
-        <table className="w-full min-w-[520px] border-collapse text-sm md:min-w-[720px]">
+        <table className="w-full min-w-[520px] border-collapse text-[13px] leading-snug md:min-w-[720px]">
           <thead className="sticky top-0 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
             <tr>
-              <th className="border border-slate-200 px-2 py-2 font-semibold md:px-4 md:py-3">Sr #</th>
-              <th className="border border-slate-200 px-2 py-2 font-semibold md:px-4 md:py-3">Title</th>
-              <th className="border border-slate-200 px-2 py-2 font-semibold md:px-4 md:py-3">
+              <th className="border border-slate-200 px-2 py-2 font-semibold md:px-3 md:py-2">Sr #</th>
+              <th className="border border-slate-200 px-2 py-2 font-semibold md:px-3 md:py-2">Title</th>
+              <th className="border border-slate-200 px-2 py-2 font-semibold md:px-3 md:py-2">
                 Exam type key
               </th>
-              <th className="border border-slate-200 px-2 py-2 text-right font-semibold md:px-4 md:py-3">
+              <th className="border border-slate-200 px-2 py-2 text-right font-semibold md:px-3 md:py-2">
                 Actions
               </th>
             </tr>
@@ -143,16 +143,16 @@ function AcademicExamTitlesPage() {
             ) : (
               rows.map((item, index) => (
                 <tr key={item.id} className="hover:bg-slate-50/70">
-                  <td className="border border-slate-200 px-2 py-2.5 font-medium text-slate-700 md:px-4 md:py-3">
+                  <td className="border border-slate-200 px-2 py-1.5 font-medium text-slate-700 md:px-3 md:py-1.5">
                     {index + 1}
                   </td>
-                  <td className="border border-slate-200 px-2 py-2.5 text-slate-700 md:px-4 md:py-3">
+                  <td className="border border-slate-200 px-2 py-1.5 text-slate-700 md:px-3 md:py-1.5">
                     {item.title}
                   </td>
-                  <td className="border border-slate-200 px-2 py-2.5 text-slate-600 md:px-4 md:py-3">
+                  <td className="border border-slate-200 px-2 py-1.5 text-slate-600 md:px-3 md:py-1.5">
                     {item.examType || '—'}
                   </td>
-                  <td className="border border-slate-200 px-2 py-2.5 md:px-4 md:py-3">
+                  <td className="border border-slate-200 px-2 py-1.5 md:px-3 md:py-1.5">
                     <div className="flex justify-end">
                       <div className="action-group">
                         <button

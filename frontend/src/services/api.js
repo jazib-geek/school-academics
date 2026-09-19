@@ -27,10 +27,12 @@ const getHashPath = () => {
 const getActivePortal = (config) => {
   const url = resolveRequestUrl(config)
   if (url.includes('/api/employee/')) return 'employee'
-  if (url.includes('/api/campus/')) return 'campus'
 
+  // Employee portal must send employeeToken even for /api/campus/... academic APIs.
   const hash = getHashPath()
   if (hash.startsWith('/employee') && !hash.startsWith('/employee/login')) return 'employee'
+
+  if (url.includes('/api/campus/') || url.includes('/api/dashboard/')) return 'campus'
   if (hash.startsWith('/campus') || hash === '/dashboard' || hash.startsWith('/students')) {
     return 'campus'
   }
@@ -92,17 +94,20 @@ const isLoginRequest = (url = '') =>
 
 const clearPortalSession = (portal) => {
   if (portal === 'employee') {
-    localStorage.removeItem('employeeCampus')
+    // Keep `employeeCampus` so the login dropdown can preselect the last campus.
     localStorage.removeItem('employeeId')
     localStorage.removeItem('employeeName')
     localStorage.removeItem('employeeToken')
     localStorage.removeItem('employeeUser')
     return
   }
-  localStorage.removeItem('campus')
+  // Keep `campus` so the login dropdown can preselect the last campus.
   localStorage.removeItem('username')
   localStorage.removeItem('token')
   localStorage.removeItem('user')
+  localStorage.removeItem('campusPermissions')
+  localStorage.removeItem('campusIsSuperAdmin')
+  localStorage.removeItem('campusFundTypes')
 }
 
 api.interceptors.response.use(

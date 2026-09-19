@@ -1,0 +1,82 @@
+name: Build and deploy to Plesk (FTP)
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      # Lockfile was produced with npm 11; Node 22 runners default to npm 10 and fail `npm ci`.
+      - run: npm install -g npm@11.6.2
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+
+  deploy:
+    needs: build
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - run: npm install -g npm@11.6.2
+      - run: npm ci
+      - run: npm run build
+
+      - id: ftp-server-dir
+        name: Prepare FTP server-dir
+        env:
+          FTP_REMOTE_DIR: ${{ secrets.FTP_REMOTE_DIR }}
+        run: |
+          dir="${FTP_REMOTE_DIR// /}"
+          if [ -z "$dir" ]; then
+            echo "::error::Set FTP_REMOTE_DIR to the FTP folder where the site files live (e.g. /httpdocs/)."
+            exit 1
+          fi
+          case "$dir" in /*) ;; *) dir="/$dir" ;; esac
+          case "$dir" in */) ;; *) dir="${dir}/" ;; esac
+          echo "Using server-dir: $dir"
+          echo "dir=$dir" >> "$GITHUB_OUTPUT"
+
+      - id: ftp-config
+        name: Prepare FTP options
+        env:
+          FTP_PROTOCOL: ${{ secrets.FTP_PROTOCOL }}
+        run: |
+          protocol="${FTP_PROTOCOL:-ftp}"
+          echo "protocol=$protocol" >> "$GITHUB_OUTPUT"
+
+      - name: Upload dist to Plesk via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ${{ steps.ftp-config.outputs.protocol }}
+          port: 21
+          security: loose
+          timeout: 180000
+          local-dir: ./dist/
+          server-dir: ${{ steps.ftp-server-dir.outputs.dir }}
+          dangerous-clean-slate: false
+          log-level: standard

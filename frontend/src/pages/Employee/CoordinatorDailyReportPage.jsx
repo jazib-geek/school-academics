@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
-import Select from 'react-select'
+import { EmployeeSelect as Select } from '../../components/employee/EmployeeSelect'
 import { toast } from 'sonner'
 import {
   Bell,
@@ -15,6 +15,7 @@ import {
   Trash2,
   UserX,
 } from 'lucide-react'
+import EmployeeBackButton from '../../components/employee/EmployeeBackButton'
 import EmployeeLayout from '../../components/employee/EmployeeLayout'
 import { getCampusLabel } from '../../constants/branding'
 import {
@@ -631,6 +632,8 @@ function CoordinatorDailyReportPage() {
       showProfileCard={false}
       compactContentTop
     >
+      <EmployeeBackButton />
+
       <section className="emp-surface rounded-2xl p-4">
         <div className="min-w-0">
           <label className="text-sm font-medium text-slate-700" htmlFor="coord-daily-report-date">

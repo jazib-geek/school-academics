@@ -7,6 +7,7 @@ import {
   FilePlus,
   FolderOpen,
   Loader2,
+  Pencil,
   Plus,
   Printer,
   Search,
@@ -16,8 +17,11 @@ import {
 } from 'lucide-react'
 import katex from 'katex'
 import 'katex/dist/katex.min.css'
+import 'katex/contrib/mhchem'
 import Select from 'react-select'
 import { Link } from 'react-router-dom'
+import QuestionStemImage from '../../../components/academics/QuestionStemImage.jsx'
+import { stripLatexDelimitersForKatex } from '../../../components/academics/academicQuestionLatexUtils.js'
 import { useAcademicInstituteSettings } from '../../../contexts/AcademicInstituteSettingsContext'
 import {
   getAcademicChapters,
@@ -35,9 +39,9 @@ import {
   randomizeAcademicExamPaperFromChapters,
   updateAcademicExamPaperFromSelection,
 } from '../../../services/academicExamMakerServiceWithSafety'
-import { useExamMakerAutoSave, DRAFT_STORAGE_KEY_EXPORT } from '../../../hooks/useExamMakerAutoSave'
+import { useExamMakerAutoSave } from '../../../hooks/useExamMakerAutoSave'
 import { useExamMakerUnsavedGuard } from '../../../hooks/useExamMakerUnsavedGuard'
-import { buildEditorSnapshot, buildSnapshotFromPaper } from './examMakerWorkspaceSnapshot'
+import { buildEditorSnapshot } from './examMakerWorkspaceSnapshot'
 import { normalizePaperName, paperNamesMatch } from './examMakerPaperName'
 import {
   buildSectionConfigWithOptional,
@@ -106,13 +110,14 @@ const createSectionConfig = (
     optionalQuestionsAttemptCount == null ? null : Number(optionalQuestionsAttemptCount),
 })
 
-const looksLikeLatex = (value) => /\\[a-zA-Z]+|(\^|_)\{?|\\frac|\\sqrt|\\theta|\\pi/.test(value)
+const looksLikeLatex = (value) => /\\[a-zA-Z]+|(\^|_)\{?|\\frac|\\sqrt|\\theta|\\pi|\\ce\{/.test(value)
 const normalizeLatex = (value) => `${value || ''}`.replaceAll('\\\\', '\\').trim()
 const SECTION_KEY_REGEX = /^Q(\d+)$/i
 const CATALOG_TYPE_OPTIONS = [
   { value: QUESTION_TYPE.MCQ, label: 'MCQ' },
   { value: QUESTION_TYPE.SAQ, label: 'SAQ' },
   { value: QUESTION_TYPE.LAQ, label: 'LAQ' },
+  { value: QUESTION_TYPE.NUMERICAL, label: 'Numerical' },
 ]
 const getSectionNumber = (sectionKey) => {
   const match = `${sectionKey || ''}`.trim().match(SECTION_KEY_REGEX)
@@ -126,24 +131,159 @@ const getSectionPreviewRows = (sectionKey, selectedWithDetails) =>
       type: item.question?.type,
     }))
 
+const escapeLatexText = (value) =>
+  `${value || ''}`
+    .replace(/\\/g, '\\textbackslash{}')
+    .replace(/{/g, '\\{')
+    .replace(/}/g, '\\}')
+    .replace(/\$/g, '\\$')
+    .replace(/&/g, '\\&')
+    .replace(/%/g, '\\%')
+    .replace(/#/g, '\\#')
+    .replace(/_/g, '\\_')
+    .replace(/\^/g, '\\textasciicircum{}')
+
+const shouldWrapProseRun = (mid) => {
+  const trimmed = `${mid || ''}`.trim()
+  if (!trimmed || !/[A-Za-z]/.test(trimmed)) return false
+  // Multi-word English (e.g. "State the following into scientific notation:")
+  if (/[A-Za-z]{2,}\s+[A-Za-z]{2,}/.test(trimmed)) return true
+  if (/[A-Za-z]{3,}[.,:;!?]/.test(trimmed)) return true
+  if (/^[A-Za-z][A-Za-z',.-]{3,}$/.test(trimmed)) return true
+  return false
+}
+
+const consumeBraceGroup = (s, start) => {
+  let depth = 0
+  for (let i = start; i < s.length; i += 1) {
+    if (s[i] === '{') depth += 1
+    else if (s[i] === '}') {
+      depth -= 1
+      if (depth === 0) return i + 1
+    }
+  }
+  return s.length
+}
+
+/**
+ * Wrap plain-language runs in \text{...} so paper CSS can force Arial on prose
+ * while leaving TeX commands / math tokens for KaTeX formula fonts.
+ */
+const wrapPlainProseForKatex = (latex) => {
+  const s = `${latex || ''}`
+  if (!s.trim()) return s
+  if (/\\(?:text|textrm|textsf|textit|textbf|textup|textmd)\s*\{/.test(s)) return s
+
+  let out = ''
+  let i = 0
+  let prose = ''
+
+  const flushProse = () => {
+    if (!prose) return
+    // Wrap leading English only; leave numeric / parenthetical tails for math fonts.
+    const englishLeadMatch = prose.match(/^(\s*(?:[A-Za-z][A-Za-z',.-]*[\s:;.!?]*)+)/)
+    if (englishLeadMatch) {
+      const leadRaw = englishLeadMatch[1]
+      const rest = prose.slice(leadRaw.length)
+      if (rest && /^\s*[\d(]/.test(rest) && shouldWrapProseRun(leadRaw)) {
+        const trimmedLead = leadRaw.replace(/\s+$/, '')
+        const gap = leadRaw.slice(trimmedLead.length)
+        out += `\\text{${escapeLatexText(trimmedLead)}}${gap}${rest}`
+        prose = ''
+        return
+      }
+    }
+    const lead = prose.match(/^\s*/)?.[0] || ''
+    const trail = prose.match(/\s*$/)?.[0] || ''
+    const mid = prose.slice(lead.length, prose.length - trail.length)
+    if (shouldWrapProseRun(mid)) {
+      out += `${lead}\\text{${escapeLatexText(mid)}}${trail}`
+    } else {
+      out += prose
+    }
+    prose = ''
+  }
+
+  while (i < s.length) {
+    const ch = s[i]
+    if (ch === '\\') {
+      flushProse()
+      if (i + 1 < s.length && /[^a-zA-Z]/.test(s[i + 1])) {
+        out += s.slice(i, i + 2)
+        i += 2
+        continue
+      }
+      let j = i + 1
+      while (j < s.length && /[a-zA-Z]/.test(s[j])) j += 1
+      if (s[j] === '*') j += 1
+      out += s.slice(i, j)
+      i = j
+      while (i < s.length && (s[i] === '[' || s[i] === '{')) {
+        if (s[i] === '[') {
+          const end = s.indexOf(']', i)
+          if (end === -1) {
+            out += s.slice(i)
+            i = s.length
+            break
+          }
+          out += s.slice(i, end + 1)
+          i = end + 1
+        } else {
+          const end = consumeBraceGroup(s, i)
+          out += s.slice(i, end)
+          i = end
+        }
+      }
+      continue
+    }
+    if (ch === '{' || ch === '}') {
+      flushProse()
+      out += ch
+      i += 1
+      continue
+    }
+    if (ch === '^' || ch === '_') {
+      flushProse()
+      out += ch
+      i += 1
+      if (i < s.length && s[i] === '{') {
+        const end = consumeBraceGroup(s, i)
+        out += s.slice(i, end)
+        i = end
+      } else if (i < s.length) {
+        out += s[i]
+        i += 1
+      }
+      continue
+    }
+    prose += ch
+    i += 1
+  }
+  flushProse()
+  return out
+}
+
 function MathText({ value, className = '' }) {
   if (!value || !`${value}`.trim()) return <span className={className}>-</span>
 
   const merged = `min-w-0 break-words ${className}`.trim()
-  const normalized = normalizeLatex(value)
+  const stripped = stripLatexDelimitersForKatex(value)
+  const normalized = normalizeLatex(stripped)
   if (!looksLikeLatex(normalized)) {
-    return <span className={merged}>{value}</span>
+    return <span className={merged}>{stripped || value}</span>
   }
 
+  const latexForRender = wrapPlainProseForKatex(normalized)
+
   try {
-    const html = katex.renderToString(normalized, {
+    const html = katex.renderToString(latexForRender, {
       throwOnError: false,
       strict: 'ignore',
       displayMode: false,
     })
     return <span className={merged} dangerouslySetInnerHTML={{ __html: html }} />
   } catch {
-    return <span className={merged}>{value}</span>
+    return <span className={merged}>{stripped || value}</span>
   }
 }
 
@@ -167,6 +307,270 @@ function PopupLoader({ open, text }) {
   )
 }
 
+const DOCX_NS =
+  'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"'
+
+const escapeXml = (value) =>
+  `${value ?? ''}`
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;')
+
+const stripHtml = (value) => `${value ?? ''}`.replace(/<[^>]*>/g, '').trim()
+
+const docxTextRun = (text, { bold = false, size = null, underline = false } = {}) => {
+  const safeText = escapeXml(text)
+  const runProps =
+    bold || size || underline
+      ? `<w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/>${bold ? '<w:b/>' : ''}${underline ? '<w:u w:val="single"/>' : ''}${size ? `<w:sz w:val="${size}"/><w:szCs w:val="${size}"/>` : ''}</w:rPr>`
+      : '<w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/></w:rPr>'
+  return `<w:r>${runProps}<w:t xml:space="preserve">${safeText}</w:t></w:r>`
+}
+
+const docxParagraph = (runs = [], { align = '', spacingAfter = 80 } = {}) => {
+  const jc = align ? `<w:jc w:val="${align}"/>` : ''
+  return `<w:p><w:pPr>${jc}<w:spacing w:after="${spacingAfter}"/></w:pPr>${runs.join('')}</w:p>`
+}
+
+const docxQuestionLine = (label, text, marks = '') =>
+  docxParagraph([
+    docxTextRun(`${label} `, { bold: true }),
+    docxTextRun(text),
+    marks ? docxTextRun(`     ${marks}`) : '',
+  ])
+
+const docxImageRun = () => `
+  <w:r>
+    <w:drawing>
+      <wp:inline distT="0" distB="0" distL="0" distR="0">
+        <wp:extent cx="914400" cy="914400"/>
+        <wp:effectExtent l="0" t="0" r="0" b="0"/>
+        <wp:docPr id="1" name="School logo"/>
+        <wp:cNvGraphicFramePr/>
+        <a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
+          <a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">
+            <pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">
+              <pic:nvPicPr><pic:cNvPr id="0" name="School logo"/><pic:cNvPicPr/></pic:nvPicPr>
+              <pic:blipFill><a:blip r:embed="rIdLogo"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>
+              <pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="914400" cy="914400"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr>
+            </pic:pic>
+          </a:graphicData>
+        </a:graphic>
+      </wp:inline>
+    </w:drawing>
+  </w:r>`
+
+const docxTitleHeader = ({ schoolName, examTitle, hasLogo }) => `
+  <w:tbl>
+    <w:tblPr><w:tblW w:w="10000" w:type="dxa"/><w:tblLayout w:type="fixed"/><w:tblBorders><w:top w:val="nil"/><w:left w:val="nil"/><w:bottom w:val="nil"/><w:right w:val="nil"/><w:insideH w:val="nil"/><w:insideV w:val="nil"/></w:tblBorders></w:tblPr>
+    <w:tr>
+      <w:tc><w:tcPr><w:tcW w:w="3300" w:type="dxa"/></w:tcPr>
+        ${hasLogo ? docxParagraph([docxImageRun()], { align: 'right', spacingAfter: 0 }) : ''}
+      </w:tc>
+      <w:tc><w:tcPr><w:tcW w:w="4700" w:type="dxa"/></w:tcPr>
+        ${docxParagraph([docxTextRun(schoolName, { bold: true, size: 32, underline: true })], { align: 'center', spacingAfter: 20 })}
+        ${docxParagraph([docxTextRun(examTitle, { bold: true, size: 20 })], { align: 'center', spacingAfter: 160 })}
+      </w:tc>
+      <w:tc><w:tcPr><w:tcW w:w="2000" w:type="dxa"/></w:tcPr>${docxParagraph([docxTextRun('')], { spacingAfter: 0 })}</w:tc>
+    </w:tr>
+  </w:tbl>`
+
+const docxSectionHeadingTable = ({ prefix, body, marksText }) => `
+  <w:tbl>
+    <w:tblPr><w:tblW w:w="10000" w:type="dxa"/><w:tblLayout w:type="fixed"/><w:tblBorders><w:top w:val="nil"/><w:left w:val="nil"/><w:bottom w:val="nil"/><w:right w:val="nil"/><w:insideH w:val="nil"/><w:insideV w:val="nil"/></w:tblBorders></w:tblPr>
+    <w:tr>
+      <w:tc><w:tcPr><w:tcW w:w="8200" w:type="dxa"/></w:tcPr>
+        ${docxParagraph([
+          docxTextRun(prefix, { bold: true }),
+          body ? docxTextRun(` ${body}`, { bold: true }) : '',
+        ], { spacingAfter: 80 })}
+      </w:tc>
+      <w:tc><w:tcPr><w:tcW w:w="1800" w:type="dxa"/></w:tcPr>
+        ${docxParagraph([docxTextRun(marksText || '', { bold: true })], { align: 'right', spacingAfter: 80 })}
+      </w:tc>
+    </w:tr>
+  </w:tbl>`
+
+const docxMetaTable = ({ subject, className, marks, time }) => `
+  <w:tbl>
+    <w:tblPr><w:tblW w:w="10000" w:type="dxa"/><w:tblLayout w:type="fixed"/><w:tblBorders><w:top w:val="nil"/><w:left w:val="nil"/><w:bottom w:val="nil"/><w:right w:val="nil"/><w:insideH w:val="nil"/><w:insideV w:val="nil"/></w:tblBorders></w:tblPr>
+    <w:tr>
+      <w:tc><w:tcPr><w:tcW w:w="5000" w:type="dxa"/></w:tcPr>
+        ${docxParagraph([docxTextRun('Subject: ', { bold: true }), docxTextRun(subject)])}
+        ${docxParagraph([docxTextRun('Class: ', { bold: true }), docxTextRun(className)])}
+      </w:tc>
+      <w:tc><w:tcPr><w:tcW w:w="5000" w:type="dxa"/></w:tcPr>
+        ${docxParagraph([docxTextRun('Marks: ', { bold: true }), docxTextRun(marks)], { align: 'right' })}
+        ${docxParagraph([docxTextRun('Time: ', { bold: true }), docxTextRun(time)], { align: 'right' })}
+      </w:tc>
+    </w:tr>
+  </w:tbl>`
+
+const crcTable = (() => {
+  const table = new Uint32Array(256)
+  for (let n = 0; n < 256; n += 1) {
+    let c = n
+    for (let k = 0; k < 8; k += 1) {
+      c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1
+    }
+    table[n] = c >>> 0
+  }
+  return table
+})()
+
+const crc32 = (bytes) => {
+  let crc = 0xffffffff
+  for (let i = 0; i < bytes.length; i += 1) {
+    crc = crcTable[(crc ^ bytes[i]) & 0xff] ^ (crc >>> 8)
+  }
+  return (crc ^ 0xffffffff) >>> 0
+}
+
+const writeUint16 = (view, offset, value) => {
+  view.setUint16(offset, value, true)
+  return offset + 2
+}
+
+const writeUint32 = (view, offset, value) => {
+  view.setUint32(offset, value >>> 0, true)
+  return offset + 4
+}
+
+const createStoredZipBlob = (files) => {
+  const encoder = new TextEncoder()
+  const prepared = files.map((file) => ({
+    nameBytes: encoder.encode(file.name),
+    dataBytes: file.contentBytes || encoder.encode(file.content),
+    crc: 0,
+    offset: 0,
+  }))
+
+  prepared.forEach((file) => {
+    file.crc = crc32(file.dataBytes)
+  })
+
+  const localSize = prepared.reduce((sum, file) => sum + 30 + file.nameBytes.length + file.dataBytes.length, 0)
+  const centralSize = prepared.reduce((sum, file) => sum + 46 + file.nameBytes.length, 0)
+  const totalSize = localSize + centralSize + 22
+  const buffer = new ArrayBuffer(totalSize)
+  const view = new DataView(buffer)
+  const bytes = new Uint8Array(buffer)
+  let offset = 0
+
+  prepared.forEach((file) => {
+    file.offset = offset
+    offset = writeUint32(view, offset, 0x04034b50)
+    offset = writeUint16(view, offset, 20)
+    offset = writeUint16(view, offset, 0x0800)
+    offset = writeUint16(view, offset, 0)
+    offset = writeUint16(view, offset, 0)
+    offset = writeUint16(view, offset, 0)
+    offset = writeUint32(view, offset, file.crc)
+    offset = writeUint32(view, offset, file.dataBytes.length)
+    offset = writeUint32(view, offset, file.dataBytes.length)
+    offset = writeUint16(view, offset, file.nameBytes.length)
+    offset = writeUint16(view, offset, 0)
+    bytes.set(file.nameBytes, offset)
+    offset += file.nameBytes.length
+    bytes.set(file.dataBytes, offset)
+    offset += file.dataBytes.length
+  })
+
+  const centralOffset = offset
+  prepared.forEach((file) => {
+    offset = writeUint32(view, offset, 0x02014b50)
+    offset = writeUint16(view, offset, 20)
+    offset = writeUint16(view, offset, 20)
+    offset = writeUint16(view, offset, 0x0800)
+    offset = writeUint16(view, offset, 0)
+    offset = writeUint16(view, offset, 0)
+    offset = writeUint16(view, offset, 0)
+    offset = writeUint32(view, offset, file.crc)
+    offset = writeUint32(view, offset, file.dataBytes.length)
+    offset = writeUint32(view, offset, file.dataBytes.length)
+    offset = writeUint16(view, offset, file.nameBytes.length)
+    offset = writeUint16(view, offset, 0)
+    offset = writeUint16(view, offset, 0)
+    offset = writeUint16(view, offset, 0)
+    offset = writeUint16(view, offset, 0)
+    offset = writeUint32(view, offset, 0)
+    offset = writeUint32(view, offset, file.offset)
+    bytes.set(file.nameBytes, offset)
+    offset += file.nameBytes.length
+  })
+
+  offset = writeUint32(view, offset, 0x06054b50)
+  offset = writeUint16(view, offset, 0)
+  offset = writeUint16(view, offset, 0)
+  offset = writeUint16(view, offset, prepared.length)
+  offset = writeUint16(view, offset, prepared.length)
+  offset = writeUint32(view, offset, centralSize)
+  offset = writeUint32(view, offset, centralOffset)
+  writeUint16(view, offset, 0)
+
+  return new Blob([buffer], {
+    type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  })
+}
+
+const imageDataUrlToDocxImage = (src) => {
+  const match = `${src || ''}`.match(/^data:image\/(png|jpe?g);base64,(.+)$/i)
+  if (!match) return null
+  const extension = match[1].toLowerCase().startsWith('jp') ? 'jpg' : 'png'
+  const binary = atob(match[2])
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i)
+  }
+  return { extension, bytes }
+}
+
+const createDocxBlob = (documentBodyXml, logoSrc = '') => {
+  const logo = imageDataUrlToDocxImage(logoSrc)
+  const files = [
+    {
+      name: '[Content_Types].xml',
+      content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/>${logo ? `<Default Extension="${logo.extension}" ContentType="image/${logo.extension === 'jpg' ? 'jpeg' : 'png'}"/>` : ''}<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>`,
+    },
+    {
+      name: '_rels/.rels',
+      content:
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>',
+    },
+    {
+      name: 'word/document.xml',
+      content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document ${DOCX_NS}><w:body>${documentBodyXml}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="720" w:right="600" w:bottom="720" w:left="600" w:header="360" w:footer="360" w:gutter="0"/></w:sectPr></w:body></w:document>`,
+    },
+  ]
+
+  if (logo) {
+    files.push({
+      name: 'word/_rels/document.xml.rels',
+      content:
+        `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rIdLogo" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/logo.${logo.extension}"/></Relationships>`,
+    })
+    files.push({
+      name: `word/media/logo.${logo.extension}`,
+      contentBytes: logo.bytes,
+    })
+  }
+
+  return createStoredZipBlob(files)
+}
+
+const downloadBlob = (blob, fileName) => {
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = fileName
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
 function AcademicExamMakerMinimalPage() {
   const { instituteSettings } = useAcademicInstituteSettings()
   const instituteLogoSrc = useMemo(
@@ -185,6 +589,7 @@ function AcademicExamMakerMinimalPage() {
   const [isCatalogModalOpen, setIsCatalogModalOpen] = useState(false)
   const [isAutoMakerOpen, setIsAutoMakerOpen] = useState(false)
   const [isAutoWarningOpen, setIsAutoWarningOpen] = useState(false)
+  const [sectionConfigEditorKey, setSectionConfigEditorKey] = useState('')
   const [isRandomizingPaper, setIsRandomizingPaper] = useState(false)
   const [isAutoAvailabilityLoading, setIsAutoAvailabilityLoading] = useState(false)
   const [isPaperSetupOpen, setIsPaperSetupOpen] = useState(false)
@@ -236,9 +641,10 @@ function AcademicExamMakerMinimalPage() {
   const cleanSnapshotRef = useRef(null)
   const initialBaselineDoneRef = useRef(false)
   const pendingPaperBaselineSyncIdRef = useRef(null)
+  const chapterRequestPromiseRef = useRef(null)
   const [baselineVersion, setBaselineVersion] = useState(0)
 
-  const { loadDraft, clearDraft } = useExamMakerAutoSave(form, selectedQuestions, sectionConfigs)
+  const { clearDraft } = useExamMakerAutoSave(form, selectedQuestions, sectionConfigs)
 
   const markWorkspaceSaved = useCallback((snapshot) => {
     cleanSnapshotRef.current = snapshot
@@ -356,6 +762,11 @@ function AcademicExamMakerMinimalPage() {
   }, [selectedExamTitle?.label, selectedPaper?.examTitle])
 
   const poolScoped = useMemo(() => questionPool, [questionPool])
+  const questionPoolById = useMemo(() => {
+    const map = new Map()
+    questionPool.forEach((question) => map.set(question.id, question))
+    return map
+  }, [questionPool])
   const selectedQuestionIds = useMemo(
     () => new Set(selectedQuestions.map((item) => item.questionId)),
     [selectedQuestions],
@@ -364,10 +775,10 @@ function AcademicExamMakerMinimalPage() {
     return selectedQuestions
       .map((item) => ({
         ...item,
-        question: questionPool.find((q) => q.id === item.questionId) || item.question || null,
+        question: questionPoolById.get(item.questionId) || item.question || null,
       }))
       .sort((a, b) => Number(a.questionOrder) - Number(b.questionOrder))
-  }, [questionPool, selectedQuestions])
+  }, [questionPoolById, selectedQuestions])
 
   const previewQuestions = useMemo(
     () =>
@@ -380,6 +791,7 @@ function AcademicExamMakerMinimalPage() {
         category: item.question?.category,
         chapterId: item.question?.chapterId,
         descriptionText: item.question?.descriptionText,
+        stemImage: item.question?.stemImage,
         mcqOpt1: item.question?.mcqOpt1,
         mcqOpt2: item.question?.mcqOpt2,
         mcqOpt3: item.question?.mcqOpt3,
@@ -513,6 +925,7 @@ function AcademicExamMakerMinimalPage() {
         category: question.category,
         chapterId: question.chapterId,
         descriptionText: question.descriptionText,
+        stemImage: question.stemImage,
         mcqOpt1: question.mcqOpt1,
         mcqOpt2: question.mcqOpt2,
         mcqOpt3: question.mcqOpt3,
@@ -773,6 +1186,16 @@ function AcademicExamMakerMinimalPage() {
     setAutoChapterPlan({})
   }
 
+  const getSharedChaptersRequest = useCallback(async () => {
+    if (!chapterRequestPromiseRef.current) {
+      chapterRequestPromiseRef.current = getAcademicChapters().finally(() => {
+        chapterRequestPromiseRef.current = null
+      })
+    }
+
+    return chapterRequestPromiseRef.current
+  }, [])
+
   useEffect(() => {
     const loadAutoAvailability = async () => {
       if (!isAutoMakerOpen || !form.classId || !form.subjectId) return
@@ -816,7 +1239,7 @@ function AcademicExamMakerMinimalPage() {
 
       setIsChaptersLoading(true)
       try {
-        const chapterData = await getAcademicChapters()
+        const chapterData = await getSharedChaptersRequest()
         const scopedChapters = chapterData
           .filter(
             (item) =>
@@ -835,7 +1258,7 @@ function AcademicExamMakerMinimalPage() {
     }
 
     void loadChaptersForPaper()
-  }, [form.classId, form.subjectId])
+  }, [form.classId, form.subjectId, getSharedChaptersRequest])
 
   useEffect(() => {
     setPoolFilters((previous) => ({ ...previous, search: '' }))
@@ -1165,11 +1588,16 @@ function AcademicExamMakerMinimalPage() {
     setPaperPendingDelete(null)
   }
 
+  const editingSectionConfig = sectionConfigEditorKey
+    ? sectionConfigs.find((section) => section.sectionKey === sectionConfigEditorKey) || null
+    : null
+
   const anyExamMakerModalOpen =
     isPreviewOpen ||
     isCatalogModalOpen ||
     isAutoMakerOpen ||
     isAutoWarningOpen ||
+    Boolean(editingSectionConfig) ||
     isPaperSetupOpen ||
     isGeneratedPapersOpen ||
     Boolean(paperPendingDelete) ||
@@ -1208,6 +1636,10 @@ function AcademicExamMakerMinimalPage() {
         setIsAutoMakerOpen(false)
         return
       }
+      if (editingSectionConfig) {
+        setSectionConfigEditorKey('')
+        return
+      }
       if (isPaperSetupOpen) {
         setIsPaperSetupOpen(false)
         return
@@ -1229,6 +1661,7 @@ function AcademicExamMakerMinimalPage() {
     isCatalogModalOpen,
     isAutoMakerOpen,
     isAutoWarningOpen,
+    editingSectionConfig,
     isPaperSetupOpen,
     isGeneratedPapersOpen,
     isPreviewOpen,
@@ -1290,6 +1723,7 @@ function AcademicExamMakerMinimalPage() {
             category: question.category,
             chapterId: question.chapterId,
             descriptionText: question.descriptionText,
+            stemImage: question.stemImage,
             mcqOpt1: question.mcqOpt1,
             mcqOpt2: question.mcqOpt2,
             mcqOpt3: question.mcqOpt3,
@@ -1581,6 +2015,141 @@ function AcademicExamMakerMinimalPage() {
     }, 200)
   }
 
+  const onExportWord = () => {
+    if (!previewQuestions.length) {
+      setError('Add questions before exporting a Word file.')
+      return
+    }
+
+    const body = []
+    body.push(
+      docxTitleHeader({
+        schoolName: form.schoolName || selectedPaper?.schoolName || '',
+        examTitle: stripHtml(formatExamTitleForPrint(draftExamTitleLabel)),
+        hasLogo: Boolean(imageDataUrlToDocxImage(previewLogoSrc)),
+      }),
+    )
+    body.push(
+      docxMetaTable({
+        subject: `${previewSubjectName} (${formatExamTypeDisplay(form.examType || selectedPaper?.examType)})`,
+        className: previewClassName,
+        marks: `${previewTotalMarks}`,
+        time: formatExamDurationLabel(previewDurationMinutes),
+      }),
+    )
+
+    if (showHeaderNote) {
+      body.push(docxParagraph([docxTextRun('Note: ', { bold: true }), docxTextRun(previewHeaderNote)], { spacingAfter: 160 }))
+    }
+
+    groupedPreviewQuestions.forEach(([section, questions]) => {
+      const config = sectionConfigMap.get(section)
+      const sectionMode = inferSectionDisplayMode(questions)
+      const optionalActive =
+        Boolean(config?.optionalQuestionsEnabled) && sectionSupportsOptionalQuestions(questions)
+      const optionalAttempt = optionalActive
+        ? clampOptionalAttemptCount(questions.length, config?.optionalQuestionsAttemptCount)
+        : null
+      const marksPresentation = resolveSectionMarksPresentation(questions, {
+        attemptCount: optionalActive ? optionalAttempt : null,
+      })
+      let headingText =
+        config?.headingText || defaultSectionHeading(section, previewExamType, sectionMode)
+      if (sectionMode === 'laq' && /^Q\d+:\s*$/i.test(`${headingText}`.trim())) {
+        headingText = defaultSectionHeading(section, previewExamType, sectionMode)
+      }
+      const sectionHeadingParts = resolveSectionHeadingDisplay({
+        sectionKey: section,
+        headingText,
+        examType: previewExamType,
+        mode: sectionMode,
+        optionalActive,
+        optionalAttempt,
+      })
+      const sectionReferenceLabel = previewShowSectionNames
+        ? resolveSectionBannerLabel(section, config?.sectionName)
+        : ''
+      const marksText = marksPresentation.showSectionMarksOnHeading
+        ? marksPresentation.marksText || config?.marksDisplayText || ''
+        : ''
+
+      if (sectionReferenceLabel) {
+        body.push(docxParagraph([docxTextRun(sectionReferenceLabel, { bold: true })], { align: 'center', spacingAfter: 80 }))
+      }
+
+      body.push(
+        docxSectionHeadingTable({
+          prefix: sectionHeadingParts.prefix,
+          body: sectionHeadingParts.body,
+          marksText,
+        }),
+      )
+
+      const instructionText = sectionMode !== 'saq' && sectionMode !== 'laq' ? config?.instructionText : ''
+      if (instructionText) {
+        body.push(docxParagraph([docxTextRun(instructionText)]))
+      }
+
+      const showPerQuestionMarks =
+        sectionMode === 'mcq' ? false : marksPresentation.showPerQuestionMarks
+
+      if (sectionMode === 'laq') {
+        questions.forEach((question, index) => {
+          const qLabel = `${formatLaqQuestionLabel(section, index)}:`
+          const parts = parseLaqParts(question.descriptionText, question.marks)
+          const hasParts = parts.length > 1 && parts[0].label
+          if (hasParts) {
+            parts.forEach((part, partIndex) => {
+              body.push(
+                docxQuestionLine(
+                  partIndex === 0 ? qLabel : `(${part.label})`,
+                  part.text,
+                  showPerQuestionMarks ? formatIndividualMarks(part.marks, form.wrapQuestionMarksInParentheses) : '',
+                ),
+              )
+            })
+            return
+          }
+          body.push(
+            docxQuestionLine(
+              qLabel,
+              question.descriptionText,
+              showPerQuestionMarks ? formatIndividualMarks(question.marks, form.wrapQuestionMarksInParentheses) : '',
+            ),
+          )
+        })
+        return
+      }
+
+      questions.forEach((question, index) => {
+        body.push(
+          docxQuestionLine(
+            formatSubQuestionLabel(form.subQuestionNumberingStyle, index + 1),
+            question.descriptionText,
+            question.type !== 'mcq' && showPerQuestionMarks
+              ? formatIndividualMarks(question.marks, form.wrapQuestionMarksInParentheses)
+              : '',
+          ),
+        )
+        if (question.type === 'mcq') {
+          body.push(docxParagraph([docxTextRun(`a) ${question.mcqOpt1 || ''}     b) ${question.mcqOpt2 || ''}`)]))
+          if (question.mcqOpt3 || question.mcqOpt4) {
+            body.push(docxParagraph([docxTextRun(`c) ${question.mcqOpt3 || ''}     d) ${question.mcqOpt4 || ''}`)]))
+          }
+        }
+      })
+    })
+
+    if (previewFooterNote) {
+      body.push(docxParagraph([docxTextRun('Note: ', { bold: true }), docxTextRun(previewFooterNote)], { spacingAfter: 80 }))
+    }
+
+    const safePaperName = normalizePaperName(form.paperName || selectedPaper?.paperName || 'Exam Paper')
+      .replace(/[\\/:*?"<>|]+/g, '-')
+      .trim()
+    downloadBlob(createDocxBlob(body.join(''), previewLogoSrc), `${safePaperName || 'Exam Paper'}.docx`)
+  }
+
   const defaultExamForm = () => ({
     classId: '',
     subjectId: '',
@@ -1798,12 +2367,9 @@ function AcademicExamMakerMinimalPage() {
             const sectionReferenceLabel = previewShowSectionNames
               ? resolveSectionBannerLabel(section, config?.sectionName)
               : ''
-            const showSectionMarksOnHeading =
-              sectionMode === 'laq'
-                ? marksPresentation.showSectionMarksOnHeading
-                : sectionMode !== 'saq'
+            const showSectionMarksOnHeading = marksPresentation.showSectionMarksOnHeading
             const showPerQuestionMarks =
-              sectionMode === 'laq' ? marksPresentation.showPerQuestionMarks : sectionMode !== 'saq'
+              sectionMode === 'mcq' ? false : marksPresentation.showPerQuestionMarks
 
             return (
               <section key={section} className="exam-paper-section">
@@ -1826,6 +2392,17 @@ function AcademicExamMakerMinimalPage() {
                         {showSectionMarksOnHeading ? (
                           <p className="exam-paper-section-marks tabular-nums">{marksText}</p>
                         ) : null}
+                        {includeSectionEditors ? (
+                          <button
+                            type="button"
+                            onClick={() => setSectionConfigEditorKey(section)}
+                            className="print-hidden ml-2 inline-flex size-7 items-center justify-center rounded border border-indigo-200 bg-white text-indigo-600 shadow-sm hover:bg-indigo-50"
+                            aria-label={`Edit ${formatSectionRomanLabel(section)} settings`}
+                            title="Edit section settings"
+                          >
+                            <Pencil size={14} />
+                          </button>
+                        ) : null}
                       </div>
                     </div>
                   </>
@@ -1834,8 +2411,6 @@ function AcademicExamMakerMinimalPage() {
                 {instructionText ? (
                   <p className="exam-paper-instruction">{instructionText}</p>
                 ) : null}
-
-                {includeSectionEditors && configBlock(section)}
 
                 {sectionMode === 'laq' ? (
                   <div className="exam-paper-saq-list exam-paper-saq-list-laq">
@@ -1859,6 +2434,9 @@ function AcademicExamMakerMinimalPage() {
                                 </span>
                                 <div className="exam-paper-question-stem min-w-0">
                                   <MathText value={part.text} />
+                                  {partIndex === parts.length - 1 ? (
+                                    <QuestionStemImage src={question.stemImage} className="exam-paper-stem-image" />
+                                  ) : null}
                                 </div>
                                 {showPerQuestionMarks ? (
                                   <span className="exam-paper-saq-marks shrink-0 whitespace-nowrap text-right tabular-nums">
@@ -1879,6 +2457,7 @@ function AcademicExamMakerMinimalPage() {
                             <span className="exam-paper-saq-label exam-paper-saq-label-laq select-none">{qLabel}</span>
                             <div className="exam-paper-question-stem min-w-0">
                               <MathText value={question.descriptionText} />
+                              <QuestionStemImage src={question.stemImage} className="exam-paper-stem-image" />
                             </div>
                             {showPerQuestionMarks ? (
                               <span className="exam-paper-saq-marks shrink-0 whitespace-nowrap text-right tabular-nums">
@@ -1909,6 +2488,7 @@ function AcademicExamMakerMinimalPage() {
                               value={question.descriptionText}
                               className="block min-w-0 break-words"
                             />
+                            <QuestionStemImage src={question.stemImage} className="exam-paper-stem-image" />
                           </div>
                           {question.type !== 'mcq' && showPerQuestionMarks ? (
                             <span className="exam-paper-saq-marks shrink-0 whitespace-nowrap text-right tabular-nums">
@@ -2121,6 +2701,15 @@ function AcademicExamMakerMinimalPage() {
             </button>
             <button
               type="button"
+              onClick={onExportWord}
+              disabled={!hasActiveExamWorkspace}
+              className="rounded border border-slate-500 bg-white px-2 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <FileOutput size={14} className="mr-1 inline" />
+              Word
+            </button>
+            <button
+              type="button"
               onClick={onPrint}
               disabled={!hasActiveExamWorkspace}
               className="rounded border border-fuchsia-500 bg-white px-2 py-1.5 text-xs font-semibold text-fuchsia-600 hover:bg-fuchsia-50 disabled:cursor-not-allowed disabled:opacity-50"
@@ -2246,6 +2835,10 @@ function AcademicExamMakerMinimalPage() {
                     </button>
                     <div className="w-full truncate text-[11px] text-slate-600">
                       <MathText value={item.question?.descriptionText || ''} />
+                      <QuestionStemImage
+                        src={item.question?.stemImage}
+                        className="mt-1 max-h-20 rounded border border-slate-200 bg-white p-0.5"
+                      />
                     </div>
                   </div>
                 ))}
@@ -2588,6 +3181,10 @@ function AcademicExamMakerMinimalPage() {
                       <td className="border border-slate-200 px-2 py-1 uppercase">{q.category}</td>
                       <td className="border border-slate-200 px-2 py-1 leading-snug">
                         <MathText value={q.descriptionText} />
+                        <QuestionStemImage
+                          src={q.stemImage}
+                          className="mt-1 max-h-24 rounded border border-slate-200 bg-white p-0.5"
+                        />
                         {selectedQuestionIds.has(q.id) ? (
                           <span className="mt-1 block text-[10px] font-medium text-emerald-700">
                             Already on paper
@@ -3139,6 +3736,47 @@ function AcademicExamMakerMinimalPage() {
         </div>
       ) : null}
 
+      {/* Section settings */}
+      {editingSectionConfig ? (
+        <div
+          role="presentation"
+          className="print-hidden fixed inset-0 z-[95] flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm"
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="section-config-editor-title"
+            className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl bg-white shadow-xl ring-1 ring-slate-200"
+          >
+            <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-4 py-3">
+              <h3 id="section-config-editor-title" className="text-sm font-semibold text-slate-900">
+                Section settings
+              </h3>
+              <button
+                type="button"
+                onClick={() => setSectionConfigEditorKey('')}
+                className="rounded p-1 text-slate-500 hover:bg-slate-100"
+                aria-label="Close section settings"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto p-4">
+              {configBlock(editingSectionConfig.sectionKey)}
+            </div>
+            <div className="flex shrink-0 justify-end border-t border-slate-200 px-4 py-3">
+              <button
+                type="button"
+                onClick={() => setSectionConfigEditorKey('')}
+                className="rounded-md bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-900"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {/* Preview modal */}
       <div
         role="presentation"
@@ -3161,6 +3799,14 @@ function AcademicExamMakerMinimalPage() {
               <Eye size={16} /> Live preview
             </h3>
             <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onExportWord}
+                className="rounded border border-slate-500 bg-white px-2 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                <FileOutput size={14} className="mr-1 inline" />
+                Word
+              </button>
               <button
                 type="button"
                 onClick={onPrint}

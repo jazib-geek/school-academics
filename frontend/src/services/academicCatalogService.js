@@ -12,7 +12,7 @@ export const upsertAcademicClass = async (payload) => {
 }
 
 export const deleteAcademicClass = async (id) => {
-  await academicApi.delete(`/api/academics/classes/${id}`)
+  await academicApi.post(`/api/academics/classes/${id}/delete`)
 }
 
 export const getAcademicSubjects = async () => {
@@ -26,7 +26,7 @@ export const upsertAcademicSubject = async (payload) => {
 }
 
 export const deleteAcademicSubject = async (id) => {
-  await academicApi.delete(`/api/academics/subjects/${id}`)
+  await academicApi.post(`/api/academics/subjects/${id}/delete`)
 }
 
 export const getQuestionCatalog = async (chapterId) => {
@@ -42,7 +42,7 @@ export const upsertQuestionCatalog = async (payload) => {
 }
 
 export const deleteQuestionCatalog = async (id) => {
-  await academicApi.delete(`/api/academics/questioncatalog/${id}`)
+  await academicApi.post(`/api/academics/questioncatalog/${id}/delete`)
 }
 
 export const getAcademicChapters = async () => {
@@ -56,5 +56,5 @@ export const upsertAcademicChapter = async (payload) => {
 }
 
 export const deleteAcademicChapter = async (id) => {
-  await academicApi.delete(`/api/academics/chapters/${id}`)
+  await academicApi.post(`/api/academics/chapters/${id}/delete`)
 }

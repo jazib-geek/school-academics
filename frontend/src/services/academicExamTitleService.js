@@ -11,5 +11,5 @@ export const upsertAcademicExamTitle = async (payload) => {
 }
 
 export const deleteAcademicExamTitle = async (id) => {
-  await academicApi.delete(`/api/academics/examtitles/${id}`)
+  await academicApi.post(`/api/academics/examtitles/${id}/delete`)
 }

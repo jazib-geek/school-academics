@@ -25,6 +25,33 @@ export const deleteClassDiary = async ({ classId, date }) => {
   return response?.data
 }
 
+export const getClassDiaryUploadHistory = async ({ classId, date }) => {
+  const response = await api.get('/api/class-diary/upload-history', {
+    params: { classId, date },
+  })
+  return response?.data?.data || []
+}
+
+export const diaryRowLastUpdatedBy = (row) =>
+  row?.lastUpdatedBy ?? row?.LastUpdatedBy ?? null
+
+export const diaryRowLastUpdatedAt = (row) =>
+  row?.lastUpdatedAt ?? row?.LastUpdatedAt ?? null
+
+/** B2 diary keys are stable per class/date; bust browser cache after replace. */
+export const appendDiaryImageCacheBust = (url, lastUpdatedAt) => {
+  if (!url) return url
+  const raw = `${url}`.trim()
+  const parsed = lastUpdatedAt ? new Date(lastUpdatedAt).getTime() : NaN
+  const bust = Number.isFinite(parsed) && parsed > 0 ? parsed : Date.now()
+  const base = raw.split('?')[0]
+  return `${base}?v=${bust}`
+}
+
+/** Image URLs for display (listing row includes LastUpdatedAt for cache bust). */
+export const parseDiaryDisplayImgUrls = (row) =>
+  parseDiaryImgUrls(row).map((url) => appendDiaryImageCacheBust(url, diaryRowLastUpdatedAt(row)))
+
 /** Split comma-separated imgUrls from listing API. */
 export const parseDiaryImgUrls = (row) => {
   const raw = row?.imgUrls ?? row?.ImgUrls ?? ''

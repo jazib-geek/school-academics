@@ -16,5 +16,5 @@ export const upsertAcademicInstituteSetting = async (payload) => {
 }
 
 export const deleteAcademicInstituteSetting = async (id) => {
-  await academicApi.delete(`/api/academics/institutesettings/${id}`)
+  await academicApi.post(`/api/academics/institutesettings/${id}/delete`)
 }

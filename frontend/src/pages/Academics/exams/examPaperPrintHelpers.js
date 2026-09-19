@@ -110,7 +110,7 @@ export function sectionSupportsOptionalQuestions(questions = []) {
   return questions.every((item) => {
     const type = `${item?.type || ''}`.trim().toLowerCase()
     if (type === 'mcq') return false
-    if (type === 'saq' || type === 'laq') return true
+    if (type === 'saq' || type === 'laq' || type === 'numerical') return true
     return true
   })
 }
@@ -221,7 +221,8 @@ export function inferSectionDisplayMode(questions = []) {
     .filter((value) => value.length > 0)
   if (!types.length) return 'saq'
   if (types.every((value) => value === 'mcq')) return 'mcq'
-  if (types.every((value) => value === 'laq')) return 'laq'
+  // Numerical uses the same long-form paper layout as LAQ.
+  if (types.every((value) => value === 'laq' || value === 'numerical')) return 'laq'
   if (types.every((value) => value !== 'mcq')) return 'saq'
   return 'mixed'
 }
@@ -480,11 +481,16 @@ export function buildSectionConfigWithOptional(section, previewRows, examType) {
  */
 export function clearSectionOptionalConfig(section, previewRows, examType) {
   const mode = inferSectionDisplayMode(previewRows)
+  const cleanedHeading = stripOptionalFromHeadingText(section.headingText)
+  const optionalGeneratedHeading =
+    /Attempt any/i.test(`${section.headingText || ''}`) ||
+    /^Q\d+:\s*$/i.test(cleanedHeading) ||
+    /^Q\d+:\s*Note:\s*$/i.test(cleanedHeading) ||
+    /^Note:\s*$/i.test(cleanedHeading)
   const baseHeading =
-    mode === 'laq'
-      ? `Note: ${resolveLaqHeadingBody(section.headingText)}`
-      : stripOptionalFromHeadingText(section.headingText) ||
-        defaultSectionHeading(section.sectionKey, examType, mode)
+    optionalGeneratedHeading || !cleanedHeading
+      ? defaultSectionHeading(section.sectionKey, examType, mode)
+      : cleanedHeading
   return {
     ...section,
     optionalQuestionsEnabled: false,

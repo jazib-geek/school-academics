@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Loader2, Printer } from 'lucide-react'
 import CampusShell from '../../../components/campus/CampusShell.jsx'
-import { getCampusLabel, SCHOOL_LOGO_PATH, SCHOOL_NAME } from '../../../constants/branding'
+import { SCHOOL_LOGO_PATH } from '../../../constants/branding'
 import { getIncomeStatement } from '../../../services/feeReportService'
+import { getCampusPrintMeta } from '../../../utils/campusProfile'
 
 const now = new Date()
 const currentYear = now.getFullYear()
@@ -47,7 +48,7 @@ const PRINT_STYLES = `
       padding-bottom: 10px !important;
       margin-bottom: 10px !important;
     }
-    .print-table { width: 100% !important; border-collapse: collapse !important; font-size: 11px !important; }
+    .print-table { width: 100% !important; border-collapse: collapse !important; font-size: 12px !important; }
     .print-table th, .print-table td { border: 1px solid #e2e8f0 !important; padding: 6px !important; }
     .print-table thead th { color: #0f172a !important; background: #eef2ff !important; }
     .print-table tr { page-break-inside: avoid !important; }
@@ -55,8 +56,7 @@ const PRINT_STYLES = `
 `
 
 function IncomeReportPage() {
-  const campusCode = localStorage.getItem('campus') || ''
-  const campusLabel = getCampusLabel(campusCode)
+  const { campusLabel, schoolName } = getCampusPrintMeta()
 
   const [month, setMonth] = useState(String(currentMonth))
   const [year, setYear] = useState(String(currentYear))
@@ -114,13 +114,13 @@ function IncomeReportPage() {
         asideClassName="no-print"
         headerClassName="no-print"
       >
-        <div className="print-content-wrap space-y-5 p-4 pt-20 md:p-6 md:pt-24">
+        <div className="print-content-wrap space-y-5 p-4 pt-[4.25rem] md:p-6 md:pt-[4.5rem]">
           <section className="print-area rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
             <div className="print-only hidden print-report-header">
               <div className="flex items-start gap-3">
                 <img src={SCHOOL_LOGO_PATH} alt="School logo" className="h-12 w-12 object-contain" />
                 <div>
-                  <p className="text-base font-bold text-slate-900">{SCHOOL_NAME}</p>
+                  <p className="text-base font-bold text-slate-900">{schoolName}</p>
                   <p className="text-xs text-slate-600">Campus: {campusLabel}</p>
                 </div>
               </div>
@@ -133,7 +133,7 @@ function IncomeReportPage() {
 
             <div className="no-print mb-4 flex flex-wrap items-end justify-between gap-3 border-b border-slate-100 pb-4">
               <div>
-                <h1 className="text-2xl font-bold text-slate-800">Income Report (P&amp;L)</h1>
+                <h1 className="text-2xl font-bold text-slate-800">Profit Loss Statement</h1>
                 <p className="mt-1 text-sm text-slate-500">
                   Logged-in campus: <span className="font-medium text-slate-700">{campusLabel}</span>
                 </p>
@@ -171,7 +171,7 @@ function IncomeReportPage() {
                   type="button"
                   onClick={loadReport}
                   disabled={isLoading}
-                  className="rounded-lg bg-[#405189] px-4 py-2 text-sm font-medium text-white hover:bg-[#364574] disabled:opacity-60"
+                  className="rounded-lg bg-[var(--campus-primary)] px-4 py-2 text-sm font-medium text-white hover:bg-[#364574] disabled:opacity-60"
                 >
                   {isLoading ? 'Loading...' : 'Refresh'}
                 </button>
@@ -194,7 +194,7 @@ function IncomeReportPage() {
 
             {isLoading ? (
               <div className="flex items-center justify-center gap-2 py-16 text-slate-500">
-                <Loader2 size={22} className="animate-spin text-[#405189]" />
+                <Loader2 size={22} className="animate-spin text-[var(--campus-primary)]" />
                 <span className="text-sm">Preparing statement...</span>
               </div>
             ) : (
@@ -218,24 +218,24 @@ function IncomeReportPage() {
                   </thead>
                   <tbody>
                     <tr className="bg-indigo-50/60">
-                      <td colSpan={2} className="px-3 py-2 font-semibold text-indigo-900">
+                      <td colSpan={2} className="px-3 py-1.5 font-semibold text-indigo-900">
                         INCOME
                       </td>
                     </tr>
                     <tr>
-                      <td className="px-3 py-2 pl-6">Fee &amp; fund collections (Received)</td>
-                      <td className="px-3 py-2 text-right font-medium tabular-nums">
+                      <td className="px-3 py-1.5 pl-6">Fee &amp; fund collections (Received)</td>
+                      <td className="px-3 py-1.5 text-right font-medium tabular-nums">
                         {formatAmount(report.totalIncome)}
                       </td>
                     </tr>
                     <tr className="border-t-2 border-slate-200 font-semibold">
-                      <td className="px-3 py-2">Total Income</td>
-                      <td className="px-3 py-2 text-right tabular-nums text-emerald-700">
+                      <td className="px-3 py-1.5">Total Income</td>
+                      <td className="px-3 py-1.5 text-right tabular-nums text-emerald-700">
                         {formatAmount(report.totalIncome)}
                       </td>
                     </tr>
                     <tr className="bg-rose-50/60">
-                      <td colSpan={2} className="px-3 py-2 font-semibold text-rose-900">
+                      <td colSpan={2} className="px-3 py-1.5 font-semibold text-rose-900">
                         EXPENSES
                       </td>
                     </tr>
@@ -248,14 +248,14 @@ function IncomeReportPage() {
                     ) : (
                       report.expenseHeads.map((head) => (
                         <tr key={head.subGroupId || head.headName} className="border-t border-slate-100">
-                          <td className="px-3 py-2 pl-6">{head.headName}</td>
-                          <td className="px-3 py-2 text-right tabular-nums">{formatAmount(head.amount)}</td>
+                          <td className="px-3 py-1.5 pl-6">{head.headName}</td>
+                          <td className="px-3 py-1.5 text-right tabular-nums">{formatAmount(head.amount)}</td>
                         </tr>
                       ))
                     )}
                     <tr className="border-t-2 border-slate-200 font-semibold">
-                      <td className="px-3 py-2">Total Expenses</td>
-                      <td className="px-3 py-2 text-right tabular-nums text-rose-700">
+                      <td className="px-3 py-1.5">Total Expenses</td>
+                      <td className="px-3 py-1.5 text-right tabular-nums text-rose-700">
                         {formatAmount(report.totalExpenses)}
                       </td>
                     </tr>

@@ -1,13 +1,19 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 const DRAFT_STORAGE_KEY = 'examMakerDraft'
 const DRAFT_AUTO_SAVE_INTERVAL = 5000
 
 export const useExamMakerAutoSave = (form, selectedQuestions, sectionConfigs) => {
-  const hasDraftRef = useRef(false)
+  const [hasDraft, setHasDraft] = useState(false)
+  const latestDraftRef = useRef({ form, selectedQuestions, sectionConfigs })
+
+  useEffect(() => {
+    latestDraftRef.current = { form, selectedQuestions, sectionConfigs }
+  }, [form, selectedQuestions, sectionConfigs])
 
   useEffect(() => {
     const timer = setInterval(() => {
+      const { form, selectedQuestions, sectionConfigs } = latestDraftRef.current
       if (!form.classId || !form.subjectId) return
 
       const draft = {
@@ -19,14 +25,14 @@ export const useExamMakerAutoSave = (form, selectedQuestions, sectionConfigs) =>
 
       try {
         localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft))
-        hasDraftRef.current = true
+        setHasDraft(true)
       } catch (e) {
         console.warn('Failed to auto-save exam draft:', e)
       }
     }, DRAFT_AUTO_SAVE_INTERVAL)
 
     return () => clearInterval(timer)
-  }, [form, selectedQuestions, sectionConfigs])
+  }, [])
 
   const loadDraft = () => {
     try {
@@ -44,7 +50,7 @@ export const useExamMakerAutoSave = (form, selectedQuestions, sectionConfigs) =>
   const clearDraft = () => {
     try {
       localStorage.removeItem(DRAFT_STORAGE_KEY)
-      hasDraftRef.current = false
+      setHasDraft(false)
     } catch (e) {
       console.warn('Failed to clear exam draft:', e)
     }
@@ -53,7 +59,7 @@ export const useExamMakerAutoSave = (form, selectedQuestions, sectionConfigs) =>
   return {
     loadDraft,
     clearDraft,
-    hasDraft: hasDraftRef.current,
+    hasDraft,
   }
 }
 

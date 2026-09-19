@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { Eye, ImagePlus, List, Loader2, Trash2, X } from 'lucide-react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Eye, ImagePlus, List, Loader2, Pencil, Trash2, X } from 'lucide-react'
 import CampusShell from '../../../components/campus/CampusShell.jsx'
+import DiaryReplaceHistoryPanel from '../../../components/diary/DiaryReplaceHistoryPanel.jsx'
 import {
   deleteClassDiary,
   diaryRowClassId,
   diaryRowDateKey,
+  diaryRowLastUpdatedAt,
   getClassDiaryListing,
+  parseDiaryDisplayImgUrls,
   parseDiaryImgUrls,
 } from '../../../services/classDiaryService'
 import { resolveClassLabel, sortClassesByCustomOrder } from '../../../services/classSort.js'
@@ -31,7 +34,7 @@ function DiaryPageHeader({ icon: Icon, title, subtitle, action }) {
     <div className="rounded-2xl bg-white p-4 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-start gap-3">
-          <div className="grid h-10 w-10 place-items-center rounded-xl bg-[#405189] text-white">
+          <div className="grid h-10 w-10 place-items-center rounded-xl bg-[var(--campus-primary)] text-white">
             <Icon size={18} />
           </div>
           <div>
@@ -115,7 +118,7 @@ function DiaryImageFrame({ url, alt, pageLabel }) {
       <div className="relative flex min-h-[220px] items-center justify-center bg-slate-100/60">
         {!loaded && !error ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-slate-500">
-            <Loader2 size={28} className="animate-spin text-[#405189]" />
+            <Loader2 size={28} className="animate-spin text-[var(--campus-primary)]" />
             <span className="text-xs">Loading image…</span>
           </div>
         ) : null}
@@ -138,16 +141,19 @@ function DiaryImageFrame({ url, alt, pageLabel }) {
 }
 
 function DiaryViewerModal({ row, onClose, onDeleted }) {
+  const navigate = useNavigate()
   const [urls, setUrls] = useState([])
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState('')
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
+  const cacheKey = diaryRowLastUpdatedAt(row) ?? ''
+
   useEffect(() => {
-    setUrls(parseDiaryImgUrls(row))
+    setUrls(parseDiaryDisplayImgUrls(row))
     setDeleteError('')
     setShowDeleteConfirm(false)
-  }, [row])
+  }, [row, cacheKey])
 
   if (!row) return null
 
@@ -197,6 +203,18 @@ function DiaryViewerModal({ row, onClose, onDeleted }) {
             <div className="flex items-center gap-1">
               <button
                 type="button"
+                onClick={() => {
+                  onClose()
+                  navigate(
+                    `/campus/daily-diary?classId=${encodeURIComponent(classId)}&date=${encodeURIComponent(dateKey)}`,
+                  )
+                }}
+                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-50"
+              >
+                <Pencil size={16} /> Replace
+              </button>
+              <button
+                type="button"
                 onClick={() => setShowDeleteConfirm(true)}
                 disabled={deleting}
                 className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-rose-700 hover:bg-rose-50 disabled:opacity-50"
@@ -216,6 +234,12 @@ function DiaryViewerModal({ row, onClose, onDeleted }) {
           </div>
 
           <div className="space-y-4 p-4">
+            <DiaryReplaceHistoryPanel
+              classId={classId}
+              date={dateKey}
+              variant="campus"
+              refreshKey={cacheKey}
+            />
             {urls.length === 0 ? (
               <p className="text-sm text-slate-500">No images found.</p>
             ) : (
@@ -250,6 +274,7 @@ function DiaryViewerModal({ row, onClose, onDeleted }) {
 }
 
 function CampusDailyDiaryListPage() {
+  const location = useLocation()
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -272,7 +297,7 @@ function CampusDailyDiaryListPage() {
 
   useEffect(() => {
     loadListing()
-  }, [loadListing])
+  }, [loadListing, location.pathname, location.key])
 
   const groupedByDate = useMemo(() => {
     const map = new Map()
@@ -324,7 +349,7 @@ function CampusDailyDiaryListPage() {
 
   return (
     <CampusShell headerContext="Daily Diary">
-      <div className="space-y-4 p-4 pt-20 md:p-6 md:pt-24">
+      <div className="space-y-4 p-4 pt-[4.25rem] md:p-6 md:pt-[4.5rem]">
         <DiaryPageHeader
           icon={List}
           title="Daily diary listing"
@@ -332,7 +357,7 @@ function CampusDailyDiaryListPage() {
           action={
             <Link
               to="/campus/daily-diary"
-              className="inline-flex items-center gap-2 rounded-lg bg-[#405189] px-4 py-2 text-sm font-medium text-white hover:bg-[#344476]"
+              className="inline-flex items-center gap-2 rounded-lg bg-[var(--campus-primary)] px-4 py-2 text-sm font-medium text-white hover:bg-[#344476]"
             >
               <ImagePlus size={16} /> Upload diary
             </Link>
@@ -389,6 +414,12 @@ function CampusDailyDiaryListPage() {
                         >
                           <Eye size={15} /> View
                         </button>
+                        <Link
+                          to={`/campus/daily-diary?classId=${encodeURIComponent(classId)}&date=${encodeURIComponent(dateKey)}`}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-white px-3 py-1.5 text-sm font-medium text-indigo-700 hover:bg-indigo-50"
+                        >
+                          <Pencil size={15} /> Replace
+                        </Link>
                         <button
                           type="button"
                           onClick={() => setPendingDeleteRow(row)}
@@ -414,7 +445,13 @@ function CampusDailyDiaryListPage() {
 
       {viewerRow ? (
         <DiaryViewerModal
-          row={viewerRow}
+          row={
+            rows.find(
+              (r) =>
+                Number(diaryRowClassId(r)) === Number(diaryRowClassId(viewerRow)) &&
+                diaryRowDateKey(r) === diaryRowDateKey(viewerRow),
+            ) ?? viewerRow
+          }
           onClose={() => setViewerRow(null)}
           onDeleted={loadListing}
         />

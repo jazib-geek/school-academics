@@ -36,10 +36,8 @@ export const getFundTypes = async () => {
   return response?.data?.data || []
 }
 
-export const getExpectedIncome = async (dateFrom, dateTo) => {
-  const response = await api.get('/api/feereports/expected-income', {
-    params: { dateFrom, dateTo },
-  })
+export const getExpectedIncome = async () => {
+  const response = await api.get('/api/feereports/expected-income')
   return response?.data?.data
 }
 
@@ -47,5 +45,25 @@ export const getIncomeStatement = async (month, year) => {
   const response = await api.get('/api/feereports/income-statement', {
     params: { month, year },
   })
+  return response?.data?.data
+}
+
+export const getBalanceSheet = async () => {
+  const response = await api.get('/api/feereports/balance-sheet')
+  return response?.data?.data
+}
+
+export const getSmartFeeCatalog = async () => {
+  const response = await api.get('/api/feereports/smart/catalog')
+  return response?.data?.data || []
+}
+
+export const getFeeExecutiveSnapshot = async () => {
+  const response = await api.get('/api/feereports/smart/executive-snapshot')
+  return response?.data?.data
+}
+
+export const runSmartFeeReport = async (reportId, parameters = {}) => {
+  const response = await api.post('/api/feereports/smart/run', { reportId, parameters })
   return response?.data?.data
 }

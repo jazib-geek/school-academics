@@ -12,12 +12,13 @@ import {
   Home,
   Menu,
   Shapes,
+  Shield,
   Sigma,
   Tags,
   X,
 } from 'lucide-react'
 import { useAcademicInstituteSettings } from '../../contexts/AcademicInstituteSettingsContext'
-import { academicLogout } from '../../services/academicAuthService'
+import { academicLogout, hasAcademicPermission } from '../../services/academicAuthService'
 
 function topBarLogoSrc(logo) {
   if (!logo || typeof logo !== 'string') return ''
@@ -51,9 +52,22 @@ function AcademicLayout({
     exams: false,
   })
 
+  const canViewDashboard = hasAcademicPermission('view_dashboard')
+  const canViewClasses = hasAcademicPermission('view_classes')
+  const canViewSubjects = hasAcademicPermission('view_subjects')
+  const canViewChapters = hasAcademicPermission('view_chapters')
+  const canViewQuestionCatalog = hasAcademicPermission('view_question_catalog')
+  const canViewExamTitles = hasAcademicPermission('view_exam_titles')
+  const canViewExamMaker = hasAcademicPermission('view_exam_maker')
+  const canViewInstitute = hasAcademicPermission('view_institute_settings')
+  const canViewUsers = hasAcademicPermission('view_users')
+  const showCurriculum = canViewClasses || canViewSubjects || canViewChapters
+  const showQuestions = canViewQuestionCatalog
+  const showExams = canViewExamTitles || canViewExamMaker
+
   useEffect(() => {
     const path = location.pathname
-    if (path === '/academics/dashboard') {
+    if (path === '/academics/dashboard' || path === '/academics/settings/users') {
       setOpenSections({ curriculum: false, questions: false, exams: false })
       return
     }
@@ -75,6 +89,7 @@ function AcademicLayout({
   const isQuestionCatalog = location.pathname === '/academics/settings/question-catalog'
   const isExamTitles = location.pathname === '/academics/settings/exam-titles'
   const isExamMakerCompact = location.pathname === '/academics/settings/exam-maker-compact'
+  const isUsers = location.pathname === '/academics/settings/users'
   const isCurriculumActive = isClasses || isSubjects || isChapters
   const isQuestionsActive = isQuestionCatalog
   const isExamsActive = isExamTitles || isExamMakerCompact
@@ -120,161 +135,193 @@ function AcademicLayout({
           </div>
 
           <nav className="flex-1 space-y-1.5 overflow-y-auto px-3 py-6 text-sm">
-            <Link
-              to="/academics/dashboard"
-              className={`flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-left transition ${
-                isDashboard ? 'bg-white/15 font-medium text-white' : 'text-indigo-100 hover:bg-white/10'
-              }`}
-            >
-              <Home size={16} className="shrink-0" />
-              <span className="flex-1">Dashboard</span>
-            </Link>
-
-            <div className="overflow-hidden rounded-xl">
-              <button
-                type="button"
-                onClick={() => toggleSection('curriculum')}
+            {canViewDashboard ? (
+              <Link
+                to="/academics/dashboard"
                 className={`flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-left transition ${
-                  isCurriculumActive ? 'bg-white/15 font-medium text-white' : 'text-indigo-100 hover:bg-white/10'
+                  isDashboard ? 'bg-white/15 font-medium text-white' : 'text-indigo-100 hover:bg-white/10'
                 }`}
               >
-                <BookCopy size={16} className="shrink-0" />
-                <span className="flex-1">Curriculum</span>
-                <ChevronDown
-                  size={16}
-                  className={`shrink-0 transition-transform duration-300 ${
-                    openSections.curriculum ? 'rotate-180' : ''
+                <Home size={16} className="shrink-0" />
+                <span className="flex-1">Dashboard</span>
+              </Link>
+            ) : null}
+
+            {showCurriculum ? (
+              <div className="overflow-hidden rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => toggleSection('curriculum')}
+                  className={`flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-left transition ${
+                    isCurriculumActive ? 'bg-white/15 font-medium text-white' : 'text-indigo-100 hover:bg-white/10'
                   }`}
-                />
-              </button>
+                >
+                  <BookCopy size={16} className="shrink-0" />
+                  <span className="flex-1">Curriculum</span>
+                  <ChevronDown
+                    size={16}
+                    className={`shrink-0 transition-transform duration-300 ${
+                      openSections.curriculum ? 'rotate-180' : ''
+                    }`}
+                  />
+                </button>
 
-              <div
-                className={`grid overflow-hidden pl-10 pr-2 transition-all duration-300 ${
-                  openSections.curriculum ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
-                }`}
-              >
-                <div className="min-h-0">
-                  <div className="mb-2 mt-1 space-y-1">
-                    <Link
-                      to="/academics/settings/classes"
-                      className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs transition ${
-                        isClasses ? 'bg-white/20 text-white' : 'text-indigo-200 hover:bg-white/10 hover:text-white'
-                      }`}
-                    >
-                      <Shapes size={14} />
-                      Classes
-                    </Link>
-                    <Link
-                      to="/academics/settings/subjects"
-                      className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs transition ${
-                        isSubjects ? 'bg-white/20 text-white' : 'text-indigo-200 hover:bg-white/10 hover:text-white'
-                      }`}
-                    >
-                      <Sigma size={14} />
-                      Subjects
-                    </Link>
-                    <Link
-                      to="/academics/settings/chapters"
-                      className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs transition ${
-                        isChapters ? 'bg-white/20 text-white' : 'text-indigo-200 hover:bg-white/10 hover:text-white'
-                      }`}
-                    >
-                      <BookCopy size={14} />
-                      Chapters
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="overflow-hidden rounded-xl">
-              <button
-                type="button"
-                onClick={() => toggleSection('questions')}
-                className={`flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-left transition ${
-                  isQuestionsActive ? 'bg-white/15 font-medium text-white' : 'text-indigo-100 hover:bg-white/10'
-                }`}
-              >
-                <FileQuestion size={16} className="shrink-0" />
-                <span className="flex-1">Questions</span>
-                <ChevronDown
-                  size={16}
-                  className={`shrink-0 transition-transform duration-300 ${
-                    openSections.questions ? 'rotate-180' : ''
+                <div
+                  className={`grid overflow-hidden pl-10 pr-2 transition-all duration-300 ${
+                    openSections.curriculum ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
                   }`}
-                />
-              </button>
-
-              <div
-                className={`grid overflow-hidden pl-10 pr-2 transition-all duration-300 ${
-                  openSections.questions ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
-                }`}
-              >
-                <div className="min-h-0">
-                  <div className="mb-2 mt-1 space-y-1">
-                    <Link
-                      to="/academics/settings/question-catalog"
-                      className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs transition ${
-                        isQuestionCatalog
-                          ? 'bg-white/20 text-white'
-                          : 'text-indigo-200 hover:bg-white/10 hover:text-white'
-                      }`}
-                    >
-                      <FileQuestion size={14} />
-                      Question catalog
-                    </Link>
+                >
+                  <div className="min-h-0">
+                    <div className="mb-2 mt-1 space-y-1">
+                      {canViewClasses ? (
+                        <Link
+                          to="/academics/settings/classes"
+                          className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs transition ${
+                            isClasses ? 'bg-white/20 text-white' : 'text-indigo-200 hover:bg-white/10 hover:text-white'
+                          }`}
+                        >
+                          <Shapes size={14} />
+                          Classes
+                        </Link>
+                      ) : null}
+                      {canViewSubjects ? (
+                        <Link
+                          to="/academics/settings/subjects"
+                          className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs transition ${
+                            isSubjects ? 'bg-white/20 text-white' : 'text-indigo-200 hover:bg-white/10 hover:text-white'
+                          }`}
+                        >
+                          <Sigma size={14} />
+                          Subjects
+                        </Link>
+                      ) : null}
+                      {canViewChapters ? (
+                        <Link
+                          to="/academics/settings/chapters"
+                          className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs transition ${
+                            isChapters ? 'bg-white/20 text-white' : 'text-indigo-200 hover:bg-white/10 hover:text-white'
+                          }`}
+                        >
+                          <BookCopy size={14} />
+                          Chapters
+                        </Link>
+                      ) : null}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            ) : null}
 
-            <div className="overflow-hidden rounded-xl">
-              <button
-                type="button"
-                onClick={() => toggleSection('exams')}
+            {showQuestions ? (
+              <div className="overflow-hidden rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => toggleSection('questions')}
+                  className={`flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-left transition ${
+                    isQuestionsActive ? 'bg-white/15 font-medium text-white' : 'text-indigo-100 hover:bg-white/10'
+                  }`}
+                >
+                  <FileQuestion size={16} className="shrink-0" />
+                  <span className="flex-1">Questions</span>
+                  <ChevronDown
+                    size={16}
+                    className={`shrink-0 transition-transform duration-300 ${
+                      openSections.questions ? 'rotate-180' : ''
+                    }`}
+                  />
+                </button>
+
+                <div
+                  className={`grid overflow-hidden pl-10 pr-2 transition-all duration-300 ${
+                    openSections.questions ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
+                  }`}
+                >
+                  <div className="min-h-0">
+                    <div className="mb-2 mt-1 space-y-1">
+                      <Link
+                        to="/academics/settings/question-catalog"
+                        className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs transition ${
+                          isQuestionCatalog
+                            ? 'bg-white/20 text-white'
+                            : 'text-indigo-200 hover:bg-white/10 hover:text-white'
+                        }`}
+                      >
+                        <FileQuestion size={14} />
+                        Question catalog
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
+            {showExams ? (
+              <div className="overflow-hidden rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => toggleSection('exams')}
+                  className={`flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-left transition ${
+                    isExamsActive ? 'bg-white/15 font-medium text-white' : 'text-indigo-100 hover:bg-white/10'
+                  }`}
+                >
+                  <FileOutput size={16} className="shrink-0" />
+                  <span className="flex-1">Exams</span>
+                  <ChevronDown
+                    size={16}
+                    className={`shrink-0 transition-transform duration-300 ${openSections.exams ? 'rotate-180' : ''}`}
+                  />
+                </button>
+
+                <div
+                  className={`grid overflow-hidden pl-10 pr-2 transition-all duration-300 ${
+                    openSections.exams ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
+                  }`}
+                >
+                  <div className="min-h-0">
+                    <div className="mb-2 mt-1 space-y-1">
+                      {canViewExamTitles ? (
+                        <Link
+                          to="/academics/settings/exam-titles"
+                          className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs transition ${
+                            isExamTitles
+                              ? 'bg-white/20 text-white'
+                              : 'text-indigo-200 hover:bg-white/10 hover:text-white'
+                          }`}
+                        >
+                          <Tags size={14} />
+                          Exam titles
+                        </Link>
+                      ) : null}
+                      {canViewExamMaker ? (
+                        <Link
+                          to="/academics/settings/exam-maker-compact"
+                          className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs transition ${
+                            isExamMakerCompact
+                              ? 'bg-white/20 text-white'
+                              : 'text-indigo-200 hover:bg-white/10 hover:text-white'
+                          }`}
+                        >
+                          <Columns2 size={14} />
+                          Exam Maker
+                        </Link>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
+            {canViewUsers ? (
+              <Link
+                to="/academics/settings/users"
                 className={`flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-left transition ${
-                  isExamsActive ? 'bg-white/15 font-medium text-white' : 'text-indigo-100 hover:bg-white/10'
+                  isUsers ? 'bg-white/15 font-medium text-white' : 'text-indigo-100 hover:bg-white/10'
                 }`}
               >
-                <FileOutput size={16} className="shrink-0" />
-                <span className="flex-1">Exams</span>
-                <ChevronDown
-                  size={16}
-                  className={`shrink-0 transition-transform duration-300 ${openSections.exams ? 'rotate-180' : ''}`}
-                />
-              </button>
-
-              <div
-                className={`grid overflow-hidden pl-10 pr-2 transition-all duration-300 ${
-                  openSections.exams ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
-                }`}
-              >
-                <div className="min-h-0">
-                  <div className="mb-2 mt-1 space-y-1">
-                    <Link
-                      to="/academics/settings/exam-titles"
-                      className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs transition ${
-                        isExamTitles ? 'bg-white/20 text-white' : 'text-indigo-200 hover:bg-white/10 hover:text-white'
-                      }`}
-                    >
-                      <Tags size={14} />
-                      Exam titles
-                    </Link>
-                 
-                    <Link
-                      to="/academics/settings/exam-maker-compact"
-                      className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs transition ${
-                        isExamMakerCompact ? 'bg-white/20 text-white' : 'text-indigo-200 hover:bg-white/10 hover:text-white'
-                      }`}
-                    >
-                      <Columns2 size={14} />
-                      Exam Maker
-                    </Link>
-
-                  </div>
-                </div>
-              </div>
-            </div>
+                <Shield size={16} className="shrink-0" />
+                <span className="flex-1">Users</span>
+              </Link>
+            ) : null}
           </nav>
         </aside>
 
@@ -320,14 +367,16 @@ function AcademicLayout({
               </button>
               {isUserMenuOpen ? (
                 <div className="absolute right-0 mt-2 w-52 rounded-lg border border-slate-200 bg-white p-1 shadow-lg">
-                  <Link
-                    to="/academics/settings/institute"
-                    onClick={() => setIsUserMenuOpen(false)}
-                    className="flex w-full cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-100"
-                  >
-                    <Building2 size={15} />
-                    Institute settings
-                  </Link>
+                  {canViewInstitute ? (
+                    <Link
+                      to="/academics/settings/institute"
+                      onClick={() => setIsUserMenuOpen(false)}
+                      className="flex w-full cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-100"
+                    >
+                      <Building2 size={15} />
+                      Institute settings
+                    </Link>
+                  ) : null}
                   <button
                     type="button"
                     onClick={onLogout}
@@ -341,7 +390,7 @@ function AcademicLayout({
             </div>
           </header>
 
-          <div className="p-4 pt-20 md:p-6 md:pt-24 lg:p-7 lg:pt-24">
+          <div className="p-4 pt-[4.25rem] md:p-6 md:pt-[4.5rem] lg:p-7 lg:pt-[4.5rem]">
             {isSingleCardLayout ? (
               <section className="mb-5 rounded-2xl bg-white p-5 shadow-sm">
                 <div className="flex flex-wrap items-start justify-between gap-3">

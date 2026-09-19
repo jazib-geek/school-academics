@@ -1,7 +1,7 @@
-import { useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
-import { loginWithCampus } from '../../services/authService'
+import { isAuthenticated, loginWithCampus, resolveCampusPostLoginPath } from '../../services/authService'
 import { CAMPUS_OPTIONS, SCHOOL_LOGO_PATH, SCHOOL_NAME } from '../../constants/branding'
 
 function LoginPage() {
@@ -10,15 +10,49 @@ function LoginPage() {
     ? CAMPUS_OPTIONS.filter((item) => item.value !== 'local')
     : CAMPUS_OPTIONS
 
+  const navigate = useNavigate()
+  const location = useLocation()
+  const passwordChanged = Boolean(location.state?.passwordChanged)
+  const alreadySignedIn = isAuthenticated() && !passwordChanged
+  const signedInDestination = alreadySignedIn
+    ? resolveCampusPostLoginPath(location.state?.from?.pathname)
+    : null
+
+  const defaultCampus = isProduction
+    ? campusOptions[0]?.value || ''
+    : campusOptions.find((item) => item.value === 'local')?.value || campusOptions[0]?.value || ''
+
+  const resolveInitialCampus = () => {
+    const fromState = location.state?.campus
+    if (fromState && campusOptions.some((item) => item.value === fromState)) {
+      return fromState
+    }
+    const stored = localStorage.getItem('campus')
+    if (stored && campusOptions.some((item) => item.value === stored)) {
+      return stored
+    }
+    return defaultCampus
+  }
+
   const [form, setForm] = useState({
-    campus: campusOptions[0]?.value || '',
-    username: '',
+    campus: resolveInitialCampus(),
+    username: location.state?.username || '',
     password: '',
   })
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
-  const navigate = useNavigate()
-  const location = useLocation()
+  const [infoMessage, setInfoMessage] = useState(
+    passwordChanged ? 'Password updated. Please sign in with your new password.' : '',
+  )
+
+  useEffect(() => {
+    if (!passwordChanged) return
+    navigate(location.pathname, { replace: true, state: null })
+  }, [passwordChanged, navigate, location.pathname])
+
+  if (alreadySignedIn) {
+    return <Navigate to={signedInDestination} replace />
+  }
 
   const onChange = (event) => {
     const { name, value } = event.target
@@ -28,11 +62,13 @@ function LoginPage() {
   const onSubmit = async (event) => {
     event.preventDefault()
     setError('')
+    setInfoMessage('')
     setIsLoading(true)
 
     try {
       await loginWithCampus(form)
-      const destination = location.state?.from?.pathname || '/campus/dashboard'
+      const intended = location.state?.from?.pathname
+      const destination = resolveCampusPostLoginPath(intended)
       navigate(destination, { replace: true })
     } catch (requestError) {
       const message =
@@ -111,6 +147,12 @@ function LoginPage() {
                 required
               />
             </label>
+
+            {infoMessage ? (
+              <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+                {infoMessage}
+              </p>
+            ) : null}
 
             {error ? (
               <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-600">

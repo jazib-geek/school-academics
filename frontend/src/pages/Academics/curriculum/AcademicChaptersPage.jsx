@@ -198,7 +198,7 @@ function AcademicChaptersPage() {
       </section>
 
       <section className="max-h-[65vh] overflow-auto rounded-xl border border-slate-200">
-        <table className="w-full min-w-[720px] border-collapse text-sm">
+        <table className="w-full min-w-[720px] border-collapse text-[13px] leading-snug">
           <thead className="sticky top-0 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
             <tr>
               <th className="border border-slate-200 px-3 py-2 font-semibold">Sr #</th>
@@ -228,12 +228,12 @@ function AcademicChaptersPage() {
             ) : (
               filteredRows.map((item, index) => (
                 <tr key={item.id} className="hover:bg-slate-50/70">
-                  <td className="border border-slate-200 px-3 py-2.5">{index + 1}</td>
-                  <td className="border border-slate-200 px-3 py-2.5">{item.className}</td>
-                  <td className="border border-slate-200 px-3 py-2.5">{item.subjectName}</td>
-                  <td className="border border-slate-200 px-3 py-2.5">{item.chapterNo}</td>
-                  <td className="border border-slate-200 px-3 py-2.5">{item.chapterName}</td>
-                  <td className="border border-slate-200 px-3 py-2.5">
+                  <td className="border border-slate-200 px-3 py-1.5">{index + 1}</td>
+                  <td className="border border-slate-200 px-3 py-1.5">{item.className}</td>
+                  <td className="border border-slate-200 px-3 py-1.5">{item.subjectName}</td>
+                  <td className="border border-slate-200 px-3 py-1.5">{item.chapterNo}</td>
+                  <td className="border border-slate-200 px-3 py-1.5">{item.chapterName}</td>
+                  <td className="border border-slate-200 px-3 py-1.5">
                     <div className="flex justify-end">
                       <div className="action-group">
                         <button

@@ -1,5 +1,5 @@
 /** @typedef {'objective' | 'subjective'} ExamTypeOption */
-/** @typedef {'mcq' | 'saq' | 'laq'} QuestionType */
+/** @typedef {'mcq' | 'saq' | 'laq' | 'numerical'} QuestionType */
 
 export const EXAM_TYPE = Object.freeze({
   OBJECTIVE: 'objective',
@@ -10,6 +10,7 @@ export const QUESTION_TYPE = Object.freeze({
   MCQ: 'mcq',
   SAQ: 'saq',
   LAQ: 'laq',
+  NUMERICAL: 'numerical',
 })
 
 export const DEFAULT_OBJECTIVE_HEADER_NOTE =
@@ -60,11 +61,12 @@ export function normalizeQuestionType(value) {
   const v = `${value || ''}`.trim().toLowerCase()
   if (v === QUESTION_TYPE.SAQ) return QUESTION_TYPE.SAQ
   if (v === QUESTION_TYPE.LAQ) return QUESTION_TYPE.LAQ
+  if (v === QUESTION_TYPE.NUMERICAL) return QUESTION_TYPE.NUMERICAL
   return QUESTION_TYPE.MCQ
 }
 
 /**
- * Objective papers: MCQ only. Subjective papers: SAQ and LAQ only.
+ * Objective papers: MCQ only. Subjective papers: SAQ, LAQ, and Numerical.
  *
  * @param {unknown} examType
  * @param {unknown} questionType
@@ -72,14 +74,16 @@ export function normalizeQuestionType(value) {
 export function isQuestionTypeAllowedForExam(examType, questionType) {
   const q = normalizeQuestionType(questionType)
   if (isObjectiveExamType(examType)) return q === QUESTION_TYPE.MCQ
-  if (isSubjectiveExamType(examType)) return q === QUESTION_TYPE.SAQ || q === QUESTION_TYPE.LAQ
+  if (isSubjectiveExamType(examType)) {
+    return q === QUESTION_TYPE.SAQ || q === QUESTION_TYPE.LAQ || q === QUESTION_TYPE.NUMERICAL
+  }
   return false
 }
 
 /** @param {unknown} examType @returns {QuestionType[]} */
 export function catalogQuestionTypesForExam(examType) {
   if (isObjectiveExamType(examType)) return [QUESTION_TYPE.MCQ]
-  return [QUESTION_TYPE.SAQ, QUESTION_TYPE.LAQ]
+  return [QUESTION_TYPE.SAQ, QUESTION_TYPE.LAQ, QUESTION_TYPE.NUMERICAL]
 }
 
 /** @param {unknown} examType @returns {QuestionType} */
@@ -132,6 +136,7 @@ export function defaultMarksForQuestionType(questionType) {
   const q = normalizeQuestionType(questionType)
   if (q === QUESTION_TYPE.MCQ) return 1
   if (q === QUESTION_TYPE.SAQ) return 2
+  // LAQ and Numerical share long-form default marks
   return 8
 }
 

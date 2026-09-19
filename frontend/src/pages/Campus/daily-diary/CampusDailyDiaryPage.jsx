@@ -1,10 +1,19 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import Select from 'react-select'
 import { BookOpen, ImagePlus, List, Loader2 } from 'lucide-react'
 import CampusShell from '../../../components/campus/CampusShell.jsx'
+import ConfirmDialog from '../../../components/campus/ConfirmDialog.jsx'
+import DiaryReplaceHistoryPanel from '../../../components/diary/DiaryReplaceHistoryPanel.jsx'
 import { getClassLevels } from '../../../services/classService'
-import { uploadClassDiary } from '../../../services/classDiaryService'
+import {
+  diaryRowClassId,
+  diaryRowDateKey,
+  diaryRowLastUpdatedAt,
+  diaryRowLastUpdatedBy,
+  getClassDiaryListing,
+  uploadClassDiary,
+} from '../../../services/classDiaryService'
 import { compressDiaryImages, formatFileSize } from '../../../utils/imageCompress.js'
 
 const getPakistanTodayIso = () => {
@@ -21,17 +30,16 @@ const getPakistanTodayIso = () => {
   return `${year}-${month}-${day}`
 }
 
-const getPakistanYesterdayIso = () => {
-  const today = getPakistanTodayIso()
-  const [y, m, d] = today.split('-').map(Number)
+const shiftPakistanIso = (iso, dayDelta) => {
+  const [y, m, d] = iso.split('-').map(Number)
   const utcNoon = Date.UTC(y, m - 1, d, 12, 0, 0)
-  const yesterdayUtc = utcNoon - 24 * 60 * 60 * 1000
+  const shifted = utcNoon + dayDelta * 24 * 60 * 60 * 1000
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Asia/Karachi',
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
-  }).formatToParts(new Date(yesterdayUtc))
+  }).formatToParts(new Date(shifted))
 
   const year = parts.find((p) => p.type === 'year')?.value
   const month = parts.find((p) => p.type === 'month')?.value
@@ -54,13 +62,24 @@ const formatDateLabel = (iso) => {
 }
 
 function CampusDailyDiaryPage() {
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const todayIso = useMemo(() => getPakistanTodayIso(), [])
-  const yesterdayIso = useMemo(() => getPakistanYesterdayIso(), [])
-  const allowedDates = useMemo(() => [todayIso, yesterdayIso], [todayIso, yesterdayIso])
+  const yesterdayIso = useMemo(() => shiftPakistanIso(todayIso, -1), [todayIso])
+  const tomorrowIso = useMemo(() => shiftPakistanIso(todayIso, 1), [todayIso])
+  const allowedDates = useMemo(
+    () => [yesterdayIso, todayIso, tomorrowIso],
+    [yesterdayIso, todayIso, tomorrowIso],
+  )
+
+  const queryClassId = searchParams.get('classId') || ''
+  const queryDate = searchParams.get('date') || ''
+  const initialDate = allowedDates.includes(queryDate) ? queryDate : todayIso
+  const isReplaceMode = Boolean(queryClassId && allowedDates.includes(queryDate))
 
   const [classes, setClasses] = useState([])
-  const [classId, setClassId] = useState('')
-  const [date, setDate] = useState(todayIso)
+  const [classId, setClassId] = useState(queryClassId)
+  const [date, setDate] = useState(initialDate)
   const [files, setFiles] = useState([])
   const [previewUrls, setPreviewUrls] = useState([])
   const [optimizedSize, setOptimizedSize] = useState(0)
@@ -68,6 +87,13 @@ function CampusDailyDiaryPage() {
   const [isUploading, setIsUploading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [existingDiary, setExistingDiary] = useState(false)
+  const [currentLastUpdatedBy, setCurrentLastUpdatedBy] = useState(null)
+  const [currentLastUpdatedAt, setCurrentLastUpdatedAt] = useState(null)
+  const [replaceConfirmOpen, setReplaceConfirmOpen] = useState(false)
+
+  const willReplace = existingDiary || isReplaceMode
+  const priorUploaderName = currentLastUpdatedBy?.trim() || 'another user'
 
   useEffect(() => {
     const loadLookups = async () => {
@@ -85,6 +111,38 @@ function CampusDailyDiaryPage() {
 
     loadLookups()
   }, [])
+
+  useEffect(() => {
+    if (!classId || !date) {
+      setExistingDiary(false)
+      setCurrentLastUpdatedBy(null)
+      setCurrentLastUpdatedAt(null)
+      return
+    }
+    let cancelled = false
+    ;(async () => {
+      try {
+        const rows = await getClassDiaryListing()
+        if (cancelled) return
+        const match = (rows || []).find(
+          (row) =>
+            Number(diaryRowClassId(row)) === Number(classId) && diaryRowDateKey(row) === date,
+        )
+        setExistingDiary(Boolean(match))
+        setCurrentLastUpdatedBy(match ? diaryRowLastUpdatedBy(match) : null)
+        setCurrentLastUpdatedAt(match ? diaryRowLastUpdatedAt(match) : null)
+      } catch {
+        if (!cancelled) {
+          setExistingDiary(false)
+          setCurrentLastUpdatedBy(null)
+          setCurrentLastUpdatedAt(null)
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [classId, date])
 
   useEffect(() => {
     if (files.length === 0) {
@@ -135,7 +193,7 @@ function CampusDailyDiaryPage() {
     }
 
     if (!allowedDates.includes(date)) {
-      setError('Date must be today or yesterday (Pakistan time).')
+      setError('Date must be yesterday, today, or tomorrow (Pakistan time).')
       return
     }
 
@@ -144,6 +202,15 @@ function CampusDailyDiaryPage() {
       return
     }
 
+    if (willReplace) {
+      setReplaceConfirmOpen(true)
+      return
+    }
+
+    await performUpload()
+  }
+
+  const performUpload = async () => {
     setIsUploading(true)
     try {
       const response = await uploadClassDiary({
@@ -157,28 +224,48 @@ function CampusDailyDiaryPage() {
         return
       }
 
-      setSuccess('Daily diary saved. View all diaries from the listing page.')
+      setSuccess(
+        willReplace
+          ? 'Diary images replaced. Previous images were removed.'
+          : 'Daily diary saved. View all diaries from the listing page.',
+      )
       setFiles([])
+      setExistingDiary(true)
+      if (isReplaceMode) {
+        navigate('/campus/daily-diary/list', { replace: true })
+      }
     } catch (err) {
       setError(err?.response?.data?.message || err?.message || 'Upload failed.')
     } finally {
       setIsUploading(false)
+      setReplaceConfirmOpen(false)
     }
   }
 
+  const dateOptions = [
+    { value: yesterdayIso, label: `Yesterday — ${formatDateLabel(yesterdayIso)}` },
+    { value: todayIso, label: `Today — ${formatDateLabel(todayIso)}` },
+    { value: tomorrowIso, label: `Tomorrow — ${formatDateLabel(tomorrowIso)}` },
+  ]
+
   return (
     <CampusShell headerContext="Daily Diary">
-      <div className="space-y-4 p-4 pt-20 md:p-6 md:pt-24">
+      <div className="space-y-4 p-4 pt-[4.25rem] md:p-6 md:pt-[4.5rem]">
         <div className="rounded-2xl bg-white p-4 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="flex items-start gap-3">
-              <div className="grid h-10 w-10 place-items-center rounded-xl bg-[#405189] text-white">
+              <div className="grid h-10 w-10 place-items-center rounded-xl bg-[var(--campus-primary)] text-white">
                 <BookOpen size={18} />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-slate-800">Upload daily diary</h1>
+                <h1 className="text-2xl font-bold text-slate-800">
+                  {isReplaceMode || existingDiary ? 'Replace daily diary' : 'Upload daily diary'}
+                </h1>
                 <p className="text-sm text-slate-500">
                   One class per upload. Add 1 or 2 pages (max 1 MB combined after optimization).
+                  {existingDiary || isReplaceMode
+                    ? ' Saving replaces the current images for this class and date.'
+                    : ''}
                 </p>
               </div>
             </div>
@@ -191,6 +278,13 @@ function CampusDailyDiaryPage() {
           </div>
         </div>
 
+        {existingDiary || isReplaceMode ? (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 shadow-sm">
+            A diary already exists for this class and date. Uploading new images will remove the old ones from
+            storage and update the record.
+          </div>
+        ) : null}
+
         <form
           onSubmit={onSubmit}
           className="rounded-2xl bg-white p-4 shadow-sm md:p-6"
@@ -200,7 +294,8 @@ function CampusDailyDiaryPage() {
             <Select
               className="mt-2"
               classNamePrefix="diary-select"
-              isClearable
+              isClearable={!isReplaceMode}
+              isDisabled={isReplaceMode}
               isLoading={loadingLookups}
               options={classOptions}
               placeholder="Select class…"
@@ -212,12 +307,16 @@ function CampusDailyDiaryPage() {
           <label className="mt-5 block text-sm font-medium text-slate-700">
             Date (Pakistan)
             <select
-              className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800"
+              className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 disabled:bg-slate-50"
               value={date}
+              disabled={isReplaceMode}
               onChange={(ev) => setDate(ev.target.value)}
             >
-              <option value={todayIso}>Today — {formatDateLabel(todayIso)}</option>
-              <option value={yesterdayIso}>Yesterday — {formatDateLabel(yesterdayIso)}</option>
+              {dateOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
             </select>
           </label>
 
@@ -258,7 +357,7 @@ function CampusDailyDiaryPage() {
           <button
             type="submit"
             disabled={isUploading || loadingLookups}
-            className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-[#405189] px-4 py-3 text-sm font-medium text-white transition hover:bg-[#344476] disabled:cursor-not-allowed disabled:opacity-50"
+            className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--campus-primary)] px-4 py-3 text-sm font-medium text-white transition hover:bg-[#344476] disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isUploading ? (
               <>
@@ -266,11 +365,21 @@ function CampusDailyDiaryPage() {
               </>
             ) : (
               <>
-                <ImagePlus size={18} /> Save daily diary
+                <ImagePlus size={18} />{' '}
+                {existingDiary || isReplaceMode ? 'Replace diary images' : 'Save daily diary'}
               </>
             )}
           </button>
         </form>
+
+        {existingDiary && classId && date ? (
+          <DiaryReplaceHistoryPanel
+            classId={classId}
+            date={date}
+            variant="campus"
+            refreshKey={currentLastUpdatedAt ?? ''}
+          />
+        ) : null}
 
         {error ? (
           <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 shadow-sm">
@@ -284,6 +393,23 @@ function CampusDailyDiaryPage() {
           </div>
         ) : null}
       </div>
+
+      <ConfirmDialog
+        open={replaceConfirmOpen}
+        title="Replace diary?"
+        description={
+          <>
+            This diary was already uploaded by{' '}
+            <span className="font-medium text-slate-800">{priorUploaderName}</span> and will be
+            overwritten.
+          </>
+        }
+        confirmLabel="Replace diary"
+        cancelLabel="Cancel"
+        busy={isUploading}
+        onCancel={() => setReplaceConfirmOpen(false)}
+        onConfirm={performUpload}
+      />
     </CampusShell>
   )
 }

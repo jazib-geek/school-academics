@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Loader2, Printer, Search, TableProperties } from 'lucide-react'
+import { Loader2, Printer, Search, TableProperties, X } from 'lucide-react'
 import Select from 'react-select'
 import CampusShell from '../../../components/campus/CampusShell.jsx'
-import { getCampusLabel, SCHOOL_LOGO_PATH, SCHOOL_NAME } from '../../../constants/branding'
+import { SCHOOL_LOGO_PATH } from '../../../constants/branding'
+import { getCampusPrintMeta } from '../../../utils/campusProfile'
 import { getClasses } from '../../../services/classService'
 import { getExamMarkSheet, getExamTypes } from '../../../services/examService'
 
@@ -49,13 +50,24 @@ function cellBySubject(cells, subjectId) {
   return cells?.find((cell) => cell.subjectId === subjectId) || null
 }
 
-export default function CampusExamMarkSheetPage() {
-  const campusCode = localStorage.getItem('campus') || ''
-  const campusLabel = getCampusLabel(campusCode)
+export default function CampusExamMarkSheetPage({
+  embedded = false,
+  initialSectionId = '',
+  initialExamTypeId = '',
+  initialSortBy = 'position',
+  initialMarkDrawingAsGrade = true,
+  initialMarkStempAsGrade = true,
+  autoLoad = false,
+  hideControls = false,
+  onClose,
+} = {}) {
+  const { campusLabel, schoolName, sessionLabel } = getCampusPrintMeta()
 
-  const [sectionId, setSectionId] = useState('')
-  const [examTypeId, setExamTypeId] = useState('')
-  const [sortBy, setSortBy] = useState('position')
+  const [sectionId, setSectionId] = useState(initialSectionId ? String(initialSectionId) : '')
+  const [examTypeId, setExamTypeId] = useState(initialExamTypeId ? String(initialExamTypeId) : '')
+  const [sortBy, setSortBy] = useState(initialSortBy)
+  const [markDrawingAsGrade, setMarkDrawingAsGrade] = useState(initialMarkDrawingAsGrade)
+  const [markStempAsGrade, setMarkStempAsGrade] = useState(initialMarkStempAsGrade)
   const [classOptions, setClassOptions] = useState([])
   const [examTypes, setExamTypes] = useState([])
   const [sheet, setSheet] = useState(null)
@@ -140,6 +152,8 @@ export default function CampusExamMarkSheetPage() {
         sectionId: parsedSectionId,
         examTypeId: parsedExamTypeId,
         sortBy,
+        includeDrawing: !markDrawingAsGrade,
+        includeStemp: !markStempAsGrade,
       })
       setSheet(data)
     } catch (requestError) {
@@ -152,7 +166,21 @@ export default function CampusExamMarkSheetPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [examTypeId, sectionId, sortBy])
+  }, [examTypeId, markDrawingAsGrade, markStempAsGrade, sectionId, sortBy])
+
+  useEffect(() => {
+    if (!embedded) return
+    setSectionId(initialSectionId ? String(initialSectionId) : '')
+    setExamTypeId(initialExamTypeId ? String(initialExamTypeId) : '')
+    setSortBy(initialSortBy)
+    setMarkDrawingAsGrade(initialMarkDrawingAsGrade)
+    setMarkStempAsGrade(initialMarkStempAsGrade)
+  }, [embedded, initialExamTypeId, initialMarkDrawingAsGrade, initialMarkStempAsGrade, initialSectionId, initialSortBy])
+
+  useEffect(() => {
+    if (!autoLoad || !sectionId || !examTypeId) return
+    loadSheet()
+  }, [autoLoad, examTypeId, loadSheet, sectionId])
 
   const onSubmit = (event) => {
     event.preventDefault()
@@ -166,18 +194,14 @@ export default function CampusExamMarkSheetPage() {
   const printedAt = new Date().toLocaleString()
   const sortLabel = sortBy === 'regId' ? 'Registration no.' : 'Position wise'
 
-  return (
-    <CampusShell
-      headerContext="Exam mark sheet"
-      rootClassName="print-page-root"
-      rowClassName="print-main-wrap flex min-h-screen w-full"
-    >
+  const content = (
+    <>
       <style>{PRINT_STYLES}</style>
 
-      <div className="print-content-wrap mx-auto w-full max-w-[1600px] px-4 pb-10 pt-20 lg:px-6">
+      <div className={`print-content-wrap mx-auto w-full max-w-[1600px] px-4 pb-10 lg:px-6 ${embedded ? 'pt-4' : 'pt-[4.25rem]'}`}>
         <div className="no-print mb-6 flex flex-wrap items-start justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="grid h-11 w-11 place-items-center rounded-2xl bg-[#405189] text-white shadow-md">
+            <div className="grid h-11 w-11 place-items-center rounded-2xl bg-[var(--campus-primary)] text-white shadow-md">
               <TableProperties size={22} />
             </div>
             <div>
@@ -197,13 +221,26 @@ export default function CampusExamMarkSheetPage() {
               Print
             </button>
           ) : null}
+          {embedded ? (
+            <button
+              type="button"
+              onClick={onClose}
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+            >
+              <X size={16} />
+              Close
+            </button>
+          ) : null}
         </div>
 
+        {!hideControls ? (
         <form
           onSubmit={onSubmit}
           className="no-print mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
         >
-          <div className="grid gap-4 lg:grid-cols-4 lg:items-end">
+          <div className={`grid gap-4 lg:items-end ${embedded ? 'lg:grid-cols-3' : 'lg:grid-cols-5'}`}>
+            {!embedded ? (
+              <>
             <label className="block">
               <span className="mb-1.5 block text-sm font-medium text-slate-700">Class</span>
               <Select
@@ -231,6 +268,8 @@ export default function CampusExamMarkSheetPage() {
                 styles={selectStyles}
               />
             </label>
+              </>
+            ) : null}
 
             <label className="block">
               <span className="mb-1.5 block text-sm font-medium text-slate-700">Sort</span>
@@ -243,16 +282,38 @@ export default function CampusExamMarkSheetPage() {
               />
             </label>
 
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+              <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={markDrawingAsGrade}
+                  onChange={(event) => setMarkDrawingAsGrade(event.target.checked)}
+                  className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                Mark Drawing as grade
+              </label>
+              <label className="mt-2 flex items-center gap-2 text-sm font-medium text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={markStempAsGrade}
+                  onChange={(event) => setMarkStempAsGrade(event.target.checked)}
+                  className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                Mark Stemp as grade
+              </label>
+            </div>
+
             <button
               type="submit"
               disabled={isLoading || isMetaLoading}
-              className="inline-flex h-[42px] items-center justify-center gap-2 rounded-xl bg-[#405189] px-5 text-sm font-semibold text-white transition hover:bg-[#344574] disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex h-[42px] items-center justify-center gap-2 rounded-xl bg-[var(--campus-primary)] px-5 text-sm font-semibold text-white transition hover:bg-[#344574] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isLoading ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
               Load sheet
             </button>
           </div>
         </form>
+        ) : null}
 
         {error ? (
           <div className="no-print mb-6 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
@@ -279,8 +340,11 @@ export default function CampusExamMarkSheetPage() {
                     <p className="text-xs font-semibold uppercase tracking-wider text-indigo-700">
                       Exam result sheet : {sheet.examTypeName} ({sortLabel})
                     </p>
-                    <h2 className="text-lg font-bold text-slate-900">{SCHOOL_NAME}</h2>
+                    <h2 className="text-lg font-bold text-slate-900">{schoolName}</h2>
                     <p className="text-sm text-slate-600">{campusLabel}</p>
+                    {sessionLabel ? (
+                      <p className="text-sm text-slate-600">Session: {sessionLabel}</p>
+                    ) : null}
                     <p className="mt-1 text-sm text-slate-600">
                       Class: <span className="font-semibold text-slate-800">{sheet.className}</span>
                       {' · '}
@@ -421,6 +485,18 @@ export default function CampusExamMarkSheetPage() {
           </div>
         ) : null}
       </div>
+    </>
+  )
+
+  if (embedded) return content
+
+  return (
+    <CampusShell
+      headerContext="Exam mark sheet"
+      rootClassName="print-page-root"
+      rowClassName="print-main-wrap flex min-h-screen w-full"
+    >
+      {content}
     </CampusShell>
   )
 }
