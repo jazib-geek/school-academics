@@ -1,6 +1,6 @@
 name: Build and deploy API to Plesk (FTP)
-# API repo secret FTP_REMOTE_DIR must be the folder that contains School.API.dll
-# (e.g. Plesk: /sciencebaseschool.com/ or /httpdocs/ for the API site — not the UI dist folder).
+# API repo secret FTP_REMOTE_DIR: Plesk domain folder relative to FTP home (no leading /).
+# Example: sciencebaseschool.com or sciencebaseschool.com/httpdocs — same path as File Manager under Home directory.
 
 on:
   push:
@@ -68,14 +68,16 @@ jobs:
         env:
           FTP_REMOTE_DIR: ${{ secrets.FTP_REMOTE_DIR }}
         run: |
+          set -euo pipefail
           dir="${FTP_REMOTE_DIR// /}"
-          if [ -z "$dir" ]; then
-            echo "::error::Set FTP_REMOTE_DIR to the API site folder on Plesk (e.g. /httpdocs/)."
+          dir="${dir#/}"
+          dir="${dir%/}"
+          if [ -z "$dir" ] || [ "$dir" = "." ]; then
+            echo "::error::FTP_REMOTE_DIR must be your Plesk domain folder (e.g. sciencebaseschool.com), not FTP home root."
             exit 1
           fi
-          case "$dir" in /*) ;; *) dir="/$dir" ;; esac
-          case "$dir" in */) ;; *) dir="${dir}/" ;; esac
-          echo "Using server-dir: $dir"
+          dir="${dir}/"
+          echo "Using server-dir (relative to FTP login home): $dir"
           echo "dir=$dir" >> "$GITHUB_OUTPUT"
 
       - id: ftp-config
