@@ -40,6 +40,7 @@ public class CampusProfileService : ICampusProfileService
 
         var row = await EnsureRowAsync(_context, cancellationToken);
         row.SchoolName = TrimOrNull(request.SchoolName, 200);
+        row.SchoolLogo = NormalizeSchoolLogo(request.SchoolLogo);
         row.CampusLabel = TrimOrNull(request.CampusLabel, 200);
         row.StreetAddress = TrimOrNull(request.StreetAddress, 300);
         row.Address = TrimOrNull(request.Address, 500);
@@ -101,13 +102,14 @@ public class CampusProfileService : ICampusProfileService
 
     internal static CampusProfile CreateDefault(int year) => new()
     {
-        SchoolName = "Science Base School",
+        SchoolName = null,
+        SchoolLogo = null,
         CampusLabel = null,
         StreetAddress = null,
         Address = null,
         Phone1 = null,
         Phone2 = null,
-        Landline = "055-3840658",
+        Landline = null,
         Email = null,
         ShowPhone1OnInvoice = true,
         ShowPhone2OnInvoice = false,
@@ -137,6 +139,7 @@ public class CampusProfileService : ICampusProfileService
         {
             Id = row.ID,
             SchoolName = row.SchoolName,
+            SchoolLogo = row.SchoolLogo,
             CampusLabel = row.CampusLabel,
             StreetAddress = row.StreetAddress,
             Address = row.Address,
@@ -281,6 +284,18 @@ public class CampusProfileService : ICampusProfileService
 
     private static TimeSpan ParseTimeOrDefault(string? value, TimeSpan fallback)
         => EmployeeAttendanceCalculator.TryParseTimeOfDay(value, out var time) ? time : fallback;
+
+    private const int MaxSchoolLogoLength = 4 * 1024 * 1024;
+
+    private static string? NormalizeSchoolLogo(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return null;
+        var trimmed = value.Trim();
+        if (trimmed.Length > MaxSchoolLogoLength)
+            throw new ArgumentException("School logo is too large.");
+        return trimmed;
+    }
 
     private static string? TrimOrNull(string? value, int maxLen)
     {

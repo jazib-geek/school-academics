@@ -760,6 +760,7 @@ public class AppDbContext : DbContext
             entity.ToTable("tblCampusProfile", "dbo");
             entity.HasKey(e => e.ID);
             entity.Property(e => e.SchoolName).HasMaxLength(200);
+            entity.Property(e => e.SchoolLogo).HasColumnType("varchar(max)");
             entity.Property(e => e.CampusLabel).HasMaxLength(200);
             entity.Property(e => e.StreetAddress).HasMaxLength(300);
             entity.Property(e => e.Address).HasMaxLength(500);

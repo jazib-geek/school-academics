@@ -4,6 +4,7 @@ public class CampusProfile
 {
     public int ID { get; set; }
     public string? SchoolName { get; set; }
+    public string? SchoolLogo { get; set; }
     public string? CampusLabel { get; set; }
     public string? StreetAddress { get; set; }
     public string? Address { get; set; }

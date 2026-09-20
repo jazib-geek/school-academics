@@ -10,15 +10,18 @@ public class EmployeeAuthService : IEmployeeAuthService
     private readonly IEmployeeAuthRepository _employeeAuthRepository;
     private readonly ITokenService _tokenService;
     private readonly TenantContext _tenantContext;
+    private readonly ICampusProfileService _campusProfileService;
 
     public EmployeeAuthService(
         IEmployeeAuthRepository employeeAuthRepository,
         ITokenService tokenService,
-        TenantContext tenantContext)
+        TenantContext tenantContext,
+        ICampusProfileService campusProfileService)
     {
         _employeeAuthRepository = employeeAuthRepository;
         _tokenService = tokenService;
         _tenantContext = tenantContext;
+        _campusProfileService = campusProfileService;
     }
 
     public async Task<EmployeeLoginResponseDto?> LoginAsync(EmployeeLoginRequestDto request)
@@ -43,6 +46,8 @@ public class EmployeeAuthService : IEmployeeAuthService
             _tenantContext.Campus,
             AuthSourceClaims.Employee);
 
+        var campusProfile = await _campusProfileService.GetAsync();
+
         return new EmployeeLoginResponseDto
         {
             ID = employee.ID,
@@ -52,6 +57,7 @@ public class EmployeeAuthService : IEmployeeAuthService
             BranchID = employee.BranchID,
             IsCoordinator = employee.DesignationId == EmployeeDesignations.Coordinator,
             Token = token,
+            CampusProfile = campusProfile,
             AppAccess = new EmployeeAppAccessDto
             {
                 CanMarkStudentAttendance = employee.CanMarkStudentAttendance,

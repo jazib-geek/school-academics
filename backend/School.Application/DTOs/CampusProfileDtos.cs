@@ -4,6 +4,7 @@ public class CampusProfileDto
 {
     public int Id { get; set; }
     public string? SchoolName { get; set; }
+    public string? SchoolLogo { get; set; }
     public string? CampusLabel { get; set; }
     public string? StreetAddress { get; set; }
     public string? Address { get; set; }
@@ -36,6 +37,7 @@ public class CampusProfileDto
 public class UpdateCampusProfileDto
 {
     public string? SchoolName { get; set; }
+    public string? SchoolLogo { get; set; }
     public string? CampusLabel { get; set; }
     public string? StreetAddress { get; set; }
     public string? Address { get; set; }

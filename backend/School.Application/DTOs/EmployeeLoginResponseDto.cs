@@ -10,4 +10,5 @@ public class EmployeeLoginResponseDto
     public bool IsCoordinator { get; set; }
     public string Token { get; set; } = string.Empty;
     public EmployeeAppAccessDto AppAccess { get; set; } = new();
+    public CampusProfileDto? CampusProfile { get; set; }
 }
