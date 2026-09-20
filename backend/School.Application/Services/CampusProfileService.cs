@@ -215,7 +215,7 @@ public class CampusProfileService : ICampusProfileService
     private static (int StartYear, int EndYear, string Label)? TryParseSessionLabel(string? label)
     {
         if (string.IsNullOrWhiteSpace(label)) return null;
-        var parts = label.Trim().Split(['-', '–', '/'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var parts = label.Trim().Split(['-', '\u2013', '/'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         if (parts.Length != 2) return null;
         if (!int.TryParse(parts[0], out var start) || !int.TryParse(parts[1], out var end)) return null;
         if (start is < 2000 or > 2100 || end is < 2000 or > 2100) return null;
