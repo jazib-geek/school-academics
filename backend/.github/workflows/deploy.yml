@@ -1,4 +1,6 @@
 name: Build and deploy API to Plesk (FTP)
+# API repo secret FTP_REMOTE_DIR must be the folder that contains School.API.dll
+# (e.g. Plesk: /sciencebaseschool.com/ or /httpdocs/ for the API site — not the UI dist folder).
 
 on:
   push:
@@ -50,6 +52,17 @@ jobs:
           dotnet restore ${{ env.API_PROJECT }}
           dotnet publish ${{ env.API_PROJECT }} -c Release -o ${{ env.PUBLISH_DIR }}
 
+      - name: Verify publish output (API binaries)
+        run: |
+          set -euo pipefail
+          echo "Commit: ${{ github.sha }}"
+          echo "Publish dir: ${{ env.PUBLISH_DIR }}"
+          test -f "${{ env.PUBLISH_DIR }}/School.API.dll"
+          test -f "${{ env.PUBLISH_DIR }}/School.Application.dll"
+          test -f "${{ env.PUBLISH_DIR }}/School.Infrastructure.dll"
+          ls -la "${{ env.PUBLISH_DIR }}/School."*.dll
+          echo "DLL count in publish: $(find "${{ env.PUBLISH_DIR }}" -maxdepth 1 -name '*.dll' | wc -l)"
+
       - id: ftp-server-dir
         name: Prepare FTP server-dir
         env:
@@ -86,7 +99,7 @@ jobs:
           local-dir: ${{ env.PUBLISH_DIR }}/
           server-dir: ${{ steps.ftp-server-dir.outputs.dir }}
           dangerous-clean-slate: false
-          log-level: standard
+          log-level: verbose
           exclude: |
             **/.git*
             **/.git*/**
