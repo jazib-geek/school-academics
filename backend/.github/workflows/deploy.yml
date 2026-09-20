@@ -1,6 +1,8 @@
 name: Build and deploy API to Plesk (FTP)
-# API repo secret FTP_REMOTE_DIR: Plesk domain folder relative to FTP home (no leading /).
-# Example: sciencebaseschool.com or sciencebaseschool.com/httpdocs — same path as File Manager under Home directory.
+# Secrets on THIS repo (SoftelligentSchoolSuitePro-API):
+#   FTP_API_REMOTE_DIR — preferred, e.g. sciencebaseschool.com (folder that contains School.API.dll)
+#   FTP_REMOTE_DIR     — fallback if FTP_API_REMOTE_DIR is unset
+# Use the same path style as the UI repo secret that already deploys correctly (often /yourdomain.com/ after normalization).
 
 on:
   push:
@@ -66,19 +68,27 @@ jobs:
       - id: ftp-server-dir
         name: Prepare FTP server-dir
         env:
+          FTP_API_REMOTE_DIR: ${{ secrets.FTP_API_REMOTE_DIR }}
           FTP_REMOTE_DIR: ${{ secrets.FTP_REMOTE_DIR }}
         run: |
           set -euo pipefail
-          dir="${FTP_REMOTE_DIR// /}"
-          dir="${dir#/}"
-          dir="${dir%/}"
-          if [ -z "$dir" ] || [ "$dir" = "." ]; then
-            echo "::error::FTP_REMOTE_DIR must be your Plesk domain folder (e.g. sciencebaseschool.com), not FTP home root."
+          dir="${FTP_API_REMOTE_DIR:-${FTP_REMOTE_DIR:-}}"
+          dir="${dir// /}"
+          if [ -z "$dir" ]; then
+            echo "::error::Set repository secret FTP_API_REMOTE_DIR (or FTP_REMOTE_DIR) to the Plesk folder that contains School.API.dll, e.g. sciencebaseschool.com"
             exit 1
           fi
-          dir="${dir}/"
-          echo "Using server-dir (relative to FTP login home): $dir"
-          echo "dir=$dir" >> "$GITHUB_OUTPUT"
+          # Same normalization as SoftelligentSchoolSuitePro-UI deploy (known working on this host).
+          case "$dir" in /*) ;; *) dir="/$dir" ;; esac
+          case "$dir" in */) ;; *) dir="${dir}/" ;; esac
+          inner="${dir#/}"
+          inner="${inner%/}"
+          if [ -z "$inner" ]; then
+            echo "::error::FTP path resolves to account root ($dir). Use your domain folder, e.g. sciencebaseschool.com"
+            exit 1
+          fi
+          echo "Using server-dir: $dir"
+          echo "server_dir=$dir" >> "$GITHUB_OUTPUT"
 
       - id: ftp-config
         name: Prepare FTP options
@@ -99,7 +109,7 @@ jobs:
           security: loose
           timeout: 300000
           local-dir: ${{ env.PUBLISH_DIR }}/
-          server-dir: ${{ steps.ftp-server-dir.outputs.dir }}
+          server-dir: ${{ steps.ftp-server-dir.outputs.server_dir }}
           dangerous-clean-slate: false
           log-level: verbose
           exclude: |
