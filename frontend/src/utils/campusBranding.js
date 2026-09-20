@@ -1,4 +1,5 @@
 import defaultLogoAsset from '../assets/logo.png'
+import demoLoginLogoAsset from '../assets/demo.png'
 
 export function normalizeSchoolLogo(logo) {
   if (!logo || typeof logo !== 'string') return ''
@@ -8,20 +9,32 @@ export function normalizeSchoolLogo(logo) {
   return `data:image/png;base64,${trimmed}`
 }
 
-function defaultLogoHref() {
-  if (typeof defaultLogoAsset === 'string') {
-    if (defaultLogoAsset.startsWith('data:') || defaultLogoAsset.startsWith('http')) {
-      return defaultLogoAsset
+function assetHref(asset) {
+  if (typeof asset === 'string') {
+    if (asset.startsWith('data:') || asset.startsWith('http')) {
+      return asset
     }
     if (typeof window !== 'undefined' && window.location?.origin) {
-      return new URL(defaultLogoAsset, window.location.origin).href
+      return new URL(asset, window.location.origin).href
     }
-    return defaultLogoAsset
+    return asset
   }
   if (typeof window !== 'undefined' && window.location?.origin) {
-    return new URL(defaultLogoAsset, window.location.origin).href
+    return new URL(asset, window.location.origin).href
   }
-  return String(defaultLogoAsset || '')
+  return String(asset || '')
+}
+
+function defaultLogoHref() {
+  return assetHref(defaultLogoAsset)
+}
+
+/** Campus admin / employee login screens only — demo bundle uses demo.png; production uses logo.png. */
+export function resolveLoginPageLogoSrc() {
+  if (import.meta.env.MODE === 'demo') {
+    return assetHref(demoLoginLogoAsset)
+  }
+  return defaultLogoHref()
 }
 
 /** Institute logo from profile, else bundled logo.png only. */

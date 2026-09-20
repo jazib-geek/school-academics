@@ -3,7 +3,7 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import { isAuthenticated, loginWithCampus, resolveCampusPostLoginPath } from '../../services/authService'
 import { getAppCampusOptions } from '../../constants/branding'
-import { resolveCampusLogoSrc } from '../../utils/campusBranding'
+import { resolveLoginPageLogoSrc } from '../../utils/campusBranding'
 
 function LoginPage() {
   const campusOptions = getAppCampusOptions()
@@ -85,7 +85,7 @@ function LoginPage() {
         <div className="w-full rounded-3xl bg-white/95 p-8 shadow-2xl backdrop-blur">
           <div className="mb-8 text-center">
             <img
-              src={resolveCampusLogoSrc()}
+              src={resolveLoginPageLogoSrc()}
               alt=""
               className="mx-auto mb-4 h-20 w-20 rounded-xl object-contain"
             />

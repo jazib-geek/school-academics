@@ -20,8 +20,11 @@ export const CAMPUS_OPTIONS = [
 
 const isLocalCampusKey = (value) => String(value || '').trim().toLowerCase() === 'local'
 
-/** Parsed from VITE_CAMPUS_ALLOWLIST (comma-separated). Empty = no restriction. */
+const isDemoBuild = () => import.meta.env.MODE === 'demo'
+
+/** Parsed from VITE_CAMPUS_ALLOWLIST (comma-separated). Empty = no restriction. Demo mode always scopes to demo. */
 export const parseCampusAllowlist = () => {
+  if (isDemoBuild()) return ['demo']
   const raw = import.meta.env.VITE_CAMPUS_ALLOWLIST
   if (raw == null || String(raw).trim() === '') return []
   return String(raw)
@@ -53,6 +56,9 @@ export const getAppCampusOptions = () => {
 
 /** Org-wide dashboard tab; off when this build is scoped to specific campuses only. */
 export const showAllCampusesDashboard = () => campusAllowlist.length === 0
+
+/** True for `vite build --mode demo` (demo subdomain bundle). */
+export const isDemoAppBuild = () => isDemoBuild()
 
 export const getCampusLabel = (campusCode) => {
   const key = String(campusCode || '').trim().toLowerCase()
