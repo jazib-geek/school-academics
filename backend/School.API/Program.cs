@@ -22,6 +22,8 @@ Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 
 var builder = WebApplication.CreateBuilder(args);
 
+ValidateCampusConfiguration(builder.Configuration, builder.Environment);
+
 // Add services to the container.
 
 builder.Services.AddControllers();
@@ -209,3 +211,20 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+static void ValidateCampusConfiguration(IConfiguration configuration, IHostEnvironment environment)
+{
+    if (environment.IsDevelopment())
+        return;
+
+    var campuses = configuration.GetSection("CampusSettings:Campuses").GetChildren()
+        .Where(x => !string.IsNullOrWhiteSpace(x.Value))
+        .Select(x => x.Key)
+        .ToList();
+
+    if (campuses.Count == 0)
+    {
+        throw new InvalidOperationException(
+            "CampusSettings:Campuses has no entries. Restore production appsettings.json on the server (FTP deploy excludes appsettings).");
+    }
+}
