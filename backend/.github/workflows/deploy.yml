@@ -1,8 +1,9 @@
 name: Build and deploy API to Plesk (FTP)
-# Secrets on THIS repo (SoftelligentSchoolSuitePro-API):
-#   FTP_API_REMOTE_DIR — preferred, e.g. sciencebaseschool.com (folder that contains School.API.dll)
-#   FTP_REMOTE_DIR     — fallback if FTP_API_REMOTE_DIR is unset
-# Use the same path style as the UI repo secret that already deploys correctly (often /yourdomain.com/ after normalization).
+# Plesk subscription FTP home (e.g. seicoscientific.com) contains sibling folders per site:
+#   sciencebaseschool.com/     — addon domain (API / School.API.dll)
+#   academics.sciencebaseschool.com/ — subdomain (UI dist)
+# Secret on SoftelligentSchoolSuitePro-API (not the UI repo):
+#   FTP_API_REMOTE_DIR = sciencebaseschool.com   (folder name under Home directory, no leading /)
 
 on:
   push:
@@ -58,15 +59,13 @@ jobs:
         run: |
           set -euo pipefail
           echo "Commit: ${{ github.sha }}"
-          echo "Publish dir: ${{ env.PUBLISH_DIR }}"
           test -f "${{ env.PUBLISH_DIR }}/School.API.dll"
           test -f "${{ env.PUBLISH_DIR }}/School.Application.dll"
           test -f "${{ env.PUBLISH_DIR }}/School.Infrastructure.dll"
           ls -la "${{ env.PUBLISH_DIR }}/School."*.dll
-          echo "DLL count in publish: $(find "${{ env.PUBLISH_DIR }}" -maxdepth 1 -name '*.dll' | wc -l)"
 
-      - id: ftp-server-dir
-        name: Prepare FTP server-dir
+      - id: ftp-remote
+        name: Resolve Plesk domain folder for API
         env:
           FTP_API_REMOTE_DIR: ${{ secrets.FTP_API_REMOTE_DIR }}
           FTP_REMOTE_DIR: ${{ secrets.FTP_REMOTE_DIR }}
@@ -74,21 +73,14 @@ jobs:
           set -euo pipefail
           dir="${FTP_API_REMOTE_DIR:-${FTP_REMOTE_DIR:-}}"
           dir="${dir// /}"
-          if [ -z "$dir" ]; then
-            echo "::error::Set repository secret FTP_API_REMOTE_DIR (or FTP_REMOTE_DIR) to the Plesk folder that contains School.API.dll, e.g. sciencebaseschool.com"
+          dir="${dir#/}"
+          dir="${dir%/}"
+          if [ -z "$dir" ] || [ "$dir" = "." ]; then
+            echo "::error::Set FTP_API_REMOTE_DIR to the Home-directory folder for the API site (e.g. sciencebaseschool.com), not subscription root."
             exit 1
           fi
-          # Same normalization as SoftelligentSchoolSuitePro-UI deploy (known working on this host).
-          case "$dir" in /*) ;; *) dir="/$dir" ;; esac
-          case "$dir" in */) ;; *) dir="${dir}/" ;; esac
-          inner="${dir#/}"
-          inner="${inner%/}"
-          if [ -z "$inner" ]; then
-            echo "::error::FTP path resolves to account root ($dir). Use your domain folder, e.g. sciencebaseschool.com"
-            exit 1
-          fi
-          echo "Using server-dir: $dir"
-          echo "server_dir=$dir" >> "$GITHUB_OUTPUT"
+          echo "Will cd into FTP folder: $dir"
+          echo "remote_cd=$dir" >> "$GITHUB_OUTPUT"
 
       - id: ftp-config
         name: Prepare FTP options
@@ -98,22 +90,34 @@ jobs:
           protocol="${FTP_PROTOCOL:-ftp}"
           echo "protocol=$protocol" >> "$GITHUB_OUTPUT"
 
-      - name: Upload publish output to Plesk via FTP
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
-        with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          protocol: ${{ steps.ftp-config.outputs.protocol }}
-          port: 21
-          security: loose
-          timeout: 300000
-          local-dir: ${{ env.PUBLISH_DIR }}/
-          server-dir: ${{ steps.ftp-server-dir.outputs.server_dir }}
-          dangerous-clean-slate: false
-          log-level: verbose
-          exclude: |
-            **/.git*
-            **/.git*/**
-            **/appsettings.json
-            **/appsettings.*.json
+      - name: Install lftp
+        run: sudo apt-get update && sudo apt-get install -y lftp
+
+      - name: Upload to addon domain folder via FTP (explicit cd)
+        env:
+          FTP_SERVER: ${{ secrets.FTP_SERVER }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+          FTP_PROTOCOL: ${{ steps.ftp-config.outputs.protocol }}
+          REMOTE_CD: ${{ steps.ftp-remote.outputs.remote_cd }}
+        run: |
+          set -euo pipefail
+          case "$FTP_PROTOCOL" in
+            ftps|ftps-legacy) OPEN="ftps://$FTP_SERVER" ;;
+            *) OPEN="$FTP_SERVER" ;;
+          esac
+          lftp -u "$FTP_USERNAME","$FTP_PASSWORD" "$OPEN" <<EOF
+          set cmd:fail-exit yes
+          set ftp:ssl-allow true
+          set ssl:verify-certificate no
+          pwd
+          cd $REMOTE_CD
+          pwd
+          lcd ${{ env.PUBLISH_DIR }}
+          mirror --reverse --parallel=4 --verbose \
+            --exclude-glob .git* \
+            --exclude-glob appsettings.json \
+            --exclude-glob 'appsettings.*.json'
+          ls -la School.API.dll
+          bye
+          EOF
