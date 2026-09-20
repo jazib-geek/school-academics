@@ -1,4 +1,5 @@
 name: Build and deploy to Plesk (FTP)
+# Production (FTP_REMOTE_DIR) + demo subdomain (FTP_REMOTE_DIR_DEMO)
 
 on:
   push:
