@@ -1,6 +1,6 @@
 name: Build and deploy API to Plesk (FTP)
 # Use a dedicated FTP user whose Plesk home IS the API site folder (sciencebaseschool.com).
-# Uploads go to FTP login root (./) — no server-dir subpath or cd.
+# Uploads go to FTP login root (./). IIS locks DLLs while running — deploy renames web.config → web1.config around upload (same as manual).
 # Secrets on SoftelligentSchoolSuitePro-API:
 #   FTP_SERVER, FTP_USERNAME, FTP_PASSWORD — API-scoped FTP account only
 #   FTP_PROTOCOL — optional (ftp | ftps)
@@ -71,6 +71,29 @@ jobs:
           protocol="${FTP_PROTOCOL:-ftp}"
           echo "protocol=$protocol" >> "$GITHUB_OUTPUT"
 
+      - name: Install lftp
+        run: sudo apt-get update && sudo apt-get install -y lftp
+
+      - name: Stop IIS app (release DLL locks)
+        env:
+          FTP_SERVER: ${{ secrets.FTP_SERVER }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+          FTP_PROTOCOL: ${{ steps.ftp-config.outputs.protocol }}
+        run: |
+          set -euo pipefail
+          case "$FTP_PROTOCOL" in
+            ftps|ftps-legacy) OPEN="ftps://$FTP_SERVER" ;;
+            *) OPEN="$FTP_SERVER" ;;
+          esac
+          lftp -u "$FTP_USERNAME","$FTP_PASSWORD" "$OPEN" <<'EOF'
+          set cmd:fail-exit yes
+          set ftp:ssl-allow true
+          set ssl:verify-certificate no
+          mv web.config web1.config
+          bye
+          EOF
+
       - name: Upload to API FTP home (sciencebaseschool.com)
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
@@ -90,3 +113,25 @@ jobs:
             **/.git*/**
             **/appsettings.json
             **/appsettings.*.json
+            **/web.config
+
+      - name: Start IIS app (restore web.config)
+        if: always()
+        env:
+          FTP_SERVER: ${{ secrets.FTP_SERVER }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+          FTP_PROTOCOL: ${{ steps.ftp-config.outputs.protocol }}
+        run: |
+          set -euo pipefail
+          case "$FTP_PROTOCOL" in
+            ftps|ftps-legacy) OPEN="ftps://$FTP_SERVER" ;;
+            *) OPEN="$FTP_SERVER" ;;
+          esac
+          lftp -u "$FTP_USERNAME","$FTP_PASSWORD" "$OPEN" <<'EOF'
+          set cmd:fail-exit yes
+          set ftp:ssl-allow true
+          set ssl:verify-certificate no
+          mv web1.config web.config
+          bye
+          EOF
