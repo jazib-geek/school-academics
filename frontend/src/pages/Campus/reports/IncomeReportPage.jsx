@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Loader2, Printer } from 'lucide-react'
 import CampusShell from '../../../components/campus/CampusShell.jsx'
-import { SCHOOL_LOGO_PATH } from '../../../constants/branding'
 import { getIncomeStatement } from '../../../services/feeReportService'
 import { getCampusPrintMeta } from '../../../utils/campusProfile'
 
@@ -56,7 +55,7 @@ const PRINT_STYLES = `
 `
 
 function IncomeReportPage() {
-  const { campusLabel, schoolName } = getCampusPrintMeta()
+  const { campusLabel, schoolName, logoSrc } = getCampusPrintMeta()
 
   const [month, setMonth] = useState(String(currentMonth))
   const [year, setYear] = useState(String(currentYear))
@@ -118,7 +117,7 @@ function IncomeReportPage() {
           <section className="print-area rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
             <div className="print-only hidden print-report-header">
               <div className="flex items-start gap-3">
-                <img src={SCHOOL_LOGO_PATH} alt="School logo" className="h-12 w-12 object-contain" />
+                <img src={logoSrc} alt="" className="h-12 w-12 object-contain" />
                 <div>
                   <p className="text-base font-bold text-slate-900">{schoolName}</p>
                   <p className="text-xs text-slate-600">Campus: {campusLabel}</p>

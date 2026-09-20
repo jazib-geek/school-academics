@@ -1,4 +1,5 @@
 import api from './api'
+import { persistCampusProfile, clearCampusProfile } from '../utils/campusProfile'
 import { normalizeAccess } from './employeeAppAccess'
 
 const EMPLOYEE_LOGIN_PATH = import.meta.env.VITE_EMPLOYEE_LOGIN_PATH || '/api/auth/employee-login'
@@ -50,6 +51,7 @@ const mapEmployeeLoginResponse = (data) => {
       isCoordinator: Boolean(payload?.isCoordinator),
       appAccess: normalizeAccess(payload?.appAccess),
     },
+    campusProfile: payload?.campusProfile || payload?.CampusProfile || null,
   }
 }
 
@@ -85,6 +87,8 @@ export const employeeLoginWithCampus = async ({ campus, username, password }) =>
   if (mapped.token) {
     localStorage.setItem('employeeToken', mapped.token)
   }
+
+  persistCampusProfile(mapped.campusProfile)
 
   return mapped
 }
@@ -127,6 +131,7 @@ export const changeEmployeePassword = async ({ currentPassword, newPassword, con
 
 export const employeeLogout = () => {
   // Keep `employeeCampus` so the login dropdown can preselect the last campus.
+  clearCampusProfile()
   localStorage.removeItem('employeeId')
   localStorage.removeItem('employeeName')
   localStorage.removeItem('employeeGender')

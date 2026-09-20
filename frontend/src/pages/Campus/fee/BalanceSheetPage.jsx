@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Loader2, Printer } from 'lucide-react'
 import CampusShell from '../../../components/campus/CampusShell.jsx'
-import { SCHOOL_LOGO_PATH } from '../../../constants/branding'
 import { getCampusFundTypes } from '../../../services/authService'
 import { getBalanceSheet } from '../../../services/feeReportService'
 import { formatMonthYear, getCampusPrintMeta } from '../../../utils/campusProfile'
@@ -78,7 +77,7 @@ function resolveFundLabel(fundTypes, id, fallback) {
 }
 
 function BalanceSheetPage() {
-  const { campusLabel, schoolName } = getCampusPrintMeta()
+  const { campusLabel, schoolName, logoSrc } = getCampusPrintMeta()
   const fundTypes = useMemo(() => getCampusFundTypes(), [])
 
   const [isLoading, setIsLoading] = useState(false)
@@ -333,7 +332,7 @@ function BalanceSheetPage() {
               >
                 <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
                   <img
-                    src={SCHOOL_LOGO_PATH}
+                    src={logoSrc}
                     alt=""
                     style={{ height: 40, width: 40, objectFit: 'contain' }}
                   />

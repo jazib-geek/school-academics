@@ -39,7 +39,6 @@ import {
   AccessForbiddenPanel,
   PermissionControl,
 } from '../../../components/campus/CampusPermissionUi.jsx'
-import { SCHOOL_LOGO_PATH } from '../../../constants/branding'
 import { getCampusPrintMeta } from '../../../utils/campusProfile'
 import { printFeeReceipts } from '../../../utils/feeReceiptPrint'
 import { FILTER_INPUT_AUTOCOMPLETE_PROPS } from '../../../utils/filterInputProps'
@@ -608,9 +607,7 @@ const printStudentProfile = ({
   const phone = meta.phonesDisplay
   const campusLabel = meta.campusLabel
   const schoolName = meta.schoolName
-  const logoUrl = typeof SCHOOL_LOGO_PATH === 'string'
-    ? SCHOOL_LOGO_PATH
-    : new URL(SCHOOL_LOGO_PATH, window.location.origin).href
+  const logoUrl = meta.logoSrc
   const studentName = String(detail.fullName || 'Student')
   const urduName = detail.nameInUrdu || ''
   const isActive = detail.isActive !== false

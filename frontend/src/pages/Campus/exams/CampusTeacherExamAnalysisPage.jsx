@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { FileBarChart2, Loader2, Printer, Search, UserRound } from 'lucide-react'
 import Select from 'react-select'
 import CampusShell from '../../../components/campus/CampusShell.jsx'
-import { SCHOOL_LOGO_PATH } from '../../../constants/branding'
 import { getCampusPrintMeta } from '../../../utils/campusProfile'
 import { getClasses } from '../../../services/classService'
 import { getExamTypes, getTeacherExamAnalysis } from '../../../services/examService'
@@ -117,7 +116,7 @@ function ExtremumCell({ item }) {
 }
 
 export default function CampusTeacherExamAnalysisPage() {
-  const { campusLabel, schoolName, sessionLabel } = getCampusPrintMeta()
+  const { campusLabel, schoolName, sessionLabel, logoSrc } = getCampusPrintMeta()
   const [sectionId, setSectionId] = useState('')
   const [employeeId, setEmployeeId] = useState('')
   const [examTypeId, setExamTypeId] = useState('')
@@ -361,7 +360,7 @@ export default function CampusTeacherExamAnalysisPage() {
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <div className="mb-3 flex items-start gap-3">
-                    <img src={SCHOOL_LOGO_PATH} alt="" className="h-10 w-10 object-contain" />
+                    <img src={logoSrc} alt="" className="h-10 w-10 object-contain" />
                     <div>
                       <h2 className="text-lg font-bold text-slate-900">{schoolName}</h2>
                       <p className="text-sm text-slate-600">{campusLabel}</p>

@@ -1,4 +1,4 @@
-import { SCHOOL_LOGO_PATH, SCHOOL_NAME } from '../../../constants/branding'
+import { getCampusPrintMeta } from '../../../utils/campusProfile'
 import {
   TT_FORMAT,
   buildSlotMaps,
@@ -224,7 +224,9 @@ function renderTeacherWise(detail, { withFree, withSerial }) {
 export function openTimetablePrint(detail, { campusLabel = '' } = {}) {
   const formatType = getId(detail, 'formatType', 'FormatType')
   const title = printTitle(detail)
-  const logoSrc = typeof SCHOOL_LOGO_PATH === 'string' ? SCHOOL_LOGO_PATH : String(SCHOOL_LOGO_PATH || '')
+  const printMeta = getCampusPrintMeta()
+  const logoSrc = printMeta.logoSrc || ''
+  const schoolName = printMeta.schoolName || ''
 
   const tableHtml =
     formatType === TT_FORMAT.CLASS_WISE
@@ -248,7 +250,7 @@ export function openTimetablePrint(detail, { campusLabel = '' } = {}) {
     ${logoSrc ? `<img class="print-logo" src="${escapeHtml(logoSrc)}" alt="" />` : ''}
     <div class="print-head-text">
       <h1 class="sheet-title">${escapeHtml(title)}</h1>
-      <p class="sheet-sub">${escapeHtml(SCHOOL_NAME)}${campusLabel ? ` · ${escapeHtml(campusLabel)}` : ''}</p>
+      <p class="sheet-sub">${escapeHtml(schoolName)}${campusLabel ? ` · ${escapeHtml(campusLabel)}` : ''}</p>
     </div>
   </div>
   ${tableHtml}

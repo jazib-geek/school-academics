@@ -27,7 +27,7 @@ import {
 } from 'lucide-react'
 import CampusShell from '../../../components/campus/CampusShell.jsx'
 import { PermissionControl } from '../../../components/campus/CampusPermissionUi.jsx'
-import { SCHOOL_NAME } from '../../../constants/branding'
+import { getCampusPrintMeta } from '../../../utils/campusProfile'
 import { getPakistanTodayIso } from '../../../utils/pakistanDate'
 import { getCampusDashboard } from '../../../services/campusDashboardService'
 
@@ -368,6 +368,7 @@ function DashboardPage() {
   const navigate = useNavigate()
   const username = localStorage.getItem('username') || 'Admin'
   const campus = localStorage.getItem('campus') || ''
+  const { schoolName } = getCampusPrintMeta()
 
   const [now, setNow] = useState(() => new Date())
   const [isLoading, setIsLoading] = useState(true)
@@ -962,7 +963,7 @@ function DashboardPage() {
         </div>
 
         <footer className="mt-auto pt-4 pb-2 text-center text-xs text-slate-400">
-          © {now.getFullYear()} {SCHOOL_NAME}. All rights reserved.
+          © {now.getFullYear()} {schoolName || 'Campus'}. All rights reserved.
         </footer>
       </div>
     </CampusShell>

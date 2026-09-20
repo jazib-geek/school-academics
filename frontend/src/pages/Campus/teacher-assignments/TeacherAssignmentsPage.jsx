@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { BookOpenCheck, FileText, GraduationCap, Loader2, Pencil, Printer, Search, UserRound, X } from 'lucide-react'
 import CampusShell from '../../../components/campus/CampusShell'
-import { getCampusLabel, SCHOOL_LOGO_PATH, SCHOOL_NAME } from '../../../constants/branding'
+import { getCampusLabel } from '../../../constants/branding'
+import { getCampusPrintMeta } from '../../../utils/campusProfile'
 import { getClasses } from '../../../services/classService'
 import { sortClassesByCustomOrder } from '../../../services/classSort'
 import { getSubjects } from '../../../services/subjectService'
@@ -528,7 +529,7 @@ function ReportModal({ open, matrix, campusLabel, onClose }) {
   const printedAt = new Date().toLocaleString()
 
   const printReport = () => {
-    const logoSrc = new URL(SCHOOL_LOGO_PATH, window.location.origin).href
+    const { logoSrc, schoolName } = getCampusPrintMeta()
     const tableHtml = matrix.classes.length
       ? `
         <table>
@@ -606,7 +607,7 @@ function ReportModal({ open, matrix, campusLabel, onClose }) {
               <img src="${logoSrc}" alt="" />
               <div>
                 <p class="eyebrow">Teacher class subject report</p>
-                <h1>${escapeHtml(SCHOOL_NAME)}</h1>
+                <h1>${escapeHtml(schoolName)}</h1>
                 <p class="campus">${escapeHtml(campusLabel)}</p>
               </div>
             </div>

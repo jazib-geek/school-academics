@@ -1,13 +1,11 @@
 import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { employeeLoginWithCampus } from '../../services/employeeAuthService'
-import { CAMPUS_OPTIONS, SCHOOL_LOGO_PATH, SCHOOL_NAME } from '../../constants/branding'
+import { getAppCampusOptions } from '../../constants/branding'
+import { resolveCampusLogoSrc } from '../../utils/campusBranding'
 
 function EmployeeLoginPage() {
-  const isProduction = import.meta.env.PROD
-  const campusOptions = isProduction
-    ? CAMPUS_OPTIONS.filter((item) => item.value !== 'local')
-    : CAMPUS_OPTIONS
+  const campusOptions = getAppCampusOptions()
 
   const savedCampus = localStorage.getItem('employeeCampus') || ''
   const initialCampus = campusOptions.some((item) => item.value === savedCampus)
@@ -60,11 +58,11 @@ function EmployeeLoginPage() {
         <div className="w-full rounded-3xl bg-white/95 p-8 shadow-2xl backdrop-blur">
           <div className="mb-8 text-center">
             <img
-              src={SCHOOL_LOGO_PATH}
-              alt={`${SCHOOL_NAME} logo`}
+              src={resolveCampusLogoSrc()}
+              alt=""
               className="mx-auto mb-4 h-20 w-20 rounded-xl object-contain"
             />
-            <h1 className="text-4xl font-bold leading-tight text-indigo-900">{SCHOOL_NAME}</h1>
+            <h1 className="text-4xl font-bold leading-tight text-indigo-900">Employee sign in</h1>
             <p className="mt-2 text-sm text-slate-500">Sign in to access your employee dashboard</p>
           </div>
 

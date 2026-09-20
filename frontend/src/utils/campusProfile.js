@@ -1,8 +1,10 @@
-import { getCampusLabel, SCHOOL_NAME } from '../constants/branding'
+import { getCampusLabel } from '../constants/branding'
+import {
+  getCampusSchoolNameDisplay,
+  resolveCampusLogoSrc,
+} from './campusBranding'
 
 const CAMPUS_PROFILE_KEY = 'campusProfile'
-
-const FALLBACK_PHONE = '055-3840658'
 
 export const getStoredCampusProfile = () => {
   try {
@@ -196,6 +198,7 @@ export function normalizeCampusProfile(raw) {
   return {
     id: Number(raw?.id ?? raw?.Id) || 0,
     schoolName: trimStr(raw?.schoolName ?? raw?.SchoolName) || null,
+    schoolLogo: trimStr(raw?.schoolLogo ?? raw?.SchoolLogo) || null,
     campusLabel: trimStr(raw?.campusLabel ?? raw?.CampusLabel) || null,
     streetAddress: trimStr(raw?.streetAddress ?? raw?.StreetAddress) || null,
     address: trimStr(raw?.address ?? raw?.Address) || null,
@@ -251,49 +254,50 @@ function defaultFeeYears() {
  * Shared branding/meta for fee receipts and Student / Fee / Attendance / Exam report headers.
  */
 export function getCampusPrintMeta() {
-  const campusCode = localStorage.getItem('campus') || ''
+  const campusCode =
+    localStorage.getItem('campus') || localStorage.getItem('employeeCampus') || ''
   const profile = getStoredCampusProfile()
-  const schoolName = (profile?.schoolName || SCHOOL_NAME || 'SCIENCE BASE SCHOOL').toUpperCase()
+  const normalized = profile ? normalizeCampusProfile(profile) : null
+  const schoolName = getCampusSchoolNameDisplay(normalized)
   const campusLabel =
-    profile?.campusLabel || getCampusLabel(campusCode) || campusCode.toUpperCase() || 'N/A'
+    normalized?.campusLabel || getCampusLabel(campusCode) || campusCode.toUpperCase() || ''
 
-  const phonesDisplay = profile
-    ? buildPhonesDisplay(profile) || FALLBACK_PHONE
-    : localStorage.getItem('campusPhone') || FALLBACK_PHONE
+  const phonesDisplay = normalized ? buildPhonesDisplay(normalized) : ''
 
   const addressLines = []
-  if (profile?.showAddressOnReceipts !== false) {
-    if (profile?.streetAddress) addressLines.push(profile.streetAddress)
-    if (profile?.address) addressLines.push(profile.address)
+  if (normalized?.showAddressOnReceipts !== false) {
+    if (normalized?.streetAddress) addressLines.push(normalized.streetAddress)
+    if (normalized?.address) addressLines.push(normalized.address)
   }
 
   const feeYears =
-    profile?.feeYears?.length > 0 ? profile.feeYears : defaultFeeYears()
+    normalized?.feeYears?.length > 0 ? normalized.feeYears : defaultFeeYears()
 
-  const session = resolveSessionBounds(profile || {})
+  const session = resolveSessionBounds(normalized || {})
 
   return {
     campusCode,
     schoolName,
     campusLabel,
-    streetAddress: profile?.streetAddress || '',
-    address: profile?.address || '',
+    logoSrc: resolveCampusLogoSrc(normalized),
+    streetAddress: normalized?.streetAddress || '',
+    address: normalized?.address || '',
     addressLines,
     addressDisplay: addressLines.join(', '),
-    phone1: profile?.phone1 || '',
-    phone2: profile?.phone2 || '',
-    landline: profile?.landline || '',
+    phone1: normalized?.phone1 || '',
+    phone2: normalized?.phone2 || '',
+    landline: normalized?.landline || '',
     phonesDisplay,
     /** @deprecated use phonesDisplay — kept for older call sites */
     campusPhone: phonesDisplay,
-    email: profile?.email || '',
+    email: normalized?.email || '',
     sessionLabel: session.label,
     sessionStartMonth: session.startMonth,
     sessionStartYear: session.startYear,
     sessionEndMonth: session.endMonth,
     sessionEndYear: session.endYear,
-    receiptFooterNote: profile?.receiptFooterNote || '',
-    showAddressOnReceipts: profile?.showAddressOnReceipts !== false,
+    receiptFooterNote: normalized?.receiptFooterNote || '',
+    showAddressOnReceipts: normalized?.showAddressOnReceipts !== false,
     feeYears,
   }
 }

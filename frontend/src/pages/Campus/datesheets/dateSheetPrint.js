@@ -1,4 +1,4 @@
-import { SCHOOL_LOGO_PATH, SCHOOL_NAME } from '../../../constants/branding'
+import { getCampusPrintMeta } from '../../../utils/campusProfile'
 import {
   buildDisplayColumns,
   buildEntryMap,
@@ -141,7 +141,9 @@ export function openDateSheetPrint(detail, { campusLabel = '' } = {}) {
   if (!detail) return false
   const title = printTitle(detail)
   const subtitle = getText(detail, 'subtitle', 'Subtitle')
-  const logoSrc = typeof SCHOOL_LOGO_PATH === 'string' ? SCHOOL_LOGO_PATH : String(SCHOOL_LOGO_PATH || '')
+  const printMeta = getCampusPrintMeta()
+  const logoSrc = printMeta.logoSrc || ''
+  const schoolName = printMeta.schoolName || ''
 
   // Do not use noopener — browsers return null for the window handle, which breaks printing.
   const printWindow = window.open('', '_blank', 'width=1200,height=800')
@@ -158,7 +160,7 @@ export function openDateSheetPrint(detail, { campusLabel = '' } = {}) {
   <div class="print-head">
     ${logoSrc ? `<img class="print-logo" src="${escapeHtml(logoSrc)}" alt="" />` : ''}
     <div class="print-head-text">
-      <div style="font-size:12px;font-weight:700;margin-bottom:2px;">${escapeHtml(SCHOOL_NAME)}${campusLabel ? ` — ${escapeHtml(campusLabel)}` : ''}</div>
+      <div style="font-size:12px;font-weight:700;margin-bottom:2px;">${escapeHtml(schoolName)}${campusLabel ? ` — ${escapeHtml(campusLabel)}` : ''}</div>
       <h1 class="sheet-title">${escapeHtml(title)}</h1>
       ${subtitle ? `<p class="sheet-sub">(${escapeHtml(subtitle)})</p>` : ''}
     </div>

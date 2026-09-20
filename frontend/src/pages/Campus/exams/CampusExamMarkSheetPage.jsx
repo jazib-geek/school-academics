@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Loader2, Printer, Search, TableProperties, X } from 'lucide-react'
 import Select from 'react-select'
 import CampusShell from '../../../components/campus/CampusShell.jsx'
-import { SCHOOL_LOGO_PATH } from '../../../constants/branding'
 import { getCampusPrintMeta } from '../../../utils/campusProfile'
 import { getClasses } from '../../../services/classService'
 import { getExamMarkSheet, getExamTypes } from '../../../services/examService'
@@ -61,7 +60,7 @@ export default function CampusExamMarkSheetPage({
   hideControls = false,
   onClose,
 } = {}) {
-  const { campusLabel, schoolName, sessionLabel } = getCampusPrintMeta()
+  const { campusLabel, schoolName, sessionLabel, logoSrc } = getCampusPrintMeta()
 
   const [sectionId, setSectionId] = useState(initialSectionId ? String(initialSectionId) : '')
   const [examTypeId, setExamTypeId] = useState(initialExamTypeId ? String(initialExamTypeId) : '')
@@ -335,7 +334,7 @@ export default function CampusExamMarkSheetPage({
             <div className="border-b border-slate-200 px-5 py-4">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="flex items-start gap-3">
-                  <img src={SCHOOL_LOGO_PATH} alt="" className="h-10 w-10 object-contain" />
+                  <img src={logoSrc} alt="" className="h-10 w-10 object-contain" />
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-wider text-indigo-700">
                       Exam result sheet : {sheet.examTypeName} ({sortLabel})

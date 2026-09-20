@@ -1,4 +1,3 @@
-import { SCHOOL_LOGO_PATH } from '../../../constants/branding'
 import { getCampusPrintMeta } from '../../../utils/campusProfile'
 
 export const EXAM_PRINT_LANDSCAPE_LAYOUTS = new Set(['fancy-card', 'award-12col', 'award-subjects'])
@@ -11,7 +10,7 @@ export function getExamPrintMeta() {
     campusLabel: meta.campusLabel,
     schoolName: meta.schoolName,
     sessionLabel: meta.sessionLabel,
-    logoSrc: SCHOOL_LOGO_PATH,
+    logoSrc: meta.logoSrc,
   }
 }
 

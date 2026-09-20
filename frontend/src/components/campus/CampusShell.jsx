@@ -32,7 +32,8 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { changeCampusPassword, hasAnyCampusPermission, hasCampusPermission, hasCampusPermissionStrict, isCampusSuperAdmin, logout, switchCampusSession } from '../../services/authService'
-import { CAMPUS_OPTIONS, getCampusLabel, SCHOOL_LOGO_PATH, SCHOOL_NAME } from '../../constants/branding'
+import { getAppCampusOptions, getCampusLabel, isCampusAllowedInApp } from '../../constants/branding'
+import { getCampusSchoolName, resolveCampusLogoSrc } from '../../utils/campusBranding'
 import {
   BIOMETRIC_ATTENDANCE_TYPES,
   CAMPUS_PROFILE_CHANGED_EVENT,
@@ -395,9 +396,7 @@ export default function CampusShell({
   const normalizedCampus = getCampusLabel(campus)
   const username = localStorage.getItem('username') || 'Admin'
   const isSuperAdmin = isCampusSuperAdmin()
-  const campusSwitchOptions = import.meta.env.PROD
-    ? CAMPUS_OPTIONS.filter((item) => item.value !== 'local')
-    : CAMPUS_OPTIONS
+  const campusSwitchOptions = getAppCampusOptions()
 
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
   const [isQuickLinksOpen, setIsQuickLinksOpen] = useState(false)
@@ -415,6 +414,13 @@ export default function CampusShell({
   const [attendanceType, setAttendanceType] = useState(() =>
     normalizeBiometricAttendanceType(getStoredCampusProfile()?.biometricAttendanceType),
   )
+  const [instituteBranding, setInstituteBranding] = useState(() => {
+    const profile = getStoredCampusProfile()
+    return {
+      logoSrc: resolveCampusLogoSrc(profile),
+      schoolName: getCampusSchoolName(profile),
+    }
+  })
   const quickLinksRef = useRef(null)
   const campusMenuRef = useRef(null)
   const visibleNav = useMemo(
@@ -445,16 +451,19 @@ export default function CampusShell({
   }, [derivedOpen])
 
   useEffect(() => {
-    const syncAttendanceType = () => {
-      setAttendanceType(
-        normalizeBiometricAttendanceType(getStoredCampusProfile()?.biometricAttendanceType),
-      )
+    const syncProfile = () => {
+      const profile = getStoredCampusProfile()
+      setAttendanceType(normalizeBiometricAttendanceType(profile?.biometricAttendanceType))
+      setInstituteBranding({
+        logoSrc: resolveCampusLogoSrc(profile),
+        schoolName: getCampusSchoolName(profile),
+      })
     }
-    window.addEventListener(CAMPUS_PROFILE_CHANGED_EVENT, syncAttendanceType)
-    window.addEventListener('storage', syncAttendanceType)
+    window.addEventListener(CAMPUS_PROFILE_CHANGED_EVENT, syncProfile)
+    window.addEventListener('storage', syncProfile)
     return () => {
-      window.removeEventListener(CAMPUS_PROFILE_CHANGED_EVENT, syncAttendanceType)
-      window.removeEventListener('storage', syncAttendanceType)
+      window.removeEventListener(CAMPUS_PROFILE_CHANGED_EVENT, syncProfile)
+      window.removeEventListener('storage', syncProfile)
     }
   }, [])
 
@@ -494,6 +503,11 @@ export default function CampusShell({
   const onSwitchCampus = async (nextCampus) => {
     if (!isSuperAdmin || isSwitchingCampus) return
     if (!nextCampus || nextCampus === campus) {
+      setIsCampusMenuOpen(false)
+      return
+    }
+    if (!isCampusAllowedInApp(nextCampus)) {
+      toast.error('That campus is not available on this site.')
       setIsCampusMenuOpen(false)
       return
     }
@@ -601,11 +615,14 @@ export default function CampusShell({
     closeMobileSidebar()
   }
 
+  const instituteName = instituteBranding.schoolName
   const headerTitle = headerContext && hideLoggedCampusInHeader
-    ? `${SCHOOL_NAME} — ${headerContext}`
+    ? (instituteName ? `${instituteName} — ${headerContext}` : headerContext)
     : headerContext
-    ? `${SCHOOL_NAME} — ${headerContext} · ${normalizedCampus}`
-    : `${SCHOOL_NAME} - ${normalizedCampus}`
+    ? (instituteName
+        ? `${instituteName} — ${headerContext} · ${normalizedCampus}`
+        : `${headerContext} · ${normalizedCampus}`)
+    : (instituteName ? `${instituteName} - ${normalizedCampus}` : normalizedCampus)
 
   const renderNavItem = (item) => {
     const Icon = item.icon
@@ -743,7 +760,7 @@ export default function CampusShell({
                   </button>
                 ) : null}
                 <div className="hidden min-w-0 items-center gap-2 rounded-lg border border-indigo-100 bg-white px-3 py-1.5 lg:flex">
-                  <img src={SCHOOL_LOGO_PATH} alt={`${SCHOOL_NAME} logo`} className="h-5 w-5 shrink-0 object-contain" />
+                  <img src={instituteBranding.logoSrc} alt="" className="h-5 w-5 shrink-0 object-contain" />
                   <p className="truncate text-sm font-semibold">{headerTitle}</p>
                 </div>
               </div>
@@ -987,7 +1004,7 @@ export default function CampusShell({
             </div>
 
             <div className="flex h-7 items-center gap-2 border-t border-indigo-100/80 bg-indigo-50/70 px-3 lg:hidden">
-              <img src={SCHOOL_LOGO_PATH} alt="" className="h-4 w-4 shrink-0 object-contain" />
+              <img src={instituteBranding.logoSrc} alt="" className="h-4 w-4 shrink-0 object-contain" />
               <p className="min-w-0 truncate text-[11px] font-semibold leading-none text-slate-700">
                 {headerContext && hideLoggedCampusInHeader
                   ? headerContext

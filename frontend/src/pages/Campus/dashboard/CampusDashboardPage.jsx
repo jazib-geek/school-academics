@@ -23,7 +23,8 @@ import {
 import { useNavigate } from 'react-router-dom'
 import Chart from 'chart.js/auto'
 import CampusShell from '../../../components/campus/CampusShell.jsx'
-import { CAMPUS_OPTIONS, getCampusLabel, SCHOOL_LOGO_PATH, SCHOOL_NAME, sortCampusItems } from '../../../constants/branding'
+import { getAppCampusOptions, getCampusLabel, isCampusAllowedInApp, showAllCampusesDashboard, sortCampusItems } from '../../../constants/branding'
+import { getCampusPrintMeta } from '../../../utils/campusProfile'
 import { sortClassesByCustomOrder } from '../../../services/classSort'
 import {
   getAllCampusesAdmissionsByMonth,
@@ -48,15 +49,23 @@ const CAMPUS_COMPARISON_ACCENTS = [
   { ring: 'border-violet-200', bg: 'bg-violet-50', text: 'text-violet-700', bar: 'bg-violet-500' },
   { ring: 'border-cyan-200', bg: 'bg-cyan-50', text: 'text-cyan-700', bar: 'bg-cyan-500' },
 ]
-const HIDE_LOCAL_CAMPUS = import.meta.env.PROD
 const isLocalCampus = (value) => String(value || '').trim().toLowerCase() === 'local'
-const visibleCampusOptions = CAMPUS_OPTIONS.filter((item) => !HIDE_LOCAL_CAMPUS || !isLocalCampus(item.value))
+const visibleCampusOptions = getAppCampusOptions()
 const filterProductionCampusRows = (rows = [], keySelector = (row) => row?.key ?? row?.campus) =>
   sortCampusItems(
-    HIDE_LOCAL_CAMPUS ? rows.filter((row) => !isLocalCampus(keySelector(row))) : rows,
+    (rows || []).filter((row) => {
+      const key = keySelector(row)
+      if (import.meta.env.PROD && isLocalCampus(key)) return false
+      return isCampusAllowedInApp(key)
+    }),
     keySelector,
   )
-const TAB_OPTIONS = [{ value: ALL_TAB, label: 'All Campuses' }, ...visibleCampusOptions]
+const TAB_OPTIONS = showAllCampusesDashboard()
+  ? [{ value: ALL_TAB, label: 'All Campuses' }, ...visibleCampusOptions]
+  : [...visibleCampusOptions]
+const initialDashboardTab = showAllCampusesDashboard()
+  ? ALL_TAB
+  : visibleCampusOptions[0]?.value || ALL_TAB
 const EXPENSE_INTERVAL_OPTIONS = [
   { value: 1, label: 'Today' },
   { value: 7, label: 'Last 7 days' },
@@ -202,7 +211,7 @@ const buildPrintTotals = (rows) => rows.reduce(
 )
 
 const printCampusComparisonReport = (campuses, reportDate) => {
-  const logoSrc = new URL(SCHOOL_LOGO_PATH, window.location.origin).href
+  const { logoSrc, schoolName } = getCampusPrintMeta()
   const printedAt = formatPakistanDateTime()
   const totals = buildPrintTotals(campuses)
   const totalAverageTuitionFee = totals.activeStudentCount > 0
@@ -307,7 +316,7 @@ const printCampusComparisonReport = (campuses, reportDate) => {
             <img src="${logoSrc}" alt="" />
             <div>
               <p class="eyebrow">Campus comparison report</p>
-              <h1>${escapeHtml(SCHOOL_NAME)}</h1>
+              <h1>${escapeHtml(schoolName)}</h1>
               <p class="meta">All campuses snapshot${reportDate ? ` &bull; ${escapeHtml(formatDate(reportDate))}` : ''}</p>
             </div>
           </div>
@@ -1609,7 +1618,10 @@ function LeftStudentsModal({ open, campusName, monthLabel, detail, isLoading, er
 function CampusSelector({ activeTab, onChange, availableCampuses }) {
   const [open, setOpen] = useState(false)
   const selectorRef = useRef(null)
-  const available = new Set([ALL_TAB, ...availableCampuses.map((item) => item.campus?.toLowerCase())])
+  const available = new Set([
+    ...(showAllCampusesDashboard() ? [ALL_TAB] : []),
+    ...availableCampuses.map((item) => item.campus?.toLowerCase()),
+  ])
   const options = TAB_OPTIONS.filter((item) => available.has(item.value.toLowerCase()))
   const selected = options.find((item) => item.value === activeTab) || options[0] || TAB_OPTIONS[0]
   const selectedLabel = selected.value === ALL_TAB ? selected.label : compactCampusLabel(selected.value, selected.label)
@@ -2293,7 +2305,7 @@ function CampusDetailView({
 
 function CampusDashboardPage() {
   const navigate = useNavigate()
-  const [activeTab, setActiveTab] = useState(ALL_TAB)
+  const [activeTab, setActiveTab] = useState(initialDashboardTab)
   const [tabState, setTabState] = useState({})
   const [admissionsMonth, setAdmissionsMonth] = useState(() => getPakistanCurrentMonth())
   const [admissionsByMonth, setAdmissionsByMonth] = useState(null)
@@ -2453,7 +2465,11 @@ function CampusDashboardPage() {
   }, [campusFeeBreakdownCache])
 
   useEffect(() => {
-    loadTab(ALL_TAB)
+    if (showAllCampusesDashboard()) {
+      loadTab(ALL_TAB)
+    } else {
+      loadTab(initialDashboardTab)
+    }
   }, [loadTab])
 
   // Load chart data one-by-one after the main all-campus dashboard finishes.
@@ -2512,7 +2528,9 @@ function CampusDashboardPage() {
   }, [activeTab, campusFeeBreakdownMonth, loadCampusFeeBreakdownByMonth])
 
   const onTabChange = (tab) => {
-    if (HIDE_LOCAL_CAMPUS && isLocalCampus(tab)) return
+    if (import.meta.env.PROD && isLocalCampus(tab)) return
+    if (tab === ALL_TAB && !showAllCampusesDashboard()) return
+    if (tab !== ALL_TAB && !isCampusAllowedInApp(tab)) return
     setActiveTab(tab)
     loadTab(tab)
   }

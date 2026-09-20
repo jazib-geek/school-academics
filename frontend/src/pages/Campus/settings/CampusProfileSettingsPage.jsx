@@ -5,6 +5,7 @@ import CampusShell from '../../../components/campus/CampusShell.jsx'
 import { PermissionControl } from '../../../components/campus/CampusPermissionUi.jsx'
 import { hasCampusPermission } from '../../../services/authService'
 import { getCampusProfile, updateCampusProfile } from '../../../services/campusProfileService'
+import { normalizeSchoolLogo } from '../../../utils/campusBranding'
 import {
   BIOMETRIC_ATTENDANCE_TYPES,
   MONTH_OPTIONS,
@@ -21,6 +22,7 @@ const emptyForm = () => {
   const year = new Date().getFullYear()
   return {
     schoolName: '',
+    schoolLogo: '',
     campusLabel: '',
     streetAddress: '',
     address: '',
@@ -53,6 +55,7 @@ const mapDtoToForm = (dto) => {
   const n = normalizeCampusProfile(dto || {})
   return {
     schoolName: n.schoolName || '',
+    schoolLogo: n.schoolLogo || '',
     campusLabel: n.campusLabel || '',
     streetAddress: n.streetAddress || '',
     address: n.address || '',
@@ -123,6 +126,25 @@ function CampusProfileSettingsPage() {
     form.sessionEndYear,
   ])
 
+  const onLogoFile = (event) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please choose an image file.')
+      event.target.value = ''
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = () => {
+      const result = typeof reader.result === 'string' ? reader.result : ''
+      if (result) {
+        setForm((previous) => ({ ...previous, schoolLogo: result }))
+      }
+    }
+    reader.readAsDataURL(file)
+    event.target.value = ''
+  }
+
   const onChange = (event) => {
     const { name, value, type, checked } = event.target
     setForm((previous) => {
@@ -191,6 +213,7 @@ function CampusProfileSettingsPage() {
     try {
       const payload = {
         schoolName: form.schoolName.trim() || null,
+        schoolLogo: form.schoolLogo?.trim() || null,
         campusLabel: form.campusLabel.trim() || null,
         streetAddress: form.streetAddress.trim() || null,
         address: form.address.trim() || null,
@@ -278,6 +301,37 @@ function CampusProfileSettingsPage() {
                               onChange={onChange}
                             />
                           </label>
+                        </div>
+                        <div className="space-y-2">
+                          <span className="block text-sm font-medium text-slate-700">School logo</span>
+                          {canManage ? (
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={onLogoFile}
+                              className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-md file:border-0 file:bg-indigo-50 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-indigo-800 hover:file:bg-indigo-100"
+                            />
+                          ) : null}
+                          {normalizeSchoolLogo(form.schoolLogo) ? (
+                            <div className="flex items-center gap-3">
+                              <img
+                                src={normalizeSchoolLogo(form.schoolLogo)}
+                                alt=""
+                                className="h-20 w-auto max-w-[200px] rounded border border-slate-200 bg-white object-contain p-1"
+                              />
+                              {canManage ? (
+                                <button
+                                  type="button"
+                                  className="text-sm text-rose-600 hover:underline"
+                                  onClick={() => setForm((prev) => ({ ...prev, schoolLogo: '' }))}
+                                >
+                                  Remove logo
+                                </button>
+                              ) : null}
+                            </div>
+                          ) : (
+                            <p className="text-xs text-slate-500">No logo set yet.</p>
+                          )}
                         </div>
                       </div>
 

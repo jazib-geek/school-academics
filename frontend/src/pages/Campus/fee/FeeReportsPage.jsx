@@ -41,7 +41,6 @@ import Select from 'react-select'
 import Chart from 'chart.js/auto'
 import CampusShell from '../../../components/campus/CampusShell.jsx'
 import { FEE_REPORT_PERMISSIONS } from '../../../constants/campusPermissions.js'
-import { SCHOOL_LOGO_PATH } from '../../../constants/branding'
 import { getCampusFundTypes, hasCampusPermission } from '../../../services/authService'
 import { getCampusPrintMeta } from '../../../utils/campusProfile'
 import { amountToWordsPk } from '../../../utils/amountToWordsPk'
@@ -495,7 +494,7 @@ function buildDefaultParams(report, fundTypes = []) {
 }
 
 function FeeReportsPage() {
-  const { campusLabel, phonesDisplay: campusPhone, schoolName } = getCampusPrintMeta()
+  const { campusLabel, phonesDisplay: campusPhone, schoolName, logoSrc } = getCampusPrintMeta()
   const [searchParams, setSearchParams] = useSearchParams()
 
   const [catalog, setCatalog] = useState([])
@@ -1705,7 +1704,7 @@ function FeeReportsPage() {
                                 }}
                               >
                                 <img
-                                  src={SCHOOL_LOGO_PATH}
+                                  src={logoSrc}
                                   alt=""
                                   style={{
                                     height: 64,

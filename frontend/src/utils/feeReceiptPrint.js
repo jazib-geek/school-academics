@@ -1,4 +1,3 @@
-import { SCHOOL_LOGO_PATH } from '../constants/branding'
 import { getCampusPrintMeta } from './campusProfile'
 
 const formatPakistanDateDisplay = (value) => {
@@ -212,7 +211,7 @@ export function printFeeReceipts(receipts, options = {}) {
     addressDisplay: meta.addressDisplay,
     receiptFooterNote: meta.receiptFooterNote,
   }
-  const logoUrl = new URL(SCHOOL_LOGO_PATH, window.location.origin).href
+  const logoUrl = meta.logoSrc
   const perPage = 2
   const invoiceRows = rows.map((receipt) => buildDualReceiptHtml(receipt, branding, logoUrl, watermark))
   const pages = Array.from({ length: Math.ceil(invoiceRows.length / perPage) }, (_, index) => {
@@ -532,7 +531,7 @@ export function buildFeeReceiptPreviewHtml(receipt, options = {}) {
     addressDisplay: meta.addressDisplay,
     receiptFooterNote: meta.receiptFooterNote,
   }
-  const logoUrl = new URL(SCHOOL_LOGO_PATH, window.location.origin).href
+  const logoUrl = meta.logoSrc
   const body = buildReceiptCopyHtml(receipt, {
     includeTime: true,
     signatureLabel: 'Signature',

@@ -23,7 +23,8 @@ import {
   Wallet,
   X,
 } from 'lucide-react'
-import { getCampusLabel, SCHOOL_LOGO_PATH, SCHOOL_NAME } from '../../../constants/branding'
+import { getCampusLabel } from '../../../constants/branding'
+import { getCampusPrintMeta } from '../../../utils/campusProfile'
 
 const dash = (value) => {
   if (value == null || value === '') return '—'
@@ -214,8 +215,11 @@ export default function StudentProfileModal({
   if (!detail) return null
 
   const campusCode = localStorage.getItem('campus') || ''
-  const campusLabel = getCampusLabel(campusCode)
-  const campusPhone = localStorage.getItem('campusPhone') || '055-3840658'
+  const printMeta = getCampusPrintMeta()
+  const campusLabel = printMeta.campusLabel || getCampusLabel(campusCode)
+  const campusPhone = printMeta.phonesDisplay
+  const schoolName = printMeta.schoolName
+  const logoSrc = printMeta.logoSrc
   const preparedBy = localStorage.getItem('username') || 'Admin'
   const isActive = detail.isActive !== false
 
@@ -257,13 +261,13 @@ export default function StudentProfileModal({
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
               <img
-                src={SCHOOL_LOGO_PATH}
+                src={logoSrc}
                 alt=""
                 className="h-12 w-12 shrink-0 rounded-full object-contain sm:h-14 sm:w-14"
               />
               <div className="min-w-0">
                 <h2 id="student-profile-title" className="text-base font-bold uppercase tracking-wide text-[var(--campus-primary)] sm:text-lg">
-                  {SCHOOL_NAME}
+                  {schoolName}
                 </h2>
                 <p className="text-xs text-slate-500 sm:text-sm">{campusLabel}</p>
                 <p className="text-xs text-slate-500">Tel: {campusPhone}</p>

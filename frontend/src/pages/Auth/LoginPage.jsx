@@ -2,13 +2,11 @@ import { useEffect, useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import { isAuthenticated, loginWithCampus, resolveCampusPostLoginPath } from '../../services/authService'
-import { CAMPUS_OPTIONS, SCHOOL_LOGO_PATH, SCHOOL_NAME } from '../../constants/branding'
+import { getAppCampusOptions } from '../../constants/branding'
+import { resolveCampusLogoSrc } from '../../utils/campusBranding'
 
 function LoginPage() {
-  const isProduction = import.meta.env.PROD
-  const campusOptions = isProduction
-    ? CAMPUS_OPTIONS.filter((item) => item.value !== 'local')
-    : CAMPUS_OPTIONS
+  const campusOptions = getAppCampusOptions()
 
   const navigate = useNavigate()
   const location = useLocation()
@@ -18,7 +16,7 @@ function LoginPage() {
     ? resolveCampusPostLoginPath(location.state?.from?.pathname)
     : null
 
-  const defaultCampus = isProduction
+  const defaultCampus = import.meta.env.PROD
     ? campusOptions[0]?.value || ''
     : campusOptions.find((item) => item.value === 'local')?.value || campusOptions[0]?.value || ''
 
@@ -87,12 +85,12 @@ function LoginPage() {
         <div className="w-full rounded-3xl bg-white/95 p-8 shadow-2xl backdrop-blur">
           <div className="mb-8 text-center">
             <img
-              src={SCHOOL_LOGO_PATH}
-              alt={`${SCHOOL_NAME} logo`}
+              src={resolveCampusLogoSrc()}
+              alt=""
               className="mx-auto mb-4 h-20 w-20 rounded-xl object-contain"
             />
             <h1 className="text-4xl font-bold leading-tight text-indigo-900">
-              {SCHOOL_NAME}
+              Campus sign in
             </h1>
             <p className="mt-2 text-sm text-slate-500">
               Campus Admin Portal

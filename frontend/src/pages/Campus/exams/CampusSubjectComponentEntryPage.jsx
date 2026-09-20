@@ -5,6 +5,7 @@ import Select from 'react-select'
 import { toast } from 'sonner'
 import CampusShell from '../../../components/campus/CampusShell.jsx'
 import { getCampusLabel } from '../../../constants/branding.js'
+import { getCampusPrintMeta } from '../../../utils/campusProfile'
 import { getClasses } from '../../../services/classService'
 import {
   addSubjectComponentHeader,
@@ -62,6 +63,7 @@ const formatMarks = (value) => {
 export default function CampusSubjectComponentEntryPage() {
   const campus = localStorage.getItem('campus') || 'N/A'
   const campusLabel = getCampusLabel(campus)
+  const { schoolName } = getCampusPrintMeta()
   const [classes, setClasses] = useState([])
   const [examTypes, setExamTypes] = useState([])
   const [sectionId, setSectionId] = useState('')
@@ -602,7 +604,7 @@ export default function CampusSubjectComponentEntryPage() {
           <section className="print-sheet rounded-2xl bg-white p-4 shadow-sm">
             <div className="detail-print-header">
               <div className="detail-print-title-row">
-                <h2 className="detail-print-school">SCIENCE BASE SCHOOL</h2>
+                <h2 className="detail-print-school">{schoolName}</h2>
                 <h2 className="detail-print-name">Detailed Subject Entry</h2>
               </div>
               <div className="detail-print-meta">

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { BarChart3, Loader2, Printer, Search, UserRound, X } from 'lucide-react'
 import CampusShell from '../../../components/campus/CampusShell.jsx'
-import { getCampusLabel, SCHOOL_LOGO_PATH, SCHOOL_NAME } from '../../../constants/branding'
+import { getCampusLabel } from '../../../constants/branding'
+import { getCampusPrintMeta } from '../../../utils/campusProfile'
 import { getTeacherPerformanceGrid } from '../../../services/examService'
 import { getTeacherAssignmentEmployees } from '../../../services/teacherClassSubjectAssignmentService'
 import { FILTER_INPUT_AUTOCOMPLETE_PROPS } from '../../../utils/filterInputProps'
@@ -183,6 +184,7 @@ function TeacherPickerModal({ open, employees, selectedEmployeeId, isLoading, on
 export default function CampusTeacherPerformanceGridPage() {
   const campusCode = localStorage.getItem('campus') || ''
   const campusLabel = getCampusLabel(campusCode)
+  const { schoolName, logoSrc } = getCampusPrintMeta()
   const [employeeId, setEmployeeId] = useState('')
   const [employeeOptions, setEmployeeOptions] = useState([])
   const [grid, setGrid] = useState(null)
@@ -349,9 +351,9 @@ export default function CampusTeacherPerformanceGridPage() {
           {grid ? (
             <div className="print-header-shell hidden items-start justify-between gap-4 border-b border-slate-200 bg-slate-50 px-5 py-4 print:flex">
               <div className="flex items-start gap-3">
-                <img src={SCHOOL_LOGO_PATH} alt="" className="h-10 w-10 object-contain" />
+                <img src={logoSrc} alt="" className="h-10 w-10 object-contain" />
                 <div>
-                  <h2 className="text-lg font-bold text-slate-900">{SCHOOL_NAME}</h2>
+                  <h2 className="text-lg font-bold text-slate-900">{schoolName}</h2>
                   <p className="text-sm text-slate-600">{campusLabel}</p>
                 </div>
               </div>

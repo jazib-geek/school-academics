@@ -26,6 +26,7 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run build
+      - run: npm run build:demo
 
   deploy:
     needs: build
@@ -41,10 +42,17 @@ jobs:
 
       - run: npm install -g npm@11.6.2
       - run: npm ci
-      - run: npm run build
 
-      - id: ftp-server-dir
-        name: Prepare FTP server-dir
+      - id: ftp-config
+        name: Prepare FTP options
+        env:
+          FTP_PROTOCOL: ${{ secrets.FTP_PROTOCOL }}
+        run: |
+          protocol="${FTP_PROTOCOL:-ftp}"
+          echo "protocol=$protocol" >> "$GITHUB_OUTPUT"
+
+      - id: ftp-server-dir-prod
+        name: Prepare production FTP server-dir
         env:
           FTP_REMOTE_DIR: ${{ secrets.FTP_REMOTE_DIR }}
         run: |
@@ -55,18 +63,13 @@ jobs:
           fi
           case "$dir" in /*) ;; *) dir="/$dir" ;; esac
           case "$dir" in */) ;; *) dir="${dir}/" ;; esac
-          echo "Using server-dir: $dir"
+          echo "Using production server-dir: $dir"
           echo "dir=$dir" >> "$GITHUB_OUTPUT"
 
-      - id: ftp-config
-        name: Prepare FTP options
-        env:
-          FTP_PROTOCOL: ${{ secrets.FTP_PROTOCOL }}
-        run: |
-          protocol="${FTP_PROTOCOL:-ftp}"
-          echo "protocol=$protocol" >> "$GITHUB_OUTPUT"
+      - name: Build and upload production dist
+        run: npm run build
 
-      - name: Upload dist to Plesk via FTP
+      - name: Upload production dist to Plesk via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
           server: ${{ secrets.FTP_SERVER }}
@@ -77,6 +80,43 @@ jobs:
           security: loose
           timeout: 180000
           local-dir: ./dist/
-          server-dir: ${{ steps.ftp-server-dir.outputs.dir }}
+          server-dir: ${{ steps.ftp-server-dir-prod.outputs.dir }}
+          dangerous-clean-slate: false
+          log-level: standard
+
+      - id: ftp-server-dir-demo
+        name: Prepare demo FTP server-dir
+        env:
+          FTP_REMOTE_DIR_DEMO: ${{ secrets.FTP_REMOTE_DIR_DEMO }}
+        run: |
+          dir="${FTP_REMOTE_DIR_DEMO// /}"
+          if [ -z "$dir" ]; then
+            echo "::warning::FTP_REMOTE_DIR_DEMO is not set; skipping demo site deploy."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          case "$dir" in /*) ;; *) dir="/$dir" ;; esac
+          case "$dir" in */) ;; *) dir="${dir}/" ;; esac
+          echo "Using demo server-dir: $dir"
+          echo "dir=$dir" >> "$GITHUB_OUTPUT"
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+
+      - name: Build demo dist
+        if: steps.ftp-server-dir-demo.outputs.skip != 'true'
+        run: npm run build:demo
+
+      - name: Upload demo dist to Plesk via FTP
+        if: steps.ftp-server-dir-demo.outputs.skip != 'true'
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ${{ steps.ftp-config.outputs.protocol }}
+          port: 21
+          security: loose
+          timeout: 180000
+          local-dir: ./dist/
+          server-dir: ${{ steps.ftp-server-dir-demo.outputs.dir }}
           dangerous-clean-slate: false
           log-level: standard

@@ -31,7 +31,12 @@ import {
   isEmployeeCoordinator,
   usesPersonalTeachingNav,
 } from '../../services/employeeAppAccess'
-import { getCampusLabel, SCHOOL_LOGO_PATH, SCHOOL_NAME } from '../../constants/branding'
+import { getCampusLabel } from '../../constants/branding'
+import { getCampusSchoolName, resolveCampusLogoSrc } from '../../utils/campusBranding'
+import {
+  CAMPUS_PROFILE_CHANGED_EVENT,
+  getStoredCampusProfile,
+} from '../../utils/campusProfile'
 import EmployeeBottomNavSubmenu from './EmployeeBottomNavSubmenu'
 import { useEmployeeDismissKeyboard } from './EmployeeSelect'
 import './employeeTheme.css'
@@ -64,8 +69,28 @@ function EmployeeLayout({
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false)
   const [isChangingPassword, setIsChangingPassword] = useState(false)
   const [passwordForm, setPasswordForm] = useState(emptyPasswordForm)
+  const [instituteBranding, setInstituteBranding] = useState(() => {
+    const profile = getStoredCampusProfile()
+    return {
+      logoSrc: resolveCampusLogoSrc(profile),
+      schoolName: getCampusSchoolName(profile),
+    }
+  })
 
   useEmployeeDismissKeyboard()
+
+  useEffect(() => {
+    const syncProfile = () => {
+      const profile = getStoredCampusProfile()
+      setInstituteBranding({
+        logoSrc: resolveCampusLogoSrc(profile),
+        schoolName: getCampusSchoolName(profile),
+      })
+    }
+    syncProfile()
+    window.addEventListener(CAMPUS_PROFILE_CHANGED_EVENT, syncProfile)
+    return () => window.removeEventListener(CAMPUS_PROFILE_CHANGED_EVENT, syncProfile)
+  }, [])
 
   const onLogout = () => {
     employeeLogout()
@@ -440,8 +465,8 @@ function EmployeeLayout({
         <div className="mx-auto flex w-full max-w-screen-md items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2.5">
             <img
-              src={SCHOOL_LOGO_PATH}
-              alt={`${SCHOOL_NAME} logo`}
+              src={instituteBranding.logoSrc}
+              alt={instituteBranding.schoolName ? `${instituteBranding.schoolName} logo` : ''}
               className="h-8 w-8 shrink-0 rounded-full bg-[var(--emp-bg)] object-contain p-0.5"
             />
             <div className="min-w-0">
