@@ -1,5 +1,6 @@
 name: Build and deploy to Plesk (FTP)
-# Production (FTP_REMOTE_DIR) + demo subdomain (FTP_REMOTE_DIR_DEMO)
+# Runs on SoftelligentSchoolSuitePro-UI only — push suite-ui master after frontend/ changes (see backend/DEPLOY.md).
+# Production (FTP_REMOTE_DIR) + demo subdomain (FTP_REMOTE_DIR_DEMO). Secrets on this repo.
 
 on:
   push:

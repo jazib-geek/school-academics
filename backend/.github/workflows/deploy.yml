@@ -1,9 +1,8 @@
 name: Build and deploy API to Plesk (FTP)
+# Runs on SoftelligentSchoolSuitePro-API only — push suite-api master after backend/ changes (see backend/DEPLOY.md).
+# Plesk/IIS: deploy renames web.config → web1.config, uploads app_offline.htm, waits, FTP upload, then restores.
 # Use a dedicated FTP user whose Plesk home IS the API site folder (sciencebaseschool.com).
-# Uploads go to FTP login root (./). IIS locks DLLs while running — deploy renames web.config → web1.config around upload (same as manual).
-# Secrets on SoftelligentSchoolSuitePro-API:
-#   FTP_SERVER, FTP_USERNAME, FTP_PASSWORD — API-scoped FTP account only
-#   FTP_PROTOCOL — optional (ftp | ftps)
+# Secrets on this repo: FTP_SERVER, FTP_USERNAME, FTP_PASSWORD, FTP_PROTOCOL (optional)
 
 on:
   push:
@@ -74,7 +73,7 @@ jobs:
       - name: Install lftp
         run: sudo apt-get update && sudo apt-get install -y lftp
 
-      - name: Stop IIS app (release DLL locks)
+      - name: Stop IIS app (web.config rename + app_offline)
         env:
           FTP_SERVER: ${{ secrets.FTP_SERVER }}
           FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
@@ -86,13 +85,23 @@ jobs:
             ftps|ftps-legacy) OPEN="ftps://$FTP_SERVER" ;;
             *) OPEN="$FTP_SERVER" ;;
           esac
-          lftp -u "$FTP_USERNAME","$FTP_PASSWORD" "$OPEN" <<'EOF'
-          set cmd:fail-exit yes
+          APP_OFFLINE="$(mktemp)"
+          printf '%s' '<!DOCTYPE html><html><body><h1>Updating</h1></body></html>' > "$APP_OFFLINE"
+          lftp -u "$FTP_USERNAME","$FTP_PASSWORD" "$OPEN" <<EOF
           set ftp:ssl-allow true
           set ssl:verify-certificate no
+          set cmd:fail-exit no
+          rm -f app_offline.htm
+          mv web1.config web.config
           mv web.config web1.config
+          set cmd:fail-exit yes
+          test -e web1.config
+          put "$APP_OFFLINE" -o app_offline.htm
+          ls -la web.config web1.config app_offline.htm
           bye
           EOF
+          echo "Waiting for IIS to release DLL locks after web.config rename..."
+          sleep 20
 
       - name: Upload to API FTP home (sciencebaseschool.com)
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
@@ -129,9 +138,12 @@ jobs:
             *) OPEN="$FTP_SERVER" ;;
           esac
           lftp -u "$FTP_USERNAME","$FTP_PASSWORD" "$OPEN" <<'EOF'
-          set cmd:fail-exit yes
           set ftp:ssl-allow true
           set ssl:verify-certificate no
+          set cmd:fail-exit no
+          rm -f app_offline.htm
           mv web1.config web.config
+          set cmd:fail-exit yes
+          ls -la web.config app_offline.htm || true
           bye
           EOF
