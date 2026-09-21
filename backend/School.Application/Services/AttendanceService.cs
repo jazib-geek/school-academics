@@ -51,34 +51,16 @@ namespace School.Application.Services
                 })
                 .ToListAsync();
 
-            var monthSummaries = new Dictionary<(int Year, int Month), (string Ratio, string Percentage)>();
-            foreach (var group in records
-                         .Select(r => (Record: r, YearMonth: ResolveAttendanceYearMonth(r.Month, r.Year, r.Date)))
-                         .Where(x => x.YearMonth.HasValue)
-                         .GroupBy(x => x.YearMonth!.Value))
-            {
-                monthSummaries[group.Key] = ComputeStudentMonthAttendanceSummary(
-                    group.Key.Year,
-                    group.Key.Month,
-                    group.Select(x => x.Record.Status));
-            }
-
             var result = new List<AttendanceDto>();
 
             foreach (var r in records)
             {
                 string? monthYear = null;
-                (string Ratio, string Percentage)? summary = null;
 
-                var yearMonth = ResolveAttendanceYearMonth(r.Month, r.Year, r.Date);
-                if (yearMonth.HasValue)
+                if (r.Month.HasValue && r.Year.HasValue)
                 {
-                    var dt = new DateTime(yearMonth.Value.Year, yearMonth.Value.Month, 1);
+                    var dt = new DateTime(r.Year.Value, r.Month.Value, 1);
                     monthYear = dt.ToString("MMMM yyyy", CultureInfo.InvariantCulture);
-                    if (monthSummaries.TryGetValue(yearMonth.Value, out var s))
-                    {
-                        summary = s;
-                    }
                 }
 
                 var sectionName = FormatClassSectionDisplayName(r.SectionClassName, r.SectionSectionName);
@@ -89,9 +71,7 @@ namespace School.Application.Services
                     Status = NormalizeStatusForOutput(r.Status),
                     IsPresent = r.IsPresent,
                     MonthYear = monthYear,
-                    SectionName = sectionName == "-" ? null : sectionName,
-                    AttendanceRatio = summary?.Ratio,
-                    AttendancePercentage = summary?.Percentage
+                    SectionName = sectionName == "-" ? null : sectionName
                 });
             }
 
@@ -521,65 +501,5 @@ namespace School.Application.Services
 
         private static string NormalizeStatusForOutput(string? status) =>
             StudentAttendanceStatuses.CanonicalizeOrDefault(status);
-
-        private static (int Year, int Month)? ResolveAttendanceYearMonth(
-            int? month,
-            int? year,
-            DateTime? date)
-        {
-            if (month.HasValue && year.HasValue)
-            {
-                return (year.Value, month.Value);
-            }
-
-            if (date.HasValue)
-            {
-                return (date.Value.Year, date.Value.Month);
-            }
-
-            return null;
-        }
-
-        private static (string Ratio, string Percentage) ComputeStudentMonthAttendanceSummary(
-            int year,
-            int month,
-            IEnumerable<string?> statuses)
-        {
-            var statusList = statuses.ToList();
-            var daysInCalendarMonth = DateTime.DaysInMonth(year, month);
-            var sundays = CountSundaysInMonth(year, month);
-            var holidayCount = statusList.Count(s =>
-                StudentAttendanceStatuses.EqualsCode(s, StudentAttendanceStatuses.Holiday));
-            var workingDays = daysInCalendarMonth - sundays - holidayCount;
-            if (workingDays < 0)
-            {
-                workingDays = 0;
-            }
-
-            var daysPresent = statusList.Count(s =>
-                StudentAttendanceStatuses.IsInSchool(StudentAttendanceStatuses.CanonicalizeOrDefault(s)));
-
-            var ratio = $"{daysPresent}/{workingDays}";
-            var percentage = workingDays > 0
-                ? $"{(int)Math.Round(daysPresent * 100.0 / workingDays, MidpointRounding.AwayFromZero)}%"
-                : "0%";
-
-            return (ratio, percentage);
-        }
-
-        private static int CountSundaysInMonth(int year, int month)
-        {
-            var daysInMonth = DateTime.DaysInMonth(year, month);
-            var count = 0;
-            for (var day = 1; day <= daysInMonth; day++)
-            {
-                if (new DateTime(year, month, day).DayOfWeek == DayOfWeek.Sunday)
-                {
-                    count++;
-                }
-            }
-
-            return count;
-        }
     }
 }

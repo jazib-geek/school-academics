@@ -14,9 +14,5 @@ namespace School.Application.DTOs
         public string? MonthYear { get; set; }
 
         public string? SectionName { get; set; }
-
-        public string? AttendanceRatio { get; set; }
-
-        public string? AttendancePercentage { get; set; }
     }
 }
