@@ -60,7 +60,7 @@ if [ "$stopped" -ne 1 ]; then
   exit 1
 fi
 
-sleep 15
+sleep 20
 
 echo "=== Upload publish output (lftp mirror) ==="
 uploaded=0
@@ -69,7 +69,8 @@ for attempt in $(seq 1 6); do
       set ftp:ssl-allow true
       set ssl:verify-certificate no
       set cmd:fail-exit yes
-      mirror -R --parallel=2 --verbose \
+      set ftp:use-feat no
+      mirror -R --parallel=1 --no-perms --verbose \
         -X appsettings.json \
         -X 'appsettings.*.json' \
         -X web.config \
@@ -80,7 +81,7 @@ for attempt in $(seq 1 6); do
     break
   fi
   echo "Mirror upload failed (attempt ${attempt}/6), retrying after wait..."
-  sleep 20
+  sleep 25
 done
 
 if [ "$uploaded" -ne 1 ]; then
