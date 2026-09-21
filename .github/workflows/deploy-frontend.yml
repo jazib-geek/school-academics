@@ -1,5 +1,6 @@
-name: Build and deploy to Plesk (FTP)
-# Production (FTP_REMOTE_DIR) + demo subdomain (FTP_REMOTE_DIR_DEMO)
+name: Deploy frontend to Plesk (FTP)
+# Monorepo: runs only when frontend/ (or this file) changes — not with API deploy.
+# Secrets: FTP_SERVER, FTP_USERNAME, FTP_PASSWORD, FTP_REMOTE_DIR, FTP_REMOTE_DIR_DEMO (optional), FTP_PROTOCOL (optional)
 
 on:
   push:
@@ -14,7 +15,7 @@ on:
       - ".github/workflows/deploy-frontend.yml"
 
 concurrency:
-  group: deploy-${{ github.ref }}
+  group: deploy-frontend-${{ github.ref }}
   cancel-in-progress: true
 
 defaults:
