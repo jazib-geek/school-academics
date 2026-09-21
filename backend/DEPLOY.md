@@ -47,13 +47,18 @@ git push suite-ui frontend-ui-release:master
 
 ## Secrets (API repo — SoftelligentSchoolSuitePro-API)
 
-| Secret | Required | Notes |
+| Secret | Required | Value |
 |--------|----------|--------|
-| `FTP_SERVER` | Yes | **FTP hostname** for `lftp` (often `sciencebaseschool.com` on Plesk — not a folder path) |
-| `FTP_USERNAME` | Yes | Site-scoped account (e.g. `ftp_sbs_root`); login root = API files |
+| `FTP_SERVER` | Yes | FTP **hostname only** (e.g. `myhostingserver.com`) — not `sciencebaseschool.com` unless that host is literally your FTP server name |
+| `FTP_USERNAME` | Yes | Site-scoped user (e.g. `ftp_sbs_root`) whose login folder **is** the API site |
 | `FTP_PASSWORD` | Yes | |
 | `FTP_PROTOCOL` | No | `ftp` (default) or `ftps` |
 
-Do **not** set `FTP_REMOTE_DIR` (removed from workflow). Uploads always go to the FTP account home.
+**Remove** (not used by current workflow; old values caused `cd sciencebaseschool.com` → 550):
+
+- `FTP_REMOTE_DIR`
+- `FTP_API_REMOTE_DIR`
+
+Upload path = **FTP account home** (root of that login). No subfolder `cd`.
 
 Deploy flow (see `scripts/ci-deploy-api-ftp.sh`): `app_offline.htm` → rename `web.config` → `web1.config` → `lftp mirror` (excludes `appsettings*.json`, `web.config`) → restore step removes offline file and `web1.config` → `web.config`.
