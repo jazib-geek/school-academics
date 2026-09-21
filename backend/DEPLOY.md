@@ -48,3 +48,5 @@ git push suite-ui frontend-ui-release:master
 ## Secrets
 
 FTP and related secrets live on **each** Suite repo (Settings → Secrets), not on a shared monorepo.
+
+API repo optional secret **`FTP_REMOTE_DIR`** — Plesk folder for site files (e.g. `/httpdocs/`) if the FTP login root is not the site root. The deploy script uses the same path for IIS stop and `lftp mirror`.
