@@ -11,21 +11,10 @@ case "$FTP_PROTOCOL" in
   *) OPEN="$FTP_SERVER" ;;
 esac
 
-REMOTE_DIR="${FTP_REMOTE_DIR:-}"
-REMOTE_DIR="${REMOTE_DIR// /}"
-REMOTE_DIR="${REMOTE_DIR#/}"
-REMOTE_DIR="${REMOTE_DIR%/}"
-
-LFTP_CD=""
-if [ -n "$REMOTE_DIR" ]; then
-  LFTP_CD="cd /${REMOTE_DIR} || exit 1;"
-fi
-
 lftp -u "$FTP_USERNAME","$FTP_PASSWORD" "$OPEN" -e "
   set ftp:ssl-allow true
   set ssl:verify-certificate no
   set cmd:fail-exit no
-  ${LFTP_CD}
   rm -f app_offline.htm
   mv web1.config web.config
   bye

@@ -2,8 +2,8 @@ name: Build and deploy API to Plesk (FTP)
 # Runs on SoftelligentSchoolSuitePro-API only — push suite-api master after backend/ changes (see backend/DEPLOY.md).
 # Plesk/IIS: deploy renames web.config → web1.config, uploads app_offline.htm, waits, FTP upload, then restores.
 # Use a dedicated FTP user whose Plesk home IS the API site folder (sciencebaseschool.com).
-# Secrets on this repo: FTP_SERVER, FTP_USERNAME, FTP_PASSWORD, FTP_PROTOCOL (optional).
-# Do NOT set FTP_REMOTE_DIR when using site-scoped FTP (login home = sciencebaseschool.com).
+# Secrets: FTP_SERVER (FTP hostname, e.g. sciencebaseschool.com), FTP_USERNAME, FTP_PASSWORD, FTP_PROTOCOL (optional).
+# Upload target = FTP login root (site-scoped user). Do not use FTP_REMOTE_DIR.
 
 on:
   push:
@@ -89,7 +89,6 @@ jobs:
           FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
           FTP_PROTOCOL: ${{ steps.ftp-config.outputs.protocol }}
-          FTP_REMOTE_DIR: ${{ secrets.FTP_REMOTE_DIR }}
         run: |
           chmod +x scripts/ci-deploy-api-ftp.sh
           scripts/ci-deploy-api-ftp.sh "${{ env.PUBLISH_DIR }}"
@@ -101,7 +100,6 @@ jobs:
           FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
           FTP_PROTOCOL: ${{ steps.ftp-config.outputs.protocol }}
-          FTP_REMOTE_DIR: ${{ secrets.FTP_REMOTE_DIR }}
         run: |
           chmod +x scripts/ci-restore-api-ftp.sh
           scripts/ci-restore-api-ftp.sh

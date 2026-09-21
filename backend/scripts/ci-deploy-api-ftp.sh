@@ -13,18 +13,7 @@ case "$FTP_PROTOCOL" in
   *) OPEN="$FTP_SERVER" ;;
 esac
 
-REMOTE_DIR="${FTP_REMOTE_DIR:-}"
-REMOTE_DIR="${REMOTE_DIR// /}"
-REMOTE_DIR="${REMOTE_DIR#/}"
-REMOTE_DIR="${REMOTE_DIR%/}"
-
-LFTP_CD=""
-if [ -n "$REMOTE_DIR" ]; then
-  echo "::warning::FTP_REMOTE_DIR is set (${REMOTE_DIR}). Use only when FTP login is subscription home, not site-scoped ftp_sbs_root. Clear the secret if deploy fails with 550 on cd."
-  LFTP_CD="cd /${REMOTE_DIR} || exit 1;"
-else
-  echo "Using FTP login home (no remote cd) — expected for site-scoped API FTP user."
-fi
+echo "Deploying to FTP login root (no remote cd)."
 
 APP_OFFLINE="$(mktemp)"
 printf '%s' '<!DOCTYPE html><html><body><h1>Updating</h1></body></html>' > "$APP_OFFLINE"
@@ -34,7 +23,6 @@ lftp_quiet() {
     set ftp:ssl-allow true
     set ssl:verify-certificate no
     set cmd:fail-exit no
-    ${LFTP_CD}
     $*
     bye
   "
@@ -54,7 +42,6 @@ for attempt in $(seq 1 12); do
     set ftp:ssl-allow true
     set ssl:verify-certificate no
     set cmd:fail-exit no
-    ${LFTP_CD}
     cls -1
     bye
   " 2>/dev/null || true)"
@@ -68,7 +55,7 @@ for attempt in $(seq 1 12); do
 done
 
 if [ "$stopped" -ne 1 ]; then
-  echo "::error::Could not rename web.config to web1.config on FTP. Confirm web.config exists in the API site folder (FTP_REMOTE_DIR / FTP home)."
+  echo "::error::Could not rename web.config to web1.config on FTP. Confirm web.config exists in the API site FTP home."
   lftp_quiet "cls -1" || true
   exit 1
 fi
@@ -82,7 +69,6 @@ for attempt in $(seq 1 6); do
       set ftp:ssl-allow true
       set ssl:verify-certificate no
       set cmd:fail-exit yes
-      ${LFTP_CD}
       mirror -R --parallel=2 --verbose \
         -X appsettings.json \
         -X 'appsettings.*.json' \
