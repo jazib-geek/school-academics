@@ -234,6 +234,7 @@ export function normalizeCampusProfile(raw) {
     ),
     fridayCheckOutTime:
       toTimeInputValue(raw?.fridayCheckOutTime ?? raw?.FridayCheckOutTime) || '12:30',
+    showCreditStudent: Boolean(raw?.showCreditStudent ?? raw?.ShowCreditStudent),
   }
 }
 

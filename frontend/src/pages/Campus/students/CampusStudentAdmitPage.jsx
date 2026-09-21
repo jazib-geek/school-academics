@@ -23,6 +23,11 @@ import {
   searchFamilies,
   updateStudent,
 } from '../../../services/studentService'
+import {
+  CAMPUS_PROFILE_CHANGED_EVENT,
+  getStoredCampusProfile,
+  normalizeCampusProfile,
+} from '../../../utils/campusProfile'
 
 const inputClass =
   'h-10 w-full rounded-lg border bg-white px-3 text-sm text-slate-800 outline-none transition focus:ring-2'
@@ -70,6 +75,7 @@ const emptyForm = () => {
     gender: 'Male',
     isOrphan: false,
     isHafiz: false,
+    isCreditStudent: false,
     religion: 'Muslim',
     dateOfBirth: '',
     bFormNum: '',
@@ -141,6 +147,7 @@ function mapDetailToForm(detail) {
     gender: detail.gender || 'Male',
     isOrphan: Boolean(detail.isOrphan),
     isHafiz: Boolean(detail.isHafiz),
+    isCreditStudent: Boolean(detail.isCreditStudent),
     religion: detail.religion || 'Muslim',
     dateOfBirth: toDateInput(detail.dateOfBirth),
     bFormNum: detail.bFormNum || '',
@@ -198,6 +205,9 @@ function CampusStudentAdmitPage() {
   const isEdit = Number.isFinite(editRegId) && editRegId > 0
   const familyInfoRef = useRef(null)
   const [form, setForm] = useState(emptyForm)
+  const [showCreditStudent, setShowCreditStudent] = useState(
+    () => normalizeCampusProfile(getStoredCampusProfile() || {}).showCreditStudent,
+  )
   const [classes, setClasses] = useState([])
   const [lookups, setLookups] = useState({
     localities: [],
@@ -277,6 +287,15 @@ function CampusStudentAdmitPage() {
     if (!showErrors) return
     setErrors(validate(form))
   }, [form, showErrors, validate])
+
+  useEffect(() => {
+    const syncProfile = () => {
+      setShowCreditStudent(normalizeCampusProfile(getStoredCampusProfile() || {}).showCreditStudent)
+    }
+    syncProfile()
+    window.addEventListener(CAMPUS_PROFILE_CHANGED_EVENT, syncProfile)
+    return () => window.removeEventListener(CAMPUS_PROFILE_CHANGED_EVENT, syncProfile)
+  }, [])
 
   const load = useCallback(async () => {
     setIsLoading(true)
@@ -401,6 +420,7 @@ function CampusStudentAdmitPage() {
     gender: form.gender || null,
     isOrphan: Boolean(form.isOrphan),
     isHafiz: Boolean(form.isHafiz),
+    isCreditStudent: showCreditStudent ? Boolean(form.isCreditStudent) : false,
     religion: form.religion || null,
     dateOfBirth: form.dateOfBirth || null,
     bFormNum: form.bFormNum.trim() || null,
@@ -609,7 +629,18 @@ function CampusStudentAdmitPage() {
                   <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
                     <div className="mb-1 text-xs font-semibold uppercase text-slate-500">Flags</div>
                     <label className="mr-3 inline-flex items-center gap-1.5 text-sm"><input type="checkbox" checked={form.isOrphan} onChange={(e) => setValue('isOrphan', e.target.checked)} className="accent-[var(--campus-primary)]" />Orphan</label>
-                    <label className="inline-flex items-center gap-1.5 text-sm"><input type="checkbox" checked={form.isHafiz} onChange={(e) => setValue('isHafiz', e.target.checked)} className="accent-[var(--campus-primary)]" />Hafiz</label>
+                    <label className="mr-3 inline-flex items-center gap-1.5 text-sm"><input type="checkbox" checked={form.isHafiz} onChange={(e) => setValue('isHafiz', e.target.checked)} className="accent-[var(--campus-primary)]" />Hafiz</label>
+                    {showCreditStudent ? (
+                      <label className="inline-flex items-center gap-1.5 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={form.isCreditStudent}
+                          onChange={(e) => setValue('isCreditStudent', e.target.checked)}
+                          className="accent-[var(--campus-primary)]"
+                        />
+                        Credit student
+                      </label>
+                    ) : null}
                   </div>
                   <fieldset className="rounded-lg border border-slate-200 bg-white px-3 py-2">
                     <legend className="px-1 text-xs font-semibold uppercase text-slate-500">Religion</legend>

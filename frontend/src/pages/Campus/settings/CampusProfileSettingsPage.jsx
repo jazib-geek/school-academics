@@ -48,6 +48,7 @@ const emptyForm = () => {
     adminEarlyMinutes: 30,
     coordinatorEarlyMinutes: 15,
     fridayCheckOutTime: '12:30',
+    showCreditStudent: false,
   }
 }
 
@@ -81,6 +82,7 @@ const mapDtoToForm = (dto) => {
     adminEarlyMinutes: n.adminEarlyMinutes,
     coordinatorEarlyMinutes: n.coordinatorEarlyMinutes,
     fridayCheckOutTime: n.fridayCheckOutTime || '12:30',
+    showCreditStudent: n.showCreditStudent,
   }
 }
 
@@ -239,6 +241,7 @@ function CampusProfileSettingsPage() {
         adminEarlyMinutes: Number(form.adminEarlyMinutes) || 0,
         coordinatorEarlyMinutes: Number(form.coordinatorEarlyMinutes) || 0,
         fridayCheckOutTime: form.fridayCheckOutTime || '12:30',
+        showCreditStudent: form.showCreditStudent,
       }
       const saved = await updateCampusProfile(payload)
       setForm(mapDtoToForm(saved))
@@ -563,6 +566,16 @@ function CampusProfileSettingsPage() {
                             onChange={onChange}
                           />
                           Show address on fee receipts
+                        </label>
+                        <label className="inline-flex items-center gap-2 text-sm text-slate-700">
+                          <input
+                            type="checkbox"
+                            name="showCreditStudent"
+                            checked={form.showCreditStudent}
+                            disabled={!canManage}
+                            onChange={onChange}
+                          />
+                          Show credit student on admission and student list
                         </label>
                       </div>
 

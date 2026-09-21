@@ -6,7 +6,7 @@ import {
 import { clearCampusProfile, persistCampusProfile } from '../utils/campusProfile'
 
 const LOGIN_PATH = import.meta.env.VITE_LOGIN_PATH || '/api/auth/login'
-const CAMPUS_HEADER = import.meta.env.VITE_CAMPUS_HEADER || 'Campus'
+const CAMPUS_HEADER = import.meta.env.VITE_CAMPUS_HEADER || 'X-Campus'
 const PERMISSIONS_KEY = 'campusPermissions'
 const SUPER_ADMIN_KEY = 'campusIsSuperAdmin'
 const FUND_TYPES_KEY = 'campusFundTypes'

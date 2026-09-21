@@ -13,4 +13,5 @@ public class StudentListItemDto
     public string? Gender { get; set; }
     public bool? IsActive { get; set; }
     public DateTime? RegDate { get; set; }
+    public bool IsCreditStudent { get; set; }
 }

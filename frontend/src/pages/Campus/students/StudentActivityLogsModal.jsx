@@ -13,6 +13,7 @@ const FIELD_LABELS = {
   gender: 'Gender',
   isOrphan: 'Orphan',
   isHafiz: 'Hafiz',
+  isCreditStudent: 'Credit student',
   religion: 'Religion',
   dateOfBirth: 'Date of birth',
   bFormNum: 'B-Form',

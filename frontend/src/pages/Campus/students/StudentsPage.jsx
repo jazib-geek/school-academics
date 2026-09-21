@@ -39,7 +39,12 @@ import {
   AccessForbiddenPanel,
   PermissionControl,
 } from '../../../components/campus/CampusPermissionUi.jsx'
-import { getCampusPrintMeta } from '../../../utils/campusProfile'
+import {
+  CAMPUS_PROFILE_CHANGED_EVENT,
+  getCampusPrintMeta,
+  getStoredCampusProfile,
+  normalizeCampusProfile,
+} from '../../../utils/campusProfile'
 import { printFeeReceipts } from '../../../utils/feeReceiptPrint'
 import { FILTER_INPUT_AUTOCOMPLETE_PROPS } from '../../../utils/filterInputProps'
 import { clampToPakistanToday, getPakistanTodayIso } from '../../../utils/pakistanDate.js'
@@ -55,6 +60,7 @@ const initialFilters = {
   reg_Id: '',
   status: 'active',
   gender: '',
+  creditFilter: '',
   pageNumber: 1,
   pageSize: 20,
 }
@@ -102,6 +108,82 @@ const statusFilterRadioClass = (value) => {
   if (value === 'active') return 'accent-emerald-600'
   if (value === 'deactivated') return 'accent-rose-600'
   return 'accent-slate-500'
+}
+
+const creditFilterRadioClass = (value) => {
+  if (value === 'credit') return 'accent-amber-600'
+  if (value === 'not_credit') return 'accent-slate-600'
+  return 'accent-slate-500'
+}
+
+const STUDENT_FILTER_GROUP_THEMES = {
+  sky: {
+    border: 'border-sky-300',
+    title: 'text-sky-800',
+    divider: 'border-sky-200',
+    selectedBg: 'bg-sky-50',
+  },
+  emerald: {
+    border: 'border-emerald-300',
+    title: 'text-emerald-800',
+    divider: 'border-emerald-200',
+    selectedBg: 'bg-emerald-50',
+  },
+  amber: {
+    border: 'border-amber-300',
+    title: 'text-amber-900',
+    divider: 'border-amber-200',
+    selectedBg: 'bg-amber-50',
+  },
+}
+
+function StudentListFilterRadioGroup({
+  title,
+  theme,
+  name,
+  selectedValue,
+  options,
+  onChange,
+  radioClassFn,
+  compact = false,
+}) {
+  const palette = STUDENT_FILTER_GROUP_THEMES[theme]
+  return (
+    <div
+      className={`flex min-h-10 shrink-0 flex-nowrap items-center rounded-lg border bg-white text-[13px] shadow-sm ${palette.border} ${
+        compact ? 'gap-1.5 px-1.5 py-1' : 'gap-2.5 px-2.5 py-1.5'
+      }`}
+    >
+      {!compact && title ? (
+        <span
+          className={`shrink-0 border-r pr-2.5 text-xs font-semibold uppercase tracking-wide ${palette.divider} ${palette.title}`}
+        >
+          {title}
+        </span>
+      ) : null}
+      {options.map(([value, label]) => {
+        const selected = selectedValue === value
+        return (
+          <label
+            key={label}
+            className={`flex cursor-pointer items-center gap-1 whitespace-nowrap rounded-md py-0.5 ${
+              compact ? 'px-1' : 'gap-1.5 px-1.5'
+            } ${selected ? `${palette.selectedBg} font-semibold text-slate-800` : 'text-slate-600'}`}
+          >
+            <input
+              type="radio"
+              name={name}
+              value={value}
+              checked={selected}
+              onChange={() => onChange(value)}
+              className={`shrink-0 ${compact ? 'h-3.5 w-3.5' : 'h-4 w-4'} ${radioClassFn(value)}`}
+            />
+            {label}
+          </label>
+        )
+      })}
+    </div>
+  )
 }
 
 /** Format a date for display using Pakistan calendar day (no UTC midnight shift). */
@@ -1100,6 +1182,9 @@ function StudentsPage() {
   const [filters, setFilters] = useState(initialFilters)
   const filtersRef = useRef(filters)
   filtersRef.current = filters
+  const [showCreditStudent, setShowCreditStudent] = useState(
+    () => normalizeCampusProfile(getStoredCampusProfile() || {}).showCreditStudent,
+  )
   const [result, setResult] = useState({
     items: [],
     totalCount: 0,
@@ -1169,6 +1254,12 @@ function StudentsPage() {
             ? undefined
             : query.status === 'active',
         gender: query.gender || undefined,
+        isCreditStudent:
+          query.creditFilter === 'credit'
+            ? true
+            : query.creditFilter === 'not_credit'
+              ? false
+              : undefined,
         sortBy: 'reg_Id',
         sortDirection: 'desc',
         pageNumber: query.pageNumber,
@@ -1217,6 +1308,15 @@ function StudentsPage() {
     return () => clearTimeout(timerId)
   }, [loadClasses])
 
+  useEffect(() => {
+    const syncProfile = () => {
+      setShowCreditStudent(normalizeCampusProfile(getStoredCampusProfile() || {}).showCreditStudent)
+    }
+    syncProfile()
+    window.addEventListener(CAMPUS_PROFILE_CHANGED_EVENT, syncProfile)
+    return () => window.removeEventListener(CAMPUS_PROFILE_CHANGED_EVENT, syncProfile)
+  }, [])
+
   const applyFilters = (patch = {}) => {
     const next = { ...filters, ...patch, pageNumber: 1 }
     setFilters(next)
@@ -1244,6 +1344,10 @@ function StudentsPage() {
 
   const onGenderFilterChange = (value) => {
     applyFilters({ gender: value })
+  }
+
+  const onCreditFilterChange = (value) => {
+    applyFilters({ creditFilter: value })
   }
 
   const onPageChange = (nextPage) => {
@@ -1818,34 +1922,17 @@ function StudentsPage() {
                 </PermissionControl>
               </div>
 
-              <div className="grid grid-cols-1 items-center gap-2 sm:grid-cols-2 xl:grid-cols-[4.75rem_minmax(0,1fr)_max-content_max-content_5.25rem]">
-                <input
-                  name="filterRegId"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  value={filters.reg_Id}
-                  onChange={(event) => {
-                    const digits = event.target.value.replace(/\D/g, '')
-                    setFilters((previous) => ({ ...previous, reg_Id: digits }))
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key !== 'Enter') return
-                    event.preventDefault()
-                    const next = { ...filtersRef.current, pageNumber: 1 }
-                    setFilters(next)
-                    loadStudents(next)
-                  }}
-                  placeholder="Reg ID"
-                  className="h-10 w-full rounded-lg border border-slate-300 px-3 text-sm"
-                  {...FILTER_INPUT_AUTOCOMPLETE_PROPS}
-                />
-                <div className="grid min-w-0 grid-cols-1 gap-2 sm:col-span-2 sm:grid-cols-[3fr_2fr] xl:col-span-1">
+              <div className={showCreditStudent ? 'space-y-2' : undefined}>
+                <div className="grid grid-cols-1 items-center gap-2 sm:grid-cols-2 xl:grid-cols-[4.75rem_minmax(0,1fr)_5.25rem]">
                   <input
-                    name="filterStudentOrFatherName"
-                    value={filters.name}
-                    onChange={(event) =>
-                      setFilters((previous) => ({ ...previous, name: event.target.value }))
-                    }
+                    name="filterRegId"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={filters.reg_Id}
+                    onChange={(event) => {
+                      const digits = event.target.value.replace(/\D/g, '')
+                      setFilters((previous) => ({ ...previous, reg_Id: digits }))
+                    }}
                     onKeyDown={(event) => {
                       if (event.key !== 'Enter') return
                       event.preventDefault()
@@ -1853,93 +1940,145 @@ function StudentsPage() {
                       setFilters(next)
                       loadStudents(next)
                     }}
-                    placeholder="Name or contact"
-                    className="h-10 min-w-0 w-full rounded-lg border border-slate-300 px-3 text-sm"
+                    placeholder="Reg ID"
+                    className="h-10 w-full rounded-lg border border-slate-300 px-3 text-sm"
                     {...FILTER_INPUT_AUTOCOMPLETE_PROPS}
                   />
-                  <div className="min-w-0 w-full">
-                  <Select
-                    isClearable
-                    isSearchable
-                    isLoading={isClassesLoading}
-                    options={classSelectOptions}
-                    placeholder="Search class"
-                    value={
-                      filters.class
-                        ? { value: filters.class, label: filters.class }
-                        : null
+                  <div
+                    className={
+                      showCreditStudent
+                        ? 'grid min-w-0 grid-cols-1 gap-2 sm:col-span-2 sm:grid-cols-2 xl:col-span-1'
+                        : 'flex min-w-0 flex-col gap-2 sm:col-span-2 sm:flex-row sm:flex-wrap sm:items-center xl:col-span-1 xl:flex-nowrap xl:gap-1.5'
                     }
-                    onChange={(selectedOption) =>
-                      onDropdownFilterChange('class', selectedOption?.value || '')
-                    }
-                    onBlur={onFilterBlur}
-                    className="text-sm"
-                    styles={{
-                      control: (baseStyles) => ({
-                        ...baseStyles,
-                        minHeight: '40px',
-                        height: '40px',
-                        borderRadius: '0.5rem',
-                      }),
-                      valueContainer: (baseStyles) => ({
-                        ...baseStyles,
-                        paddingTop: 0,
-                        paddingBottom: 0,
-                      }),
-                      menu: (baseStyles) => ({
-                        ...baseStyles,
-                        zIndex: 60,
-                      }),
-                    }}
-                  />
+                  >
+                    <div
+                      className={
+                        showCreditStudent
+                          ? 'contents'
+                          : 'grid min-w-0 w-full grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-1.5 xl:min-w-0 xl:flex-[1_1_0]'
+                      }
+                    >
+                    <input
+                      name="filterStudentOrFatherName"
+                      value={filters.name}
+                      onChange={(event) =>
+                        setFilters((previous) => ({ ...previous, name: event.target.value }))
+                      }
+                      onKeyDown={(event) => {
+                        if (event.key !== 'Enter') return
+                        event.preventDefault()
+                        const next = { ...filtersRef.current, pageNumber: 1 }
+                        setFilters(next)
+                        loadStudents(next)
+                      }}
+                      placeholder="Name or contact"
+                      className="h-10 min-w-0 w-full rounded-lg border border-slate-300 px-3 text-sm"
+                      {...FILTER_INPUT_AUTOCOMPLETE_PROPS}
+                    />
+                    <div className="min-w-0 w-full">
+                      <Select
+                        isClearable
+                        isSearchable
+                        isLoading={isClassesLoading}
+                        options={classSelectOptions}
+                        placeholder="Search class"
+                        value={
+                          filters.class
+                            ? { value: filters.class, label: filters.class }
+                            : null
+                        }
+                        onChange={(selectedOption) =>
+                          onDropdownFilterChange('class', selectedOption?.value || '')
+                        }
+                        onBlur={onFilterBlur}
+                        className="text-sm"
+                        styles={{
+                          control: (baseStyles) => ({
+                            ...baseStyles,
+                            minHeight: '40px',
+                            height: '40px',
+                            borderRadius: '0.5rem',
+                          }),
+                          valueContainer: (baseStyles) => ({
+                            ...baseStyles,
+                            paddingTop: 0,
+                            paddingBottom: 0,
+                          }),
+                          menu: (baseStyles) => ({
+                            ...baseStyles,
+                            zIndex: 60,
+                          }),
+                        }}
+                      />
+                    </div>
+                    </div>
+                    {!showCreditStudent ? (
+                      <>
+                        <StudentListFilterRadioGroup
+                          compact
+                          theme="sky"
+                          name="student-gender"
+                          selectedValue={filters.gender}
+                          options={[['', 'All'], ['Male', 'Male'], ['Female', 'Female']]}
+                          onChange={onGenderFilterChange}
+                          radioClassFn={genderFilterRadioClass}
+                        />
+                        <StudentListFilterRadioGroup
+                          compact
+                          theme="emerald"
+                          name="student-status"
+                          selectedValue={filters.status}
+                          options={[['active', 'Active'], ['all', 'All'], ['deactivated', 'Deactivated']]}
+                          onChange={onStatusFilterChange}
+                          radioClassFn={statusFilterRadioClass}
+                        />
+                      </>
+                    ) : null}
                   </div>
+                  <button
+                    type="button"
+                    onClick={onResetFilters}
+                    className="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-lg border border-slate-300 px-2 text-sm text-slate-700 hover:bg-slate-50 sm:col-span-2 xl:col-span-1"
+                  >
+                    <RotateCcw size={14} className="shrink-0 text-slate-500" aria-hidden />
+                    Reset
+                  </button>
                 </div>
-                <div className="flex h-10 flex-wrap items-center gap-3 rounded-lg border border-sky-200/80 bg-sky-50/30 px-3 text-[13px] text-slate-600">
-                  {[
-                    ['', 'All'],
-                    ['Male', 'Male'],
-                    ['Female', 'Female'],
-                  ].map(([value, label]) => (
-                    <label key={label} className="flex cursor-pointer items-center gap-1.5 whitespace-nowrap">
-                      <input
-                        type="radio"
-                        name="student-gender"
-                        value={value}
-                        checked={filters.gender === value}
-                        onChange={() => onGenderFilterChange(value)}
-                        className={`h-3.5 w-3.5 shrink-0 ${genderFilterRadioClass(value)}`}
-                      />
-                      {label}
-                    </label>
-                  ))}
-                </div>
-                <div className="flex h-10 flex-wrap items-center gap-3 rounded-lg border border-emerald-200/70 bg-emerald-50/25 px-3 text-[13px] text-slate-600">
-                  {[
-                    ['active', 'Active'],
-                    ['all', 'All'],
-                    ['deactivated', 'Deactivated'],
-                  ].map(([value, label]) => (
-                    <label key={label} className="flex cursor-pointer items-center gap-1.5 whitespace-nowrap">
-                      <input
-                        type="radio"
-                        name="student-status"
-                        value={value}
-                        checked={filters.status === value}
-                        onChange={() => onStatusFilterChange(value)}
-                        className={`h-3.5 w-3.5 shrink-0 ${statusFilterRadioClass(value)}`}
-                      />
-                      {label}
-                    </label>
-                  ))}
-                </div>
-                <button
-                  type="button"
-                  onClick={onResetFilters}
-                  className="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-lg border border-slate-300 px-2 text-sm text-slate-700 hover:bg-slate-50"
-                >
-                  <RotateCcw size={14} className="shrink-0 text-slate-500" aria-hidden />
-                  Reset
-                </button>
+                {showCreditStudent ? (
+                  <div
+                    className="mx-auto flex w-fit max-w-full flex-wrap items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]"
+                    role="group"
+                    aria-label="Student list filters"
+                  >
+                    <StudentListFilterRadioGroup
+                      title="Gender"
+                      theme="sky"
+                      name="student-gender"
+                      selectedValue={filters.gender}
+                      options={[['', 'All'], ['Male', 'Male'], ['Female', 'Female']]}
+                      onChange={onGenderFilterChange}
+                      radioClassFn={genderFilterRadioClass}
+                    />
+                    <StudentListFilterRadioGroup
+                      title="Status"
+                      theme="emerald"
+                      name="student-status"
+                      selectedValue={filters.status}
+                      options={[['active', 'Active'], ['all', 'All'], ['deactivated', 'Deactivated']]}
+                      onChange={onStatusFilterChange}
+                      radioClassFn={statusFilterRadioClass}
+                    />
+                    <StudentListFilterRadioGroup
+                      title="Credit"
+                      theme="amber"
+                      name="student-credit"
+                      selectedValue={filters.creditFilter}
+                      options={[['', 'All'], ['credit', 'Credit'], ['not_credit', 'Not credit']]}
+                      onChange={onCreditFilterChange}
+                      radioClassFn={creditFilterRadioClass}
+                    />
+                  </div>
+                ) : null}
               </div>
             </form>
 
@@ -1968,6 +2107,7 @@ function StudentsPage() {
                           <th className="px-3 py-2">Class</th>
                           <th className="px-3 py-2">Family ID</th>
                           <th className="px-3 py-2">Father</th>
+                          {showCreditStudent ? <th className="px-3 py-2">Credit</th> : null}
                           <th className="px-3 py-2">Contact</th>
                           <th className="relative px-3 py-2 text-right">Actions</th>
                         </tr>
@@ -1985,6 +2125,17 @@ function StudentsPage() {
                             <td className="px-3 py-1.5">{student.className || '-'}</td>
                             <td className="px-3 py-1.5">{student.familyID || '-'}</td>
                             <td className="px-3 py-1.5">{student.fatherName || '-'}</td>
+                            {showCreditStudent ? (
+                              <td className="px-3 py-1.5">
+                                {student.isCreditStudent ? (
+                                  <span className="rounded bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-800">
+                                    Yes
+                                  </span>
+                                ) : (
+                                  <span className="text-slate-400">—</span>
+                                )}
+                              </td>
+                            ) : null}
                             <td className="px-3 py-1.5">
                               <StudentContactButtons
                                 fatherContact={student.fatherContact}
@@ -2091,6 +2242,16 @@ function StudentsPage() {
                             <p>Class: {student.className || '-'}</p>
                             <p>Family ID: {student.familyID || '-'}</p>
                             <p>Father: {student.fatherName || '-'}</p>
+                            {showCreditStudent ? (
+                              <p>
+                                Credit:{' '}
+                                {student.isCreditStudent ? (
+                                  <span className="font-medium text-amber-800">Yes</span>
+                                ) : (
+                                  '—'
+                                )}
+                              </p>
+                            ) : null}
                             <p className="col-span-2">
                               Contact:{' '}
                               <StudentContactButtons

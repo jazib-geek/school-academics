@@ -3,7 +3,7 @@ import { persistCampusProfile, clearCampusProfile } from '../utils/campusProfile
 import { normalizeAccess } from './employeeAppAccess'
 
 const EMPLOYEE_LOGIN_PATH = import.meta.env.VITE_EMPLOYEE_LOGIN_PATH || '/api/auth/employee-login'
-const CAMPUS_HEADER = import.meta.env.VITE_CAMPUS_HEADER || 'Campus'
+const CAMPUS_HEADER = import.meta.env.VITE_CAMPUS_HEADER || 'X-Campus'
 
 const readEmployeeUser = () => {
   try {

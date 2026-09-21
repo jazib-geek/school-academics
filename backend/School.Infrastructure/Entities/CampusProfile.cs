@@ -31,4 +31,6 @@ public class CampusProfile
     public int AdminEarlyMinutes { get; set; } = 30;
     public int CoordinatorEarlyMinutes { get; set; } = 15;
     public TimeSpan FridayCheckOutTime { get; set; } = new(12, 30, 0);
+
+    public bool ShowCreditStudent { get; set; }
 }

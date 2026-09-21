@@ -10,6 +10,7 @@ public class StudentListFilterDto
     public int? Reg_Id { get; set; }
     public bool? IsActive { get; set; }
     public string? Gender { get; set; }
+    public bool? IsCreditStudent { get; set; }
     public string? SortBy { get; set; }
     public string? SortDirection { get; set; }
     public int PageNumber { get; set; } = 1;

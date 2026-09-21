@@ -41,6 +41,8 @@ public class Student
 
     public bool? IsActive { get; set; }
 
+    public bool IsCreditStudent { get; set; }
+
     // Navigation
     public virtual ICollection<Exam> Exams { get; set; } = new List<Exam>();
 

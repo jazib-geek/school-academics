@@ -99,6 +99,11 @@ public class StudentService : IStudentService
             query = query.Where(x => x.Gender != null && x.Gender.ToLower() == genderFilter);
         }
 
+        if (filter.IsCreditStudent.HasValue)
+        {
+            query = query.Where(x => x.IsCreditStudent == filter.IsCreditStudent.Value);
+        }
+
         var totalCount = await query.CountAsync();
 
         var sortBy = filter.SortBy?.Trim();
@@ -132,7 +137,8 @@ public class StudentService : IStudentService
                 MotherContact = x.Family != null ? x.Family.MotherPhoneNo : null,
                 Gender = x.Gender,
                 IsActive = x.IsActive,
-                RegDate = x.RegDate
+                RegDate = x.RegDate,
+                IsCreditStudent = x.IsCreditStudent
             })
             .ToListAsync();
 
@@ -785,6 +791,7 @@ public class StudentService : IStudentService
         var now = PakistanTime.Now;
         var regDate = (request.RegDate ?? now).Date;
         var password = GenerateRandomPassword(6);
+        var showCreditStudent = await GetShowCreditStudentAsync(cancellationToken);
 
         var student = new Student
         {
@@ -818,7 +825,8 @@ public class StudentService : IStudentService
             Password = password,
             SessionSpan = Clean(request.SessionSpan),
             Home_Phone = Clean(request.HomePhone),
-            IsActive = true
+            IsActive = true,
+            IsCreditStudent = showCreditStudent && request.IsCreditStudent
         };
 
         _context.Students.Add(student);
@@ -1005,6 +1013,7 @@ public class StudentService : IStudentService
             Gender = student.Gender,
             IsOrphan = student.isOrphan == true,
             IsHafiz = student.isHafiz == true,
+            IsCreditStudent = student.IsCreditStudent,
             Religion = student.Religion,
             DateOfBirth = student.Date_of_Brith,
             BFormNum = student.B_FormNum,
@@ -1079,6 +1088,8 @@ public class StudentService : IStudentService
         student.Gender = Clean(request.Gender);
         student.isOrphan = request.IsOrphan;
         student.isHafiz = request.IsHafiz;
+        var showCreditStudent = await GetShowCreditStudentAsync(cancellationToken);
+        student.IsCreditStudent = showCreditStudent && request.IsCreditStudent;
         student.Religion = Clean(request.Religion);
         student.Date_of_Brith = request.DateOfBirth?.Date;
         student.B_FormNum = Clean(request.BFormNum);
@@ -1653,6 +1664,7 @@ public class StudentService : IStudentService
             ["gender"] = student.Gender,
             ["isOrphan"] = FormatBool(student.isOrphan),
             ["isHafiz"] = FormatBool(student.isHafiz),
+            ["isCreditStudent"] = FormatBool(student.IsCreditStudent),
             ["religion"] = student.Religion,
             ["dateOfBirth"] = FormatDate(student.Date_of_Brith),
             ["bFormNum"] = student.B_FormNum,
@@ -1828,6 +1840,15 @@ public class StudentService : IStudentService
     {
         var trimmed = value?.Trim();
         return string.IsNullOrWhiteSpace(trimmed) ? null : trimmed;
+    }
+
+    private async Task<bool> GetShowCreditStudentAsync(CancellationToken cancellationToken = default)
+    {
+        var row = await _context.CampusProfiles
+            .AsNoTracking()
+            .OrderBy(x => x.ID)
+            .FirstOrDefaultAsync(cancellationToken);
+        return row?.ShowCreditStudent == true;
     }
 
     private static string GenerateRandomPassword(int length)

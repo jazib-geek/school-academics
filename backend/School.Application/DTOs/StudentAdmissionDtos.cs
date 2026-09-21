@@ -57,6 +57,7 @@ public class StudentRegisterRequestDto
 
     public bool IsOrphan { get; set; }
     public bool IsHafiz { get; set; }
+    public bool IsCreditStudent { get; set; }
 
     [StringLength(500)]
     public string? Religion { get; set; }
@@ -162,6 +163,7 @@ public class StudentAdmissionDetailDto
     public string? Gender { get; set; }
     public bool IsOrphan { get; set; }
     public bool IsHafiz { get; set; }
+    public bool IsCreditStudent { get; set; }
     public string? Religion { get; set; }
     public DateTime? DateOfBirth { get; set; }
     public string? BFormNum { get; set; }
@@ -231,6 +233,7 @@ public class StudentUpdateRequestDto
 
     public bool IsOrphan { get; set; }
     public bool IsHafiz { get; set; }
+    public bool IsCreditStudent { get; set; }
 
     [StringLength(500)]
     public string? Religion { get; set; }
