@@ -1828,7 +1828,13 @@ function StudentsPage() {
                     const digits = event.target.value.replace(/\D/g, '')
                     setFilters((previous) => ({ ...previous, reg_Id: digits }))
                   }}
-                  onBlur={onFilterBlur}
+                  onKeyDown={(event) => {
+                    if (event.key !== 'Enter') return
+                    event.preventDefault()
+                    const next = { ...filtersRef.current, pageNumber: 1 }
+                    setFilters(next)
+                    loadStudents(next)
+                  }}
                   placeholder="Reg ID"
                   className="h-10 w-full rounded-lg border border-slate-300 px-3 text-sm"
                   {...FILTER_INPUT_AUTOCOMPLETE_PROPS}
