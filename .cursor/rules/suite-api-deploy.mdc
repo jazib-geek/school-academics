@@ -1,0 +1,26 @@
+---
+description: Backend release must subtree-push to SoftelligentSchoolSuitePro-API (Plesk CD)
+alwaysApply: true
+---
+
+# Suite API deploy (backend → production)
+
+Production API CD runs only on **SoftelligentSchoolSuitePro-API** (`git remote suite-api`), not on the monorepo `origin`.
+
+## After any backend change that should go live
+
+1. Commit under `backend/` in the workspace (monorepo `master` if used).
+2. **Subtree push API** (from repo root):
+   ```powershell
+   .\backend\scripts\Push-SuiteDeploy.ps1 -Api
+   ```
+   Or: `git subtree split --prefix=backend -b api-release-push` then `git push suite-api api-release-push:master`.
+3. Verify [SoftelligentSchoolSuitePro-API Actions](https://github.com/jazib-geek/SoftelligentSchoolSuitePro-API/actions): **build** then **deploy** green.
+4. Do not treat `git push origin` alone as a backend release.
+
+Details: `backend/DEPLOY.md`. Do not reintroduce `FTP_REMOTE_DIR` / path `cd` in deploy scripts; site-scoped FTP uploads to login root via `scripts/ci-deploy-api-ftp.sh` (`lftp mirror --no-perms`, IIS stop via `web.config` ↔ `web1.config`).
+
+## Agent checklist
+
+- Backend-only task done → remind or run **Push-SuiteDeploy.ps1 -Api** when the user wants production updated.
+- Editing `backend/.github/workflows/deploy.yml` or `backend/scripts/ci-*-ftp.sh` → same push; warn that Plesk `appsettings.json` is never overwritten by FTP.
