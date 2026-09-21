@@ -1,4 +1,5 @@
-name: Build and deploy API to Plesk (FTP)
+name: Deploy API to Plesk (FTP)
+# Monorepo: runs only when backend/ (or this file) changes — not with frontend deploy.
 # Use a dedicated FTP user whose Plesk home IS the API site folder (sciencebaseschool.com).
 # Uploads go to FTP login root (./). IIS locks DLLs while running — deploy renames web.config → web1.config around upload (same as manual).
 # Secrets:
