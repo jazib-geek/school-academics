@@ -13,10 +13,12 @@ esac
 
 REMOTE_DIR="${FTP_REMOTE_DIR:-}"
 REMOTE_DIR="${REMOTE_DIR// /}"
+REMOTE_DIR="${REMOTE_DIR#/}"
+REMOTE_DIR="${REMOTE_DIR%/}"
+
 LFTP_CD=""
 if [ -n "$REMOTE_DIR" ]; then
-  case "$REMOTE_DIR" in /*) ;; *) REMOTE_DIR="/$REMOTE_DIR" ;; esac
-  LFTP_CD="cd ${REMOTE_DIR};"
+  LFTP_CD="cd /${REMOTE_DIR} || exit 1;"
 fi
 
 lftp -u "$FTP_USERNAME","$FTP_PASSWORD" "$OPEN" -e "

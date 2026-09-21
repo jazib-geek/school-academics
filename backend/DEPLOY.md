@@ -45,8 +45,14 @@ git subtree split --prefix=frontend -b frontend-ui-release
 git push suite-ui frontend-ui-release:master
 ```
 
-## Secrets
+## Secrets (API repo — SoftelligentSchoolSuitePro-API)
 
-FTP and related secrets live on **each** Suite repo (Settings → Secrets), not on a shared monorepo.
+| Secret | Required | Notes |
+|--------|----------|--------|
+| `FTP_SERVER` | Yes | Same host as UI if shared hosting |
+| `FTP_USERNAME` | Yes | **Site-scoped** account (e.g. `ftp_sbs_root`) whose Plesk home **is** the API folder (`sciencebaseschool.com`) |
+| `FTP_PASSWORD` | Yes | |
+| `FTP_PROTOCOL` | No | `ftp` (default) or `ftps` |
+| `FTP_REMOTE_DIR` | **No — leave unset** for site-scoped FTP | Only for legacy subscription-root FTP that must `cd` into `sciencebaseschool.com`. If set with `ftp_sbs_root`, deploy fails (550 / cd / mirror abort). |
 
-API repo optional secret **`FTP_REMOTE_DIR`** — Plesk folder for site files (e.g. `/httpdocs/`) if the FTP login root is not the site root. The deploy script uses the same path for IIS stop and `lftp mirror`.
+Deploy flow (see `scripts/ci-deploy-api-ftp.sh`): `app_offline.htm` → rename `web.config` → `web1.config` → `lftp mirror` (excludes `appsettings*.json`, `web.config`) → restore step removes offline file and `web1.config` → `web.config`.

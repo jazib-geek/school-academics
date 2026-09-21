@@ -15,10 +15,15 @@ esac
 
 REMOTE_DIR="${FTP_REMOTE_DIR:-}"
 REMOTE_DIR="${REMOTE_DIR// /}"
+REMOTE_DIR="${REMOTE_DIR#/}"
+REMOTE_DIR="${REMOTE_DIR%/}"
+
 LFTP_CD=""
 if [ -n "$REMOTE_DIR" ]; then
-  case "$REMOTE_DIR" in /*) ;; *) REMOTE_DIR="/$REMOTE_DIR" ;; esac
-  LFTP_CD="cd ${REMOTE_DIR};"
+  echo "::warning::FTP_REMOTE_DIR is set (${REMOTE_DIR}). Use only when FTP login is subscription home, not site-scoped ftp_sbs_root. Clear the secret if deploy fails with 550 on cd."
+  LFTP_CD="cd /${REMOTE_DIR} || exit 1;"
+else
+  echo "Using FTP login home (no remote cd) — expected for site-scoped API FTP user."
 fi
 
 APP_OFFLINE="$(mktemp)"
