@@ -62,3 +62,14 @@ git push suite-ui frontend-ui-release:master
 Upload path = **FTP account home** (root of that login). No subfolder `cd`.
 
 Deploy flow (see `scripts/ci-deploy-api-ftp.sh`): `app_offline.htm` → rename `web.config` → `web1.config` → `lftp mirror` (excludes `appsettings*.json`, `web.config`) → restore step removes offline file and `web1.config` → `web.config`.
+
+## API CD implementation (do not regress)
+
+| Piece | Location |
+|-------|----------|
+| Workflow | `backend/.github/workflows/deploy.yml` → root on Suite API repo |
+| Stop + upload | `scripts/ci-deploy-api-ftp.sh` — FTP login **root only**, `mirror -R --no-perms` (Windows IIS rejects `SITE CHMOD`) |
+| Restore site | `scripts/ci-restore-api-ftp.sh` — `always()` in workflow |
+| Push helper | `scripts/Push-SuiteDeploy.ps1 -Api` |
+
+FTP user **home** = API site folder (`ftp_sbs_root` on Plesk). **`FTP_SERVER`** = hosting FTP hostname only (e.g. `myhostingserver.com`).
