@@ -1,22 +1,15 @@
-name: Deploy API to Plesk (FTP)
-# Monorepo: runs only when backend/ (or this file) changes — not with frontend deploy.
+name: Build and deploy API to Plesk (FTP)
 # Use a dedicated FTP user whose Plesk home IS the API site folder (sciencebaseschool.com).
 # Uploads go to FTP login root (./). IIS locks DLLs while running — deploy renames web.config → web1.config around upload (same as manual).
-# Secrets:
+# Secrets on SoftelligentSchoolSuitePro-API:
 #   FTP_SERVER, FTP_USERNAME, FTP_PASSWORD — API-scoped FTP account only
 #   FTP_PROTOCOL — optional (ftp | ftps)
 
 on:
   push:
     branches: [main, master]
-    paths:
-      - "backend/**"
-      - ".github/workflows/deploy-api.yml"
   pull_request:
     branches: [main, master]
-    paths:
-      - "backend/**"
-      - ".github/workflows/deploy-api.yml"
 
 concurrency:
   group: deploy-api-${{ github.ref }}
@@ -26,10 +19,6 @@ env:
   DOTNET_VERSION: "8.0.x"
   API_PROJECT: School.API/School.API.csproj
   PUBLISH_DIR: ./publish
-
-defaults:
-  run:
-    working-directory: backend
 
 jobs:
   build:
@@ -54,9 +43,6 @@ jobs:
     needs: build
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: backend
     steps:
       - uses: actions/checkout@v4
 
@@ -118,7 +104,7 @@ jobs:
           port: 21
           security: loose
           timeout: 300000
-          local-dir: backend/publish/
+          local-dir: ${{ env.PUBLISH_DIR }}/
           server-dir: ./
           dangerous-clean-slate: false
           log-level: standard

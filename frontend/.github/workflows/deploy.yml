@@ -1,26 +1,15 @@
-name: Deploy frontend to Plesk (FTP)
-# Monorepo: runs only when frontend/ (or this file) changes — not with API deploy.
-# Secrets: FTP_SERVER, FTP_USERNAME, FTP_PASSWORD, FTP_REMOTE_DIR, FTP_REMOTE_DIR_DEMO (optional), FTP_PROTOCOL (optional)
+name: Build and deploy to Plesk (FTP)
+# Production (FTP_REMOTE_DIR) + demo subdomain (FTP_REMOTE_DIR_DEMO)
 
 on:
   push:
     branches: [main, master]
-    paths:
-      - "frontend/**"
-      - ".github/workflows/deploy-frontend.yml"
   pull_request:
     branches: [main, master]
-    paths:
-      - "frontend/**"
-      - ".github/workflows/deploy-frontend.yml"
 
 concurrency:
-  group: deploy-frontend-${{ github.ref }}
+  group: deploy-${{ github.ref }}
   cancel-in-progress: true
-
-defaults:
-  run:
-    working-directory: frontend
 
 jobs:
   build:
@@ -32,8 +21,8 @@ jobs:
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: frontend/package-lock.json
 
+      # Lockfile was produced with npm 11; Node 22 runners default to npm 10 and fail `npm ci`.
       - run: npm install -g npm@11.6.2
       - run: npm ci
       - run: npm run lint
@@ -44,9 +33,6 @@ jobs:
     needs: build
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: frontend
     steps:
       - uses: actions/checkout@v4
 
@@ -54,7 +40,6 @@ jobs:
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: frontend/package-lock.json
 
       - run: npm install -g npm@11.6.2
       - run: npm ci
@@ -95,7 +80,7 @@ jobs:
           port: 21
           security: loose
           timeout: 180000
-          local-dir: frontend/dist/
+          local-dir: ./dist/
           server-dir: ${{ steps.ftp-server-dir-prod.outputs.dir }}
           dangerous-clean-slate: false
           log-level: standard
@@ -132,7 +117,7 @@ jobs:
           port: 21
           security: loose
           timeout: 180000
-          local-dir: frontend/dist/
+          local-dir: ./dist/
           server-dir: ${{ steps.ftp-server-dir-demo.outputs.dir }}
           dangerous-clean-slate: false
           log-level: standard
