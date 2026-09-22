@@ -26,6 +26,13 @@ namespace School.API.Controllers
             return Ok(ApiResponse<object>.SuccessResponse(result));
         }
 
+        [HttpGet("student/{studentId}/summary")]
+        public async Task<IActionResult> GetStudentAttendanceSummary(int studentId, [FromQuery] int? month, [FromQuery] int? year)
+        {
+            var result = await _service.GetStudentAttendanceSummaryAsync(studentId, month, year);
+            return Ok(ApiResponse<StudentAttendanceSummaryDto>.SuccessResponse(result));
+        }
+
         [HttpGet("employee-stats")]
         public async Task<IActionResult> GetEmployeeStats([FromQuery] DateTime? date)
         {

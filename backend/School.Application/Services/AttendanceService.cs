@@ -22,60 +22,30 @@ namespace School.Application.Services
       int? month = null,
       int? year = null)
         {
-            var query = _context.Attendances
-                .Where(x => x.StudentID == studentId);
+            var records = await LoadStudentAttendanceRowsAsync(studentId, month, year);
+            return MapStudentAttendanceRows(records);
+        }
 
-            // Optional filtering
-            if (month.HasValue)
-                query = query.Where(x => x.Month == month.Value);
+        public async Task<StudentAttendanceSummaryDto> GetStudentAttendanceSummaryAsync(
+            int studentId,
+            int? month = null,
+            int? year = null)
+        {
+            var records = await LoadStudentAttendanceRowsAsync(studentId, month, year);
+            var items = MapStudentAttendanceRows(records);
+            var summary = BuildStudentAttendanceSummary(records, month, year);
 
-            if (year.HasValue)
-                query = query.Where(x => x.Year == year.Value);
-
-            var records = await query
-                .OrderByDescending(x => x.Date)
-                .Select(x => new
-                {
-                    x.ID,
-                    x.Date,
-                    x.Status,
-                    x.IsPresent,
-                    x.Month,
-                    x.Year,
-                    SectionClassName = x.Student != null && x.Student.Section != null
-                        ? x.Student.Section.ClassName
-                        : null,
-                    SectionSectionName = x.Student != null && x.Student.Section != null
-                        ? x.Student.Section.SectionName
-                        : null
-                })
-                .ToListAsync();
-
-            var result = new List<AttendanceDto>();
-
-            foreach (var r in records)
+            return new StudentAttendanceSummaryDto
             {
-                string? monthYear = null;
-
-                if (r.Month.HasValue && r.Year.HasValue)
-                {
-                    var dt = new DateTime(r.Year.Value, r.Month.Value, 1);
-                    monthYear = dt.ToString("MMMM yyyy", CultureInfo.InvariantCulture);
-                }
-
-                var sectionName = FormatClassSectionDisplayName(r.SectionClassName, r.SectionSectionName);
-                result.Add(new AttendanceDto
-                {
-                    Id = r.ID,
-                    Date = r.Date,
-                    Status = NormalizeStatusForOutput(r.Status),
-                    IsPresent = r.IsPresent,
-                    MonthYear = monthYear,
-                    SectionName = sectionName == "-" ? null : sectionName
-                });
-            }
-
-            return result;
+                DaysPresent = summary.DaysPresent,
+                DaysAbsent = summary.DaysAbsent,
+                DaysOnLeave = summary.DaysOnLeave,
+                DaysHoliday = summary.DaysHoliday,
+                TotalDays = summary.TotalDays,
+                Ratio = summary.Ratio,
+                Percentage = summary.Percentage,
+                Records = items
+            };
         }
 
         public async Task<ClassAttendanceSheetDto> GetClassAttendanceSheetAsync(DateTime date, int classSectionCompositeId)
@@ -501,5 +471,300 @@ namespace School.Application.Services
 
         private static string NormalizeStatusForOutput(string? status) =>
             StudentAttendanceStatuses.CanonicalizeOrDefault(status);
+
+        private async Task<List<StudentAttendanceRow>> LoadStudentAttendanceRowsAsync(
+            int studentId,
+            int? month,
+            int? year)
+        {
+            var query = _context.Attendances
+                .Where(x => x.StudentID == studentId);
+
+            if (month.HasValue)
+            {
+                query = query.Where(x => x.Month == month.Value);
+            }
+
+            if (year.HasValue)
+            {
+                query = query.Where(x => x.Year == year.Value);
+            }
+
+            return await query
+                .OrderByDescending(x => x.Date)
+                .Select(x => new StudentAttendanceRow
+                {
+                    Id = x.ID,
+                    Date = x.Date,
+                    Status = x.Status,
+                    IsPresent = x.IsPresent,
+                    Month = x.Month,
+                    Year = x.Year,
+                    SectionClassName = x.Student != null && x.Student.Section != null
+                        ? x.Student.Section.ClassName
+                        : null,
+                    SectionSectionName = x.Student != null && x.Student.Section != null
+                        ? x.Student.Section.SectionName
+                        : null
+                })
+                .ToListAsync();
+        }
+
+        private static List<AttendanceDto> MapStudentAttendanceRows(IReadOnlyList<StudentAttendanceRow> records)
+        {
+            var result = new List<AttendanceDto>();
+
+            foreach (var r in records)
+            {
+                string? monthYear = null;
+
+                if (r.Month.HasValue && r.Year.HasValue)
+                {
+                    var dt = new DateTime(r.Year.Value, r.Month.Value, 1);
+                    monthYear = dt.ToString("MMMM yyyy", CultureInfo.InvariantCulture);
+                }
+
+                var sectionName = FormatClassSectionDisplayName(r.SectionClassName, r.SectionSectionName);
+                result.Add(new AttendanceDto
+                {
+                    Id = r.Id,
+                    Date = r.Date,
+                    Status = NormalizeStatusForOutput(r.Status),
+                    IsPresent = r.IsPresent,
+                    MonthYear = monthYear,
+                    SectionName = sectionName == "-" ? null : sectionName
+                });
+            }
+
+            return result;
+        }
+
+        private static (
+            int DaysPresent,
+            int DaysAbsent,
+            int DaysOnLeave,
+            int DaysHoliday,
+            int TotalDays,
+            string Ratio,
+            string Percentage) BuildStudentAttendanceSummary(
+            IReadOnlyList<StudentAttendanceRow> records,
+            int? month,
+            int? year)
+        {
+            var daysPresent = 0;
+            var daysAbsent = 0;
+            var daysOnLeave = 0;
+            var daysHoliday = 0;
+
+            var hasCalendarMonth = TryResolveSummaryCalendarMonth(month, year, records, out var summaryYear, out var summaryMonth);
+            var lastCountedDay = hasCalendarMonth
+                ? GetLastCountedDayInMonth(summaryYear, summaryMonth, DateTime.Today)
+                : 0;
+            var weekdayHolidaysInPeriod = 0;
+
+            foreach (var r in records)
+            {
+                var status = StudentAttendanceStatuses.CanonicalizeOrDefault(r.Status);
+                if (status == StudentAttendanceStatuses.Holiday)
+                {
+                    if (!hasCalendarMonth || IsInSummaryPeriodThroughDay(r, summaryYear, summaryMonth, lastCountedDay))
+                    {
+                        daysHoliday++;
+                        if (IsWeekdayInSummaryPeriod(r, summaryYear, summaryMonth, lastCountedDay))
+                        {
+                            weekdayHolidaysInPeriod++;
+                        }
+                    }
+
+                    continue;
+                }
+
+                if (hasCalendarMonth && !CountsAsWorkingAttendanceDay(r, summaryYear, summaryMonth, lastCountedDay))
+                {
+                    continue;
+                }
+
+                if (StudentAttendanceStatuses.IsInSchool(status))
+                {
+                    daysPresent++;
+                }
+                else if (status == StudentAttendanceStatuses.Absent)
+                {
+                    daysAbsent++;
+                }
+                else if (status == StudentAttendanceStatuses.Leave)
+                {
+                    daysOnLeave++;
+                }
+            }
+
+            var totalDays = 0;
+            var ratio = "0/0";
+            var percentage = "0%";
+
+            if (hasCalendarMonth && lastCountedDay > 0)
+            {
+                var sundaysInPeriod = CountSundaysThroughDay(summaryYear, summaryMonth, lastCountedDay);
+                totalDays = lastCountedDay - sundaysInPeriod - weekdayHolidaysInPeriod;
+                if (totalDays < 0)
+                {
+                    totalDays = 0;
+                }
+
+                ratio = $"{daysPresent}/{totalDays}";
+                percentage = totalDays > 0
+                    ? $"{(int)Math.Round(daysPresent * 100.0 / totalDays, MidpointRounding.AwayFromZero)}%"
+                    : "0%";
+            }
+
+            return (daysPresent, daysAbsent, daysOnLeave, daysHoliday, totalDays, ratio, percentage);
+        }
+
+        private static int GetLastCountedDayInMonth(int summaryYear, int summaryMonth, DateTime today)
+        {
+            var daysInMonth = DateTime.DaysInMonth(summaryYear, summaryMonth);
+            if (summaryYear > today.Year || (summaryYear == today.Year && summaryMonth > today.Month))
+            {
+                return 0;
+            }
+
+            if (summaryYear == today.Year && summaryMonth == today.Month)
+            {
+                return Math.Min(today.Day, daysInMonth);
+            }
+
+            return daysInMonth;
+        }
+
+        private static bool IsInSummaryPeriodThroughDay(
+            StudentAttendanceRow row,
+            int summaryYear,
+            int summaryMonth,
+            int lastCountedDay)
+        {
+            if (!row.Date.HasValue)
+            {
+                return true;
+            }
+
+            var date = row.Date.Value.Date;
+            return date.Year == summaryYear && date.Month == summaryMonth && date.Day <= lastCountedDay;
+        }
+
+        private static bool IsWeekdayInSummaryPeriod(
+            StudentAttendanceRow row,
+            int summaryYear,
+            int summaryMonth,
+            int lastCountedDay)
+        {
+            if (!IsInSummaryPeriodThroughDay(row, summaryYear, summaryMonth, lastCountedDay))
+            {
+                return false;
+            }
+
+            if (!row.Date.HasValue)
+            {
+                return true;
+            }
+
+            return row.Date.Value.Date.DayOfWeek != DayOfWeek.Sunday;
+        }
+
+        private static bool CountsAsWorkingAttendanceDay(
+            StudentAttendanceRow row,
+            int summaryYear,
+            int summaryMonth,
+            int lastCountedDay)
+        {
+            if (!row.Date.HasValue)
+            {
+                return true;
+            }
+
+            var date = row.Date.Value.Date;
+            if (date.Year != summaryYear || date.Month != summaryMonth)
+            {
+                return false;
+            }
+
+            if (date.Day > lastCountedDay)
+            {
+                return false;
+            }
+
+            return date.DayOfWeek != DayOfWeek.Sunday;
+        }
+
+        private static bool TryResolveSummaryCalendarMonth(
+            int? month,
+            int? year,
+            IReadOnlyList<StudentAttendanceRow> records,
+            out int summaryYear,
+            out int summaryMonth)
+        {
+            if (month.HasValue && year.HasValue)
+            {
+                summaryYear = year.Value;
+                summaryMonth = month.Value;
+                return true;
+            }
+
+            foreach (var r in records)
+            {
+                if (r.Month.HasValue && r.Year.HasValue)
+                {
+                    summaryYear = r.Year.Value;
+                    summaryMonth = r.Month.Value;
+                    return true;
+                }
+            }
+
+            foreach (var r in records)
+            {
+                if (r.Date.HasValue)
+                {
+                    summaryYear = r.Date.Value.Year;
+                    summaryMonth = r.Date.Value.Month;
+                    return true;
+                }
+            }
+
+            summaryYear = 0;
+            summaryMonth = 0;
+            return false;
+        }
+
+        private static int CountSundaysThroughDay(int year, int month, int lastDay)
+        {
+            var count = 0;
+            for (var day = 1; day <= lastDay; day++)
+            {
+                if (new DateTime(year, month, day).DayOfWeek == DayOfWeek.Sunday)
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
+        private sealed class StudentAttendanceRow
+        {
+            public int Id { get; init; }
+
+            public DateTime? Date { get; init; }
+
+            public string? Status { get; init; }
+
+            public bool? IsPresent { get; init; }
+
+            public int? Month { get; init; }
+
+            public int? Year { get; init; }
+
+            public string? SectionClassName { get; init; }
+
+            public string? SectionSectionName { get; init; }
+        }
     }
 }

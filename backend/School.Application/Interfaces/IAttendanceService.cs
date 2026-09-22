@@ -9,6 +9,11 @@ namespace School.Application.Interfaces
         int? month = null,
         int? year = null);
 
+        Task<StudentAttendanceSummaryDto> GetStudentAttendanceSummaryAsync(
+            int studentId,
+            int? month = null,
+            int? year = null);
+
     Task<ClassAttendanceSheetDto> GetClassAttendanceSheetAsync(DateTime date, int classSectionCompositeId);
     Task<ClassAttendanceSheetDto> GetSchoolAttendanceSheetAsync(DateTime date);
     Task<ClassAttendanceSheetDto> SetClassAttendanceStatusForAllAsync(DateTime date, int classSectionCompositeId, string status);
