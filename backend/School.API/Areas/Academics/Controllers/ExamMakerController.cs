@@ -169,6 +169,27 @@ public class ExamMakerController : ControllerBase
         }
     }
 
+    [HttpPost("papers/{id:int}/print-adjustments")]
+    public async Task<IActionResult> UpdatePrintAdjustments(int id, [FromBody] ExamPaperPrintAdjustmentsDto? request)
+    {
+        try
+        {
+            var result = await _academicExamMakerService.UpdatePrintAdjustmentsAsync(id, request);
+            return Ok(ApiResponse<ExamPaperDto>.SuccessResponse(result));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<ExamPaperDto>.FailureResponse(ex.Message));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "ExamMaker print-adjustments PaperId={PaperId}: unexpected error.", id);
+            return StatusCode(
+                StatusCodes.Status500InternalServerError,
+                ApiResponse<ExamPaperDto>.FailureResponse("Unable to save print layout. Check server logs for details."));
+        }
+    }
+
     [HttpPost("auto-from-chapters")]
     public async Task<IActionResult> AutoFromChapters([FromBody] RandomizeExamPaperRequestDto request)
     {

@@ -54,6 +54,38 @@ public class SelectedQuestionRequestDto
     public string? Section { get; set; }
 }
 
+public class ExamPaperPrintSpacingDto
+{
+    public int QuestionStep { get; set; }
+    public int SectionStep { get; set; }
+    public int LaqPartStep { get; set; }
+}
+
+public class ExamPaperPrintSectionAdjustmentsDto
+{
+    public string? HeadingText { get; set; }
+    public string? InstructionText { get; set; }
+    public int? FontSizePx { get; set; }
+}
+
+public class ExamPaperPrintQuestionAdjustmentsDto
+{
+    public string? DescriptionText { get; set; }
+    public string? McqOpt1 { get; set; }
+    public string? McqOpt2 { get; set; }
+    public string? McqOpt3 { get; set; }
+    public string? McqOpt4 { get; set; }
+}
+
+public class ExamPaperPrintAdjustmentsDto
+{
+    public string? HeaderNote { get; set; }
+    public string? FooterNote { get; set; }
+    public Dictionary<string, ExamPaperPrintSectionAdjustmentsDto>? Sections { get; set; }
+    public Dictionary<string, ExamPaperPrintQuestionAdjustmentsDto>? Questions { get; set; }
+    public ExamPaperPrintSpacingDto? Spacing { get; set; }
+}
+
 public class CreateExamPaperFromSelectionRequestDto
 {
     public int ClassId { get; set; }
@@ -76,6 +108,7 @@ public class CreateExamPaperFromSelectionRequestDto
     public List<int> ChapterIds { get; set; } = [];
     public List<SelectedQuestionRequestDto> SelectedQuestions { get; set; } = [];
     public List<ExamSectionConfigDto> Sections { get; set; } = [];
+    public ExamPaperPrintAdjustmentsDto? PrintAdjustments { get; set; }
 }
 
 public class RandomQuestionChapterRuleDto
@@ -164,4 +197,5 @@ public class ExamPaperDto
     public bool WrapQuestionMarksInParentheses { get; set; }
     public List<ExamSectionConfigDto> Sections { get; set; } = [];
     public List<PaperQuestionItemDto> Questions { get; set; } = [];
+    public ExamPaperPrintAdjustmentsDto? PrintAdjustments { get; set; }
 }

@@ -12,6 +12,8 @@ namespace School.Application.Academics.Services;
 
 public class AcademicExamMakerService : IAcademicExamMakerService
 {
+    private const int MaxPrintAdjustmentsJsonLength = 262_144;
+
     private readonly AcademicContext _academicContext;
     private readonly IExamTitleRepository _examTitleRepository;
     private readonly ILogger<AcademicExamMakerService> _logger;
@@ -439,6 +441,9 @@ public class AcademicExamMakerService : IAcademicExamMakerService
             SubQuestionNumberingStyle = NormalizeSubQuestionNumbering(request.SubQuestionNumberingStyle),
             WrapQuestionMarksInParentheses = request.WrapQuestionMarksInParentheses,
             SectionMetaJson = SerializeSections(sections),
+            PrintAdjustmentsJson = SerializePrintAdjustmentsOrNull(
+                request.PrintAdjustments,
+                paperQuestions.Select(x => x.QuestionId).ToHashSet()),
             Questions = paperQuestions
         };
 
@@ -461,32 +466,8 @@ public class AcademicExamMakerService : IAcademicExamMakerService
             "Exam save (create-from-selection): succeeded. New PaperId={PaperId}",
             paperEntity.Id);
 
-        return new ExamPaperDto
-        {
-            Id = paperEntity.Id,
-            ExamTitleId = examTitleRow.Id,
-            ClassId = request.ClassId,
-            SubjectId = request.SubjectId,
-            ClassName = classEntity.ClassName,
-            SubjectName = subjectEntity.SubjectName,
-            PaperName = paperEntity.PaperName,
-            TotalMarks = paperEntity.TotalMarks,
-            DurationMinutes = paperEntity.DurationMinutes,
-            CreatedOn = paperEntity.CreatedOn,
-            SchoolName = paperEntity.SchoolName,
-            SchoolLogoUrl = paperEntity.SchoolLogoUrl,
-            ExamTitle = examTitleRow.Title,
-            SessionLabel = paperEntity.SessionLabel,
-            ExamType = paperEntity.ExamType,
-            HeaderNote = paperEntity.HeaderNote,
-            Instructions = paperEntity.Instructions,
-            FooterNote = paperEntity.FooterNote,
-            ShowSectionNames = paperEntity.ShowSectionNames,
-            SubQuestionNumberingStyle = paperEntity.SubQuestionNumberingStyle,
-            WrapQuestionMarksInParentheses = paperEntity.WrapQuestionMarksInParentheses,
-            Sections = sections,
-            Questions = displayRows.OrderBy(x => x.Order).ToList()
-        };
+        return await GetPaperByIdAsync(paperEntity.Id)
+            ?? throw new InvalidOperationException("Unable to reload created paper.");
     }
 
     public async Task<ExamPaperDto> UpdatePaperFromSelectionAsync(int id, CreateExamPaperFromSelectionRequestDto request)
@@ -623,6 +604,9 @@ public class AcademicExamMakerService : IAcademicExamMakerService
         paperEntity.SubQuestionNumberingStyle = NormalizeSubQuestionNumbering(request.SubQuestionNumberingStyle);
         paperEntity.WrapQuestionMarksInParentheses = request.WrapQuestionMarksInParentheses;
         paperEntity.SectionMetaJson = SerializeSections(sections);
+        paperEntity.PrintAdjustmentsJson = SerializePrintAdjustmentsOrNull(
+            request.PrintAdjustments,
+            paperQuestions.Select(x => x.QuestionId).ToHashSet());
 
         _logger.LogInformation(
             "Exam save (update-from-selection): SaveChanges for PaperId={PaperId}, {QuestionRowCount} question rows, ExamType after normalize={ExamTypeKey}, TotalMarks={TotalMarks}.",
@@ -826,6 +810,7 @@ public class AcademicExamMakerService : IAcademicExamMakerService
         paperEntity.SubQuestionNumberingStyle = NormalizeSubQuestionNumbering(request.SubQuestionNumberingStyle);
         paperEntity.WrapQuestionMarksInParentheses = request.WrapQuestionMarksInParentheses;
         paperEntity.SectionMetaJson = SerializeSections(sections);
+        paperEntity.PrintAdjustmentsJson = null;
 
         _logger.LogInformation(
             "Exam save (auto-from-chapters): PaperId={PaperId} ClassId={ClassId} SubjectId={SubjectId} ExamTitleId={ExamTitleId} ExamType={ExamType} QuestionCount={QuestionCount}",
@@ -964,6 +949,7 @@ public class AcademicExamMakerService : IAcademicExamMakerService
             SubQuestionNumberingStyle = paper.SubQuestionNumberingStyle,
             WrapQuestionMarksInParentheses = paper.WrapQuestionMarksInParentheses,
             Sections = DeserializeSections(paper.SectionMetaJson),
+            PrintAdjustments = DeserializePrintAdjustments(paper.PrintAdjustmentsJson),
             Questions = paper.Questions
                 .OrderBy(x => x.QuestionOrder)
                 .Select(x => new PaperQuestionItemDto
@@ -1164,6 +1150,213 @@ public class AcademicExamMakerService : IAcademicExamMakerService
         }
 
         return marks.OrderByDescending(value => value).Take(attemptCount).Sum();
+    }
+
+    public async Task<ExamPaperDto> UpdatePrintAdjustmentsAsync(int id, ExamPaperPrintAdjustmentsDto? adjustments)
+    {
+        if (id <= 0)
+        {
+            throw new InvalidOperationException("Invalid paper id.");
+        }
+
+        var paperEntity = await _academicContext.QuestionPapers
+            .Include(x => x.Questions)
+            .FirstOrDefaultAsync(x => x.Id == id)
+            ?? throw new InvalidOperationException("Paper not found.");
+
+        var questionIds = paperEntity.Questions.Select(x => x.QuestionId).ToHashSet();
+        paperEntity.PrintAdjustmentsJson = SerializePrintAdjustmentsOrNull(adjustments, questionIds);
+        await _academicContext.SaveChangesAsync();
+
+        return await GetPaperByIdAsync(id)
+            ?? throw new InvalidOperationException("Unable to reload updated paper.");
+    }
+
+    private static string? SerializePrintAdjustmentsOrNull(
+        ExamPaperPrintAdjustmentsDto? dto,
+        IReadOnlySet<int> allowedQuestionIds)
+    {
+        var normalized = NormalizePrintAdjustments(dto, allowedQuestionIds);
+        if (normalized == null)
+        {
+            return null;
+        }
+
+        var json = JsonSerializer.Serialize(normalized);
+        if (json.Length > MaxPrintAdjustmentsJsonLength)
+        {
+            throw new InvalidOperationException("Print layout is too large to save. Shorten some text and try again.");
+        }
+
+        return json;
+    }
+
+    private static ExamPaperPrintAdjustmentsDto? NormalizePrintAdjustments(
+        ExamPaperPrintAdjustmentsDto? dto,
+        IReadOnlySet<int>? allowedQuestionIds)
+    {
+        if (dto == null)
+        {
+            return null;
+        }
+
+        var result = new ExamPaperPrintAdjustmentsDto();
+        var hasContent = false;
+
+        if (!string.IsNullOrWhiteSpace(dto.HeaderNote))
+        {
+            result.HeaderNote = dto.HeaderNote.Trim();
+            hasContent = true;
+        }
+
+        if (!string.IsNullOrWhiteSpace(dto.FooterNote))
+        {
+            result.FooterNote = dto.FooterNote.Trim();
+            hasContent = true;
+        }
+
+        if (dto.Sections != null && dto.Sections.Count > 0)
+        {
+            var sections = new Dictionary<string, ExamPaperPrintSectionAdjustmentsDto>();
+            foreach (var (key, value) in dto.Sections)
+            {
+                if (string.IsNullOrWhiteSpace(key) || value == null)
+                {
+                    continue;
+                }
+
+                var section = new ExamPaperPrintSectionAdjustmentsDto();
+                var sectionHasContent = false;
+                if (!string.IsNullOrWhiteSpace(value.HeadingText))
+                {
+                    section.HeadingText = value.HeadingText.Trim();
+                    sectionHasContent = true;
+                }
+
+                if (!string.IsNullOrWhiteSpace(value.InstructionText))
+                {
+                    section.InstructionText = value.InstructionText.Trim();
+                    sectionHasContent = true;
+                }
+
+                if (value.FontSizePx is > 0)
+                {
+                    section.FontSizePx = value.FontSizePx;
+                    sectionHasContent = true;
+                }
+
+                if (sectionHasContent)
+                {
+                    sections[key.Trim()] = section;
+                }
+            }
+
+            if (sections.Count > 0)
+            {
+                result.Sections = sections;
+                hasContent = true;
+            }
+        }
+
+        if (dto.Questions != null && dto.Questions.Count > 0)
+        {
+            var questions = new Dictionary<string, ExamPaperPrintQuestionAdjustmentsDto>();
+            foreach (var (key, value) in dto.Questions)
+            {
+                if (string.IsNullOrWhiteSpace(key) || value == null)
+                {
+                    continue;
+                }
+
+                if (!int.TryParse(key, out var questionId))
+                {
+                    continue;
+                }
+
+                if (allowedQuestionIds != null && !allowedQuestionIds.Contains(questionId))
+                {
+                    continue;
+                }
+
+                var question = new ExamPaperPrintQuestionAdjustmentsDto();
+                var questionHasContent = false;
+                if (!string.IsNullOrWhiteSpace(value.DescriptionText))
+                {
+                    question.DescriptionText = value.DescriptionText;
+                    questionHasContent = true;
+                }
+
+                if (!string.IsNullOrWhiteSpace(value.McqOpt1))
+                {
+                    question.McqOpt1 = value.McqOpt1;
+                    questionHasContent = true;
+                }
+
+                if (!string.IsNullOrWhiteSpace(value.McqOpt2))
+                {
+                    question.McqOpt2 = value.McqOpt2;
+                    questionHasContent = true;
+                }
+
+                if (!string.IsNullOrWhiteSpace(value.McqOpt3))
+                {
+                    question.McqOpt3 = value.McqOpt3;
+                    questionHasContent = true;
+                }
+
+                if (!string.IsNullOrWhiteSpace(value.McqOpt4))
+                {
+                    question.McqOpt4 = value.McqOpt4;
+                    questionHasContent = true;
+                }
+
+                if (questionHasContent)
+                {
+                    questions[key.Trim()] = question;
+                }
+            }
+
+            if (questions.Count > 0)
+            {
+                result.Questions = questions;
+                hasContent = true;
+            }
+        }
+
+        if (dto.Spacing != null)
+        {
+            var spacing = new ExamPaperPrintSpacingDto
+            {
+                QuestionStep = dto.Spacing.QuestionStep,
+                SectionStep = dto.Spacing.SectionStep,
+                LaqPartStep = dto.Spacing.LaqPartStep,
+            };
+
+            if (spacing.QuestionStep != 0 || spacing.SectionStep != 0 || spacing.LaqPartStep != 0)
+            {
+                result.Spacing = spacing;
+                hasContent = true;
+            }
+        }
+
+        return hasContent ? result : null;
+    }
+
+    private static ExamPaperPrintAdjustmentsDto? DeserializePrintAdjustments(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return null;
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<ExamPaperPrintAdjustmentsDto>(json);
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private static string? SerializeSections(List<ExamSectionConfigDto> sections)

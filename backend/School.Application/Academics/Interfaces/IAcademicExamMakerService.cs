@@ -19,5 +19,6 @@ public interface IAcademicExamMakerService
     Task<ExamPaperDto> RandomizePaperFromChaptersAsync(RandomizeExamPaperRequestDto request);
     Task<List<ExamPaperDto>> GetPapersAsync(int? classId = null, int? subjectId = null);
     Task<ExamPaperDto?> GetPaperByIdAsync(int id);
+    Task<ExamPaperDto> UpdatePrintAdjustmentsAsync(int id, ExamPaperPrintAdjustmentsDto? adjustments);
     Task<bool> DeletePaperAsync(int id);
 }

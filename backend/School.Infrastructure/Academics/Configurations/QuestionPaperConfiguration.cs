@@ -25,6 +25,7 @@ public class QuestionPaperConfiguration : IEntityTypeConfiguration<QuestionPaper
         builder.Property(x => x.SubQuestionNumberingStyle).HasMaxLength(20);
         builder.Property(x => x.WrapQuestionMarksInParentheses).HasDefaultValue(false);
         builder.Property(x => x.SectionMetaJson);
+        builder.Property(x => x.PrintAdjustmentsJson).HasColumnType("nvarchar(max)");
 
         builder.Property(x => x.CreatedOn)
             .HasColumnType("datetime")

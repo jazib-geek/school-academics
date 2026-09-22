@@ -19,6 +19,8 @@ public class QuestionPaper
     public string? SubQuestionNumberingStyle { get; set; }
     public bool WrapQuestionMarksInParentheses { get; set; }
     public string? SectionMetaJson { get; set; }
+    /// <summary>JSON: print-layout overrides (notes, section text, question stems, spacing).</summary>
+    public string? PrintAdjustmentsJson { get; set; }
     public int? TotalMarks { get; set; }
     public int? DurationMinutes { get; set; }
     public DateTime CreatedOn { get; set; }
