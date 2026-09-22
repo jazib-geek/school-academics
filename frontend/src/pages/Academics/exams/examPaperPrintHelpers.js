@@ -433,7 +433,7 @@ export function formatExamDurationLabel(minutes) {
   if (total < 60) return `${total} Minutes`
   const hours = Math.floor(total / 60)
   const mins = total % 60
-  return `${hours}:${String(mins).padStart(2, '0')} Minutes`
+  return `${hours}:${String(mins).padStart(2, '0')} hrs`
 }
 
 /**

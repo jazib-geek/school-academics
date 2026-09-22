@@ -64,6 +64,11 @@ export const getAcademicExamPaperById = async (id) => {
   return response?.data?.data
 }
 
+export const updateAcademicExamPaperPrintAdjustments = async (id, printAdjustments) => {
+  const response = await academicApi.post(`/api/academics/exammaker/papers/${id}/print-adjustments`, printAdjustments)
+  return response?.data?.data
+}
+
 export const deleteAcademicExamPaper = async (id) => {
   // POST (not DELETE): production Plesk hosting blocks DELETE requests.
   await academicApi.post(`/api/academics/exammaker/papers/${id}/delete`)

@@ -229,6 +229,28 @@ export const getAcademicExamPaperById = async (id) => {
   }
 }
 
+export const updateAcademicExamPaperPrintAdjustments = async (id, printAdjustments) => {
+  const requestKey = `print-adjustments-${id}`
+  cancelPreviousRequest(requestKey)
+
+  const controller = new AbortController()
+  trackRequest(requestKey, controller)
+
+  try {
+    const response = await withTimeout(
+      academicApi.post(`/api/academics/exammaker/papers/${id}/print-adjustments`, printAdjustments, {
+        signal: controller.signal,
+      }),
+    )
+    return response?.data?.data
+  } catch (error) {
+    if (isRequestCancelled(error)) {
+      throw new Error('Request cancelled')
+    }
+    throw error
+  }
+}
+
 export const deleteAcademicExamPaper = async (id) => {
   const requestKey = `delete-paper-${id}`
   cancelPreviousRequest(requestKey)

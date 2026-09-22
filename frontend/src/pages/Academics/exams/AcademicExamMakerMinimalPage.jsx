@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowLeft,
   ClipboardList,
-  Eye,
+  LayoutTemplate,
   FileOutput,
   FilePlus,
   FolderOpen,
@@ -15,13 +15,33 @@ import {
   Trash2,
   X,
 } from 'lucide-react'
-import katex from 'katex'
 import 'katex/dist/katex.min.css'
 import 'katex/contrib/mhchem'
 import Select from 'react-select'
+import AcademicFormulaInsertToolbar from '../../../components/academics/AcademicFormulaInsertToolbar.jsx'
+import AcademicQuestionMathField from '../../../components/academics/AcademicQuestionMathField.jsx'
+import {
+  looksLikeChemistryText,
+  looksLikeScientificProseText,
+  normalizePastedChemistryText,
+  normalizePastedScientificProseText,
+} from '../../../components/academics/academicQuestionLatexUtils.js'
 import { Link } from 'react-router-dom'
 import QuestionStemImage from '../../../components/academics/QuestionStemImage.jsx'
-import { stripLatexDelimitersForKatex } from '../../../components/academics/academicQuestionLatexUtils.js'
+import ExamPaperMathText from './examPaperMathText.jsx'
+import ExamPaperRichTextField, {
+  ExamPaperRichView,
+  examPaperRichHtmlToPlain,
+} from './examPaperRichTextField.jsx'
+import {
+  buildPrintSpacingStyle,
+  DEFAULT_EXAM_SECTION_FONT_PX,
+  EXAM_SECTION_FONT_SIZE_OPTIONS,
+  hasAnySectionFontTweak,
+  hasPrintSpacingTweaks,
+  resolveSectionFontSizePx,
+  sectionHasCustomFontSize,
+} from './examPaperRichTextUtils.js'
 import { useAcademicInstituteSettings } from '../../../contexts/AcademicInstituteSettingsContext'
 import {
   getAcademicChapters,
@@ -38,9 +58,20 @@ import {
   getExamQuestionAvailability,
   randomizeAcademicExamPaperFromChapters,
   updateAcademicExamPaperFromSelection,
+  updateAcademicExamPaperPrintAdjustments,
 } from '../../../services/academicExamMakerServiceWithSafety'
+import { toast } from 'sonner'
+import {
+  emptyPrintTweaksState,
+  printAdjustmentsFromApi,
+  printAdjustmentsToApi,
+} from './examPaperPrintAdjustments.js'
 import { useExamMakerAutoSave } from '../../../hooks/useExamMakerAutoSave'
 import { useExamMakerUnsavedGuard } from '../../../hooks/useExamMakerUnsavedGuard'
+import {
+  applyQuestionOrderChange,
+  resequenceQuestionOrders,
+} from './examMakerQuestionOrder'
 import { buildEditorSnapshot } from './examMakerWorkspaceSnapshot'
 import { normalizePaperName, paperNamesMatch } from './examMakerPaperName'
 import {
@@ -110,8 +141,6 @@ const createSectionConfig = (
     optionalQuestionsAttemptCount == null ? null : Number(optionalQuestionsAttemptCount),
 })
 
-const looksLikeLatex = (value) => /\\[a-zA-Z]+|(\^|_)\{?|\\frac|\\sqrt|\\theta|\\pi|\\ce\{/.test(value)
-const normalizeLatex = (value) => `${value || ''}`.replaceAll('\\\\', '\\').trim()
 const SECTION_KEY_REGEX = /^Q(\d+)$/i
 const CATALOG_TYPE_OPTIONS = [
   { value: QUESTION_TYPE.MCQ, label: 'MCQ' },
@@ -131,161 +160,10 @@ const getSectionPreviewRows = (sectionKey, selectedWithDetails) =>
       type: item.question?.type,
     }))
 
-const escapeLatexText = (value) =>
-  `${value || ''}`
-    .replace(/\\/g, '\\textbackslash{}')
-    .replace(/{/g, '\\{')
-    .replace(/}/g, '\\}')
-    .replace(/\$/g, '\\$')
-    .replace(/&/g, '\\&')
-    .replace(/%/g, '\\%')
-    .replace(/#/g, '\\#')
-    .replace(/_/g, '\\_')
-    .replace(/\^/g, '\\textasciicircum{}')
+const PRINT_SPACING_MIN_STEP = -4
+const PRINT_SPACING_MAX_STEP = 6
 
-const shouldWrapProseRun = (mid) => {
-  const trimmed = `${mid || ''}`.trim()
-  if (!trimmed || !/[A-Za-z]/.test(trimmed)) return false
-  // Multi-word English (e.g. "State the following into scientific notation:")
-  if (/[A-Za-z]{2,}\s+[A-Za-z]{2,}/.test(trimmed)) return true
-  if (/[A-Za-z]{3,}[.,:;!?]/.test(trimmed)) return true
-  if (/^[A-Za-z][A-Za-z',.-]{3,}$/.test(trimmed)) return true
-  return false
-}
-
-const consumeBraceGroup = (s, start) => {
-  let depth = 0
-  for (let i = start; i < s.length; i += 1) {
-    if (s[i] === '{') depth += 1
-    else if (s[i] === '}') {
-      depth -= 1
-      if (depth === 0) return i + 1
-    }
-  }
-  return s.length
-}
-
-/**
- * Wrap plain-language runs in \text{...} so paper CSS can force Arial on prose
- * while leaving TeX commands / math tokens for KaTeX formula fonts.
- */
-const wrapPlainProseForKatex = (latex) => {
-  const s = `${latex || ''}`
-  if (!s.trim()) return s
-  if (/\\(?:text|textrm|textsf|textit|textbf|textup|textmd)\s*\{/.test(s)) return s
-
-  let out = ''
-  let i = 0
-  let prose = ''
-
-  const flushProse = () => {
-    if (!prose) return
-    // Wrap leading English only; leave numeric / parenthetical tails for math fonts.
-    const englishLeadMatch = prose.match(/^(\s*(?:[A-Za-z][A-Za-z',.-]*[\s:;.!?]*)+)/)
-    if (englishLeadMatch) {
-      const leadRaw = englishLeadMatch[1]
-      const rest = prose.slice(leadRaw.length)
-      if (rest && /^\s*[\d(]/.test(rest) && shouldWrapProseRun(leadRaw)) {
-        const trimmedLead = leadRaw.replace(/\s+$/, '')
-        const gap = leadRaw.slice(trimmedLead.length)
-        out += `\\text{${escapeLatexText(trimmedLead)}}${gap}${rest}`
-        prose = ''
-        return
-      }
-    }
-    const lead = prose.match(/^\s*/)?.[0] || ''
-    const trail = prose.match(/\s*$/)?.[0] || ''
-    const mid = prose.slice(lead.length, prose.length - trail.length)
-    if (shouldWrapProseRun(mid)) {
-      out += `${lead}\\text{${escapeLatexText(mid)}}${trail}`
-    } else {
-      out += prose
-    }
-    prose = ''
-  }
-
-  while (i < s.length) {
-    const ch = s[i]
-    if (ch === '\\') {
-      flushProse()
-      if (i + 1 < s.length && /[^a-zA-Z]/.test(s[i + 1])) {
-        out += s.slice(i, i + 2)
-        i += 2
-        continue
-      }
-      let j = i + 1
-      while (j < s.length && /[a-zA-Z]/.test(s[j])) j += 1
-      if (s[j] === '*') j += 1
-      out += s.slice(i, j)
-      i = j
-      while (i < s.length && (s[i] === '[' || s[i] === '{')) {
-        if (s[i] === '[') {
-          const end = s.indexOf(']', i)
-          if (end === -1) {
-            out += s.slice(i)
-            i = s.length
-            break
-          }
-          out += s.slice(i, end + 1)
-          i = end + 1
-        } else {
-          const end = consumeBraceGroup(s, i)
-          out += s.slice(i, end)
-          i = end
-        }
-      }
-      continue
-    }
-    if (ch === '{' || ch === '}') {
-      flushProse()
-      out += ch
-      i += 1
-      continue
-    }
-    if (ch === '^' || ch === '_') {
-      flushProse()
-      out += ch
-      i += 1
-      if (i < s.length && s[i] === '{') {
-        const end = consumeBraceGroup(s, i)
-        out += s.slice(i, end)
-        i = end
-      } else if (i < s.length) {
-        out += s[i]
-        i += 1
-      }
-      continue
-    }
-    prose += ch
-    i += 1
-  }
-  flushProse()
-  return out
-}
-
-function MathText({ value, className = '' }) {
-  if (!value || !`${value}`.trim()) return <span className={className}>-</span>
-
-  const merged = `min-w-0 break-words ${className}`.trim()
-  const stripped = stripLatexDelimitersForKatex(value)
-  const normalized = normalizeLatex(stripped)
-  if (!looksLikeLatex(normalized)) {
-    return <span className={merged}>{stripped || value}</span>
-  }
-
-  const latexForRender = wrapPlainProseForKatex(normalized)
-
-  try {
-    const html = katex.renderToString(latexForRender, {
-      throwOnError: false,
-      strict: 'ignore',
-      displayMode: false,
-    })
-    return <span className={merged} dangerouslySetInnerHTML={{ __html: html }} />
-  } catch {
-    return <span className={merged}>{stripped || value}</span>
-  }
-}
+const hasMathLikePasteContent = (value) => Boolean(value?.trim())
 
 function PopupLoader({ open, text }) {
   if (!open) return null
@@ -586,6 +464,13 @@ function AcademicExamMakerMinimalPage() {
   const [isGeneratingFromSelection, setIsGeneratingFromSelection] = useState(false)
   const [isPoolLoading, setIsPoolLoading] = useState(false)
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
+  const [previewEditMode, setPreviewEditMode] = useState(false)
+  const [printTweaks, setPrintTweaks] = useState(emptyPrintTweaksState)
+  const [isSavingPrintLayout, setIsSavingPrintLayout] = useState(false)
+  const [printEditTarget, setPrintEditTarget] = useState(null)
+  const [printEditDraft, setPrintEditDraft] = useState('')
+  const [printMathFieldSession, setPrintMathFieldSession] = useState(0)
+  const printMathFieldRef = useRef(null)
   const [isCatalogModalOpen, setIsCatalogModalOpen] = useState(false)
   const [isAutoMakerOpen, setIsAutoMakerOpen] = useState(false)
   const [isAutoWarningOpen, setIsAutoWarningOpen] = useState(false)
@@ -771,6 +656,19 @@ function AcademicExamMakerMinimalPage() {
     () => new Set(selectedQuestions.map((item) => item.questionId)),
     [selectedQuestions],
   )
+
+  const isPrintLayoutDirty = useMemo(() => {
+    const ids = [...selectedQuestionIds]
+    const saved = printAdjustmentsToApi(
+      printAdjustmentsFromApi(selectedPaper?.printAdjustments),
+      ids,
+    )
+    const current = printAdjustmentsToApi(printTweaks, ids)
+    return JSON.stringify(saved ?? null) !== JSON.stringify(current ?? null)
+  }, [printTweaks, selectedPaper?.printAdjustments, selectedQuestionIds])
+
+  const hasSessionChangesToSave = isWorkspaceDirty || isPrintLayoutDirty
+
   const selectedWithDetails = useMemo(() => {
     return selectedQuestions
       .map((item) => ({
@@ -800,10 +698,32 @@ function AcademicExamMakerMinimalPage() {
     [selectedWithDetails],
   )
 
+  const applyQuestionPrintTweaks = useCallback(
+    (question) => {
+      const tweak = printTweaks.questions?.[question.id]
+      if (!tweak) return question
+      return {
+        ...question,
+        descriptionText:
+          tweak.descriptionText !== undefined ? tweak.descriptionText : question.descriptionText,
+        mcqOpt1: tweak.mcqOpt1 !== undefined ? tweak.mcqOpt1 : question.mcqOpt1,
+        mcqOpt2: tweak.mcqOpt2 !== undefined ? tweak.mcqOpt2 : question.mcqOpt2,
+        mcqOpt3: tweak.mcqOpt3 !== undefined ? tweak.mcqOpt3 : question.mcqOpt3,
+        mcqOpt4: tweak.mcqOpt4 !== undefined ? tweak.mcqOpt4 : question.mcqOpt4,
+      }
+    },
+    [printTweaks.questions],
+  )
+
+  const displayQuestions = useMemo(
+    () => previewQuestions.map((q) => applyQuestionPrintTweaks(q)),
+    [applyQuestionPrintTweaks, previewQuestions],
+  )
+
   const groupedPreviewQuestions = useMemo(() => {
-    if (!previewQuestions.length) return []
+    if (!displayQuestions.length) return []
     const groups = new Map()
-    previewQuestions.forEach((q) => {
+    displayQuestions.forEach((q) => {
       const key = q.section || 'Section'
       if (!groups.has(key)) groups.set(key, [])
       groups.get(key).push(q)
@@ -812,7 +732,7 @@ function AcademicExamMakerMinimalPage() {
       section,
       [...questions].sort((a, b) => Number(a.order) - Number(b.order)),
     ])
-  }, [previewQuestions])
+  }, [displayQuestions])
 
   const previewTotalMarks = useMemo(
     () => computePreviewTotalMarks(selectedWithDetails, sectionConfigs),
@@ -992,6 +912,7 @@ function AcademicExamMakerMinimalPage() {
     }
     setSectionConfigs(configs)
     setSelectedQuestions(selected)
+    setPrintTweaks(printAdjustmentsFromApi(paper.printAdjustments))
 
     const formForSnapshot = {
       classId: paper.classId ? String(paper.classId) : '',
@@ -1311,7 +1232,9 @@ function AcademicExamMakerMinimalPage() {
       return previous.type === nextType ? previous : { ...previous, type: nextType }
     })
     setSelectedQuestions((previous) =>
-      previous.filter((item) => isQuestionTypeAllowedForExam(examType, item.question?.type)),
+      resequenceQuestionOrders(
+        previous.filter((item) => isQuestionTypeAllowedForExam(examType, item.question?.type)),
+      ),
     )
   }, [form.examType])
 
@@ -1735,7 +1658,13 @@ function AcademicExamMakerMinimalPage() {
   }
 
   const removeSelectedQuestion = (questionId) => {
-    setSelectedQuestions((previous) => previous.filter((item) => item.questionId !== questionId))
+    setSelectedQuestions((previous) =>
+      resequenceQuestionOrders(previous.filter((item) => item.questionId !== questionId)),
+    )
+  }
+
+  const commitQuestionOrder = (questionId, rawOrder) => {
+    setSelectedQuestions((previous) => applyQuestionOrderChange(previous, questionId, rawOrder))
   }
 
   const updateSelectedQuestion = (questionId, field, value) => {
@@ -1826,12 +1755,16 @@ function AcademicExamMakerMinimalPage() {
         subQuestionNumberingStyle: form.subQuestionNumberingStyle,
         wrapQuestionMarksInParentheses: Boolean(form.wrapQuestionMarksInParentheses),
         sections: sectionConfigs,
-        selectedQuestions: selectedQuestions.map((item) => ({
+        selectedQuestions: resequenceQuestionOrders(selectedQuestions).map((item) => ({
           questionId: item.questionId,
           questionOrder: Number(item.questionOrder),
           section: item.section,
           marks: Number(item.marks),
         })),
+        printAdjustments: printAdjustmentsToApi(
+          printTweaks,
+          selectedQuestions.map((item) => item.questionId),
+        ),
       }
 
       let savedPaper
@@ -2015,6 +1948,11 @@ function AcademicExamMakerMinimalPage() {
     }, 200)
   }
 
+  const openPrintAndLayoutModal = useCallback(() => {
+    setPreviewEditMode(true)
+    setIsPreviewOpen(true)
+  }, [])
+
   const onExportWord = () => {
     if (!previewQuestions.length) {
       setError('Add questions before exporting a Word file.')
@@ -2038,8 +1976,22 @@ function AcademicExamMakerMinimalPage() {
       }),
     )
 
-    if (showHeaderNote) {
-      body.push(docxParagraph([docxTextRun('Note: ', { bold: true }), docxTextRun(previewHeaderNote)], { spacingAfter: 160 }))
+    const exportHeaderNote =
+      printTweaks.headerNote !== undefined ? printTweaks.headerNote : form.headerNote || selectedPaper?.headerNote || ''
+    const exportFooterNote =
+      printTweaks.footerNote !== undefined ? printTweaks.footerNote : form.footerNote || selectedPaper?.footerNote || ''
+    const exportExamType = form.examType || selectedPaper?.examType
+    const showExportHeaderNote =
+      Boolean(exportHeaderNote?.trim()) &&
+      (!isSubjectiveExamType(exportExamType) || !isDefaultObjectiveHeaderNote(exportHeaderNote))
+
+    if (showExportHeaderNote) {
+      body.push(
+        docxParagraph(
+          [docxTextRun('Note: ', { bold: true }), docxTextRun(examPaperRichHtmlToPlain(exportHeaderNote))],
+          { spacingAfter: 160 },
+        ),
+      )
     }
 
     groupedPreviewQuestions.forEach(([section, questions]) => {
@@ -2054,14 +2006,16 @@ function AcademicExamMakerMinimalPage() {
         attemptCount: optionalActive ? optionalAttempt : null,
       })
       let headingText =
-        config?.headingText || defaultSectionHeading(section, previewExamType, sectionMode)
+        config?.headingText || defaultSectionHeading(section, exportExamType, sectionMode)
       if (sectionMode === 'laq' && /^Q\d+:\s*$/i.test(`${headingText}`.trim())) {
-        headingText = defaultSectionHeading(section, previewExamType, sectionMode)
+        headingText = defaultSectionHeading(section, exportExamType, sectionMode)
       }
+      const sectionTweak = printTweaks.sections?.[section]
+      if (sectionTweak?.headingText !== undefined) headingText = sectionTweak.headingText
       const sectionHeadingParts = resolveSectionHeadingDisplay({
         sectionKey: section,
         headingText,
-        examType: previewExamType,
+        examType: exportExamType,
         mode: sectionMode,
         optionalActive,
         optionalAttempt,
@@ -2080,14 +2034,15 @@ function AcademicExamMakerMinimalPage() {
       body.push(
         docxSectionHeadingTable({
           prefix: sectionHeadingParts.prefix,
-          body: sectionHeadingParts.body,
+          body: examPaperRichHtmlToPlain(sectionHeadingParts.body),
           marksText,
         }),
       )
 
-      const instructionText = sectionMode !== 'saq' && sectionMode !== 'laq' ? config?.instructionText : ''
+      let instructionText = sectionMode !== 'saq' && sectionMode !== 'laq' ? config?.instructionText || '' : ''
+      if (sectionTweak?.instructionText !== undefined) instructionText = sectionTweak.instructionText
       if (instructionText) {
-        body.push(docxParagraph([docxTextRun(instructionText)]))
+        body.push(docxParagraph([docxTextRun(examPaperRichHtmlToPlain(instructionText))]))
       }
 
       const showPerQuestionMarks =
@@ -2140,8 +2095,13 @@ function AcademicExamMakerMinimalPage() {
       })
     })
 
-    if (previewFooterNote) {
-      body.push(docxParagraph([docxTextRun('Note: ', { bold: true }), docxTextRun(previewFooterNote)], { spacingAfter: 80 }))
+    if (exportFooterNote) {
+      body.push(
+        docxParagraph(
+          [docxTextRun('Note: ', { bold: true }), docxTextRun(examPaperRichHtmlToPlain(exportFooterNote))],
+          { spacingAfter: 80 },
+        ),
+      )
     }
 
     const safePaperName = normalizePaperName(form.paperName || selectedPaper?.paperName || 'Exam Paper')
@@ -2182,6 +2142,10 @@ function AcademicExamMakerMinimalPage() {
     setCatalogChapterId('')
     setError('')
     setIsPreviewOpen(false)
+    setPreviewEditMode(false)
+    setPrintTweaks(emptyPrintTweaksState())
+    setPrintEditTarget(null)
+    setPrintEditDraft('')
     setIsCatalogModalOpen(false)
     setIsAutoMakerOpen(false)
     setIsAutoWarningOpen(false)
@@ -2231,9 +2195,6 @@ function AcademicExamMakerMinimalPage() {
 
   const previewExamType = form.examType || selectedPaper?.examType
   const previewHeaderNote = form.headerNote || selectedPaper?.headerNote || ''
-  const showHeaderNote =
-    Boolean(previewHeaderNote?.trim()) &&
-    (!isSubjectiveExamType(previewExamType) || !isDefaultObjectiveHeaderNote(previewHeaderNote))
   const previewDurationMinutes = Number(form.durationMinutes) || selectedPaper?.durationMinutes || 0
 
   const previewClassName = selectedClass?.label || selectedPaper?.className || '—'
@@ -2243,13 +2204,174 @@ function AcademicExamMakerMinimalPage() {
   const previewShowSectionNames = Boolean(form.showSectionNames ?? selectedPaper?.showSectionNames)
   const showStudentNameRollSectionRow = isObjectiveExamType(previewExamType)
 
-  const renderPaperDocument = ({ includeSectionEditors = false } = {}) => (
-    <section className="exam-paper min-w-0 rounded-xl border border-slate-300 bg-white p-6 shadow-sm md:p-8">
+  const resolvedHeaderNote =
+    printTweaks.headerNote !== undefined ? printTweaks.headerNote : previewHeaderNote
+  const resolvedFooterNote =
+    printTweaks.footerNote !== undefined ? printTweaks.footerNote : previewFooterNote
+  const showResolvedHeaderNote =
+    Boolean(resolvedHeaderNote?.trim()) &&
+    (!isSubjectiveExamType(previewExamType) || !isDefaultObjectiveHeaderNote(resolvedHeaderNote))
+
+  const hasActivePrintTweaks = useMemo(() => {
+    if (printTweaks.headerNote !== undefined || printTweaks.footerNote !== undefined) return true
+    if (Object.keys(printTweaks.sections || {}).length > 0) return true
+    if (Object.keys(printTweaks.questions || {}).length > 0) return true
+    if (hasPrintSpacingTweaks(printTweaks.spacing)) return true
+    if (hasAnySectionFontTweak(printTweaks.sections)) return true
+    return false
+  }, [printTweaks])
+
+  const printSpacingStyle = useMemo(
+    () => buildPrintSpacingStyle(printTweaks.spacing),
+    [printTweaks.spacing],
+  )
+
+  const bumpPrintSpacing = useCallback((key, delta) => {
+    setPrintTweaks((previous) => {
+      const spacing = { ...emptyPrintTweaksState().spacing, ...previous.spacing }
+      const next = Math.min(
+        PRINT_SPACING_MAX_STEP,
+        Math.max(PRINT_SPACING_MIN_STEP, (Number(spacing[key]) || 0) + delta),
+      )
+      return { ...previous, spacing: { ...spacing, [key]: next } }
+    })
+  }, [])
+
+  const discardPrintTweaks = useCallback(() => {
+    setPrintTweaks(printAdjustmentsFromApi(selectedPaper?.printAdjustments))
+    setPrintEditTarget(null)
+    setPrintEditDraft('')
+  }, [selectedPaper?.printAdjustments])
+
+  const onSavePrintLayout = async () => {
+    const paperId = selectedPaper?.id
+    if (!paperId) {
+      setError('Save the exam first, then you can save the print layout.')
+      return
+    }
+
+    setIsSavingPrintLayout(true)
+    setError('')
+    try {
+      const payload = printAdjustmentsToApi(
+        printTweaks,
+        selectedQuestions.map((item) => item.questionId),
+      )
+      const savedPaper = await updateAcademicExamPaperPrintAdjustments(paperId, payload)
+      hydratePaperInEditor(savedPaper, { syncForm: false })
+      toast.success('Print layout saved.')
+    } catch (requestError) {
+      const body = requestError?.response?.data
+      const apiMessage =
+        (typeof body?.message === 'string' && body.message) ||
+        (typeof body?.detail === 'string' && body.detail) ||
+        (typeof body?.title === 'string' && body.title) ||
+        ''
+      setError(apiMessage || 'Could not save print layout.')
+    } finally {
+      setIsSavingPrintLayout(false)
+    }
+  }
+
+  const resolveSectionPrintField = useCallback(
+    (sectionKey, field, fallback) => {
+      const row = printTweaks.sections?.[sectionKey]
+      if (row && row[field] !== undefined) return row[field]
+      return fallback
+    },
+    [printTweaks.sections],
+  )
+
+  const updatePrintTweakQuestion = useCallback((questionId, field, value) => {
+    setPrintTweaks((previous) => ({
+      ...previous,
+      questions: {
+        ...previous.questions,
+        [questionId]: { ...previous.questions?.[questionId], [field]: value },
+      },
+    }))
+  }, [])
+
+  const updatePrintTweakSection = useCallback((sectionKey, field, value) => {
+    setPrintTweaks((previous) => ({
+      ...previous,
+      sections: {
+        ...previous.sections,
+        [sectionKey]: { ...previous.sections?.[sectionKey], [field]: value },
+      },
+    }))
+  }, [])
+
+  const setSectionFontSizePx = useCallback(
+    (sectionKey, px) => {
+      if (px == null || px === DEFAULT_EXAM_SECTION_FONT_PX) {
+        setPrintTweaks((previous) => {
+          const row = { ...(previous.sections?.[sectionKey] || {}) }
+          delete row.fontSizePx
+          const sections = { ...previous.sections }
+          if (Object.keys(row).length === 0) delete sections[sectionKey]
+          else sections[sectionKey] = row
+          return { ...previous, sections }
+        })
+        return
+      }
+      updatePrintTweakSection(sectionKey, 'fontSizePx', px)
+    },
+    [updatePrintTweakSection],
+  )
+
+  const normalizePrintMathPaste = useCallback((pasted) => {
+    if (!pasted || !hasMathLikePasteContent(pasted)) return ''
+    if (looksLikeChemistryText(pasted)) return normalizePastedChemistryText(pasted)
+    if (looksLikeScientificProseText(pasted)) return normalizePastedScientificProseText(pasted)
+    return `${pasted}`.trim()
+  }, [])
+
+  const openQuestionPrintEdit = (questionId, field, currentValue) => {
+    setPrintEditTarget({ type: 'question', questionId, field })
+    setPrintEditDraft(currentValue || '')
+    setPrintMathFieldSession((count) => count + 1)
+  }
+
+  const applyPrintEditDraft = () => {
+    if (!printEditTarget) return
+    if (printEditTarget.type === 'question') {
+      updatePrintTweakQuestion(printEditTarget.questionId, printEditTarget.field, printEditDraft)
+    }
+    setPrintEditTarget(null)
+    setPrintEditDraft('')
+  }
+
+  const cancelPrintEditDraft = () => {
+    setPrintEditTarget(null)
+    setPrintEditDraft('')
+  }
+
+  const renderEditableQuestionBlock = (questionId, field, value, className = '', editEnabled = false) => {
+    if (!editEnabled) {
+      return <ExamPaperMathText value={value} className={className} />
+    }
+    return (
+      <button
+        type="button"
+        onClick={() => openQuestionPrintEdit(questionId, field, value)}
+        className={`print-hidden w-full cursor-text rounded text-left ring-offset-1 hover:bg-indigo-50/60 hover:ring-2 hover:ring-indigo-200 ${className}`}
+      >
+        <ExamPaperMathText value={value} className={className} />
+      </button>
+    )
+  }
+
+  const renderPaperDocument = ({ includeSectionEditors = false, enablePrintEdit = false } = {}) => (
+    <section
+      className="exam-paper min-w-0 rounded-xl border border-slate-300 bg-white p-6 shadow-sm md:p-8"
+      style={printSpacingStyle}
+    >
       {isLoading ? (
         <div className="flex items-center justify-center gap-2 py-12 text-slate-500">
           <Loader2 size={16} className="animate-spin" /> Loading paper...
         </div>
-      ) : previewQuestions.length === 0 ? (
+      ) : displayQuestions.length === 0 ? (
         <p className="py-10 text-center text-slate-500">
           Add questions from the catalog to build your paper. Adjust marks before saving.
         </p>
@@ -2325,12 +2447,26 @@ function AcademicExamMakerMinimalPage() {
             ) : null}
           </div>
 
-          {showHeaderNote ? (
+          {showResolvedHeaderNote ? (
+            enablePrintEdit ? (
+              <div className="exam-paper-meta mb-2 block print-hidden">
+                <strong>Note:</strong>
+                <ExamPaperRichTextField
+                  className="mt-1"
+                  value={resolvedHeaderNote}
+                  onChange={(html) =>
+                    setPrintTweaks((previous) => ({ ...previous, headerNote: html }))
+                  }
+                  minHeight="5rem"
+                />
+              </div>
+            ) : null
+          ) : null}
+          {showResolvedHeaderNote && !enablePrintEdit ? (
             <p className="exam-paper-meta mb-2">
-              <strong>Note:</strong> {previewHeaderNote}
+              <strong>Note:</strong> <ExamPaperRichView value={resolvedHeaderNote} />
             </p>
           ) : null}
-
           {groupedPreviewQuestions.map(([section, questions]) => {
             const config = sectionConfigMap.get(section)
             const sectionMode = inferSectionDisplayMode(questions)
@@ -2351,6 +2487,7 @@ function AcademicExamMakerMinimalPage() {
             if (sectionMode === 'laq' && /^Q\d+:\s*$/i.test(`${headingText}`.trim())) {
               headingText = defaultSectionHeading(section, previewExamType, sectionMode)
             }
+            headingText = resolveSectionPrintField(section, 'headingText', headingText)
             const showSectionHeadingRow =
               sectionMode === 'saq' || sectionMode === 'mcq' || sectionMode === 'laq'
             const sectionHeadingParts = resolveSectionHeadingDisplay({
@@ -2361,8 +2498,9 @@ function AcademicExamMakerMinimalPage() {
               optionalActive,
               optionalAttempt,
             })
-            const instructionText =
-              sectionMode !== 'saq' && sectionMode !== 'laq' ? config?.instructionText : ''
+            const baseInstructionText =
+              sectionMode !== 'saq' && sectionMode !== 'laq' ? config?.instructionText || '' : ''
+            const instructionText = resolveSectionPrintField(section, 'instructionText', baseInstructionText)
 
             const sectionReferenceLabel = previewShowSectionNames
               ? resolveSectionBannerLabel(section, config?.sectionName)
@@ -2370,24 +2508,129 @@ function AcademicExamMakerMinimalPage() {
             const showSectionMarksOnHeading = marksPresentation.showSectionMarksOnHeading
             const showPerQuestionMarks =
               sectionMode === 'mcq' ? false : marksPresentation.showPerQuestionMarks
+            const sectionTweakRow = printTweaks.sections?.[section]
+            const sectionCustomFont = sectionHasCustomFontSize(sectionTweakRow)
+            const sectionFontPx = resolveSectionFontSizePx(sectionTweakRow)
+            const activeSectionFontPx = sectionCustomFont
+              ? sectionFontPx
+              : DEFAULT_EXAM_SECTION_FONT_PX
 
             return (
-              <section key={section} className="exam-paper-section">
+              <section
+                key={section}
+                className={`exam-paper-section${sectionCustomFont ? ' exam-paper-section-custom-font' : ''}`}
+                style={
+                  sectionCustomFont
+                    ? {
+                        fontSize: `${sectionFontPx}px`,
+                        lineHeight: 1.15,
+                        '--exam-section-font-size': `${sectionFontPx}px`,
+                      }
+                    : undefined
+                }
+              >
+                {enablePrintEdit ? (
+                  <div className="print-hidden mb-2 flex flex-wrap items-center gap-1.5 rounded-md border border-indigo-100 bg-indigo-50/60 px-2 py-1.5 text-[11px]">
+                    <span className="font-semibold text-slate-600">
+                      {formatSectionRomanLabel(section)} text size
+                    </span>
+                    {EXAM_SECTION_FONT_SIZE_OPTIONS.map((option) => (
+                      <button
+                        key={option.px}
+                        type="button"
+                        onClick={() => setSectionFontSizePx(section, option.px)}
+                        className={`rounded border px-2 py-0.5 text-[10px] font-semibold ${
+                          activeSectionFontPx === option.px
+                            ? 'border-indigo-500 bg-indigo-600 text-white'
+                            : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
                 {showSectionHeadingRow ? (
                   <>
                     {previewShowSectionNames && sectionReferenceLabel ? (
                       <p className="exam-paper-section-ref-label">{sectionReferenceLabel}</p>
                     ) : null}
                     <div className="exam-paper-section-heading-row min-w-0">
-                      <h3 className="exam-paper-section-heading min-w-0">
-                        <span className="exam-paper-section-heading-key">{sectionHeadingParts.prefix}</span>
-                        {sectionHeadingParts.body ? (
-                          <>
-                            {' '}
-                            <span className="exam-paper-section-heading-body">{sectionHeadingParts.body}</span>
-                          </>
-                        ) : null}
-                      </h3>
+                      {enablePrintEdit &&
+                      printEditTarget?.type === 'section' &&
+                      printEditTarget.sectionKey === section &&
+                      printEditTarget.field === 'headingText' ? (
+                        <div className="min-w-0 flex-1 print-hidden">
+                          <ExamPaperRichTextField
+                            value={printEditDraft}
+                            onChange={setPrintEditDraft}
+                            minHeight="3.5rem"
+                          />
+                          <div className="mt-1 flex justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={cancelPrintEditDraft}
+                              className="rounded border border-slate-200 px-2 py-1 text-xs text-slate-600"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                updatePrintTweakSection(section, 'headingText', printEditDraft)
+                                cancelPrintEditDraft()
+                              }}
+                              className="rounded bg-indigo-600 px-2 py-1 text-xs font-medium text-white"
+                            >
+                              Apply
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <h3
+                          className={`exam-paper-section-heading min-w-0${enablePrintEdit ? ' print-hidden cursor-pointer rounded hover:bg-indigo-50/60' : ''}`}
+                          onClick={
+                            enablePrintEdit
+                              ? () => {
+                                  setPrintEditTarget({
+                                    type: 'section',
+                                    sectionKey: section,
+                                    field: 'headingText',
+                                  })
+                                  setPrintEditDraft(headingText)
+                                }
+                              : undefined
+                          }
+                          role={enablePrintEdit ? 'button' : undefined}
+                          tabIndex={enablePrintEdit ? 0 : undefined}
+                        >
+                          <span className="exam-paper-section-heading-key">{sectionHeadingParts.prefix}</span>
+                          {sectionHeadingParts.body ? (
+                            <>
+                              {' '}
+                              <span className="exam-paper-section-heading-body">
+                              <ExamPaperRichView value={sectionHeadingParts.body} />
+                            </span>
+                            </>
+                          ) : null}
+                        </h3>
+                      )}
+                      {enablePrintEdit &&
+                      printEditTarget?.type === 'section' &&
+                      printEditTarget.sectionKey === section &&
+                      printEditTarget.field === 'headingText' ? (
+                        <h3 className="exam-paper-section-heading min-w-0 hidden print:block">
+                          <span className="exam-paper-section-heading-key">{sectionHeadingParts.prefix}</span>
+                          {sectionHeadingParts.body ? (
+                            <>
+                              {' '}
+                              <span className="exam-paper-section-heading-body">
+                              <ExamPaperRichView value={sectionHeadingParts.body} />
+                            </span>
+                            </>
+                          ) : null}
+                        </h3>
+                      ) : null}
                       <div className="exam-paper-section-heading-aside">
                         {showSectionMarksOnHeading ? (
                           <p className="exam-paper-section-marks tabular-nums">{marksText}</p>
@@ -2408,8 +2651,21 @@ function AcademicExamMakerMinimalPage() {
                   </>
                 ) : null}
 
-                {instructionText ? (
-                  <p className="exam-paper-instruction">{instructionText}</p>
+                {instructionText || enablePrintEdit ? (
+                  enablePrintEdit ? (
+                    <div className="exam-paper-instruction block print-hidden">
+                      <span className="mb-1 block text-[11px] font-medium text-slate-500">Section instruction</span>
+                      <ExamPaperRichTextField
+                        value={instructionText}
+                        onChange={(html) => updatePrintTweakSection(section, 'instructionText', html)}
+                        minHeight="3.5rem"
+                      />
+                    </div>
+                  ) : (
+                    <p className="exam-paper-instruction">
+                      <ExamPaperRichView value={instructionText} />
+                    </p>
+                  )
                 ) : null}
 
                 {sectionMode === 'laq' ? (
@@ -2433,7 +2689,15 @@ function AcademicExamMakerMinimalPage() {
                                   {partIndex === 0 ? qLabel : `(${part.label})`}
                                 </span>
                                 <div className="exam-paper-question-stem min-w-0">
-                                  <MathText value={part.text} />
+                                  {partIndex === 0 && enablePrintEdit
+                                    ? renderEditableQuestionBlock(
+                                        question.id,
+                                        'descriptionText',
+                                        question.descriptionText,
+                                        '',
+                                        enablePrintEdit,
+                                      )
+                                    : <ExamPaperMathText value={part.text} />}
                                   {partIndex === parts.length - 1 ? (
                                     <QuestionStemImage src={question.stemImage} className="exam-paper-stem-image" />
                                   ) : null}
@@ -2456,7 +2720,13 @@ function AcademicExamMakerMinimalPage() {
                           >
                             <span className="exam-paper-saq-label exam-paper-saq-label-laq select-none">{qLabel}</span>
                             <div className="exam-paper-question-stem min-w-0">
-                              <MathText value={question.descriptionText} />
+                              {renderEditableQuestionBlock(
+                                question.id,
+                                'descriptionText',
+                                question.descriptionText,
+                                '',
+                                enablePrintEdit,
+                              )}
                               <QuestionStemImage src={question.stemImage} className="exam-paper-stem-image" />
                             </div>
                             {showPerQuestionMarks ? (
@@ -2484,10 +2754,13 @@ function AcademicExamMakerMinimalPage() {
                             {formatSubQuestionLabel(form.subQuestionNumberingStyle, index + 1)}
                           </span>
                           <div className="exam-paper-question-stem min-w-0">
-                            <MathText
-                              value={question.descriptionText}
-                              className="block min-w-0 break-words"
-                            />
+                            {renderEditableQuestionBlock(
+                              question.id,
+                              'descriptionText',
+                              question.descriptionText,
+                              'block min-w-0 break-words',
+                              enablePrintEdit,
+                            )}
                             <QuestionStemImage src={question.stemImage} className="exam-paper-stem-image" />
                           </div>
                           {question.type !== 'mcq' && showPerQuestionMarks ? (
@@ -2499,19 +2772,47 @@ function AcademicExamMakerMinimalPage() {
                         {question.type === 'mcq' ? (
                           <div className="exam-paper-mcq-options grid grid-cols-2 gap-x-8">
                             <p>
-                              a) <MathText value={question.mcqOpt1} />
+                              a){' '}
+                              {renderEditableQuestionBlock(
+                                question.id,
+                                'mcqOpt1',
+                                question.mcqOpt1,
+                                '',
+                                enablePrintEdit,
+                              )}
                             </p>
                             <p>
-                              b) <MathText value={question.mcqOpt2} />
+                              b){' '}
+                              {renderEditableQuestionBlock(
+                                question.id,
+                                'mcqOpt2',
+                                question.mcqOpt2,
+                                '',
+                                enablePrintEdit,
+                              )}
                             </p>
                             {question.mcqOpt3 ? (
                               <p>
-                                c) <MathText value={question.mcqOpt3} />
+                                c){' '}
+                                {renderEditableQuestionBlock(
+                                  question.id,
+                                  'mcqOpt3',
+                                  question.mcqOpt3,
+                                  '',
+                                  enablePrintEdit,
+                                )}
                               </p>
                             ) : null}
                             {question.mcqOpt4 ? (
                               <p>
-                                d) <MathText value={question.mcqOpt4} />
+                                d){' '}
+                                {renderEditableQuestionBlock(
+                                  question.id,
+                                  'mcqOpt4',
+                                  question.mcqOpt4,
+                                  '',
+                                  enablePrintEdit,
+                                )}
                               </p>
                             ) : null}
                           </div>
@@ -2524,10 +2825,24 @@ function AcademicExamMakerMinimalPage() {
             )
           })}
 
-          {previewFooterNote ? (
-            <footer className="exam-paper-meta mt-4 border-t border-black pt-2">
-              <strong>Note:</strong> {previewFooterNote}
-            </footer>
+          {resolvedFooterNote || enablePrintEdit ? (
+            enablePrintEdit ? (
+              <div className="exam-paper-meta mt-4 block border-t border-black pt-2 print-hidden">
+                <strong>Note:</strong>
+                <ExamPaperRichTextField
+                  className="mt-1"
+                  value={resolvedFooterNote}
+                  onChange={(html) =>
+                    setPrintTweaks((previous) => ({ ...previous, footerNote: html }))
+                  }
+                  minHeight="3.5rem"
+                />
+              </div>
+            ) : resolvedFooterNote ? (
+              <footer className="exam-paper-meta mt-4 border-t border-black pt-2">
+                <strong>Note:</strong> <ExamPaperRichView value={resolvedFooterNote} />
+              </footer>
+            ) : null
           ) : null}
         </div>
       )}
@@ -2622,101 +2937,126 @@ function AcademicExamMakerMinimalPage() {
             <FileOutput size={18} className="text-slate-500" />
             <div>
               <h1 className="text-lg font-semibold leading-tight">Exam Maker</h1>
-              <p className="text-xs text-slate-500">Live preview + selected questions</p>
+              <p className="text-xs text-slate-500">Build the paper, then use Print and layout</p>
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-1.5">
+          <div className="flex flex-wrap items-center gap-2 pt-1.5">
             <Link
               to="/academics/dashboard"
-              className="rounded border border-indigo-500 bg-white px-2 py-1.5 text-xs font-semibold text-indigo-600 hover:bg-indigo-50"
+              className="self-center rounded border border-slate-300 bg-white px-2 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
             >
               <ArrowLeft size={14} className="mr-1 inline" />
               Back
             </Link>
-            <button
-              type="button"
-              onClick={onCreateNewExam}
-              className="rounded border border-sky-500 bg-white px-2 py-1.5 text-xs font-semibold text-sky-600 hover:bg-sky-50"
-            >
-              <FilePlus size={14} className="mr-1 inline" />
-              New Exam
-            </button>
-            <button
-              type="button"
-              onClick={onGenerateFromSelection}
-              disabled={!hasActiveExamWorkspace || isGeneratingFromSelection}
-              className="rounded border border-emerald-600 bg-emerald-600 px-2 py-1.5 text-xs text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {isGeneratingFromSelection ? <Loader2 size={14} className="mr-1 inline animate-spin" /> : <Sparkles size={14} className="mr-1 inline" />}
-              Save Exam
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsGeneratedPapersOpen(true)}
-              className="rounded border border-amber-500 bg-white px-2 py-1.5 text-xs font-semibold text-amber-600 hover:bg-amber-50"
-            >
-              <FolderOpen size={14} className="mr-1 inline" />
-              Papers
-              {generatedPapers.length > 0 ? (
-                <span className="ml-1 rounded bg-amber-100 px-1 text-[10px] font-medium text-amber-700">
-                  {generatedPapers.length}
-                </span>
-              ) : null}
-            </button>
-            <button
-              type="button"
-              onClick={openCatalogModal}
-              disabled={!hasActiveExamWorkspace}
-              className="rounded border border-indigo-500 bg-white px-2 py-1.5 text-xs font-semibold text-indigo-600 hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <Plus size={14} className="mr-1 inline" />
-              Add questions
-            </button>
-            <button
-              type="button"
-              onClick={openAutoMakerModal}
-              disabled={!hasActiveExamWorkspace}
-              className="rounded border border-orange-500 bg-white px-2 py-1.5 text-xs font-semibold text-orange-600 hover:bg-orange-50 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <Sparkles size={14} className="mr-1 inline" />
-              Auto QuestionPaper maker
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsPaperSetupOpen(true)}
-              disabled={!hasActiveExamWorkspace}
-              className="rounded border border-violet-500 bg-white px-2 py-1.5 text-xs font-semibold text-violet-600 hover:bg-violet-50 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <ClipboardList size={14} className="mr-1 inline" />
-              Paper setup
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsPreviewOpen(true)}
-              disabled={!hasActiveExamWorkspace}
-              className="rounded border border-teal-500 bg-white px-2 py-1.5 text-xs font-semibold text-teal-600 hover:bg-teal-50 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <Eye size={14} className="mr-1 inline" />
-              Preview
-            </button>
-            <button
-              type="button"
-              onClick={onExportWord}
-              disabled={!hasActiveExamWorkspace}
-              className="rounded border border-slate-500 bg-white px-2 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <FileOutput size={14} className="mr-1 inline" />
-              Word
-            </button>
-            <button
-              type="button"
-              onClick={onPrint}
-              disabled={!hasActiveExamWorkspace}
-              className="rounded border border-fuchsia-500 bg-white px-2 py-1.5 text-xs font-semibold text-fuchsia-600 hover:bg-fuchsia-50 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <Printer size={14} className="mr-1 inline" />
-              Print
-            </button>
+            <div className="relative rounded-md border border-sky-200 bg-sky-50/70 px-2 pb-2 pt-3">
+              <span className="absolute -top-2.5 left-2 rounded border border-sky-200 bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-sky-800">
+                Exam
+              </span>
+              <div className="flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                onClick={onCreateNewExam}
+                className="rounded border border-sky-500 bg-white px-2 py-1.5 text-xs font-semibold text-sky-600 hover:bg-sky-50"
+              >
+                <FilePlus size={14} className="mr-1 inline" />
+                New Exam
+              </button>
+              <button
+                type="button"
+                onClick={onGenerateFromSelection}
+                disabled={!hasActiveExamWorkspace || isGeneratingFromSelection}
+                className="rounded border border-emerald-600 bg-emerald-600 px-2 py-1.5 text-xs text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isGeneratingFromSelection ? (
+                  <Loader2 size={14} className="mr-1 inline animate-spin" />
+                ) : (
+                  <Sparkles size={14} className="mr-1 inline" />
+                )}
+                {hasSessionChangesToSave ? 'Save changes' : 'Save Exam'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsGeneratedPapersOpen(true)}
+                className="rounded border border-amber-500 bg-white px-2 py-1.5 text-xs font-semibold text-amber-600 hover:bg-amber-50"
+              >
+                <FolderOpen size={14} className="mr-1 inline" />
+                Papers
+                {generatedPapers.length > 0 ? (
+                  <span className="ml-1 rounded bg-amber-100 px-1 text-[10px] font-medium text-amber-700">
+                    {generatedPapers.length}
+                  </span>
+                ) : null}
+              </button>
+              </div>
+            </div>
+            <div className="relative rounded-md border border-violet-200 bg-violet-50/70 px-2 pb-2 pt-3">
+              <span className="absolute -top-2.5 left-2 rounded border border-violet-200 bg-violet-100 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-violet-800">
+                Questions
+              </span>
+              <div className="flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                onClick={openCatalogModal}
+                disabled={!hasActiveExamWorkspace}
+                className="rounded border border-indigo-500 bg-white px-2 py-1.5 text-xs font-semibold text-indigo-600 hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Plus size={14} className="mr-1 inline" />
+                Add questions
+              </button>
+              <button
+                type="button"
+                onClick={openAutoMakerModal}
+                disabled={!hasActiveExamWorkspace}
+                className="rounded border border-orange-500 bg-white px-2 py-1.5 text-xs font-semibold text-orange-600 hover:bg-orange-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Sparkles size={14} className="mr-1 inline" />
+                Auto maker
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsPaperSetupOpen(true)}
+                disabled={!hasActiveExamWorkspace}
+                className="rounded border border-violet-500 bg-white px-2 py-1.5 text-xs font-semibold text-violet-600 hover:bg-violet-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <ClipboardList size={14} className="mr-1 inline" />
+                Paper setup
+              </button>
+              </div>
+            </div>
+            <div className="relative rounded-md border border-fuchsia-200 bg-fuchsia-50/70 px-2 pb-2 pt-3">
+              <span className="absolute -top-2.5 left-2 rounded border border-fuchsia-200 bg-fuchsia-100 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-fuchsia-800">
+                Print
+              </span>
+              <div className="flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                onClick={openPrintAndLayoutModal}
+                disabled={!hasActiveExamWorkspace}
+                className="rounded border border-teal-600 bg-teal-600 px-2 py-1.5 text-xs font-semibold text-white hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <LayoutTemplate size={14} className="mr-1 inline" />
+                Print and layout
+              </button>
+              <button
+                type="button"
+                onClick={onExportWord}
+                disabled={!hasActiveExamWorkspace}
+                className="rounded border border-slate-400 bg-white px-2 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <FileOutput size={14} className="mr-1 inline" />
+                Word
+              </button>
+              <button
+                type="button"
+                onClick={onPrint}
+                disabled={!hasActiveExamWorkspace}
+                className="rounded border border-fuchsia-500 bg-white px-2 py-1.5 text-xs font-semibold text-fuchsia-600 hover:bg-fuchsia-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Printer size={14} className="mr-1 inline" />
+                Quick print
+              </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -2786,10 +3126,12 @@ function AcademicExamMakerMinimalPage() {
                       <input
                         type="number"
                         min={1}
+                        max={selectedWithDetails.length}
                         value={item.questionOrder}
                         onChange={(e) =>
                           updateSelectedQuestion(item.questionId, 'questionOrder', e.target.value)
                         }
+                        onBlur={(e) => commitQuestionOrder(item.questionId, e.target.value)}
                         className="w-14 rounded border border-slate-200 px-1 py-0.5 text-xs"
                       />
                     </label>
@@ -2834,7 +3176,7 @@ function AcademicExamMakerMinimalPage() {
                       <Trash2 size={14} />
                     </button>
                     <div className="w-full truncate text-[11px] text-slate-600">
-                      <MathText value={item.question?.descriptionText || ''} />
+                      <ExamPaperMathText value={item.question?.descriptionText || ''} />
                       <QuestionStemImage
                         src={item.question?.stemImage}
                         className="mt-1 max-h-20 rounded border border-slate-200 bg-white p-0.5"
@@ -2861,7 +3203,7 @@ function AcademicExamMakerMinimalPage() {
           role="dialog"
           aria-modal="true"
           aria-labelledby="minimal-paper-setup-title"
-          className={`max-h-[90vh] w-full max-w-4xl overflow-hidden rounded-xl bg-white shadow-xl transition ${
+          className={`flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-xl bg-white shadow-xl transition ${
             isPaperSetupOpen ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
           }`}
         >
@@ -2878,7 +3220,7 @@ function AcademicExamMakerMinimalPage() {
               <X size={18} />
             </button>
           </div>
-          <div className="max-h-[calc(90vh-3.5rem)] overflow-y-auto p-4">
+          <div className="min-h-0 flex-1 overflow-y-auto p-4">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <label className="block text-xs">
                 <span className="mb-1 block text-slate-600">Class</span>
@@ -2990,8 +3332,10 @@ function AcademicExamMakerMinimalPage() {
                 Wrap marks in ( )
               </label>
             </div>
+          </div>
+          <div className="shrink-0 border-t border-slate-200 px-4 py-3">
             {suppressPaperPreload ? (
-              <div className="mt-4 flex flex-wrap items-center justify-end gap-2 border-t border-slate-200 pt-4">
+              <div className="flex flex-wrap items-center justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => resetExamWorkspace({ openPaperSetupModal: false, enablePreloadSuppression: false })}
@@ -3019,7 +3363,31 @@ function AcademicExamMakerMinimalPage() {
                   papers are not loaded until you apply (avoids loading the wrong version or exam type).
                 </p>
               </div>
-            ) : null}
+            ) : (
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsPaperSetupOpen(false)}
+                  className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!normalizePaperName(form.paperName)) {
+                      setError('Enter a paper name (e.g. Set A).')
+                      return
+                    }
+                    setError('')
+                    setIsPaperSetupOpen(false)
+                  }}
+                  className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"
+                >
+                  Save setup
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -3180,7 +3548,7 @@ function AcademicExamMakerMinimalPage() {
                       <td className="border border-slate-200 px-2 py-1 uppercase">{q.type}</td>
                       <td className="border border-slate-200 px-2 py-1 uppercase">{q.category}</td>
                       <td className="border border-slate-200 px-2 py-1 leading-snug">
-                        <MathText value={q.descriptionText} />
+                        <ExamPaperMathText value={q.descriptionText} />
                         <QuestionStemImage
                           src={q.stemImage}
                           className="mt-1 max-h-24 rounded border border-slate-200 bg-white p-0.5"
@@ -3777,7 +4145,7 @@ function AcademicExamMakerMinimalPage() {
         </div>
       ) : null}
 
-      {/* Preview modal */}
+      {/* Print and layout modal */}
       <div
         role="presentation"
         className={`print-hidden fixed inset-0 z-[90] flex items-center justify-center p-4 transition-all duration-300 ${
@@ -3794,11 +4162,49 @@ function AcademicExamMakerMinimalPage() {
             isPreviewOpen ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
           }`}
         >
-          <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-4 py-3">
+          <div className="flex shrink-0 flex-col gap-2 border-b border-slate-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
             <h3 id="minimal-preview-title" className="flex items-center gap-2 text-sm font-semibold">
-              <Eye size={16} /> Live preview
+              <LayoutTemplate size={16} className="text-teal-700" />
+              Print and layout
             </h3>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setPreviewEditMode((value) => !value)}
+                className={`rounded border px-2 py-1.5 text-xs font-semibold ${
+                  previewEditMode
+                    ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                    : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                <Pencil size={14} className="mr-1 inline" />
+                {previewEditMode ? 'Layout editing on' : 'View only'}
+              </button>
+              {hasActivePrintTweaks ? (
+                <button
+                  type="button"
+                  onClick={discardPrintTweaks}
+                  className="rounded border border-amber-300 bg-amber-50 px-2 py-1.5 text-xs font-semibold text-amber-800 hover:bg-amber-100"
+                >
+                  Discard adjustments
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => void onSavePrintLayout()}
+                disabled={!selectedPaper?.id || isSavingPrintLayout}
+                title={selectedPaper?.id ? 'Save print layout for this exam' : 'Save the exam first'}
+                className="rounded border border-emerald-500 bg-emerald-50 px-2 py-1.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isSavingPrintLayout ? (
+                  <>
+                    <Loader2 size={14} className="mr-1 inline animate-spin" />
+                    Saving…
+                  </>
+                ) : (
+                  'Save print layout'
+                )}
+              </button>
               <button
                 type="button"
                 onClick={onExportWord}
@@ -3817,16 +4223,63 @@ function AcademicExamMakerMinimalPage() {
               </button>
               <button
                 type="button"
-                onClick={() => setIsPreviewOpen(false)}
+                onClick={() => {
+                  setIsPreviewOpen(false)
+                  setPreviewEditMode(false)
+                  setPrintEditTarget(null)
+                }}
                 className="rounded p-1 text-slate-500 hover:bg-slate-100"
-                aria-label="Close preview"
+                aria-label="Close print and layout"
               >
                 <X size={18} />
               </button>
             </div>
           </div>
+          {previewEditMode ? (
+            <div className="shrink-0 border-b border-indigo-100 bg-indigo-50/80 px-4 py-2 text-xs text-indigo-900">
+              <p>
+                Click a question or section heading to edit. Use the formatting bar on notes and headings, or pick a text
+                size for each section. Use <strong>Save print layout</strong> or <strong>Save Exam</strong> to keep
+                changes for this paper.
+              </p>
+              <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] text-slate-700">
+                <span className="font-semibold uppercase tracking-wide text-slate-500">Spacing</span>
+                {[
+                  { key: 'questionStep', label: 'Between questions' },
+                  { key: 'sectionStep', label: 'Between sections' },
+                  { key: 'laqPartStep', label: 'LAQ sub-parts' },
+                ].map(({ key, label }) => {
+                  const step = Number(printTweaks.spacing?.[key]) || 0
+                  return (
+                    <div key={key} className="flex items-center gap-1.5 rounded-md border border-indigo-100 bg-white/80 px-2 py-1">
+                      <span className="text-slate-600">{label}</span>
+                      <button
+                        type="button"
+                        disabled={step <= PRINT_SPACING_MIN_STEP}
+                        onClick={() => bumpPrintSpacing(key, -1)}
+                        className="inline-flex h-6 w-6 items-center justify-center rounded border border-slate-200 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+                        aria-label={`Decrease ${label} spacing`}
+                      >
+                        −
+                      </button>
+                      <span className="min-w-[1.25rem] text-center tabular-nums font-semibold text-slate-800">{step}</span>
+                      <button
+                        type="button"
+                        disabled={step >= PRINT_SPACING_MAX_STEP}
+                        onClick={() => bumpPrintSpacing(key, 1)}
+                        className="inline-flex h-6 w-6 items-center justify-center rounded border border-slate-200 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+                        aria-label={`Increase ${label} spacing`}
+                      >
+                        +
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          ) : null}
           <div className="min-h-0 min-w-0 flex-1 overflow-y-auto bg-slate-50 p-3">
-            {renderPaperDocument({ includeSectionEditors: false })}
+            {renderPaperDocument({ includeSectionEditors: false, enablePrintEdit: previewEditMode })}
           </div>
         </div>
       </div>
@@ -3834,6 +4287,77 @@ function AcademicExamMakerMinimalPage() {
       <div id="exam-paper-print" className="print-paper-host">
         {renderPaperDocument({ includeSectionEditors: false })}
       </div>
+
+      {printEditTarget?.type === 'question' ? (
+        <div
+          role="presentation"
+          className="print-hidden fixed inset-0 z-[100] flex items-end justify-center bg-slate-900/45 p-4 sm:items-center"
+          onClick={cancelPrintEditDraft}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="print-question-edit-title"
+            className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl ring-1 ring-slate-200"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+              <h4 id="print-question-edit-title" className="text-sm font-semibold text-slate-900">
+                Edit for print
+              </h4>
+              <button
+                type="button"
+                onClick={cancelPrintEditDraft}
+                className="rounded p-1 text-slate-500 hover:bg-slate-100"
+                aria-label="Close editor"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto p-4">
+              <AcademicFormulaInsertToolbar
+                onInsertLatex={(latex, options) => printMathFieldRef.current?.insertLatex?.(latex, options)}
+                onExitScript={() => printMathFieldRef.current?.exitScript?.()}
+                onInsertLineBreak={() => printMathFieldRef.current?.insertLineBreak?.()}
+              />
+              <div className="mt-3 rounded-lg border border-slate-200 bg-white p-2">
+                <AcademicQuestionMathField
+                  ref={printMathFieldRef}
+                  sessionKey={printMathFieldSession}
+                  latexValue={printEditDraft}
+                  onLatexChange={setPrintEditDraft}
+                  defaultMode="math"
+                  normalizeMathPaste={normalizePrintMathPaste}
+                  variant="question"
+                />
+              </div>
+              <div className="mt-3 rounded-lg border border-slate-100 bg-slate-50 p-3">
+                <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-slate-500">Print preview</p>
+                <div className="exam-paper-content text-[13px] text-black">
+                  <ExamPaperMathText value={printEditDraft} />
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 border-t border-slate-200 px-4 py-3">
+              <button
+                type="button"
+                onClick={cancelPrintEditDraft}
+                className="rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={applyPrintEditDraft}
+                className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+              >
+                Apply
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <PopupLoader open={Boolean(popupLoaderText)} text={popupLoaderText} />
     </div>
   )
