@@ -1,0 +1,304 @@
+﻿@model List<Data.DAL.v_StudentList>
+
+@using Data.BLL
+
+@{
+    Layout = "~/Views/Shared/_LayoutReport.cshtml";
+    var sr = 1;
+}
+
+<div class="award-sheet">
+
+    <!-- Header -->
+    <div class="school-header">
+
+        <div class="school-name">
+
+            SCIENCE BASE SCHOOL
+
+            <div class="campus-name">
+                @System.Web.Configuration.WebConfigurationManager.AppSettings["campus_name"]
+
+            </div>
+
+        </div>
+
+        <div class="report-row">
+
+            <div class="exam-title">
+                @ViewBag.exam Examination Award List
+                @DateTime.Now.Year-@(DateTime.Now.Year + 1)
+            </div>
+
+            <div class="class-title">
+                @ViewBag.classsection
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Info Row -->
+    <table class="info-table">
+        <tr>
+
+            <td>
+                <strong>Subject:</strong>
+                <span class="line"></span>
+            </td>
+
+            <td>
+                <strong>Teacher:</strong>
+                <span class="line"></span>
+            </td>
+
+            <td>
+                <strong>Total Marks:</strong>
+                <span class="line"></span>
+            </td>
+
+        </tr>
+    </table>
+
+    <!-- Main Table -->
+    <table class="award-table">
+
+        <thead>
+            <tr>
+
+                <th style="width:5%;font-family: 'Arial Narrow' !important;">Sr.#</th>
+                <th style="width:5%;font-family: 'Arial Narrow' !important;">R.#</th>
+                <th style="width: 25%; font-family: 'Arial Narrow' !important;">Student Name</th>
+                <th style="width:5%; font-family: 'Arial Narrow' !important;">Super<br />Checking</th>
+                <th style="width:60%; font-family: 'Arial Narrow' !important;">Remarks</th>
+
+            </tr>
+        </thead>
+
+        <tbody>
+
+            @foreach (var item in Model.OrderBy(x => x.Reg_Id))
+            {
+            <tr>
+
+                <td class="center">
+                    @sr
+                </td>
+
+                <td class="center">
+                    @item.Reg_Id
+                </td>
+
+                <td class="student-name">
+                    @item.FullName
+                </td>
+
+                <td></td>
+
+                <td></td>
+
+            </tr>
+
+                sr++;
+            }
+
+            @for (int i = 0; i < 2; i++)
+            {
+            <tr>
+
+                <td>&nbsp;</td>
+
+                <td></td>
+
+                <td></td>
+
+                <td></td>
+
+                <td></td>
+
+            </tr>
+            }
+
+        </tbody>
+
+    </table>
+
+    <!-- General Remarks -->
+    <div class="remarks-section">
+
+        <div class="remarks-title">
+            <strong>General Remarks:</strong>
+        </div>
+
+        <div class="remarks-box"></div>
+
+        <div class="remarks-box"></div>
+
+        <div class="remarks-box"></div>
+
+    </div>
+
+</div>
+
+<style>
+
+    body {
+        font-family: Arial !important;
+        margin: 0;
+        padding: 18px;
+        background: white;
+    }
+
+    .award-sheet {
+        width: 100%;
+        margin: auto;
+    }
+
+    /* ================= HEADER ================= */
+
+    .school-header {
+        width: 100%;
+    }
+
+    .school-name {
+        text-align: center;
+        font-size: 24px;
+        font-weight: bold;
+        padding-top: 10px;
+        padding-bottom: 6px;
+        border: 1px solid black;
+        border-bottom: none;
+        line-height: 1.2;
+        font-family: 'Arial'
+    }
+
+    .campus-name {
+        font-size: 11px;
+        font-weight: normal;
+        margin-top: 2px;
+        letter-spacing: 0.3px;
+    }
+
+    .report-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 12px;
+        border: 1px solid black;
+        font-size: 16px;
+        font-weight: bold;
+    }
+
+    .exam-title {
+        text-align: left;
+    }
+
+    .class-title {
+        text-align: right;
+    }
+
+    /* ================= INFO TABLE ================= */
+
+    .info-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: -1px;
+    }
+
+        .info-table td {
+            border: 1px solid black;
+            padding: 14px 10px;
+            font-size: 14px;
+            vertical-align: middle;
+        }
+
+    .line {
+        display: inline-block;
+        width: 140px;
+        border-bottom: 1px solid black;
+        height: 14px;
+        margin-left: 5px;
+    }
+
+    /* ================= MAIN TABLE ================= */
+
+    .award-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: -1px;
+    }
+
+        .award-table th {
+            border: 1px solid black;
+            padding: 8px 4px;
+            font-size: 13px;
+            text-align: center;
+            font-weight: bold;
+            vertical-align: middle;
+        }
+
+        .award-table td {
+            border: 1px solid black;
+            padding: 8px 6px;
+            font-size: 13px;
+            height: 48px;
+            vertical-align: middle;
+        }
+
+    .center {
+        text-align: center;
+    }
+
+    .student-name {
+        text-transform: uppercase;
+        padding-left: 8px !important;
+    }
+
+    /* ================= REMARKS ================= */
+
+    .remarks-section {
+        width: 100%;
+        margin-top: 16px;
+    }
+
+    .remarks-title {
+        padding: 8px 2px;
+        font-size: 14px;
+    }
+
+    .remarks-box {
+        height: 45px;
+        border: 1px solid black;
+        border-bottom: none;
+    }
+
+        .remarks-box:last-child {
+            border-bottom: 1px solid black;
+        }
+
+    /* ================= PRINT ================= */
+
+    @@page {
+        size: A4 portrait;
+        margin: 10mm;
+    }
+
+    @@media print {
+
+        html, body {
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            background: white;
+        }
+
+        body {
+            padding: 0;
+        }
+
+        .award-sheet {
+            width: 100%;
+            page-break-inside: avoid;
+        }
+    }
+</style>

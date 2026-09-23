@@ -1,0 +1,647 @@
+﻿@using Data.BLL.Employee
+@using Data.DAL
+@model Data.Viewmodel.Employee.EmployeeViewModel
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.3.0/js/bootstrap-datepicker.js"></script>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.3.0/css/datepicker.css" rel="stylesheet" type="text/css" />
+
+@{
+    dbSchoolEntities db = new dbSchoolEntities();
+}
+
+<body style="line-height:inherit !important; margin-bottom:80px;">
+    @using (Html.BeginForm("New", "Teacher", FormMethod.Post, new { id = "CreateStudentForm" }))
+    {
+        <div class="container inner-container">
+            <div class="heading-bar" style="background:#176da5; color:white">
+                REGISTER NEW EMPLOYEE
+            </div>
+
+            <div class="inner-col">
+                <div class="left">
+                    <div class="inner-left">
+                        Employee Name* &nbsp; <i class="la la-caret-right gray"></i> &nbsp;
+                    </div>
+                    <div class="inner-right">
+                        @Html.TextBoxFor(m => m.EmployeeName, "", new { @class = "input-borderless" })
+                    </div>
+                </div>
+                <div class="right">
+                    <div class="inner-left">
+                        Father Name* &nbsp; <i class="la la-caret-right gray"></i> &nbsp;
+                    </div>
+                    <div class="inner-right">
+                        @Html.TextBoxFor(m => m.FatherName, "", new { @class = "input-borderless" })
+                    </div>
+                </div>
+            </div>
+
+            <div class="inner-col">
+                <div class="left">
+                    <div class="inner-left">
+                        Date of Birth* &nbsp; <i class="la la-caret-right gray"></i> &nbsp;
+                    </div>
+                    <div class="inner-right" style="padding-top: 7px !important;">
+                        @Html.TextBoxFor(m => m.DoB, "", new { @class = "input-borderless datepicker" })
+                    </div>
+
+                </div>
+                <div class="right">
+                    <div class="inner-left">
+                        Gender &nbsp; <i class="la la-caret-right gray"></i> &nbsp;
+                    </div>
+                    <div class="inner-right" style="padding-top: 7px !important;">
+                        <input id="Male" type="radio" name="Gender" value="Male" checked="checked" style="margin: -8px 0 0 !important" />
+                        <label for="Male">Male</label>
+                        &nbsp; &nbsp; &nbsp;
+                        <input id="Female" type="radio" name="Gender" value="Female" style="margin: -8px 0 0 !important" />&nbsp;
+                        <label for="Female">Female</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="inner-col">
+                <div class="full">
+                    <div class="left-15">
+                        Address* &nbsp; <i class="la la-caret-right gray"></i> &nbsp;
+                    </div>
+                    <div class="right-85">
+                        @Html.TextBoxFor(m => m.Permanent_Address, "", new { @class = "input-borderless" })
+                    </div>
+                </div>
+            </div>
+
+            <div class="inner-col">
+                <div class="left">
+                    <div class="inner-left">
+                        Mobile 1* &nbsp; <i class="la la-caret-right gray"></i> &nbsp;
+                    </div>
+                    <div class="inner-right">
+                        @Html.TextBoxFor(m => m.Contact1, "", new { @class = "input-borderless" })
+                    </div>
+                </div>
+                <div class="right">
+                    <div class="inner-left">
+                        Home Phone &nbsp; <i class="la la-caret-right gray"></i> &nbsp;
+                    </div>
+                    <div class="inner-right">
+                        @Html.TextBoxFor(m => m.HomePhone, "", new { @class = "input-borderless" })
+                    </div>
+                </div>
+            </div>
+
+            @*OFFICE USE SECTION START*@
+
+            <div class="heading-bar">
+                FOR OFFICE USE
+            </div>
+
+            <div class="inner-col">
+                <div class="left">
+                    <div class="inner-left">
+                        Thumb ID* &nbsp; <i class="la la-caret-right gray"></i> &nbsp;
+                    </div>
+                    <div class="inner-right">
+                        @Html.TextBoxFor(m => m.Thumb_ID, "", new { @class = "input-borderless" })
+                    </div>
+                </div>
+                <div class="right">
+                    <div class="inner-left">
+                        Joining Date* &nbsp; <i class="la la-caret-right gray"></i> &nbsp;
+                    </div>
+                    <div class="inner-right">
+                        @Html.TextBoxFor(m => m.Joining_Date, "", new { @class = "input-borderless datepicker" })
+                    </div>
+                </div>
+            </div>
+
+            <div class="inner-col">
+                <div class="left">
+                    <div class="inner-left">
+                        Designation &nbsp; <i class="la la-caret-right gray"></i> &nbsp;
+                    </div>
+                    <div class="inner-right">
+                        @Html.DropDownListFor(m => m.DesignationID, new SelectList(Data.BLL.Employee.List.lstDesignation(), "ID", "Designation"), new { @class = "input-borderless" })
+                    </div>
+                </div>
+                <div class="right">
+                    <div class="inner-left">
+                        Salary* &nbsp; <i class="la la-caret-right gray"></i> &nbsp;
+                    </div>
+                    <div class="inner-right">
+                        @Html.TextBoxFor(m => m.Salary, "", new { @class = "input-borderless" })
+                    </div>
+                    @*<div class="inner-right">
+                    <input id="Trained" type="radio" name="IsTrained" value="1" checked="checked" style="margin: -8px 0 0 !important" />
+                    <label for="Trained">Trained</label>
+                    &nbsp; &nbsp; &nbsp;
+                    <input id="UnTrained" type="radio" name="IsTrained" value="0" style="margin: -8px 0 0 !important" />&nbsp;
+                    <label for="UnTrained">UnTrained</label>
+                </div>*@
+                </div>
+            </div>
+
+            <div class="inner-col">
+                <div class="left">
+                    <div class="inner-left">
+                        Verfied By &nbsp; <i class="la la-caret-right gray"></i> &nbsp;
+                    </div>
+                    <div class="inner-right">
+                        @Html.TextBoxFor(m => m.VerifiedBy, "", new { @class = "input-borderless" })
+                    </div>
+                </div>
+                <div class="right">
+                    <div class="inner-left">
+                        Approved By &nbsp; <i class="la la-caret-right gray"></i> &nbsp;
+                    </div>
+                    <div class="inner-right">
+                        @Html.TextBoxFor(m => m.ApprovedBy, "", new { @class = "input-borderless" })
+                    </div>
+                </div>
+            </div>
+
+            <div class="inner-col">
+                <div class="text-center top-10">
+                    <input type="button" id="btnSubmit" class="btn btn-primary" value="Save" onclick="SubmitByAjax()" />
+
+                </div>
+            </div>
+        </div>
+    }
+</body>
+
+<script>
+    $(document).ready(function () {
+        //RefreshQual();
+        //RefreshExp();
+        //RefreshAssets();
+    });
+
+    // SUBMIT
+
+    function SubmitByAjax() {
+
+        if ($("#EmployeeName").val() == '' || $("#FatherName").val() == ''||  $("#Salary").val() == '' || $("#Thumb_ID").val() == '') {
+            alert_error("Required","Fill all required fileds");
+        }
+        else {
+            $("#btnSubmit").attr('disabled', true);
+
+            var data = new FormData();
+
+            data.append("DesignationID", $("#DesignationID").val());
+            data.append("Thumb_ID", $("#Thumb_ID").val());
+            data.append("EmployeeName", $("#EmployeeName").val());
+            data.append("FatherName", $("#FatherName").val());
+            data.append("DoB", $("#DoB").val());
+            data.append("Gender", $('input[name=Gender]:checked').val());
+            data.append("ApprovedBy", $("#ApprovedBy").val());
+            data.append("VerifiedBy", $("#VerifiedBy").val());
+            data.append("Salary", $("#Salary").val());
+            data.append("Refered_By", $("#Refered_By").val());
+            data.append("Joining_Date", $("#Joining_Date").val());
+            data.append("HomePhone", $("#HomePhone").val());
+            data.append("Permanent_Address", $("#Permanent_Address").val());
+            data.append("Contact1", $("#Contact1").val());
+
+            //data.append("MaritalStatus", $("#MaritalStatus").val());
+            //data.append("Email", $("#Email").val());
+            //data.append("ProfessionalDegree", $('input[name=ProfessionalDegree]:checked').val());
+            //data.append("IdentityMark", $("#IdentityMark").val());
+            //data.append("Religion", $('input[name=Religion]:checked').val());
+            //data.append("Blood_Group", $("#Blood_Group").val());
+            //data.append("Joining_Date", $("#Joining_Date").val());
+            //data.append("LocalityID", $("#loc").val());
+            //data.append("IsMarried", $("#IsMarried").val());
+            //data.append("Permanent_Address", $("#Permanent_Address").val());
+            //data.append("CNIC", $("#CNIC").val());
+            //data.append("HomePhone", $("#HomePhone").val());
+            //data.append("Contact1", $("#Contact1").val());
+            //data.append("Contact2", $("#Contact2").val());
+            //data.append("Contact3", $("#Contact3").val());
+            //data.append("IsTrained", $("#IsTrained").val());
+   
+            //data.append("HomePhone", $("#HomePhone").val());
+  
+            $.ajax({
+                cache: false,
+                type: 'POST',
+                processData: false,
+                contentType: false,
+                url: '/Employee/New/Save',
+                data: data,
+                success: function (result) {
+                    $("#btnSubmit").removeAttr('disabled');
+                    if (result.msg != 'success') {
+                        alert_error(result.desc, '');
+                        return;
+                    }
+                    alert_success_with_redirect('Success', 'Employee entry saved', `/Employee/Edit/Index/${result.id}`);
+                },
+                error: function (xhr, ajaxOptions, thrownError) {
+                    $("body").html(xhr.responseText);
+                }
+            });
+        }
+    }
+
+    function ResetForm() {
+        $("#DesignationID").val(1);
+        $("#TeacherName").val('');
+        $("#FatherName").val('');
+        $("#DoB").val('');
+        $("#Email").val('');
+        $("#IdentityMark").val('');
+        $("#Blood_Group").val('');
+        $("#Joining_Date").val('');
+        $("#Permanent_Address").val('');
+        $("#CNIC").val('');
+        $("#HomePhone").val('');
+        $("#Contact1").val('');
+        $("#Contact2").val('');
+        $("#Contact3").val('');
+        $("#IsTrained").val('');
+        $("#Salary").val('');
+        $("#Refered_By").val('');
+        $("#HomePhone").val('');
+        $("#ApprovedBy").val('');
+        $("#VerifiedBy").val('');
+
+        RefreshAssets();
+        RefreshExp();
+        RefreshQual();
+        RefreshSubjects();
+
+    }
+
+
+
+    //////////////// TEMP INSERTIONS //////////////
+    function InsertQual() {
+        if ($("#Qdegree").val() != '') {
+            $("#tblQual").css('opacity', '0.2');
+            var data = new FormData();
+
+            data.append("Hash", '@Model.Hash');
+            data.append("Type", 'Qual');
+            data.append("Qual_Degree", $("#Qdegree").val());
+            data.append("Qual_Board", $("#Qboard").val());
+            data.append("Qual_Grade", $("#Qgrade").val());
+            data.append("Qual_Marks", $("#Qmarks").val());
+            data.append("Qual_Year", $("#Qyear").val());
+            data.append("Qual_Remarks", $("#Qremarks").val());
+
+            $.ajax({
+                cache: false,
+                type: 'POST',
+                processData: false,
+                contentType: false,
+                url: '/Employee/New/InsertTemp',
+                data: data,
+                success: function (result) {
+                    RefreshQual();
+                },
+                error: function (xhr, ajaxOptions, thrownError) {
+                    $("body").html(xhr.responseText);
+                }
+            });
+        }
+    }
+
+    // INSERT SUBJECT
+    function InsertSubject() {
+        if ($("#SubjectID").val() != '') {
+            $("#tblSubject").css('opacity', '0.2');
+            var data = new FormData();
+
+            data.append("Hash", '@Model.Hash');
+            data.append("Type", 'Subject');
+            data.append("SubjectID", $("#SubjectID").val());
+
+            $.ajax({
+                cache: false,
+                type: 'POST',
+                processData: false,
+                contentType: false,
+                url: '/Employee/New/InsertTemp',
+                data: data,
+                success: function (result) {
+                    RefreshSubjects();
+                },
+                error: function (xhr, ajaxOptions, thrownError) {
+                    $("body").html(xhr.responseText);
+                }
+            });
+        }
+    }
+
+    // INSERT SUBJECT
+    function InsertExperience() {
+        if ($("#Exp_Designation").val() != '') {
+            $("#tblExp").css('opacity', '0.2');
+            var data = new FormData();
+
+            data.append("Hash", '@Model.Hash');
+            data.append("Type", 'Exp');
+            data.append("Exp_Designation", $("#Exp_Designation").val());
+            data.append("Exp_DurationYears", $("#Exp_DurationYears").val());
+            data.append("Exp_InstituteName", $("#Exp_InstituteName").val());
+            data.append("Exp_FromDate", $("#Exp_FromDate").val());
+            data.append("Exp_ToDate", $("#Exp_ToDate").val());
+
+            $.ajax({
+                cache: false,
+                type: 'POST',
+                processData: false,
+                contentType: false,
+                url: '/Employee/New/InsertTemp',
+                data: data,
+                success: function (result) {
+                    RefreshExp();
+                },
+                error: function (xhr, ajaxOptions, thrownError) {
+                    $("body").html(xhr.responseText);
+                }
+            });
+        }
+    }
+
+    function InsertAsset() {
+        if ($("#Asset_Name").val() != '') {
+            $("#tblAsset").css('opacity', '0.2');
+            var data = new FormData();
+
+            data.append("Hash", '@Model.Hash');
+            data.append("Type", 'Asset');
+            data.append("Asset_Name", $("#Asset_Name").val());
+            data.append("Asset_AssetWorth", $("#Asset_AssetWorth").val());
+            data.append("Asset_DateOfIssue", $("#Asset_DateOfIssue").val());
+            data.append("Asset_Remarks", $("#Asset_Remarks").val());
+
+            $.ajax({
+                cache: false,
+                type: 'POST',
+                processData: false,
+                contentType: false,
+                url: '/Employee/New/InsertTemp',
+                data: data,
+                success: function (result) {
+                    RefreshAssets();
+                },
+                error: function (xhr, ajaxOptions, thrownError) {
+                    $("body").html(xhr.responseText);
+                }
+            });
+        }
+    }
+
+    ///////////////////////////////////////////////////////////////////////
+    //////////////////////////// TEMP LISTS ///////////////////////////////
+    function RefreshQual()
+    {
+        $.ajax({
+            cache: false,
+            type: 'Get',
+            url: '/Employee/New/_TempQual',
+            data: { Hash: '@Model.Hash', Type: 'Qual' },
+            datatype: 'Json',
+            success: function (result) {
+                $("#tblQual").css('opacity', '1');
+                $("#tblQual").html(result);
+            },
+            error: function (xhr, ajaxOptions, thrownError) {
+                $("body").html(xhr.responseText);
+            }
+        });
+    }
+
+    function RefreshExp() {
+        $.ajax({
+            cache: false,
+            type: 'Get',
+            url: '/Employee/New/_TempExp',
+            data: { Hash: '@Model.Hash', Type: 'Exp' },
+            datatype: 'Json',
+            success: function (result) {
+                $("#tblExp").css('opacity', '1');
+                $("#tblExp").html(result);
+            },
+            error: function (xhr, ajaxOptions, thrownError) {
+                $("body").html(xhr.responseText);
+            }
+        });
+    }
+
+
+    function RefreshSubjects() {
+        $.ajax({
+            cache: false,
+            type: 'Get',
+            url: '/Employee/New/_TempSubject',
+            data: { Hash: '@Model.Hash', Type: 'Subject' },
+            datatype: 'Json',
+            success: function (result) {
+                $("#tblSubject").css('opacity', '1');
+                $("#tblSubject").html(result);
+
+            },
+            error: function (xhr, ajaxOptions, thrownError) {
+                $("body").html(xhr.responseText);
+            }
+        });
+    }
+
+    function RefreshAssets() {
+        $.ajax({
+            cache: false,
+            type: 'Get',
+            url: '/Employee/New/_TempAsset',
+            data: { Hash: '@Model.Hash', Type: 'Asset' },
+            datatype: 'Json',
+            success: function (result) {
+                $("#tblAsset").css('opacity', '1');
+                $("#tblAsset").html(result);
+
+            },
+            error: function (xhr, ajaxOptions, thrownError) {
+                $("body").html(xhr.responseText);
+            }
+        });
+    }
+    ///////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////
+    function DeleteRow(id) {
+        $.ajax({
+            cache: false,
+            type: 'POST',
+            url: '/Employee/New/DeleteTempRow',
+            data: { ID : id },
+            datatype: 'Json',
+            success: function (result) {
+                RefreshQual();
+                RefreshSubjects();
+                RefreshExp();
+                RefreshAssets();
+            },
+            error: function (xhr, ajaxOptions, thrownError) {
+                $("body").html(xhr.responseText);
+            }
+        });
+    }
+
+    //// DATE PICKERS START /////
+    $(function () {
+        $(".datepicker").datepicker({
+            autoclose: true,
+            todayHighlight: true
+        }).datepicker();
+    });
+
+</script>
+
+<style>
+
+    .heading-bar {
+        /*background-color: #176da5;*/
+        background-color: lightblue;
+        font-size: 14px;
+        color: #176da5;
+        font-weight: bold;
+        padding: 6px;
+        padding-left: 50px;
+        text-transform: uppercase;
+    }
+
+    .inner-container {
+        background-color: rgba(239, 239, 239, 0.56);
+        padding: 10px;
+        border: 5px solid #176da5;
+    }
+
+    .inner-col {
+        border-top: 1px solid #176da5;
+        /*border-bottom: 1px solid blue;*/
+        height: 42px;
+    }
+
+    .input-borderless {
+        border: none;
+        width: 100%;
+        color: #176da5;
+        font-weight: bold;
+        padding-left: 10px;
+        height: 24px;
+    }
+
+        .input-borderless:focus {
+            /*border: 1px solid #166ca4;*/
+            border-radius: 0.2em;
+            box-shadow: 3px 3px rgba(23, 109, 165, 0.76);
+        }
+
+    .left {
+        width: 50%;
+        float: left;
+        padding: 6px;
+        padding-left: 20px;
+        font-size: 13px;
+        font-family: Arial;
+    }
+
+    .right {
+        width: 50%;
+        float: right;
+        padding: 6px;
+        padding-left: 20px;
+        font-size: 13px;
+        font-family: Arial;
+    }
+
+    .full {
+        width: 100%;
+        padding: 5px;
+        padding-left: 20px;
+        font-size: 13px;
+        font-family: Arial;
+    }
+
+    .inner-left {
+        width: 30%;
+        float: left;
+        padding-top: 8px;
+    }
+
+    .inner-right {
+        width: 70%;
+        float: right;
+        padding-top: 3px;
+    }
+
+    .gray {
+        color: gray;
+    }
+
+    .left-15 {
+        width: 14%;
+        float: left;
+        padding-top: 5px;
+    }
+
+    .right-85 {
+        width: 86%;
+        float: right;
+    }
+
+    .div-33 {
+        width: 33.33%;
+        float: left;
+        padding-left: 20px;
+        font-size: 13px;
+        font-family: Arial;
+    }
+
+    .top-10 {
+        margin-top: 0.5em;
+    }
+
+    .hide {
+        display: none;
+    }
+
+    .i {
+        color: #176da5;
+    }
+
+    table tbody tr td .input-borderless {
+        width: 98% !important;
+        font-size: small;
+        padding-left: 0px;
+    }
+
+    table thead tr th {
+        text-align: center;
+        border: 3px solid #176da5;
+    }
+
+    table thead {
+        /*background-color: white !important;*/
+        color: #176da5;
+    }
+
+    table tbody tr td {
+        text-align: center;
+        border: 3px solid #176da5;
+        padding: 3px;
+    }
+
+    .jconfirm-box-container {
+        margin-left: 0px !important;
+    }
+
+    .white-row {
+        height: 30px;
+        background: white;
+        padding-top: 6px;
+        padding-left: 6px;
+    }
+</style>

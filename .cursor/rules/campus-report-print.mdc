@@ -1,0 +1,52 @@
+---
+description: Campus report print format must match Fee/Student legacy print sheets
+globs: frontend/src/pages/Campus/**/*.{jsx,js,tsx,ts}
+alwaysApply: false
+---
+
+# Campus report printing
+
+When adding or changing **printable campus reports** (ledger, cash book, fee, student, income, accounts summary, etc.), use the shared Fee/Student print format. Do not invent a new print look.
+
+## Source of truth
+
+- Styles: [`frontend/src/utils/campusReportPrint.js`](frontend/src/utils/campusReportPrint.js) → `CAMPUS_REPORT_PRINT_STYLES`
+- Header: [`frontend/src/components/campus/CampusReportPrintHeader.jsx`](frontend/src/components/campus/CampusReportPrintHeader.jsx)
+- Reference UIs: [`FeeReportsPage.jsx`](frontend/src/pages/Campus/fee/FeeReportsPage.jsx), [`CampusStudentReportsPage.jsx`](frontend/src/pages/Campus/reports/CampusStudentReportsPage.jsx)
+
+## Required structure
+
+1. Wrap page in `print-page-root`; inject `<style>{CAMPUS_REPORT_PRINT_STYLES}</style>`.
+2. `CampusShell` with `rowClassName="print-main-wrap ..."`, `asideClassName="no-print"`, `headerClassName="no-print"`.
+3. Content wrapper: `print-content-wrap`.
+4. Keep on-screen table/UI as-is (app chrome, `#405189` headers, filters) under `no-print` where needed.
+5. Add a **separate** print sheet:
+
+```jsx
+<div className="print-only print-sheet">
+  <CampusReportPrintHeader title="REPORT TITLE" subtitle="optional date range" />
+  <table className="legacy-print-table">...</table>
+</div>
+```
+
+## Amounts (PKR)
+
+- Format money with **no decimal places** (`minimumFractionDigits: 0`, `maximumFractionDigits: 0`).
+- Prefer `formatReportPrintMoney` from `campusReportPrint.js` for report screens and print sheets.
+
+## Table / typography rules (print)
+
+- Font: Arial / Helvetica, black text
+- Table class: `legacy-print-table` only (not screen `bg-[#405189]` tables)
+- Cells: `1px solid #000` borders, tight padding (`3px 4px`), ~10px font
+- Header cells: gray `#d9d9d9`, bold, centered
+- Totals: `total-row` class (gray `#e8e8e8` background)
+- Date / section bands: `band-row` class
+- `@page`: A4 portrait, `8mm` margins
+- Hide chrome with `.no-print`; never print sidebar/header/modals
+
+## Do not
+
+- Print the on-screen blue (`#405189`) table header as the paper header
+- Use Income Report’s softer indigo `print-table` style for new ledger-style reports
+- Duplicate a one-off `@media print` block when `CAMPUS_REPORT_PRINT_STYLES` already covers it — extend the shared file if a new class is needed

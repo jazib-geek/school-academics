@@ -1,0 +1,65 @@
+﻿@model List<Data.Viewmodel.Employee.SalaryComponentViewModel>
+@{ int i = 0;}
+
+<table class="table-bordered">
+    <thead class="bg-soft-info">
+        <tr>
+            <th style="width:5%">#</th>
+            <th style="width:10%">Month</th>
+            <th style="width:10%">Year</th>
+            <th style="width:20%">Type</th>
+            <th style="width:10%">Amount</th>
+            <th style="width:40%">Description</th>
+            <th style="width:5%"></th>
+        </tr>
+    </thead>
+    <tbody style="background:white">
+        @foreach (var item in Model)
+        {
+            i += 1;
+            <tr>
+                <td>@i</td>
+                <td>@Data.BLL.DateFunctions.convertToStringMonth(item.Month)</td>
+                <td>@item.Year</td>
+                <td>@item.ComponentType</td>
+                <td>@item.Amount</td>
+                <td class="text-start">@item.Description</td>
+                <td> <a href="javascript:;" class="text-danger" onclick="DeleteRow(@item.ID,'Component')"> <i class="la la-close"></i> </a> </td>
+            </tr>
+        }
+        <tr>
+            <td></td>
+            <td>
+                <select id="ComponentMonth" class="form-control">
+                    <option value="">Month</option>
+                    @for (int m = 1; m <= 12; m++)
+                    {
+                        <option value="@m">@Data.BLL.DateFunctions.convertToStringMonth(m)</option>
+                    }
+                </select>
+            </td>
+            <td>
+                <select id="ComponentYear" class="form-control">
+                    <option value="">Year</option>
+                    @for (int y = (DateTime.Now.Year - 2); y <= (DateTime.Now.Year + 5); y++)
+                    {
+                        <option value="@y" @(y == DateTime.Now.Year ? "selected" : "")>@y</option>
+                    }
+                </select>
+            </td>
+            <td>
+                <select id="ComponentType" class="form-control">
+                    <option value="">Type</option>
+                  @foreach (var item in Data.BLL.Employee.SalaryComponent.ComponentList().Where(x => x!= Data.Helper.Constants.SalaryComponentTypes.WorkingDaySalary))
+                  {
+                      <option value="@item">@item</option>
+                  }
+                 </select>
+            </td>
+            <td> <input type="text" id="ComponentAmount" class="form-control" /> </td>
+            <td> <input type="text" id="ComponentDescription" class="form-control" /> </td>
+            <td>   <a href="javascript:;" class="btn btn-sm btn-info" onclick="InsertComponent()"> <i class="la la-plus"></i> </a>  </td>
+        </tr>
+
+    </tbody>
+</table>

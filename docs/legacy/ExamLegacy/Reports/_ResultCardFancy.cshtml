@@ -1,0 +1,252 @@
+﻿@model Data.Viewmodel.ExamViewModel
+@using Data.BLL
+
+@{
+    /**/
+
+    Layout = null;
+    ViewBag.n = 8 - Model.lstExam.Count;
+}
+<link href="~/webfonts/style.css" rel="stylesheet" />
+
+<div class="main-container">
+
+    <div style="margin-top: 40px;">
+        <p style="margin-left:15px;margin-bottom:-38px; font-family:GoodDog Plain;font-size:37px;">of @ViewBag.exam </p>
+        <p style="margin-left:15px;font-family:GoodDog Plain;margin-bottom:60px;font-size:30px;">Session @System.Web.Configuration.WebConfigurationManager.AppSettings["academicsession"] </p>
+    </div>
+
+    <div class="left" style="bottom:0;">
+        <br />
+
+        <table id="top-table">
+            <tr>
+                <td class="top-left-td">Serial No : </td>
+                <td class="top-right-td">@Model.student.Reg_Id</td>
+            </tr>
+            <tr>
+                <td class="top-left-td">Student's Name : </td>
+                <td class="top-right-td">@Model.student.FullName</td>
+            </tr>
+            <tr>
+                <td class="top-left-td">Father's Name : </td>
+                <td class="top-right-td">@Model.student_family.FatherName</td>
+            </tr>
+            <tr>
+                <td class="top-left-td">Class : </td>
+                <td class="top-right-td">@StudentParameters.ClassSectionNameByID(Model.student.Class_ID, Model.student.Section_ID)</td>
+            </tr>
+        </table>
+
+        <table id="bottom-table">
+            <tr>
+                <th style="vertical-align:middle!important; font-size:medium" class="text-center">SUBJECT</th>
+                <th class="text-center" style="font-size:medium">TOTAL MARKS</th>
+                <th class="text-center" style="font-size:medium">OBTAINED MARKS</th>
+            </tr>
+            @foreach (var item in Model.lstExam.Where(x => x.TotalMarks > 0))
+            {
+                <tr>
+                    <td style="width:65%;">@item.subject.FullName</td>
+                    <td class="text-center">@item.TotalMarks</td>
+                    @if (item.ObtainedMarks == -1)
+                    {
+                        <td class="text-center">A</td>
+                    }
+                    else
+                    {
+                        <td class="text-center">@item.ObtainedMarks</td>
+                    }
+                </tr>
+            }
+            @{ int n = 8 - Model.lstExam.Where(x => x.TotalMarks > 0).Count(); }
+            @if (Model.lstExam.Where(x => x.TotalMarks > 0).Count() < 8)
+            {
+                for (int i = 0; i < n; i++)
+                {
+                    <tr>
+                        <td style="height:28px"></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                }
+            }
+
+            <tr>
+                <th class="text-right">GRAND TOTAL</th>
+                <th class="text-center">@Model.lstExam.Sum(x => x.TotalMarks)</th>
+                <th class="text-center">@Model.lstExam.Where(x => x.ObtainedMarks != -1).Sum(x => x.ObtainedMarks)</th>
+            </tr>
+        </table>
+    </div>
+
+    <div class="right">
+        <table class="custom-table">
+            <tr>
+                <td class="left-td">Percentage : </td>
+                <td class="right-td">@Model.Percentage%</td>
+                <td></td>
+            </tr>
+            <tr>
+                <td class="left-td">Grade : </td>
+                <td class="right-td">@Model.Grade</td>
+                <td></td>
+            </tr>
+            <tr>
+                <td class="left-td">Position : </td>
+                <td class="right-td">@Exam.PositionWithPostFix(Model.Position)</td>
+                <td></td>
+            </tr>
+            <tr>
+                <td colspan="3">
+                    Remarks :
+                </td>
+            </tr>
+            <tr>
+                <td colspan="3" class="remarks">
+                    @Exam.GetLongRemarks(Model.Grade, Model.student.Gender)
+                </td>
+            </tr>
+            <tr>
+                <td colspan="3" class="note">
+                    Note: Errors and ommissions are accepted within seven days after result declaration
+                </td>
+            </tr>
+            <tr>
+                <td style="width:33%">
+                    _______________
+                    <b style="font-size:smaller; padding-left:11px;">Head Teacher</b>
+                </td>
+                <td style="width:33%">
+                    @*_______________
+                        <b style="font-size:smaller; padding-left:30px;">Issue Date</b>*@
+                </td>
+                <td style="width:33%">
+                    _______________
+                    <b style="font-size:smaller; padding-left:30px;">Class Teacher</b>
+                </td>
+            </tr>
+        </table>
+
+
+    </div>
+</div>
+
+<style>
+
+    @@font-face {
+        font-family: 'Amienne-Bold';
+        src: url('../../AMIENNE-BOLD.TTF') format('truetype'), /* Chrome 6+, Firefox 3.6+, IE 9+, Safari 5.1+ */
+        /*url('../../AMIENNE-BOLD.TTF') format('truetype');*/ /* Chrome 4+, Firefox 3.5, Opera 10+, Safari 3—5 */
+    }
+
+    @@media only print {
+        .main-container {
+            width: 100% !important;
+            margin: 0 auto !important;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .left {
+            width: 46%;
+            float: left;
+        }
+
+        .right {
+            width: 50%;
+            float: right;
+            padding-top: 42%;
+        }
+        /*.table thead > tr > th, .table tbody > tr > th, .table tfoot > tr > th, .table thead > tr > td, .table tbody > tr, .table tfoot > tr {
+            padding: 4px !important;
+            border: 2px solid black !important;
+        }*/
+        /*.table thead > tr , .table tbody > tr , .table tfoot > tr , .table thead > tr , .table tbody > tr > td, .table tfoot > tr > td {
+            border: 2px solid black !important;
+        }*/
+        strong {
+            line-height: 3px !important;
+        }
+
+        body {
+            font-family: Arial !important;
+        }
+
+        .custom-table {
+            width: 100%;
+        }
+
+            .custom-table tr td {
+                padding: 8px;
+                font-weight: bold;
+            }
+
+        .left-td {
+            width: 35%;
+        }
+
+        .remarks {
+            font-style: italic;
+            text-decoration: underline;
+            font-size: 17px;
+            font-weight: normal !important;
+        }
+
+        .note {
+            font-size: 11px !important;
+            font-weight: normal !important;
+            padding-top: 0px !important;
+        }
+
+        #top-table {
+            width: 100%;
+            margin-bottom: 5px;
+        }
+
+            #top-table tr .top-left-td {
+                width: 40%;
+                font-size: medium;
+                font-weight: 500;
+                padding-top: 1px;
+                padding-bottom: 1px;
+                font-family: Arial;
+            }
+
+            #top-table tr .top-right-td {
+                width: 60%;
+                font-size: medium;
+                font-weight: 500;
+                text-align: left;
+                padding-top: 1px;
+                padding-bottom: 1px;
+                font-family: Arial;
+                text-decoration: underline;
+            }
+
+        #bottom-table {
+            border-collapse: collapse;
+            border: 1px solid black;
+            width: 100%;
+            margin-bottom: 10%;
+        }
+
+            #bottom-table tr td {
+                border: 1px solid black;
+                padding-left: 4px;
+                padding-top: 4px;
+                padding-bottom: 3px;
+            }
+
+            #bottom-table tr th {
+                border: 1px solid black;
+                padding-left: 2px;
+                padding-top: 3px;
+                padding-bottom: 3px;
+                font-size: small !important;
+                font-weight: bold;
+            }
+    }
+</style>

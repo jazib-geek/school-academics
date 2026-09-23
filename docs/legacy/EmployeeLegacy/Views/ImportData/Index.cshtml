@@ -1,0 +1,159 @@
+﻿
+@{
+    ViewBag.Title = "Import";
+}
+
+<div class="row main">
+    <div class="col-md-8 offset-2 col-sm-12 col-xs-12">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="text-center">
+                    <i class="la la-edit"></i> ATTENDANCE DATA MANAGEMENT
+                </h4>
+            </div>
+            <div class="body">
+                <ul class="nav nav-tabs nav-justified nav-border-top nav-border-top-primary mb-3" role="tablist">
+                    <li class="nav-item">
+                        <a class="nav-link active" data-bs-toggle="tab" href="#import" role="tab">Import from Device</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab" href="#export" role="tab">Export To Excel</a>
+                    </li>
+                </ul>
+
+                <!-- Tab panes -->
+                <div class="tab-content">
+                    <div role="tabpanel" class="tab-pane active" id="import">
+                        <div class="table-responsive adjust-top">
+                            @using (Html.BeginForm("ImportData", "ImportData", FormMethod.Post, new { enctype = "multipart/form-data", @id = "importform" }))
+                            {
+                                <div>
+                                    <h6 class="alert alert-primary">
+                                        <i class="la la-star"></i> Before importing Data, make sure that you have updated the <strong>Checkin Time </strong>
+                                        for every <strong>Designation</strong>. The <strong>Late comings</strong> will be calculated on basis on your pre-defined
+                                        <strong>Checkin Time</strong>, hence it will affect the <strong>Salary</strong> generated for respective month.
+                                    </h6>
+
+                                    <div class="form-group">
+                                        <h5 class="text-center">
+                                            Kindly upload valid .txt file generated from the ZKTeco Biometric Device
+                                        </h5>
+                                        <div>
+                                            <input type="file" name="UploadedFile" id="file" onchange="getoutput()" style="margin-left:44%;" /> <br />
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group text-center py-4">
+                                        <input type="button" onclick="ImportNow()" id="btnsubmit" class="btn btn-lg btn-info" value="Import" disabled="disabled" />
+                                        <button type="button" id="btnwait" class="btn btn-info hide" value="Import" disabled="disabled">
+                                            <i class="la la-spin fa-spinner"></i> Importing Data
+                                        </button>
+                                    </div>
+                                </div>
+                            }
+
+                        </div>
+
+                    </div>
+
+
+                    <div role="tabpanel" class="tab-pane fade" id="export">
+                        <div class="row">
+                            <div class="col-md-6 offset-2">
+                                <div class="form-group">
+                                    <label>Month</label>
+                                    <select id="Month" class="form-control">
+                                        @for (int i = 1; i <= 12; i++)
+                                        {
+                                            <option value="@i">@Data.BLL.DateFunctions.convertToStringMonth(i)</option>
+                                        }
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Year</label>
+                                    <select id="Year" class="form-control">
+                                        <option value="@(DateTime.Now.Year-1)">@(DateTime.Now.Year-1)</option>
+                                        <option value="@(DateTime.Now.Year)" selected="selected">@(DateTime.Now.Year)</option>
+                                        <option value="@(DateTime.Now.Year+1)">@(DateTime.Now.Year+1)</option>
+                                    </select>
+                                </div>
+
+                                <div class="text-center">
+                                    <button type="button" class="btn btn-info" onclick="ExportData()">
+                                        <i class="la la-file-excel"></i> Export
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script>
+    function getoutput() {
+        var file_type = file.value.split('.')[1];
+        if (file_type == 'xls' || file_type == 'xlsx') {
+            $("#btnsubmit").removeAttr('disabled');
+        }
+        else {
+            alert_error('Kindly upload valid excel file!');
+            $("#btnsubmit").attr('disabled', true);
+        }
+    }
+
+    function ImportNow() {
+        $("#btnsubmit").addClass('hide');
+        $("#btnwait").removeClass('hide');
+
+        var formData = new FormData($('#importform')[0]);
+
+        $.ajax({
+            url: $('#importform').attr('action'),
+            type: 'POST',
+            data: formData,
+            processData: false,  // Important for file uploads
+            contentType: false,  // Let the browser set the correct content type
+            success: function (response) {
+                alert_success('Data imported successfully!');
+                $("#btnsubmit").removeClass('hide');
+                $("#btnwait").addClass('hide');
+            },
+            error: function () {
+                alert('Error uploading file.');
+                $("#btnsubmit").removeClass('hide');
+                $("#btnwait").addClass('hide');
+            }
+        });
+    }
+
+
+    //function ImportNow() {
+    //    $("#btnsubmit").addClass('hide');
+    //    $("#btnwait").removeClass('hide');
+    //    document.getElementById('importform').submit();
+    //}
+
+    @if (TempData["success"] != null)
+    {
+     <text>
+         $(document).ready(function () {
+               alert_success('Data imported successfully','');
+         });
+     </text>
+    }
+
+    $(document).ready(function () {
+        $("#Month").val('@DateTime.Now.Month');
+    });
+
+    function ExportData() {
+        window.location.href = '/Staff/Attendance/ExportAttendanceData/?m=' + $("#Month").val() + '&y=' + $("#Year").val();
+    }
+</script>
+

@@ -1,0 +1,144 @@
+﻿@using Data.BLL
+@{
+
+    ViewBag.m = Convert.ToInt32(Request.QueryString["m"]);
+    ViewBag.y = Convert.ToInt32(Request.QueryString["y"]);
+    int Month = ViewBag.m;
+    int Year = ViewBag.y;
+    ViewBag.Title = " Attendance";
+    // ViewBag.first = new DateTime(ViewBag.y, ViewBag.m, 1);
+    ViewBag.first = new DateTime(ViewBag.y, 2, 1);
+    var Date = new DateTime(1, 1, 1);
+    var EmpList = Data.BLL.Employee.Attendance.EmployeeListByMonth(Month, Year);
+}
+<link href="~/assets/css/bootstrap.min.css" rel="stylesheet" />
+
+<div class="card">
+    <div class="header">
+        <h4 class="title text-center">ATTENDANCE SUMMARY @DateFunctions.convertToStringMonth(ViewBag.m).ToUpper() @ViewBag.y</h4>
+        <p class="category"></p>
+    </div>
+    <div class="content table-responsive table-full-width">
+        <table class="table table-hover table-bordered">
+            <thead class="bg-soft-info">
+                <tr>
+                    <th>#</th>
+                    <th>Date</th>
+                    @for (int i = 1; i <= DateTime.DaysInMonth(Year, Month); i++)
+                    {
+                        Date = new DateTime(Year, Month, i);
+                        if (DateFunctions.getDayOfWeekFromDate(Date).ToUpper() != "SUN")
+                        {
+                            <th>@i</th>
+                        }
+                    }
+                    <th colspan="4" class="text-center">
+                        Total
+                    </th>
+                </tr>
+                <tr>
+                    <th></th>
+                    <th>Name/Day</th>
+                    @for (int i = 1; i <= DateTime.DaysInMonth(Year, Month); i++)
+                    {
+                        Date = new DateTime(Year, Month, i);
+                        if (DateFunctions.getDayOfWeekFromDate(Date).ToUpper() != "SUN")
+                        {
+                            <th>@DateFunctions.getDayOfWeekFromDate(Date)</th>
+                        }
+                    }
+                    <th>P</th>
+                    <th>SL</th>
+                    <th>LE</th>
+                    <th>A</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                @foreach (var item in EmpList.OrderBy(x => x.Name).ToList())
+                {
+                    <tr>
+                        <td></td>
+                        <td style="width:12%!important;">
+                            <a href="@Url.Action("Emp", new { id = item.EmployeeID, m = ViewBag.m, y = ViewBag.y })" title="Click to see @item.Name's detailed attendance" class="btnLoader"> @item.Name</a>
+                        </td>
+                        @for (int i = 1; i <= DateTime.DaysInMonth(Year, Month); i++)
+                        {
+                            Date = new DateTime(Year, Month, i);
+                            { ViewBag.status = Data.BLL.Employee.Attendance.GetStatusOfThisDay(i, Month, Year, item.Thumb_ID); }
+                            if (DateFunctions.getDayOfWeekFromDate(Date).ToUpper() != "SUN")
+                            {
+                                <td style="font-size:12px !important;text-align:center">
+                                    @if (ViewBag.status == "P")
+                                    {
+                                        <text>
+                                            <span style="color:darkgreen" title="Present">P</span>
+                                        </text>
+                                    }
+                                    else if (ViewBag.status == "L")
+                                    {
+                                        <text>
+                                            <span style="color:blue" title="Leave">LE</span>
+                                        </text>
+                                    }
+                                    else if (ViewBag.status == "SL")
+                                    {
+                                        <text>
+                                            <span style="color:blue" title="Short Leave">SL</span>
+                                        </text>
+                                    }
+                                    else if (ViewBag.status == "A")
+                                    {
+                                        <text>
+                                            <span style="color:red" title="Absent">A</span>
+                                        </text>
+                                    }
+                                    else if (ViewBag.status == "Late")
+                                    {
+                                        <text>
+                                            <span style="color:red" title="Late">L</span>
+                                        </text>
+                                    }
+                                    else if (ViewBag.status == "H")
+                                    {
+                                        <text>
+                                            <span style="color:orange" title="Holiday">H</span>
+                                        </text>
+                                    }
+                                </td>
+                            }
+                        }
+                        
+                        <td class="total">@Data.BLL.Employee.Attendance.CountByStatus(Month, Year, item.Thumb_ID, "P")</td>
+                        <td class="total">@Data.BLL.Employee.Attendance.CountByStatus(Month, Year, item.Thumb_ID, "SL")</td>
+                        <td class="total">@Data.BLL.Employee.Attendance.CountByStatus(Month, Year, item.Thumb_ID, "L")</td>
+                        <td class="total">@Data.BLL.Employee.Attendance.CountByStatus(Month, Year, item.Thumb_ID, "A")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <br />
+        <p class="text-center">
+            <a href="@Url.Action("Print", new { m =  ViewBag.m , y =  ViewBag.y })" class="btn btn-lg btn-success" target="_blank">
+                <i class="la la-print"></i> Print
+            </a>
+        </p>
+
+        <style>
+            .table > tbody > tr > td, .table > tbody > tr > th, .table > tfoot > tr > td, .table > tfoot > tr > th, .table > thead > tr > td, .table > thead > tr > th {
+                padding: 1px !important;
+            }
+
+            h5 {
+                font-weight: bold !important;
+            }
+
+            .total {
+                font-weight: bold;
+                background-color: lightgray;
+                text-align: center;
+            }
+        </style>
+
+    </div>
+</div>

@@ -1,0 +1,168 @@
+﻿@model Data.DAL.tblEmployeeAttendance
+
+<h6 class="alert alert-info text-center">
+    A Log will be recorded in case you make any changes to the existing Attendance data
+</h6>
+
+<div class="row mt-3">
+    <div class="col-md-4">
+        <div class="form-group">
+            <label>Date</label>
+            <input type="text" class="form-control" value="@(Model != null ? Model.Date.Value.ToShortDateString() : "")" disabled />
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="form-group">
+            <label>Check In</label>
+            <input type="time" id="CheckIn" class="form-control"
+                   value="@Model.Time" />
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="form-group">
+            <label>Check Out</label>
+            <input type="time" id="CheckOut" class="form-control"
+                   value="@(Model.CheckOutTime != null ? Model.CheckOutTime.Value.ToString("HH:mm") : "")" />
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="form-group">
+            <label>Monthly Salary</label>
+            <input type="text" class="form-control" value="@Model.TodaySalary" disabled />
+        </div>
+
+    </div>
+</div>
+
+<div class="row mt-3">
+    <div class="col-md-6">
+        <div class="form-group">
+            <label>Status</label>
+            <select class="form-control" name="Status" disabled>
+                <option value="P" @(Model.Status == "P" ? "selected" : "")>Present</option>
+                <option value="A" @(Model.Status == "A" ? "selected" : "")>Absent</option>
+                <option value="L" @(Model.Status == "L" ? "selected" : "")>Leave</option>
+                <option value="H" @(Model.Status == "H" ? "selected" : "")>Holiday</option>
+            </select>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="form-group">
+            <label>Late Comings</label>
+            <input type="text" id="LateComings" class="form-control lc" value="@Model.LateComings" />
+        </div>
+    </div>
+</div>
+
+<div class="row mt-3">
+    <div class="col-md-6">
+        <div class="form-group">
+            <label>Late Deduction</label>
+            <input type="text" id="LateDeduction" class="form-control" value="@Model.LateDeduction" disabled />
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="form-group">
+            <label>This Day Salary</label>
+            <input id="TodaySalary" type="text" class="form-control" value="@Model.TodaySalary" disabled />
+        </div>
+    </div>
+</div>
+
+
+<div class="form-group mt-3">
+    <button type="button" class="btn btn-sm btn-primary update w-100" data-id="@Model.ID">
+        <i class="la la-edit"></i> Update
+    </button>
+</div>
+
+<script>
+    $(document).on('keyup', '.lc', function () {
+        let lateComings = $(this).val();
+        const deduction = getLateDeductionOnThisDay(attendanceDate, monthlySalary, lateComings);
+        $("#LateDeduction").val(deduction.toFixed(0));
+
+        let salary = calculateEmpSalaryOnThisDay(attendanceDate, monthlySalary, lateComings);
+
+        $("#TodaySalary").val(salary.toFixed(0));
+    });
+
+   const attendanceDate = new Date('@Model.Date.Value.ToString("yyyy-MM-ddTHH:mm:ss")');
+    const monthlySalary = @Model.TodaySalary ?? 0;
+
+    function getLateDeductionOnThisDay(date, monthlySalary, nLateComings) {
+        if (monthlySalary == null || nLateComings == null) {
+            return 0;
+        }
+
+        const month = date.getMonth() + 1;
+        const year = date.getFullYear();
+
+        const daysThisMonth = new Date(year, month, 0).getDate();
+        const salaryPerDay = monthlySalary / daysThisMonth;
+        const salaryPer30Min = (salaryPerDay / 6) / 2;
+        let deduction = 0;
+
+        if (nLateComings > 0) {
+            deduction = nLateComings * salaryPer30Min;
+        }
+
+        return Math.round(deduction);
+    }
+
+    function calculateEmpSalaryOnThisDay(date, monthlySalary, nLateComings) {
+        if (monthlySalary == null || nLateComings == null) {
+            return 0;
+        }
+
+        const month = date.getMonth() + 1;
+        const year = date.getFullYear();
+
+        const daysThisMonth = new Date(year, month, 0).getDate();
+        const salaryPerDay = monthlySalary / daysThisMonth;
+        const salaryPer30Min = (salaryPerDay / 6) / 2;
+
+        let deduction = 0;
+        if (nLateComings > 0) {
+            deduction = nLateComings * salaryPer30Min;
+        }
+
+        const finalSalary = salaryPerDay - deduction;
+        return Math.round(finalSalary);
+    }
+
+    $(document).on('click', '.update', function () {
+        let id = $(this).attr('data-id');
+
+        var data = new FormData();
+
+        data.append("ID", id);
+      data.append("CheckInTime", $("#CheckIn").val());
+    data.append("CheckOutTime", $("#CheckOut").val());
+  
+        $.ajax({
+            cache: false,
+            type: 'POST',
+            processData: false,
+            contentType: false,
+            url: '/Employee/Attendance/ForceEdit',
+            data: data,
+            success: function (result) {
+                GetList();
+                $("#modal").modal('toggle');
+            },
+            error: function (xhr, ajaxOptions, thrownError) {
+                $("body").html(xhr.responseText);
+            }
+        });
+    });
+</script>
+
+<style>
+    label {
+        margin-bottom: 0rem !important;
+    }
+</style>

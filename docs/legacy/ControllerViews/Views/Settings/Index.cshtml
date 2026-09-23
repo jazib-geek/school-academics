@@ -1,0 +1,482 @@
+﻿@using Data.DAL;
+@{
+    ViewBag.Title = "Index";
+    dbSchoolEntities db = new dbSchoolEntities();
+}
+
+<div class="row main">
+    <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
+        <div class="card">
+            <div class="card-header">
+                <h2 class="text-center">
+                    <i class="la la-cog"></i> ACCOUNTS SETTINGS
+                </h2>
+            </div>
+            <div class="body">
+                <ul class="nav nav-pills nav-justified mb-3" role="tablist">
+                    <li class="nav-item waves-effect waves-light">
+                        <a class="nav-link active" data-bs-toggle="tab" id="tab_std" href="#Level1" role="tab">
+                            Level 1
+                        </a>
+                    </li>
+                    <li class="nav-item waves-effect waves-light">
+                        <a class="nav-link" data-bs-toggle="tab" href="#Level2" onclick="GetGroups()" role="tab">
+                            Level 2
+                        </a>
+                    </li>
+                    <li class="nav-item waves-effect waves-light">
+                        <a class="nav-link" data-bs-toggle="tab" href="#Level3" onclick="GetSubGroups()" role="tab">
+                            Level 3
+                        </a>
+                    </li>
+                    <li class="nav-item waves-effect waves-light">
+                        <a class="nav-link" data-bs-toggle="tab" href="#Level4" onclick="GetAccounts()" role="tab">
+                            Level 4
+                        </a>
+                    </li>
+                </ul>
+
+              
+                <!-- Tab panes -->
+                <div class="tab-content">
+                    <div role="tabpanel" class="tab-pane fade in active" id="Level1">
+                        <b>Level 1</b>
+                        <div class="table-responsive adjust-top">
+                            <table id="purData" class="table table-bordered table-hover" style="margin-bottom:5px;">
+                                <thead class="bg-soft-info">
+                                    <tr>
+                                        <th style="width:20%">ID</th>
+                                        <th style="width:80%">Level 1 Name</th>
+                                    </tr>
+                                </thead>
+
+                                <tbody id="table-content-master">
+                                    @foreach (var item in db.tblAccountMasters.ToList())
+                                    {
+                                        <tr>
+                                            <td>@item.MasterID</td>
+                                            <td>@item.Title</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+
+                    </div>
+
+
+                    <div role="tabpanel" class="tab-pane fade" id="Level2">
+                        <b>Level 2 (Groups)</b>
+                        <div class="table-responsive adjust-top">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <select class="form-control" id="GroupMasterID" onchange="FilterGroups()">
+                                        <option value="">----Level 1----</option>
+                                        @foreach (var item in db.tblAccountMasters.ToList())
+                                        {
+                                            <option value="@item.MasterID">@item.Title</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <input type="text" class="form-control" id="GroupTitle" placeholder="Group Title" />
+                                </div>
+                                <div class="col-md-2">
+                                    <button class="btn btn-sm btn-info" id="btnGroup" onclick="CreateGroup()">
+                                        <i class="la la-plus"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <table id="purData" class="table table-bordered table-hover" style="margin-bottom:5px;">
+                                <thead class="bg-soft-info">
+                                    <tr>
+                                        <th style="width:20%">Master</th>
+                                        <th style="width:20%">Group ID</th>
+                                        <th style="width:60%">Group Name</th>
+                                    </tr>
+                                </thead>
+
+                                <tbody id="table-content-group">
+                                    <tr>
+                                        <td colspan="4" class="loading">
+                                            <div class="progress">
+                                                <div class="progress-bar progress-bar-striped progress-bar active" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%"></div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+
+
+                    <div role="tabpanel" class="tab-pane fade" id="Level3">
+                        <b>Level 3 (Sub-Groups)</b>
+                        <div class="row">
+                            <div class="col-md-3">
+                                <select class="form-control" id="SubGroupMasterID" onchange="DDLGroups()">
+                                    <option value="">----Level 1----</option>
+                                    @foreach (var item in db.tblAccountMasters.ToList())
+                                    {
+                                        <option value="@item.MasterID">@item.Title</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <select class="form-control" id="SubGroup-GroupID" disabled="disabled" onchange="FilterSubGroups()"></select>
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control" id="SubGroupTitle" placeholder="Sub Group Title" />
+                            </div>
+                            <div class="col-md-2">
+                                <button class="btn btn-sm btn-info" id="btnGroup" onclick="CreateSubGroup()">
+                                    <i class="la la-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <table id="purData" class="table table-bordered table-hover" style="margin-bottom:5px;">
+                            <thead class="bg-soft-info">
+                                <tr>
+                                    <th style="width:20%">Master</th>
+                                    <th style="width:20%">Group</th>
+                                    <th style="width:20%">Sub-Group ID</th>
+                                    <th style="width:40%">Sub-Group Name</th>
+                                </tr>
+                            </thead>
+
+                            <tbody id="table-content-subgroup">
+                                <tr>
+                                    <td colspan="4" class="loading">
+                                        <div class="progress">
+                                            <div class="progress-bar progress-bar-striped progress-bar active" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%"></div>
+                                        </div>
+                                    </td>
+                                </tr>
+
+                            </tbody>
+                        </table>
+                    </div>
+
+
+
+                    <div role="tabpanel" class="tab-pane fade" id="Level4">
+                        <b>Level 4 (Transactional Accounts)</b>
+                        <div class="row">
+                            <div class="col-md-2">
+                                <select class="form-control" id="MasterID" onchange="DDLAccGroups()">
+                                    <option value="">----Level 1----</option>
+                                    @foreach (var item in db.tblAccountMasters.ToList())
+                                    {
+                                        <option value="@item.MasterID">@item.Title</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <select class="form-control" id="GroupID" disabled="disabled" onchange="DDLSubGroups()"></select>
+                            </div>
+                            <div class="col-md-3">
+                                <select class="form-control" id="SubGroupID" disabled="disabled" onchange="FilterAccounts()"></select>
+                            </div>
+                            <div class="col-md-4">
+                                <input type="text" class="form-control" id="AccountTitle" placeholder="Account Name" />
+                            </div>
+                            <div class="col-md-1">
+                                <button class="btn btn-sm btn-info" id="btnGroup" onclick="CreateAccount()">
+                                    <i class="la la-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <table id="purData" class="table table-bordered table-hover" style="margin-bottom:5px;">
+                            <thead class="bg-soft-info">
+                                <tr>
+                                    <th style="width:15%">Master</th>
+                                    <th style="width:15%">Group ID</th>
+                                    <th style="width:15%">Sub Group ID</th>
+                                    <th style="width:15%">Account ID</th>
+                                    <th style="width:40%">Account Title</th>
+                                </tr>
+                            </thead>
+
+                            <tbody id="table-content-account">
+                                <tr>
+                                    <td colspan="5" class="loading">
+                                        <div class="progress">
+                                            <div class="progress-bar progress-bar-striped progress-bar active" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%"></div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    $(document).ready(function () {
+        $("#lvl1").addClass('active');
+        $("#Level1").addClass('active');
+        $("#Level1").addClass('show');
+        //   $("#account-tab").click();
+        // GetGroups();
+    });
+
+    // GROUP START
+    function GetGroups() {
+        $.ajax({
+            cache: false,
+            type: 'Get',
+            url: '/Accounts/Settings/_Groups',
+            data: '',
+            datatype: 'Json',
+            success: function (result) {
+                $("#table-content-group").html(result);
+            },
+            error: function (xhr, ajaxOptions, thrownError) {
+                alert('error');
+            }
+        });
+    }
+
+    function CreateGroup() {
+        if ($("#GroupTitle").val() != '') {
+            $.ajax({
+                cache: false,
+                type: 'Post',
+                url: '/Accounts/Settings/CreateGroup',
+                data: { MasterID: $("#GroupMasterID").val(), Title: $("#GroupTitle").val() },
+                datatype: 'Json',
+                success: function (result) {
+                    if (result.msg == 'success') {
+                        $("#GroupTitle").val('');
+                        GetGroups();
+                    }
+                    else {
+                        alert('Group already Exist');
+                    }
+                },
+                error: function (xhr, ajaxOptions, thrownError) {
+                    alert('error');
+                }
+            });
+        }
+        else {
+            alert('Enter Group Name');
+        }
+    }
+    // GROUP END
+
+    // SUB-GROUP START
+    function GetSubGroups() {
+        $.ajax({
+            cache: false,
+            type: 'Get',
+            url: '/Accounts/Settings/_SubGroups',
+            data: '',
+            datatype: 'Json',
+            success: function (result) {
+                $("#table-content-subgroup").html(result);
+            },
+            error: function (xhr, ajaxOptions, thrownError) {
+                alert('error');
+            }
+        });
+    }
+
+    function CreateSubGroup() {
+        if ($("#SubGroupTitle").val() != '') {
+            $.ajax({
+                cache: false,
+                type: 'Post',
+                url: '/Accounts/Settings/CreateSubGroup',
+                data: { GroupID: $("#SubGroup-GroupID").val(), Title: $("#SubGroupTitle").val() },
+                datatype: 'Json',
+                success: function (result) {
+                    if (result.msg == 'success') {
+                        $("#SubGroupTitle").val('');
+                        GetSubGroups();
+                    }
+                    else {
+                        alert('SubGroup already Exist');
+                    }
+                },
+                error: function (xhr, ajaxOptions, thrownError) {
+                    alert('error');
+                }
+            });
+        }
+        else {
+            alert('Enter Level2  Name');
+        }
+    }
+    // SUB-GROUP END
+
+    // ACCOUNTS START
+    function GetAccounts() {
+        $.ajax({
+            cache: false,
+            type: 'Get',
+            url: '/Accounts/Settings/_Accounts',
+            data: '',
+            datatype: 'Json',
+            success: function (result) {
+                $("#table-content-account").html(result);
+            },
+            error: function (xhr, ajaxOptions, thrownError) {
+                alert('error');
+            }
+        });
+    }
+
+    function CreateAccount() {
+        if ($("#AccountTitle").val() != '') {
+            $.ajax({
+                cache: false,
+                type: 'Post',
+                url: '/Accounts/Settings/CreateAccount',
+                data: { SubGroupID: $("#SubGroupID").val(), Title: $("#AccountTitle").val() },
+                datatype: 'Json',
+                success: function (result) {
+                    if (result.msg == 'success') {
+                        $("#AccountTitle").val('');
+                        GetAccounts();
+                    }
+                    else {
+                        alert_error('Duplicate detected','Account already Exist');
+                    }
+                },
+                error: function (xhr, ajaxOptions, thrownError) {
+                    alert('error');
+                }
+            });
+        }
+        else {
+            alert_warning('Name Required','Enter Account Title');
+        }
+    }
+    // ACCOUNTS END
+    /////////////// DROPDOWNS ///////////////
+    // Get List of Groups for DDL
+    function DDLGroups() {
+        $.ajax({
+            cache: false,
+            async: false,
+            type: "POST",
+            url: '/Accounts/Settings/GetGroups',
+            data: { MasterID: $("#SubGroupMasterID").val() },
+            success: function (result) {
+                $("#SubGroup-GroupID").html("");
+                $("#SubGroup-GroupID").removeAttr("disabled");
+                $("#SubGroup-GroupID").append($('<option></option>').val(0).html('----Group----'))
+                $.each($.parseJSON(result), function (i, grp) {
+                    $("#SubGroup-GroupID").append($('<option></option>').val(grp.GroupID).html(grp.GroupTitle))
+                })
+            },
+            error: function (xhr, ajaxOptions, thrownError) {
+                alert(xhr.responseText);
+            }
+        });
+    }
+
+    function DDLAccGroups() {
+        FilterAccounts();
+        $.ajax({
+            cache: false,
+            async: false,
+            type: "POST",
+            url: '/Accounts/Settings/GetGroups',
+            data: { MasterID: $("#MasterID").val() },
+            success: function (result) {
+                $("#GroupID").html("");
+                $("#GroupID").removeAttr("disabled");
+                $("#GroupID").append($('<option></option>').val(0).html('----Group----'))
+                $.each($.parseJSON(result), function (i, grp) {
+                    $("#GroupID").append($('<option></option>').val(grp.GroupID).html(grp.GroupTitle))
+                })
+            },
+            error: function (xhr, ajaxOptions, thrownError) {
+                alert('Failed to retrieve Item.');
+            }
+        });
+    }
+
+    function DDLSubGroups() {
+        FilterAccounts();
+        $.ajax({
+            cache: false,
+            async: false,
+            type: "POST",
+            url: '/Accounts/Settings/GetSubGroups',
+            data: { GroupID: $("#GroupID").val() },
+            success: function (result) {
+                $("#SubGroupID").html("");
+                $("#SubGroupID").removeAttr("disabled");
+                $("#SubGroupID").append($('<option></option>').val(0).html('----Sub-Group----'))
+                $.each($.parseJSON(result), function (i, grp) {
+                    $("#SubGroupID").append($('<option></option>').val(grp.SubGroupID).html(grp.SubGroupName))
+                })
+            },
+            error: function (xhr, ajaxOptions, thrownError) {
+                alert('Failed to retrieve Item.');
+            }
+        });
+    }
+
+    ////////////////// FILTERS ////////////////////
+    function FilterGroups() {
+        $.ajax({
+            cache: false,
+            type: 'Get',
+            url: '/Accounts/Settings/_Groups',
+            data: { MasterID: $("#GroupMasterID").val() },
+            datatype: 'Json',
+            success: function (result) {
+                $("#table-content-group").html(result);
+            },
+            error: function (xhr, ajaxOptions, thrownError) {
+                alert('error');
+            }
+        });
+    }
+
+    function FilterSubGroups() {
+        $.ajax({
+            cache: false,
+            type: 'Get',
+            url: '/Accounts/Settings/_SubGroups',
+            data: { GroupID: $("#SubGroup-GroupID").val() },
+            datatype: 'Json',
+            success: function (result) {
+                $("#table-content-subgroup").html(result);
+            },
+            error: function (xhr, ajaxOptions, thrownError) {
+                alert('error');
+            }
+        });
+    }
+
+    function FilterAccounts() {
+        $.ajax({
+            cache: false,
+            type: 'Get',
+            url: '/Accounts/Settings/_Accounts',
+            data: { MasterID: $("#MasterID").val(), GroupID: $("#GroupID").val(), SubGroupID: $("#SubGroupID").val() },
+            datatype: 'Json',
+            success: function (result) {
+                $("#table-content-account").html(result);
+            },
+            error: function (xhr, ajaxOptions, thrownError) {
+                alert('error');
+            }
+        });
+    }
+
+     @if (Data.BLL.User.Rights.UserHasAccessToMudule("acct_settings", Session["user"].ToString()) == false)
+    {
+        <text>  $(".main").html(''); $(".main").html('<h4 class="alert alert-danger text-center"> <i class="la la-exclamation-circle"> You do not have permission to access this feature </h4>');   </text>
+     }
+</script>
+

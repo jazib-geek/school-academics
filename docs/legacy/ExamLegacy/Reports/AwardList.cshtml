@@ -1,0 +1,82 @@
+﻿@model List<Data.DAL.v_StudentList>
+
+@{
+    Layout = "~/Views/Shared/_LayoutReport.cshtml";
+    int? serial = 0;
+}
+
+<script src="~/Scripts/jquery-1.10.2.min.js"></script>
+
+<style>
+    @@media print {
+        table {
+            font-size: large !important;
+        }
+    }
+</style>
+<table cellpadding="0" cellspacing="0" style="width:100%;">
+    <tr>
+        <td class="top">
+            <h3>Subject &nbsp;  _____________________</h3>
+            <h3>Incharge    _____________________</h3>
+        </td>
+        <td class="top">
+        </td>
+        <td style="text-align:right;" class="top">
+            <h2>Blank Award List</h2>
+            <b>For Class @ViewBag.classsection </b> <br />
+        </td>
+    </tr>
+</table>
+
+<table border="1" cellpadding="5" cellspacing="0" style="width:100%;">
+    <tr>
+        <td colspan="3" style="border:none!important"></td>
+        @for (int i = 1; i < 13; i++)
+        {
+            if (i < 10)
+            {
+                <td style="text-align:center"><text>0</text>@i</td>
+            }
+            else
+            {
+                <td style="text-align:center">@i</td>
+            }
+        }
+    </tr>
+    <tr>
+        <td rowspan="2">
+            R-#
+        </td>
+        <td rowspan="2">
+            Serial
+        </td>
+        <td>Date</td>
+        @for (int i = 1; i < 13; i++)
+        {
+            <td></td>
+        }
+    </tr>
+    <tr>
+
+        <td>Total Marks</td>
+        @for (int i = 1; i < 13; i++)
+        {
+            <td></td>
+        }
+    </tr>
+
+    @foreach (var item in Model.OrderBy(x => x.Reg_Id))
+    {
+        serial++;
+        <tr>
+            <td>@serial</td>
+            <td>@item.Reg_Id</td>
+            <td>@item.FullName</td>
+            @for (int i = 1; i < 13; i++)
+            {
+                <td></td>
+            }
+        </tr>
+    }
+</table>

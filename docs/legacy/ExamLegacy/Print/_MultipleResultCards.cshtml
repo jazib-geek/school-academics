@@ -1,0 +1,7 @@
+﻿@model Data.Viewmodel.SectionViewModel
+
+@foreach (var item in Data.BLL.Student.List.All().Where(x => x.ClassCompositeID == Model.Class_ID))
+{
+    @Html.Partial("_AcademicReport", Data.BLL.Student.List.GetByID(item.Reg_Id))
+}
+

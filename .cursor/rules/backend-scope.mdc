@@ -1,0 +1,21 @@
+---
+description: Backend-only work — stay in AppDbContext/AcademicContext stack; skip frontend unless asked
+globs: backend/**/*
+alwaysApply: false
+---
+
+# Backend scope (token)
+
+When the task is under `backend/`, stay there unless the user asks for UI or API client wiring.
+
+## Stay in-stack
+
+- Prefer: Controllers → Application services/DTOs/interfaces → Infrastructure entities/EF → migrations.
+- Do **not** open `frontend/` to “check how it’s called” unless the user asked for end-to-end or the API contract is unclear from existing controllers/DTOs.
+- Campus data → `AppDbContext` + `TenantContext`. Academics → `AcademicContext` + `Areas/Academics`. Do not search both DBs by default.
+
+## Cheap lookups
+
+- Find a service/controller with `Grep` on type/route names; do not read whole area folders.
+- Mirror a nearby endpoint/DTO in the same area instead of inventing a new pattern after a broad scan.
+- New campus tables: `dbo` + migrator reminder only when you actually add a migration — no migration essays on unrelated tasks.

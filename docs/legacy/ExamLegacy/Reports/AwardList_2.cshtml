@@ -1,0 +1,188 @@
+﻿@model List<Data.DAL.v_StudentList>
+
+@using Data.BLL
+@{
+    Layout = "~/Views/Shared/_LayoutReport.cshtml";
+}
+
+<div class="left">
+
+    <table style="width:100%;">
+        <tr>
+            <td colspan="2" style="text-align:center">
+                <strong style="font-size:20px !important;font-family:Arial !important;width:100%;text-align:center !important; display:inline-block !important">SCIENCE BASE SCHOOL</strong>
+                <small style="font-size:8px !important;font-family:Arial !important;position:relative;top:-7px">@System.Web.Configuration.WebConfigurationManager.AppSettings["campus_name"] | Tel: 055-@System.Web.Configuration.WebConfigurationManager.AppSettings["campus_landline"]</small>
+            </td>
+        </tr>
+        <tr>
+            <td colspan="2" style="font-size:12px !important">
+                Exam &nbsp; <span style="border-bottom:1px solid black">@ViewBag.exam</span>
+            </td>
+        </tr>
+        <tr>
+            <td style="font-size:12px !important">Dated &nbsp; <span class="border-bottom">______________</span></td>
+            <td style="font-size:12px !important">Subject &nbsp; <span class="border-bottom">__________________</span></td>
+        </tr>
+        <tr>
+            <td style="font-size:12px !important">
+                <p style="text-align:left">@ViewBag.classsection</p>
+            </td>
+            <td style="font-size:12px !important">
+                <p style="text-align:left">Total Marks</p>
+            </td>
+        </tr>
+    </table>
+
+    <table style="width:100%;" class="std-table">
+        <thead class="bg-soft-info">
+
+            <tr>
+                <th style="font-size:12px !important;">Sr.#</th>
+                <th style="font-size:12px !important;">R.#</th>
+                <th style="font-size:12px !important;">Student Name</th>
+                <th style="font-size:10px !important;">1st checking</th>
+                <th style="font-size:10px !important;">2nd checking</th>
+                <th style="font-size:10px !important;">3rd checking</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model.OrderBy(x => x.Reg_Id))
+            {
+                <tr>
+                    <td style="font-size:12px !important;">@item.Reg_Id</td>
+                    <td style="font-size:12px !important;">@StudentParameters.GetRollNumber(item.Reg_Id, item.ClassCompositeID)</td>
+                    <td style="font-size:10px !important;">@item.FullName</td>
+                    <td style="font-size:12px !important;"></td>
+                    <td style="font-size:12px !important;"></td>
+                    <td style="font-size:12px !important;"></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <div style="margin-top:2em; width:100%;">
+        <div style="font-size:10px;float:left;text-align:left;width:50%">
+            Checked By&nbsp; __________________
+        </div>
+
+        <div style="font-size:10px;float:left;text-align:right;width:50%">
+            Rechecked By&nbsp; __________________
+        </div>
+
+    </div>
+
+</div>
+
+<div class="right">
+    <table style="width:100%;">
+        <tr>
+            <td colspan="2" style="text-align:center">
+                <strong style="font-size:20px !important;font-family:Arial !important;width:100%;text-align:center !important; display:inline-block !important">SCIENCE BASE SCHOOL</strong>
+                <small style="font-size:8px !important;font-family:Arial !important;position:relative;top:-7px">@System.Web.Configuration.WebConfigurationManager.AppSettings["campus_name"] | Tel: 055-@System.Web.Configuration.WebConfigurationManager.AppSettings["campus_landline"]</small>
+            </td>
+        </tr>
+        <tr>
+            <td colspan="2" style="font-size:12px !important">
+                Exam &nbsp; <span style="border-bottom:1px solid black">@ViewBag.exam</span>
+            </td>
+        </tr>
+        <tr>
+            <td style="font-size:12px !important">Dated &nbsp; <span class="border-bottom">_____________</span></td>
+            <td style="font-size:12px !important">Subject &nbsp; <span class="border-bottom">__________________</span></td>
+        </tr>
+        <tr>
+            <td style="font-size:12px !important">
+                <p style="text-align:left">@ViewBag.classsection</p>
+            </td>
+            <td style="font-size:12px !important">
+                <p style="text-align:left">Total Marks</p>
+            </td>
+        </tr>
+    </table>
+
+    <table style="width:100%;" class="std-table">
+        <thead class="bg-soft-info">
+            <tr>
+                <th style="font-size:12px !important;">Sr.#</th>
+                <th style="font-size:12px !important;">R.#</th>
+                <th style="font-size:12px !important;">Student Name</th>
+                <th style="font-size:10px !important;">1st checking</th>
+                <th style="font-size:10px !important;">2nd checking</th>
+                <th style="font-size:10px !important;">3rd checking</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model.OrderBy(x => x.Reg_Id))
+            {
+            <tr>
+                <td style="font-size:12px !important;">@item.Reg_Id</td>
+                <td style="font-size:12px !important;">@StudentParameters.GetRollNumber(item.Reg_Id, item.ClassCompositeID)</td>
+                <td style="font-size:10px !important;">@item.FullName</td>
+                <td style="font-size:12px !important;"></td>
+                <td style="font-size:12px !important;"></td>
+                <td style="font-size:12px !important;"></td>
+            </tr>
+            }
+        </tbody>
+    </table>
+
+    <div style="margin-top:2em; width:100%;">
+        <div style="font-size:10px;float:left;text-align:left;width:50%">
+            Checked By&nbsp; __________________
+        </div>
+
+        <div style="font-size:10px;float:left;text-align:right;width:50%">
+            Rechecked By&nbsp; __________________
+        </div>
+
+    </div>
+
+</div>
+
+
+
+<style>
+    .left {
+        width: 47%;
+        float: left;
+    }
+
+    .right {
+        width: 47%;
+        float: right;
+    }
+
+    .bottom-border {
+        border-bottom: 1px solid black;
+    }
+
+
+    .std-table {
+        border-collapse: collapse;
+        border: 1px solid black;
+        width: 100%;
+        margin-bottom: 10%;
+    }
+
+        .std-table tr td {
+            border: 1px solid black;
+            padding-left: 4px;
+            padding-top: 4px;
+            padding-bottom: 3px;
+            font-family: Arial !important;
+        }
+
+        .std-table tr th {
+            border: 1px solid black;
+            padding-left: 2px;
+            padding-top: 3px;
+            padding-bottom: 3px;
+            font-size: small !important;
+            font-weight: bold;
+            font-family: Arial !important;
+        }
+
+    span {
+        font-family: Arial !important;
+    }
+</style>

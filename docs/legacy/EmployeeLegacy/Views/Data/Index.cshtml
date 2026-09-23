@@ -1,0 +1,57 @@
+﻿
+@{
+    ViewBag.Title = "Employee Manager";
+    Layout = "~/Areas/Staff/Views/Shared/LayoutEmp.cshtml";
+}
+<div class="row">
+    <div class="col-md-12">
+        <h2 class="text-center"><span> <i class="la la-user"></i> EMPLOYEES LIST</span></h2>
+        <div class="well">
+            <p class="pull-right" style="margin:-9px 0 10px!important">
+                <input type="radio" name="gender" id="all" onclick="getData('')" checked="checked" />  <label for="all">All</label> &nbsp;&nbsp;&nbsp;
+                <input type="radio" name="gender" id="male" onclick="getData('Male')" />  <label for="male">Male</label> &nbsp;&nbsp;&nbsp;
+                <input type="radio" name="gender" id="female" onclick="getData('Female')" /> <label for="female">Female</label>&nbsp
+            </p>
+        </div>
+        @Html.Partial("_LoadingBar")
+
+        <div id="table-content"></div>
+
+    </div>
+</div>
+
+<script>
+    $(document).ready(function () {
+        getData('');
+    });
+
+    function getData(gender) {
+        $("#divWait").removeClass('hide');
+        $.ajax({
+            cache: false,
+            type: 'Get',
+            url: '/Staff/Data/_Index',
+            data: { gender: gender },
+            datatype: 'Json',
+            success: function (result) {
+
+                $("#divWait").addClass('hide');
+                $("#table-content").html(result);
+            },
+            error: function (xhr, ajaxOptions, thrownError) {
+                alert(error);
+            }
+        });
+    }
+
+</script>
+
+<style>
+    td {
+        font-size: 12px !important;
+    }
+
+    th {
+        font-size: 13px !important;
+    }
+</style>

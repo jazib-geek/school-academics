@@ -524,6 +524,7 @@ public class CampusTimeTableService : ICampusTimeTableService
                 existing.EmployeeID = input.EmployeeID;
                 existing.PeriodNumber = input.PeriodNumber;
                 existing.DayOfWeek = input.DayOfWeek;
+                existing.LineIndex = NormalizeLineIndex(input.LineIndex);
                 existing.UpdatedAtUtc = now;
             }
             else
@@ -536,6 +537,7 @@ public class CampusTimeTableService : ICampusTimeTableService
                     EmployeeID = input.EmployeeID,
                     PeriodNumber = input.PeriodNumber,
                     DayOfWeek = input.DayOfWeek,
+                    LineIndex = NormalizeLineIndex(input.LineIndex),
                     CreatedAtUtc = now,
                 });
             }
@@ -911,6 +913,7 @@ public class CampusTimeTableService : ICampusTimeTableService
                 .OrderBy(s => s.DayOfWeek)
                 .ThenBy(s => s.PeriodNumber)
                 .ThenBy(s => ClassLabel(s.SectionID))
+                .ThenBy(s => s.LineIndex)
                 .Select(s =>
                 {
                     subjects.TryGetValue(s.SubjectID, out var subject);
@@ -927,6 +930,7 @@ public class CampusTimeTableService : ICampusTimeTableService
                         Gender = TeacherGender(s.EmployeeID),
                         PeriodNumber = s.PeriodNumber,
                         DayOfWeek = s.DayOfWeek,
+                        LineIndex = s.LineIndex,
                     };
                 })
                 .ToList(),
@@ -1063,31 +1067,72 @@ public class CampusTimeTableService : ICampusTimeTableService
         }
     }
 
+    private static byte NormalizeLineIndex(byte lineIndex) => lineIndex is 1 ? (byte)1 : (byte)0;
+
     private static void AssertNoSlotClashes(
         IReadOnlyList<CampusTimeTableSlotInputDto> inputs,
         IReadOnlyDictionary<int, string> classNames,
         IReadOnlyDictionary<int, string> teacherNames,
         IReadOnlyDictionary<int, string> subjectNames)
     {
-        var classKeys = new Dictionary<(int SectionID, int PeriodNumber, byte DayOfWeek), CampusTimeTableSlotInputDto>();
         var teacherKeys = new Dictionary<(int EmployeeID, int PeriodNumber, byte DayOfWeek), CampusTimeTableSlotInputDto>();
         var classSubjectOwners = new Dictionary<(int SectionID, int SubjectID, byte DayOfWeek), CampusTimeTableSlotInputDto>();
 
         static string DaySuffix(byte dayOfWeek) =>
             dayOfWeek == 0 ? string.Empty : $" (weekday {dayOfWeek})";
 
+        foreach (var group in inputs.GroupBy(s => (s.SectionID, s.PeriodNumber, s.DayOfWeek)))
+        {
+            var lines = group.ToList();
+            if (lines.Count > 2)
+            {
+                var className = classNames.GetValueOrDefault(group.Key.SectionID, $"Class {group.Key.SectionID}");
+                throw new InvalidOperationException(
+                    $"Class \"{className}\" has more than two groups in Period {group.Key.PeriodNumber}{DaySuffix(group.Key.DayOfWeek)}.");
+            }
+
+            var indices = lines.Select(s => NormalizeLineIndex(s.LineIndex)).ToList();
+            if (indices.Distinct().Count() != lines.Count)
+            {
+                var className = classNames.GetValueOrDefault(group.Key.SectionID, $"Class {group.Key.SectionID}");
+                throw new InvalidOperationException(
+                    $"Class \"{className}\" has duplicate groups in Period {group.Key.PeriodNumber}{DaySuffix(group.Key.DayOfWeek)}.");
+            }
+
+            if (lines.Count == 2 && (!indices.Contains((byte)0) || !indices.Contains((byte)1)))
+            {
+                var className = classNames.GetValueOrDefault(group.Key.SectionID, $"Class {group.Key.SectionID}");
+                throw new InvalidOperationException(
+                    $"Class \"{className}\" split period in Period {group.Key.PeriodNumber}{DaySuffix(group.Key.DayOfWeek)} must include a primary and a second group.");
+            }
+
+            if (lines.Count == 1 && indices[0] == 1)
+            {
+                var className = classNames.GetValueOrDefault(group.Key.SectionID, $"Class {group.Key.SectionID}");
+                throw new InvalidOperationException(
+                    $"Class \"{className}\" second group in Period {group.Key.PeriodNumber}{DaySuffix(group.Key.DayOfWeek)} requires a primary group.");
+            }
+
+            if (lines.Select(l => l.SubjectID).Distinct().Count() != lines.Count)
+            {
+                var className = classNames.GetValueOrDefault(group.Key.SectionID, $"Class {group.Key.SectionID}");
+                throw new InvalidOperationException(
+                    $"Class \"{className}\" cannot use the same subject twice in Period {group.Key.PeriodNumber}{DaySuffix(group.Key.DayOfWeek)}.");
+            }
+
+            if (lines.Select(l => l.EmployeeID).Distinct().Count() != lines.Count)
+            {
+                var className = classNames.GetValueOrDefault(group.Key.SectionID, $"Class {group.Key.SectionID}");
+                throw new InvalidOperationException(
+                    $"Class \"{className}\" cannot use the same teacher twice in Period {group.Key.PeriodNumber}{DaySuffix(group.Key.DayOfWeek)}.");
+            }
+        }
+
         foreach (var slot in inputs)
         {
-            var classKey = (slot.SectionID, slot.PeriodNumber, slot.DayOfWeek);
-            if (!classKeys.TryAdd(classKey, slot))
+            if (slot.LineIndex > 1)
             {
-                var existing = classKeys[classKey];
-                var className = classNames.GetValueOrDefault(slot.SectionID, $"Class {slot.SectionID}");
-                var existingTeacher = teacherNames.GetValueOrDefault(existing.EmployeeID, $"Teacher {existing.EmployeeID}");
-                var existingSubject = subjectNames.GetValueOrDefault(existing.SubjectID, $"Subject {existing.SubjectID}");
-                throw new InvalidOperationException(
-                    $"Class \"{className}\" is already with {existingTeacher} ({existingSubject}) in Period {slot.PeriodNumber}{DaySuffix(slot.DayOfWeek)}. " +
-                    "A class can only have one lesson at a time.");
+                throw new InvalidOperationException("Only two groups per class period are allowed.");
             }
 
             var teacherKey = (slot.EmployeeID, slot.PeriodNumber, slot.DayOfWeek);

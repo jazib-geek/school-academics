@@ -1,0 +1,19 @@
+@model Data.DAL.tblDesignation
+@{
+    ViewBag.Title = "EDIT DESIGNATION";
+}
+
+<section class="">
+    <div class="row">
+        <div class="col-xs-12 col-md-9 offset-1">
+            <div class="card">
+                <div class="panel-heading text-center">
+                    <h3><i class="la la-user"></i> EDIT DESIGNATION</h3>
+                </div>
+                <div class="panel-body">
+                    @Html.Partial("_Edit", Model)
+                </div>
+            </div>
+        </div>
+    </div>
+</section>

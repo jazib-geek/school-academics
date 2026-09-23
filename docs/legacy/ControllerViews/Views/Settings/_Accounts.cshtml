@@ -1,0 +1,48 @@
+﻿@model List<Data.DAL.tblAccount>
+@using Data.DAL
+@{ dbSchoolEntities db = new dbSchoolEntities(); }
+
+@foreach (var item in Model.OrderBy(x => x.MasterID))
+{
+    <tr>
+        <td>@db.tblAccountMasters.Find(item.MasterID).Title</td>
+        <td>@db.tblAccountGroups.Where(x => x.GroupID == item.GroupID).First().GroupTitle</td>
+        <td>@db.tblAccountSubGroups.Where(x => x.SubGroupID == item.SubGroupID).First().SubGroupName</td>
+        <td>@item.AccountID</td>
+        <td>
+            <span ondblclick="EditState(@item.ID)" id="lblAccountTitle-@item.ID">@item.AccountTitle</span>
+            <input type="text" id="txtAccountTitle-@item.ID" value="@item.AccountTitle" class="hide" onkeypress="EditAccount(event,@item.ID)" style="max-width:90%" />
+        </td>
+    </tr>
+}
+
+<script>
+    function EditAccount(e, id)
+    {
+        if (e.keyCode == 13) {
+            if ($("#txtAccountTitle-" + id).val() != '') {
+                EditState(id);
+
+                $.ajax({
+                    cache: false,
+                    type: 'POST',
+                    url: '/Accounts/Settings/EditAccountTitle',
+                    data: { ID: id, Title: $("#txtAccountTitle-" + id).val() },
+                    datatype: 'Json',
+                    success: function (result) {
+                        GetAccounts();
+                    },
+                    error: function (xhr, ajaxOptions, thrownError) {
+                        alert('error');
+                    }
+                });
+            }
+        }      
+    }
+
+    function EditState(id)
+    {
+        $("#txtAccountTitle-" + id).removeClass('hide');
+        $("#lblAccountTitle-" + id).addClass('hide');
+    }
+</script>

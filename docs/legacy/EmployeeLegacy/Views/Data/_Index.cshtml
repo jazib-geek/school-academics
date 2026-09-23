@@ -1,0 +1,162 @@
+﻿@model List<Data.Viewmodel.TeacherViewModel>
+
+
+<table class="table text-center table-bordered">
+    <thead class="bg-soft-info">
+        <tr>
+            <th>#</th>
+            <th>Name</th>
+            <th>Father Name</th>
+            <th>Gender</th>
+            <th>DOB</th>
+            <th>Contact</th>
+            <th>Designation</th>
+            <th>Salary</th>
+            <th>Degree</th>
+            <th>Locality</th>
+            <th style="width:5%"><span class="la la-setting"></span></th>
+        </tr>
+    </thead>
+
+    <tbody>
+        @{ int serial = 0; }
+        @foreach (var item in Model)
+        {
+            { serial += 1; }
+            <tr style="background: white!important;color: black!important">
+                <td>@serial</td>
+                <td>@item.TeacherName</td>
+                <td>@item.FatherName</td>
+                <td>@item.Gender</td>
+                <td>@Data.BLL.DateFunctions.convertToStringDate(item.DoB)</td>
+                <td>@item.Contact1</td>
+                <td>@item.Designation.Designation</td>
+                <td>@item.Salary</td>
+                @if (!string.IsNullOrEmpty(item.Qualification.ProfessionalDegree))
+                {
+                    <td>@item.Qualification.ProfessionalDegree</td>
+                }
+                else
+                {
+                    <td>-</td>
+                }
+                <td>@item.Locality.Town</td>
+                <td class="text-center">
+                    <a href="javascript:void(0)" class="btn-@item.ID" style="color:darkgreen" onclick="FetchDetail(@item.ID)"> <i class="la la-circle"></i></a> &nbsp;
+                    <a href="/Staff/Data/Edit/@item.ID" style="color:orange" class="btn-@item.ID"> <i class="la la-edit"></i></a>  &nbsp;
+                    <a href="javascript:void(0)" onclick="deactivate(@item.ID)" style="color:red" class="btn-@item.ID"> <i class="la la-close"></i></a>
+                    <span id="loader-@item.ID" class="hide"> <i class="la la-spin fa-cog text-info" style="color:darkcyan; font-size:15px"></i>  wait</span>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+
+<div class="panel-body">
+    <div aria-hidden="true" aria-labelledby="myModalLabel" role="dialog" tabindex="-1" id="DetailModal" class="modal fade">
+        <div class="modal-dialog" style="max-width:60% !important; top:-35px">
+            <div class="modal-content">
+                <div class="modal-body dvPartial">
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript">
+
+    // Detail modal
+
+    function FetchDetail(id) {
+        toggle_loader_on(id);
+        $("#divWait").removeClass('hide');
+
+        $.ajax({
+            cache: false,
+            type: 'Get',
+            url: '/Staff/Data/GetByID',
+
+            data: { ID : id },
+            datatype: 'Json',
+            success: function (result) {
+                $("#DetailModal").modal('show');
+                $(".dvPartial").html(result);
+                $("#divWait").addClass('hide');
+                toggle_loader_off(id);
+            },
+            error: function (xhr, ajaxOptions, thrownError) {
+            }
+        });
+    }
+
+
+
+    $(".btnDetail").click(function () {
+
+        var item = $(this).closest('tr').find('#hdId').val();
+        //  alert(item);
+        var urlToPost = '@Url.Action("detail", "Student", new {ID = "itVal" })'
+        urlToPost = urlToPost.replace("itVal", item);
+        urlToPost = urlToPost.replace(/\amp;/g, '');
+        $("#divWait").removeClass('hide');
+        $.ajax({
+            cache: false,
+            type: 'Get',
+            url: urlToPost,
+
+            data: '',
+            datatype: 'Json',
+            success: function (result) {
+                $("#DetailModal").modal('show');
+                $(".dvPartial").html(result);
+                $("#divWait").addClass('hide');
+            },
+            error: function (xhr, ajaxOptions, thrownError) {
+            }
+        });
+    })
+
+    // Deactivate function
+
+    function deactivate(id)
+    {
+         alert(id);
+
+        $.ajax({
+            cache: false,
+            type: 'Post',
+            url: '@Url.Action("deactivate","Student")',
+            data: { id : id },
+            datatype: 'Json',
+            success: function (result) {
+                alert(result.msg);
+                getData('All');
+            },
+            error: function (xhr, ajaxOptions, thrownError) {
+                alert('error');
+            }
+        });
+    }
+
+    function toggle_loader_on(id) {
+        $("#loader-" + id).removeClass('hide');
+        $(".btn-" + id).addClass('hide');
+    }
+
+    function toggle_loader_off(id) {
+        $("#loader-" + id).addClass('hide');
+        $(".btn-" + id).removeClass('hide');
+    }
+
+</script>
+
+<style>
+    #DetailModal {
+        padding-top: 5em !important;
+    }
+
+    td {
+        padding: 5px !important;
+    }
+</style>

@@ -1,0 +1,10 @@
+﻿@model List<Data.DAL.tblEmployeeSubject>
+@using Data.BLL.Parameter
+
+@foreach (var item in Model)
+{
+    <span class="badge badge-info bg-info" style="margin-right:12px">
+        @Subject.GetNameFromID(item.SubjectID)
+        <i class="la la-times" onclick="DeleteRow(@item.ID , 'Subject')"></i>
+    </span>
+}

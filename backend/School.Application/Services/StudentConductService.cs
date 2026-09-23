@@ -321,9 +321,26 @@ public class StudentConductService : IStudentConductService
 
     public async Task<StudentConductDayReportDto> GetDayReportAsync(
         DateOnly date,
+        DateOnly? dateTo = null,
+        int? recordedByEmployeeId = null,
         CancellationToken cancellationToken = default)
     {
-        var notes = await LoadNotesAsync(x => x.NoteDate == date, cancellationToken);
+        var endDate = dateTo ?? date;
+        if (endDate < date)
+            throw new ArgumentException("End date must be on or after the start date.");
+
+        List<int>? activeTeacherIds = null;
+        if (!recordedByEmployeeId.HasValue)
+            activeTeacherIds = await GetActiveTeacherEmployeeIdsAsync(cancellationToken);
+
+        var notes = await LoadNotesAsync(
+            x => x.NoteDate >= date
+                && x.NoteDate <= endDate
+                && (recordedByEmployeeId.HasValue
+                    ? x.RecordedByEmployeeId == recordedByEmployeeId
+                    : x.RecordedByEmployeeId != null
+                      && activeTeacherIds!.Contains(x.RecordedByEmployeeId.Value)),
+            cancellationToken);
         var studentIds = notes.Select(x => x.StudentId).Distinct().ToList();
 
         var students = await _context.Students
@@ -369,6 +386,7 @@ public class StudentConductService : IStudentConductService
                 ConductTypeId = note.ConductTypeId,
                 ConductTypeName = note.ConductTypeName,
                 Remarks = note.Remarks,
+                RecordedByEmployeeId = note.RecordedByEmployeeId,
                 RecordedByName = note.RecordedByName,
                 Tags = note.Tags,
             };
@@ -401,6 +419,7 @@ public class StudentConductService : IStudentConductService
         return new StudentConductDayReportDto
         {
             Date = date,
+            DateTo = endDate,
             TotalCount = reportNotes.Count,
             GoodCount = goodCount,
             BadCount = badCount,
@@ -486,6 +505,24 @@ public class StudentConductService : IStudentConductService
             IsActive = type.IsActive,
             Tags = tags,
         };
+    }
+
+    private async Task<List<int>> GetActiveTeacherEmployeeIdsAsync(CancellationToken cancellationToken)
+    {
+        var rows = await _context.Employees
+            .AsNoTracking()
+            .Where(x => x.IsActive != false && x.EmployeeName != null && x.EmployeeName != "")
+            .Select(x => new
+            {
+                x.ID,
+                DesignationName = x.Designation != null ? x.Designation.DesignationName : null,
+            })
+            .ToListAsync(cancellationToken);
+
+        return rows
+            .Where(x => !EmployeeDesignations.IsAdminName(x.DesignationName))
+            .Select(x => x.ID)
+            .ToList();
     }
 
     private static string FormatClassSectionDisplayName(string? className, string? sectionName)

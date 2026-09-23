@@ -1,0 +1,471 @@
+﻿@model Data.DAL.v_StudentList
+@using Data.BLL
+@{
+    Layout = null;
+    int? ObtainedMarks = 0;
+    int? TotalMarks = 0;
+    int? NetTotalMarks = 0;
+    int? NetObtainedMarks = 0;
+    int? Percentage = 0;
+    int? StempID = Convert.ToInt32(System.Web.Configuration.WebConfigurationManager.AppSettings["StempID"]);
+
+}
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="utf-8" />
+    <title>@Model.FullName Academic Report</title>
+    <style>
+        body {
+            font-family: Arial;
+        }
+
+        .main-container {
+            width: 760px;
+            margin: 0 auto;
+        }
+
+        .header {
+            position: relative;
+            text-align: center;
+        }
+
+            .header h1 {
+                margin: 0;
+                text-decoration: underline;
+            }
+
+            .header h3 {
+                margin-bottom: 0px;
+            }
+
+        .pull-right {
+            float: right;
+        }
+
+        .bold {
+            font-weight: bold;
+        }
+
+        .left {
+            width: 20%;
+            float: left;
+        }
+
+            .left img {
+                width: 80%;
+                margin-right: -216px;
+            }
+
+        .right {
+            width: 80%;
+            float: right;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        table {
+            width: 100%;
+        }
+
+        .block {
+            display: block;
+        }
+
+        tr.top-space td {
+            padding-top: 10px;
+        }
+
+        tr.bottom-space td {
+            padding-bottom: 10px;
+        }
+
+        .student-info {
+            border: 2px solid #000000;
+            border-radius: 10px;
+            padding: 10px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        .clear {
+            clear: both;
+        }
+
+            .clear:after, .clear:before {
+                content: '';
+                clear: both;
+                display: table;
+            }
+
+        .marks-detail {
+            border: 2px solid #000000;
+            border-radius: 10px;
+            margin-top: 10px;
+        }
+
+        table {
+            border-collapse: collapse;
+        }
+
+        .marks-detail tr td {
+            border: 2px solid #000000;
+            padding: 5px 4px;
+            text-align: center;
+        }
+
+        .marks-detail > table > tbody > tr:first-child > td {
+            border-top: 0;
+        }
+
+        .marks-detail > table > tbody > tr > td:last-child {
+            border-right: 0;
+        }
+
+        .marks-detail > table > tbody > tr > td:first-child {
+            border-left: 0;
+        }
+
+        .marks-detail > table > tbody > tr:last-child > td {
+            border-bottom: 0;
+        }
+
+
+
+        .marks-detail tr td:nth-child(2) {
+            text-align: left;
+        }
+
+        .text-left td {
+            text-align: left !important;
+        }
+
+        .signs {
+            display: flex;
+            justify-content: space-between;
+            padding: 40px 0 0 0;
+        }
+
+            .signs > div {
+                border-top: 2px solid #000000;
+                padding-top: 5px;
+            }
+
+        @@page {
+            margin: 20px auto 0;
+        }
+
+        @@font-face {
+            font-family: 'Albertus Extra Bold Custom';
+            src: url('../../../../fonts/albertusextrabold_regular.ttf') format('truetype');
+            font-weight: 700; /* Or 'normal' if that's how it's designed */
+            font-style: normal;
+            font-display: swap; /* Best for performance */
+        }
+    </style>
+
+</head>
+<body>
+    <div class="main-container">
+        <div class="header">
+            <div class="left">
+                <img src="~/img/SBS MONO.png" alt="Alternate Text" />
+            </div>
+            <div class="right">
+                <h1 style="font-size: 26px; font-family: 'Albertus Extra Bold Custom', sans-serif;">SCIENCE BASE SCHOOL &reg;</h1>
+                <span>@System.Web.Configuration.WebConfigurationManager.AppSettings["campus_name"]</span>
+                <h3>ACADEMIC PROGRESS</h3>
+                <span>Session @System.Web.Configuration.WebConfigurationManager.AppSettings["academicsession"]</span>
+            </div>
+            <div class="clear" style="padding-right: 10px;">
+                <span class="pull-right" style="font-size: 13px;"><b>Issue Date : </b> @DateFunctions.convertToStringDate(DateTime.Now.Date)</span>
+            </div>
+
+        </div>
+        <div class="student-info">
+            <table cellpadding="0" cellspacing="0" style="font-size: 13px;font-family: Arial;">
+                <tr>
+                    <td style="width:10%!important">Serial</td>
+                    <td style="width:20%!important">Student Name</td>
+                    <td style="width:20%!important"></td>
+                    <td>Father Name</td>
+                </tr>
+                <tr class="bold bottom-space">
+                    <td>@Model.Reg_Id</td>
+                    <td>@Model.FullName</td>
+                    <td style="width:20%!important"></td>
+                    <td>@Model.FatherName</td>
+                </tr>
+                <tr class="top-space">
+                    <td>Class</td>
+                    <td class="bold">@Model.ClassName</td>
+                    <td style="width:20%!important"></td>
+                    <td>
+                        <u class="block">Address</u>
+                        <span class="bold">@Model.HomeAddress</span>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        <div class="marks-detail">
+            <table>
+                <tr class="bold">
+                    <td colspan="2" rowspan="2" style="">Subject</td>
+                    @foreach (var item in ExamType.lstExamType().OrderBy(x => x.Priority).Take(5))
+                    {
+                        <td colspan="2" style="text-align:center;font-size:13px !important; padding:3px">@item.ExamType</td>
+                    }
+                </tr>
+                <tr class="bold" style="font-size:13px!important">
+                    <td>TOT. <b>MAR.</b></td>
+                    <td style="text-align:center;">OBT. <b>MAR.</b></td>
+                    <td>TOT. <b>MAR.</b></td>
+                    <td>OBT. <b>MAR.</b></td>
+                    <td>TOT. <b>MAR.</b></td>
+                    <td>OBT. <b>MAR.</b></td>
+                    <td>TOT. <b>MAR.</b></td>
+                    <td>OBT. <b>MAR.</b></td>
+                    <td>TOT. <b>MAR.</b></td>
+                    <td>OBT. <b>MAR.</b></td>
+
+                </tr>
+                @{ int serial = 0; }
+                @foreach (var item in Data.BLL.Parameter.Subject.ListByClass(Model.ClassCompositeID).Where(x => x.SubjectID != StempID))
+                {
+                    { serial += 1; }
+                    <tr>
+                        <td style="width:5%!important">@serial</td>
+                        <td width="32%">@item.SubjectName</td>
+                        @foreach (var ExamType in ExamType.lstExamType().OrderBy(x => x.Priority).Take(5))
+                        {
+                            if (item.SubjectName != null && item.SubjectName.ToLower() == "stemp" && ExamType.ExamType.ToLower() == "first term")
+                            {
+                                <td>Grade</td>
+                                <td>A+</td>
+
+                                continue;
+                            }
+
+
+                            {
+                                ObtainedMarks = Exam.GetObtainedMarks(Model.Reg_Id, Model.ClassCompositeID, ExamType.ID, item.SubjectID);
+                                TotalMarks = Exam.GetRow(ExamType.ID, item.SubjectID, Model.ClassCompositeID).TotalMarks;
+                            }
+
+                            if (TotalMarks > 0)
+                            {
+                                <td>@TotalMarks</td>
+                                if (ObtainedMarks != -1)
+                                {
+                                    <td>@ObtainedMarks</td>
+                                }
+                                else
+                                {
+                                    <td>A</td>
+                                }
+                            }
+                            else
+                            {
+                                <td></td>
+                                <td></td>
+                            }
+
+                        }
+                    </tr>
+                }
+
+                @*STEMP ROW START*@
+                <tr>
+                    <td style="width:5%!important">@(serial + 1)</td>
+                    <td width="32%">Stemp</td>
+                    @foreach (var ExamType in ExamType.lstExamType().OrderBy(x => x.Priority).Take(5))
+                    {
+                        {
+                            ObtainedMarks = Exam.GetObtainedMarks(Model.Reg_Id, Model.ClassCompositeID, ExamType.ID, StempID);
+                            TotalMarks = Exam.GetRow(ExamType.ID, StempID, Model.ClassCompositeID).TotalMarks;
+                            Percentage = Exam.GetPercentage(ObtainedMarks, TotalMarks);
+                        }
+
+                        if (TotalMarks > 0)
+                        {
+                            <td>Grade</td>
+                            <td>@Data.BLL.Exam.GetGrade(Percentage)</td>
+                        }
+                        else
+                        {
+                            <td></td>
+                            <td></td>
+                        }
+                    }
+                </tr>
+                @*STEMP ROW END*@
+
+                @for (int x = 0; x < ViewBag.diff; x++)
+                {
+                    <tr>
+                        <td style="width:5%!important;color:white">-</td>
+                        <td width="25%"></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                }
+
+
+                <tr>
+                    <td colspan="2" class="bold" style="text-align:right;">TOTAL</td>
+                    @foreach (var ExamType in ExamType.lstExamType().OrderBy(x => x.Priority).Take(5))
+                    {
+                        {
+                            NetTotalMarks = Exam.GetSumOfTotalMarksOfThisExam(Model.ClassCompositeID, ExamType.ID);
+                            NetObtainedMarks = Exam.GetTotalMarksObtained(Model.Reg_Id, ExamType.ID);
+                        }
+                        if (NetTotalMarks > 0)
+                        {
+                            <td> @NetTotalMarks</td>
+                            <td> @NetObtainedMarks</td>
+                        }
+                        else
+                        {
+                            <td></td>
+                            <td></td>
+                        }
+                    }
+
+                </tr>
+                <tr class="text-center">
+                    <td colspan="2" class="bold" style="text-align:right;">Percentage</td>
+
+                    @foreach (var ExamType in ExamType.lstExamType().OrderBy(x => x.Priority).Take(5))
+                    {
+                        { Percentage = Exam.GetPercentageOfStudent(Model.Reg_Id, Model.ClassCompositeID, ExamType.ID); }
+                        if (Percentage > 0)
+                        {
+                            <td colspan="2" style="text-align:center">@Percentage %</td>
+                        }
+                        else
+                        {
+                            <td colspan="2" style="text-align:center">-</td>
+                        }
+                    }
+                </tr>
+                <tr>
+                    <td colspan="2" class="bold" style="text-align:right;">Grade</td>
+                    @foreach (var ExamType in ExamType.lstExamType().OrderBy(x => x.Priority).Take(5))
+                    {
+                        <td colspan="2" style="text-align:center;">@Exam.GetGrade(Exam.GetPercentageOfStudent(Model.Reg_Id, Model.ClassCompositeID, ExamType.ID))</td>
+                    }
+                </tr>
+                <tr>
+                    <td colspan="2" class="bold" style="text-align:right;">Position (In Class)</td>
+                    @foreach (var ExamType in ExamType.lstExamType().OrderBy(x => x.Priority).Take(5))
+                    {
+                        <td colspan="2" style="text-align:center;">@Exam.PositionWithPostFix(Exam.GetPosition(Model.Reg_Id, ExamType.ID))</td>
+                    }
+                </tr>
+
+                <tr>
+                    <td colspan="2" class="bold" style="text-align:right;">Attendance</td>
+                    @foreach (var ExamType in ExamType.lstExamType().OrderBy(x => x.Priority).Take(5))
+                    {
+                        <td colspan="2" style="text-align:center;">@Exam.GerAttendanceRatio(Model.Reg_Id, ExamType.ID)</td>
+                    }
+                </tr>
+
+                <tr style="font-size:13px;">
+                    <td colspan="2" class="bold" style="text-align:right; font-size:16px;">Remarks</td>
+                    @foreach (var ExamType in ExamType.lstExamType().OrderBy(x => x.Priority).Take(5))
+                    {
+                        <td colspan="2" style="text-align:center;">@Exam.GetRemarks(Exam.GetGrade(Exam.GetPercentageOfStudent(Model.Reg_Id, Model.ClassCompositeID, ExamType.ID)))</td>
+                    }
+                </tr>
+
+                <tr style="font-size:13px;" class="text-left">
+                    <td colspan="2" style="padding:0; font-size:16px; text-align:center !important;">
+                        <i class="bold block" style="padding:10px;">Personal Dossier</i>
+                        <table style="font-size:10px;">
+                            <tr>
+                                <td style="text-align:left !important; width:20%"></td>
+                                <td>Excellent</td>
+                                <td>Good</td>
+                                <td style="border-right:none">Satisfactory</td>
+                            </tr>
+
+                            <tr>
+                                <td style="text-align:left !important; width:20%; font-size:14px">UNIFORM</td>
+                                <td></td>
+                                <td></td>
+                                <td style="border-right:none"></td>
+                            </tr>
+
+                            <tr>
+                                <td style="text-align:left !important; font-size:14px">PUNCTUALITY</td>
+                                <td></td>
+                                <td></td>
+                                <td style="border-right:none"></td>
+                            </tr>
+                            <tr>
+                                <td style="text-align:left !important; font-size:14px">ACTIVITIES</td>
+                                <td></td>
+                                <td></td>
+                                <td style="border-right:none"></td>
+                            </tr>
+                            <tr>
+                                <td style="text-align:left !important; font-size:14px">HANDWRITING</td>
+                                <td></td>
+                                <td></td>
+                                <td style="border-right:none"></td>
+                            </tr>
+                            <tr>
+                                <td style="text-align:left !important; border-left:0;border-bottom:none; font-size:14px">ATTITUDE</td>
+                                <td style="border-bottom:none"></td>
+                                <td style="border-bottom:none"></td>
+                                <td style="border-right:none;border-bottom:none"></td>
+                            </tr>
+                        </table>
+                    </td>
+
+                    @foreach (var ExamType in ExamType.lstExamType().OrderBy(x => x.Priority).Take(5))
+                    {
+                        <td colspan="2" style="text-align:center;padding-bottom:6%;">
+                            @Exam.GetLongRemarks(Exam.GetGrade(Exam.GetPercentageOfStudent(Model.Reg_Id, Model.ClassCompositeID, ExamType.ID)), Model.Gender)
+                        </td>
+                    }
+                </tr>
+            </table>
+        </div>
+        <br />
+        <div>
+            Note: Errors and omissions are accepted within seven days after result decleration.
+        </div>
+        <br />
+        <div class="signs">
+            <div>
+                Head Teacher's Signature
+            </div>
+            <div>
+                Teacher's Signature
+            </div>
+            <div>
+                Parent's Signature
+            </div>
+        </div>
+    </div>
+    <script>
+        window.onload = function () {
+            window.print();
+        }
+    </script>
+</body>
+</html>

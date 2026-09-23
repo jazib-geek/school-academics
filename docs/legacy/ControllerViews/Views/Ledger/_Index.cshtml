@@ -1,0 +1,39 @@
+﻿@model List<Data.Viewmodel.Account.AccountLedgerViewModel>
+@using Data.BLL
+
+@{ decimal? Balance = Model.Sum(x => x.Debit) - Model.Sum(x => x.Credit); }
+
+@foreach (var item in Model.OrderBy(x => x.Date))
+{
+    <tr>
+        <td>@DateFunctions.convertToStringDate(item.Date)</td>
+        <td>@item.Narration</td>
+        <td>@item.Credit</td>
+        <td>@item.Debit</td>
+        @if (item.Balance > 0)
+        {
+            <td>@item.Balance</td>
+        }
+        else
+        {
+            <td>@{ var Bal = item.Balance * -1; } (@Bal) </td>
+        }
+    </tr>
+}
+<tr class="text-bold bg-grey">
+    <td colspan="2"></td>
+    <td>@Model.Sum(x => x.Credit)</td>
+    <td>@Model.Sum(x => x.Debit)</td>
+    <td>@Balance</td>
+</tr>
+
+<script>
+    @if (Model.Count > 0)
+    {
+        <text> $("#btnPrint").removeClass('hide');  </text>
+    }
+    else
+    {
+        <text> $("#btnPrint").addClass('hide');  </text>
+    }
+</script>

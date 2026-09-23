@@ -1,0 +1,46 @@
+﻿@model List<Data.DAL.tblAccountGroup>
+@using Data.DAL
+@{ dbSchoolEntities db = new dbSchoolEntities(); }
+
+@foreach (var item in Model.OrderBy(x => x.MasterID))
+{
+    <tr>
+        <td>@db.tblAccountMasters.Find(item.MasterID).Title</td>
+        <td>@item.GroupID</td>
+        <td>
+            <span ondblclick="EditState(@item.ID)" id="lblTitle-@item.ID">@item.GroupTitle</span>
+            <input type="text" id="txtTitle-@item.ID" value="@item.GroupTitle" class="hide" onkeypress="EditGroup(event,@item.ID)" style="max-width:90%" />
+        </td>
+    </tr>
+}
+
+    <script>
+    function EditGroup(e, id)
+    {
+        if (e.keyCode == 13) {
+            if ($("#txtTitle-" + id).val() != '') {
+                EditState(id);
+
+                $.ajax({
+                    cache: false,
+                    type: 'POST',
+                    url: '/Accounts/Settings/EditGroupName',
+                    data: { ID: id, Title: $("#txtTitle-" + id).val() },
+                    datatype: 'Json',
+                    success: function (result) {
+                        GetGroups();
+                    },
+                    error: function (xhr, ajaxOptions, thrownError) {
+                        alert('error');
+                    }
+                });
+            }
+        }
+    }
+
+    function EditState(id)
+    {
+        $("#txtTitle-" + id).removeClass('hide');
+        $("#lblTitle-" + id).addClass('hide');
+    }
+    </script>

@@ -1,0 +1,131 @@
+﻿@model List<Data.DAL.tblDesignation>
+@{ int s = 0; }
+
+@foreach (var item in Model)
+{
+    { s++; }
+    <tr>
+        <td>@s</td>
+        <td>
+            <span id="lblname-@item.ID">@item.Designation</span>
+        </td>
+        <td>
+            <span id="lblshort-@item.ID">@(item.MustCheckinTime.HasValue ? item.MustCheckinTime.Value.ToShortTimeString() : "--")</span>
+        </td>
+      
+        <td>
+            <span id="lblleave-@item.ID">@(item.LeavingTime.HasValue ? item.LeavingTime.Value.ToShortTimeString() : "--")</span>
+        </td>
+      
+        <td class="text-center">
+            <button id="btn-edit-@item.ID" class="btn btn-sm btn-info" onclick="TriggerEditPage(@item.ID)">edit</button>
+        </td>
+    </tr>
+}
+
+<tr>
+    <td></td>
+    <td>  <input type="text" id="Designation" placeholder="Designation" class="form-control" /> </td>
+    <td>
+        <div style="margin-bottom:4px">
+            <input type="date" id="EffectiveFromDate" class="form-control" />
+        </div>
+        <div style="display:flex">
+            <select id="Hours" class="form-control" style="width:80px">
+                @for (int i = 0; i <= 23; i++)
+                {
+                    <option value="@i">@i.ToString("D2")</option>
+                }
+            </select>
+            <select id="Minutes" class="form-control" style="width:80px">
+                @for (int i = 0; i <= 59; i++)
+                {
+                    <option value="@i">@i.ToString("D2")</option>
+                }
+            </select>
+        </div>
+    </td>
+    <td>
+        <div style="display:flex">
+            <select id="LeavingHours" class="form-control" style="width:80px">
+                @for (int i = 0; i <= 23; i++)
+                {
+                    <option value="@i">@i.ToString("D2")</option>
+                }
+            </select>
+            <select id="LeavingMinutes" class="form-control" style="width:80px">
+                @for (int i = 0; i <= 59; i++)
+                {
+                    <option value="@i">@i.ToString("D2")</option>
+                }
+            </select>
+        </div>
+    </td>
+    <td>  <button type="button" class="btn btn-info" onclick="Add()"> <i class="la la-plus"></i> </button>  </td>
+</tr>
+
+<script>
+
+   function Add() {
+        if ($("#Designation").val() != '') {
+
+            var data = new FormData();
+            $(".btn").attr('disabled', true);
+
+            data.append("Designation", $("#Designation").val());
+
+            // Check-in
+            data.append("Hours", $("#Hours").val());
+            data.append("Minutes", $("#Minutes").val());
+            data.append("EffectiveFromDate", $("#EffectiveFromDate").val());
+            data.append("TimingRangesJson", JSON.stringify([{
+                EffectiveFromDate: $("#EffectiveFromDate").val() || new Date().toISOString().split('T')[0],
+                CheckInHours: parseInt($("#Hours").val()),
+                CheckInMinutes: parseInt($("#Minutes").val()),
+                CheckOutHours: parseInt($("#LeavingHours").val()),
+                CheckOutMinutes: parseInt($("#LeavingMinutes").val())
+            }]));
+
+            // Leaving
+            data.append("LeavingHours", $("#LeavingHours").val());
+            data.append("LeavingMinutes", $("#LeavingMinutes").val());
+
+            $.ajax({
+                cache: false,
+                type: 'POST',
+                processData: false,
+                contentType: false,
+                url: '/Employee/Designation/Create',
+                data: data,
+                success: function(result) {
+                    $(".btn").attr('disabled', false);
+                    getData();
+                    $("#Designation").focus();
+                },
+                error: function(xhr, ajaxOptions, thrownError) {
+                    alert(xhr.responseText);
+                }
+            });
+        }
+        else {
+            $("#Designation").focus();
+            alert_warning('Name Required', 'Provide Designation Name');
+        }
+    }
+
+    // function to set cursor to end in textbox
+
+    function setCursorToTextEnd(id) {
+        var searchInput = $("#txt-" + id);
+
+        var strLength = searchInput.val().length * 2;
+
+        searchInput.focus();
+        searchInput[0].setSelectionRange(strLength, strLength);
+    }
+
+    (function initEffectiveFromDate() {
+        var today = new Date().toISOString().split('T')[0];
+        $("#EffectiveFromDate").val(today);
+    })();
+</script>

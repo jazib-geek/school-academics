@@ -35,9 +35,12 @@ export const getStudentConductHistory = async (studentId, { month, year }) => {
   return response?.data?.data
 }
 
-export const getConductDayReport = async ({ date }) => {
+export const getConductDayReport = async ({ date, dateTo, recordedByEmployeeId }) => {
+  const params = { date }
+  if (dateTo) params.dateTo = dateTo
+  if (recordedByEmployeeId) params.recordedByEmployeeId = recordedByEmployeeId
   const response = await api.get('/api/student-conduct/report', {
-    params: { date },
+    params,
   })
   return response?.data?.data
 }

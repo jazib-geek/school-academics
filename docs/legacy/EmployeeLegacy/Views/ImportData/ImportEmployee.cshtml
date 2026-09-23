@@ -1,0 +1,98 @@
+﻿
+@{
+    ViewBag.Title = "Import";
+}
+
+<div class="row main">
+    <div class="col-md-8 offset-2 col-sm-12 col-xs-12">
+        <div class="card">
+            <div class="header">
+                <h2 class="text-center">
+                    <i class="la la-edit"></i> IMPORT STAFF DATA
+                </h2>
+            </div>
+            <div class="body">
+                <!-- Nav tabs -->
+                <ul class="nav nav-tabs nav-justified nav-border-top nav-border-top-primary mb-3" role="tablist">
+                    <li class="nav-item">
+                        <a class="nav-link active" data-bs-toggle="tab" href="#import" role="tab">Import from Device</a>
+                    </li>
+                </ul>
+
+                <!-- Tab panes -->
+                <div class="tab-content">
+                    <div role="tabpanel" class="tab-pane active" id="import">
+                        <div class="table-responsive adjust-top">
+                            @using (Html.BeginForm("ImportEmployeeData", "ImportData", FormMethod.Post, new { enctype = "multipart/form-data", @id = "importform" }))
+                            {
+                                <div class="">
+                                    <h5 class="text-center alert alert-danger" style="color:rgb(255, 0, 0)">
+                                        <i class="la la-exclamation-circle"></i> Must be used with caution under Developer guidance.
+                                    </h5>
+                                    <div class="well">
+                                        <h5 class="text-center">
+                                            Kindly upload valid .xlsx file generated from the ZKTeco Biometric Device
+                                        </h5>
+                                        <div>
+                                            <input type="file" name="UploadedFile" id="file" onchange="getoutput()" style="margin-left:44%;" /> <br />
+                                        </div>
+                                        <h5 class="text-center py-3">
+                                            <input type="button" onclick="ImportNow()" id="btnsubmit" class="btn btn-lg btn-info" value="Import" disabled="disabled" />
+                                            <button type="button" id="btnwait" class="btn btn-info btn-lg hide" value="Import" disabled="disabled">
+                                                <i class="la la-spin fa-spinner"></i> Importing Data
+                                            </button>
+                                        </h5>
+                                    </div>
+                                </div>
+                            }
+
+                        </div>
+
+                    </div>
+
+
+
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script>
+    function getoutput() {
+        var file_type = file.value.split('.')[1];
+        if (file_type == 'xls' || file_type == 'xlsx') {
+            $("#btnsubmit").removeAttr('disabled');
+        }
+        else {
+            alert_error('Kindly upload valid txt file!');
+            $("#btnsubmit").attr('disabled', true);
+        }
+    }
+
+    function ImportNow() {
+        $("#btnsubmit").addClass('hide');
+        $("#btnwait").removeClass('hide');
+        document.getElementById('importform').submit();
+    }
+
+    @if (TempData["success"] != null)
+    {
+     <text>
+         $(document).ready(function () {
+               alert_success('Data imported successfully','');
+         });
+     </text>
+    }
+
+    $(document).ready(function () {
+        $("#Month").val('@DateTime.Now.Month');
+    });
+
+    function ExportData() {
+        window.location.href = '/Staff/Attendance/ExportAttendanceData/?m=' + $("#Month").val() + '&y=' + $("#Year").val();
+    }
+</script>
+

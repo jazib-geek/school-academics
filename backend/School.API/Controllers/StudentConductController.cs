@@ -207,6 +207,8 @@ public class StudentConductController : ControllerBase
     [HttpGet("report")]
     public async Task<IActionResult> GetDayReport(
         [FromQuery] DateOnly date,
+        [FromQuery] DateOnly? dateTo,
+        [FromQuery] int? recordedByEmployeeId,
         CancellationToken cancellationToken)
     {
         try
@@ -214,7 +216,11 @@ public class StudentConductController : ControllerBase
             if (date == default)
                 return BadRequest(ApiResponse<object>.FailureResponse("Date is required."));
 
-            var result = await _service.GetDayReportAsync(date, cancellationToken);
+            var result = await _service.GetDayReportAsync(
+                date,
+                dateTo,
+                recordedByEmployeeId,
+                cancellationToken);
             return Ok(ApiResponse<StudentConductDayReportDto>.SuccessResponse(result));
         }
         catch (ArgumentException ex)

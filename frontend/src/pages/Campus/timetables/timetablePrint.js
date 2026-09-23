@@ -2,8 +2,9 @@ import { getCampusPrintMeta } from '../../../utils/campusProfile'
 import {
   TT_FORMAT,
   buildSlotMaps,
-  classSlotKey,
+  formatSplitCellLines,
   formatTimeRange,
+  getClassCellSlots,
   getId,
   getText,
   printTitle,
@@ -22,16 +23,11 @@ const escapeHtml = (value) =>
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;')
 
-const cellSubjectTeacher = (slot) => {
-  if (!slot) return ''
-  const subject =
-    getText(slot, 'subjectShortName', 'SubjectShortName') ||
-    getText(slot, 'subjectName', 'SubjectName')
-  const teacher = teacherDisplayName(
-    getText(slot, 'employeeName', 'EmployeeName'),
-    getText(slot, 'gender', 'Gender'),
-  )
-  return `<div class="line">${escapeHtml(subject)}</div><div class="sub">${escapeHtml(teacher)}</div>`
+const cellSubjectTeacher = (cellSlots) => {
+  const slots = Array.isArray(cellSlots) ? cellSlots : cellSlots ? [cellSlots] : []
+  if (slots.length === 0) return ''
+  const { subjectLine, teacherLine } = formatSplitCellLines(slots)
+  return `<div class="line">${escapeHtml(subjectLine)}</div><div class="sub">${escapeHtml(teacherLine)}</div>`
 }
 
 const cellClassSubject = (slot) => {
@@ -148,8 +144,8 @@ function renderClassWise(detail) {
             return breakCellHtml(p, rowCount)
           }
           const n = getId(p, 'periodNumber', 'PeriodNumber')
-          const slot = byClass.get(classSlotKey(sectionId, n, 0))
-          return `<td>${cellSubjectTeacher(slot)}</td>`
+          const cellSlots = getClassCellSlots(byClass, sectionId, n, 0)
+          return `<td>${cellSubjectTeacher(cellSlots)}</td>`
         })
         .join('')
       return `<tr><th class="stub-light">${escapeHtml(name)}</th>${cells}</tr>`

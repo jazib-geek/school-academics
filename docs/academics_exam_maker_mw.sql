@@ -128,6 +128,12 @@ BEGIN
 END
 GO
 
+IF COL_LENGTH('dbo.QuestionPaper', 'PrintAdjustmentsJson') IS NULL
+BEGIN
+    ALTER TABLE dbo.QuestionPaper ADD PrintAdjustmentsJson NVARCHAR(MAX) NULL;
+END
+GO
+
 /*
   Optional questions (SAQ/LAQ "attempt any N") — no ALTER required.
   Stored inside QuestionPaper.SectionMetaJson as JSON on each section:

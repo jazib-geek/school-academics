@@ -1,0 +1,184 @@
+﻿@model Data.Viewmodel.Account.TransactionViewModel
+
+@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+
+<html>
+<head>
+    <meta name="viewport" content="width=device-width" />
+    <title>Voucher No. @Model.Master.VoucherNo</title>
+    <link href="~/Content/bootstrap.min.css" rel="stylesheet" />
+</head>
+<body class="container print-only">
+
+    <div>
+        <div class="vheader">
+            <div class="row">
+                <div class="col-xs-1">
+                    <img src="~/img/SBS MONO.png" style="height:70px" />
+                </div>
+                <div class="col-xs-7">
+                    <h4 class="logo-heading">
+                        @System.Web.Configuration.WebConfigurationManager.AppSettings["school_name"] <br />
+                        <small> @System.Web.Configuration.WebConfigurationManager.AppSettings["campus_name"]</small>
+                    </h4>
+
+                </div>
+                <div class="col-xs-4">
+                    <h5 class="text-right logo-heading-right">
+                        Accounts Report
+                    </h5>
+                    <h5 class="text-right logo-heading-right">
+                        @Data.BLL.Accounts.Setup.GetVoucherType(Model.Master.VoucherType)
+                    </h5>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row" style="margin-bottom:2em">
+        <div class="col-xs-12" style="margin-bottom:15px;">
+            <div class="col-xs-1 text-left">
+                Date :
+            </div>
+            <div class="col-xs-3 bg-black">
+                @Data.BLL.DateFunctions.convertToStringDate(Model.Master.TransactionDate)
+            </div>
+
+            <div class="col-xs-1 text-center">
+                Type :
+            </div>
+            <div class="col-xs-1 bg-black" style="border-right: 6px solid white;">
+                @Model.Master.VoucherType
+            </div>
+            <div class="col-xs-2 bg-black">
+                @Data.BLL.Accounts.Setup.GetVoucherType(Model.Master.VoucherType)
+            </div>
+
+            <div class="col-xs-1 text-center">
+                No :
+            </div>
+            <div class="col-xs-3 bg-black">
+                @Model.Master.VoucherNo
+            </div>
+        </div>
+
+        <div class="col-xs-12">
+            <div class="col-xs-1 text-left">
+                User
+            </div>
+            <div class="col-xs-11 bg-black" style="text-align:left !important">
+                Prepared by @Model.Master.EntryUser on @Model.Master.TransactionDate.ToShortDateString() 
+            </div>
+        </div>
+
+    </div>
+
+    <div class="row">
+        <div class="col-md-12">
+            <table class="vtable">
+                <thead class="bg-soft-info">
+                    <tr>
+                        <th>Account Code</th>
+                        <th>Account Name</th>
+                        <th>Debit</th>
+                        <th>Credit</th>
+                        <th>Notes</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    @foreach (var item in Model.lstDetail)
+                    {
+                        <tr>
+                            <td>@item.AccountID</td>
+                            <td>@Data.BLL.Accounts.Chart.GetAccountTitle(item.AccountID)</td>
+                            <td class="text-right">@item.Debit</td>
+                            <td class="text-right">@item.Credit</td>
+                            <td>@item.Narration</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <style>
+        .vheader {
+            width: 100%;
+            border-bottom: 3px solid black !important;
+            padding-bottom: 1em;
+            margin-top: 6em;
+            margin-bottom: 1em;
+        }
+
+        .bg-black {
+            background-color: black !important;
+            font-weight: bold;
+            color: white !important;
+            text-align: center;
+            padding: 4px;
+            font-size: 11px !important;
+        }
+
+        .vtable {
+            width: 100%;
+        }
+
+            .vtable thead tr th {
+                background-color: black !important;
+                border: 2px solid gray !important;
+                color: white !important;
+                font-weight: bold;
+                padding: 4px;
+                text-align: center;
+            }
+
+            .vtable tbody tr td {
+                color: black !important;
+                border: 2px solid gray !important;
+                padding: 3px;
+            }
+
+        .col-xs-1 {
+            font-weight: bold;
+            padding: 4px;
+            font-size: 10px !important;
+        }
+
+        .logo-heading {
+            text-decoration: underline;
+            padding-top: 17px;
+            font-family: Arial;
+            font-style: italic;
+        }
+
+        .logo-heading-right {
+            border-bottom: 2px solid black;
+            font-weight: bold;
+            font-style: italic;
+        }
+
+        .print-only {
+            display: none;
+        }
+
+        @@media print {
+            .no-print {
+                display: none;
+            }
+
+            .print-only {
+                display: block;
+            }
+        }
+    </style>
+
+    <script>
+        window.onload = window.print;
+    </script>
+</body>
+</html>

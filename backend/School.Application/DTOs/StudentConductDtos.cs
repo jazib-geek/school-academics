@@ -104,6 +104,7 @@ public class StudentConductReportNoteDto
     public int ConductTypeId { get; set; }
     public string ConductTypeName { get; set; } = string.Empty;
     public string? Remarks { get; set; }
+    public int? RecordedByEmployeeId { get; set; }
     public string? RecordedByName { get; set; }
     public IReadOnlyList<StudentConductNoteTagDto> Tags { get; set; } = [];
 }
@@ -118,6 +119,7 @@ public class StudentConductDayReportClassDto
 public class StudentConductDayReportDto
 {
     public DateOnly Date { get; set; }
+    public DateOnly DateTo { get; set; }
     public int TotalCount { get; set; }
     public int GoodCount { get; set; }
     public int BadCount { get; set; }

@@ -1,0 +1,33 @@
+﻿@model List<Data.Viewmodel.Employee.EmployeeSalaryViewModel>
+
+@foreach (var item in Model)
+{
+    <tr>
+        <td>@item.EmpID</td>
+        <td>@item.EmployeeName</td>
+        <td class="text-center">@String.Format("{0:n0}", item.BasicSalary)</td>
+        <td class="text-center">@item.PresentDaysCount </td>
+        <td class="text-center">@item.LateComingsCount</td>
+        <td class="text-center">@item.LateDeduction</td>
+        <td class="text-center">@item.AbsentDeduction   </td>
+        @*<td class="text-center">@item.AbsentDeduction</td>*@
+        <td class="text-center bg-soft-success fw-bold">@String.Format("{0:n0}", item.WorkingDaysSalary)</td>
+        <td class="text-center">
+            @(
+        (item.Loan.HasValue ? item.Loan.Value : 0) +
+        (item.SecurityCharges.HasValue ? item.SecurityCharges.Value : 0)
+           )
+        </td>
+        <td class="text-center">@(item.Bonus != null ? item.Bonus : 0)</td>
+        <td class="text-center bg-soft-info fw-bold">@String.Format("{0:n0}", item.NetSalary)</td>
+
+        <td class="text-center bg-soft-info fw-bold d-none">@(item.WorkingDaysCount - item.PresentDaysCount)</td>
+        <td class="text-center bg-soft-info fw-bold d-none">@item.Loan</td>
+        <td class="text-center bg-soft-info fw-bold d-none">@item.SecurityCharges</td>
+    </tr>
+}
+
+<script>
+    $("#NET").html('@String.Format("{0:n0}", Model.Sum(x => Convert.ToDecimal(x.NetSalary)))');
+    $(".footer").addClass('foot');
+</script>

@@ -1,0 +1,51 @@
+﻿@model Data.Viewmodel.SectionViewModel
+
+@{
+    Layout = null;
+    string URL = "/Exam/Print/_MultipleResultCards";
+    if (ViewBag.mode == "alt")
+    {
+        URL = "/Exam/Print/_MultipleResultCardsAlt";
+    }
+}
+
+    <script src="~/Scripts/jquery-1.10.2.min.js"></script>
+    <link href="~/assets-custom/css/all.css" rel="stylesheet" />
+@*@for (int i = 14; i < 20; i++)
+{
+    @Html.Partial("_AcademicReport", Data.BLL.Students.GetByID(i))
+}*@
+
+<div id="table-content">
+    <h1 style="color:darkgreen; font-family: Arial; text-align:center">
+        <i class="la la-2x fa-spin fa-spinner"></i> Compiling  Result.....
+    </h1>
+</div>
+
+
+<script>
+      function getData() {
+
+          $.ajax({
+              cache: false,
+              type: 'Get',
+              url: '@URL',
+              data: { classid : @Model.Class_ID },
+            datatype: 'Json',
+            success: function (result) {
+                $("#loading").addClass('hide');
+                $("#table-content").removeClass('hide');
+                $("#table-content").html(result);
+            },
+            error: function (xhr, ajaxOptions, thrownError) {
+                $("#table-content").html(xhr.responseText);
+            }
+        });
+    }
+
+    // Load all on startup
+
+    $(document).ready(function () {
+        getData();
+    });
+</script>

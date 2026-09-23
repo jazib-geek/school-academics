@@ -1,0 +1,527 @@
+﻿@using Data.BLL
+@model Data.Viewmodel.FundViewModel
+
+@{
+    ViewBag.Title = "Generate Fund";
+     var lstFundType = Data.BLL.Student.Parameters.lstFundType();
+    string Type1 = lstFundType.Where(x => x.ID == 2).First().FundType;
+    string Type2 = lstFundType.Where(x => x.ID == 3).First().FundType;
+    string Type3 = lstFundType.Where(x => x.ID == 4).First().FundType;
+    string Type4 = lstFundType.Where(x => x.ID == 5).First().FundType;
+}
+
+<style>
+    @@import url(https://fonts.googleapis.com/css?family=Roboto:400,300,600,400italic);
+
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        -webkit-box-sizing: border-box;
+        -moz-box-sizing: border-box;
+        -webkit-font-smoothing: antialiased;
+        -moz-font-smoothing: antialiased;
+        -o-font-smoothing: antialiased;
+        font-smoothing: antialiased;
+        text-rendering: optimizeLegibility;
+    }
+
+    body {
+        font-family: "Roboto", Helvetica, Arial, sans-serif;
+        font-weight: 100;
+        font-size: 12px;
+        line-height: 30px;
+        color: #777;
+    }
+
+    .container {
+        max-width: 600px;
+        width: 100%;
+        margin: 0 auto;
+        position: relative;
+    }
+
+    #contact input[type="text"],
+    #contact input[type="email"],
+    #contact input[type="tel"],
+    #contact input[type="url"],
+    #contact textarea,
+    #contact button[type="submit"] {
+        font: 400 12px/16px "Roboto", Helvetica, Arial, sans-serif;
+    }
+
+    #contact {
+        background: #F9F9F9;
+        padding: 25px;
+        box-shadow: 0 0 20px 0 rgba(0, 0, 0, 0.2), 0 5px 5px 0 rgba(0, 0, 0, 0.24);
+    }
+
+        #contact h3 {
+            display: block;
+            font-size: 30px;
+            font-weight: bold;
+            margin-bottom: 18px;
+        }
+
+        #contact h4 {
+            margin: 5px 0 15px;
+            display: block;
+            font-size: 13px;
+            font-weight: 400;
+        }
+
+    fieldset {
+        border: medium none !important;
+        margin: 0 0 10px;
+        min-width: 100%;
+        padding: 0;
+        width: 100%;
+    }
+
+    #contact input[type="text"],
+    #contact input[type="email"],
+    #contact input[type="tel"],
+    #contact input[type="url"],
+    #contact textarea {
+        width: 100%;
+        border: 1px solid #ccc;
+        background: #FFF;
+        margin: 0 0 5px;
+        padding: 10px;
+    }
+
+    select {
+        width: 100%;
+        border: 1px solid #ccc;
+        background: #FFF;
+        margin: 0 0 5px;
+        padding: 10px;
+    }
+
+    #contact input[type="text"]:hover,
+    #contact input[type="email"]:hover,
+    #contact input[type="tel"]:hover,
+    #contact input[type="url"]:hover,
+    #contact textarea:hover {
+        -webkit-transition: border-color 0.3s ease-in-out;
+        -moz-transition: border-color 0.3s ease-in-out;
+        transition: border-color 0.3s ease-in-out;
+        border: 1px solid #aaa;
+    }
+
+    #contact textarea {
+        height: 100px;
+        max-width: 100%;
+        resize: none;
+    }
+
+    #contact button[type="button"] {
+        cursor: pointer;
+        width: 100%;
+        border: none;
+        background: #176da5;
+        color: #FFF;
+        margin: 0 0 5px;
+        padding: 10px;
+        font-size: 16px;
+        font-weight: bold;
+    }
+
+        #contact button[type="button"]:hover {
+            background: rgba(23, 109, 165, 0.91);
+            -webkit-transition: background 0.3s ease-in-out;
+            -moz-transition: background 0.3s ease-in-out;
+            transition: background-color 0.3s ease-in-out;
+        }
+
+        #contact button[type="button"]:active {
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
+        }
+
+    .copyright {
+        text-align: center;
+    }
+
+    #contact input:focus,
+    #contact textarea:focus {
+        outline: 0;
+        border: 1px solid #aaa;
+    }
+
+    ::-webkit-input-placeholder {
+        color: #888;
+    }
+
+    :-moz-placeholder {
+        color: #888;
+    }
+
+    ::-moz-placeholder {
+        color: #888;
+    }
+
+    :-ms-input-placeholder {
+        color: #888;
+    }
+
+    .margin-top-8 {
+        margin-top: 8px;
+    }
+</style>
+
+<div class="col-md-6 offset-3 fund_body">
+    <button onclick="GoToTypePage()" class="label-info label btn-sm type" style="margin-top:60px; font-size:16px; margin-left:20%">
+        <i class="la la-star"></i> Click here to Generate Multiple
+    </button>
+    <form id="contact" action="" method="post" class="main">
+        <h3 class="text-center" style="margin-top:0!important">
+            <i class="fas fa-cog"></i>
+            GENERATE FUND
+        </h3>
+
+        <div id="stdDiv">
+            <div class="upper-label">
+                Please Provide Student ID
+            </div>
+
+            <fieldset>
+                @Html.TextBoxFor(m => m.StudentID, new { @tabindex = "1", @style = "width:25%", @placeholder = "Reg ID" @*, @onkeyup = "getstudent()"*@})
+                <input type="text" id="StudentName" style="width:72%" placeholder="Student Name" disabled />
+            </fieldset>
+            <fieldset>
+                <input type="text" id="FatherName" style="width:49%" placeholder="Father name" disabled />
+                <input type="text" id="ClassSection" style="width:49%" placeholder="Class/Section" disabled />
+            </fieldset>
+
+            <fieldset class="hide">
+                <select id="ddlType" style="width:60%;float:left">
+                    <option value="0">--Fund Type--</option>
+                    <option value="Lab Charges">Lab Charges</option>
+                    <option value="Admission Fee">Admission Fee</option>
+                    <option value="Misc Charges">Misc Charges</option>
+                </select>
+                <input type="text" id="txtamount" style="width:25%; float:right" placeholder="Amount" />
+            </fieldset>
+        </div>
+        <fieldset style="margin-bottom: -5px!important;">
+            <div class="bottom-container">@Type1</div>
+            <div class="bottom-container">@Type2</div>
+            <div class="bottom-container">@Type3</div>
+            <div class="bottom-container">@Type4</div>
+        </fieldset>
+
+        <fieldset>
+            <input type="text" id="adm" style="width:24%;" />
+            <input type="text" id="fund1" style="width:24%;" />
+            <input type="text" id="fund2" style="width:24%;" />
+            <input type="text" id="fund3" style="width:24%;" />
+        </fieldset>
+
+        <button name="submit" type="button" onclick="generateForThisStudent()" id="btngenerate">Generate Fund</button>
+        <button name="submit" type="button" class="hide" id="btnwait" style="background-color:lightgray;color:darkgreen" disabled="disabled">Generating...</button>
+
+    </form>
+</div>
+
+<script>
+
+    $('#StudentID').focus();
+
+    function delay(callback, ms) {
+        var timer = 0;
+        return function () {
+            var context = this, args = arguments;
+            clearTimeout(timer);
+            timer = setTimeout(function () {
+                callback.apply(context, args);
+            }, ms || 0);
+        };
+    }
+
+
+    // Trigger Student Search after delay
+
+    $('#StudentID').keyup(delay(function (e) {
+        //$('.fa-spinner').removeClass('hide');
+        $('.fa-cog').addClass('fa-spin');
+        getstudent();
+    }, 500));
+
+    function thisClass() {
+        $("#ddlClass").removeClass('hide');
+        $("#stdDiv").addClass('hide');
+        emptyFundControls();
+        emptystdControls();
+    }
+    function thisStudent() {
+        $("#stdDiv").removeClass('hide');
+        $("#ddlClass").addClass('hide');
+    }
+    function All() {
+        $("#stdDiv").addClass('hide');
+        $("#ddlClass").addClass('hide');
+        emptyFundControls();
+        emptystdControls();
+    }
+
+    function enableFeetxt() {
+        $("#TotalAmount").attr("disabled", false);
+        $("#TotalAmount").removeClass('bg-grey');
+        $("#TotalAmount").val('');
+    }
+
+    function disableFeetxt() {
+        $("#TotalAmount").attr("disabled", true);
+        $("#TotalAmount").addClass('bg-grey');
+        $("#TotalAmount").val('');
+    }
+
+    // Get student data (FOR SINGLE STUDENT RADIO)
+
+    function getstudent() {
+        $('#stdDiv').addClass('opacity-3');
+        var studentid = $("#StudentID").val();
+        $.ajax({
+            cache: false, async: false, type: "POST",
+            url: '/Student/AjaxMethods/GetStudent',
+            data: { "ID": studentid },
+            success: function (result) {
+                $("#StudentName").val(result.name);
+                $("#FatherName").val(result.fname);
+                $("#ClassSection").val(result.classname);
+
+                getFunds();
+
+                $('.fa-cog').removeClass('fa-spin');
+                $('#stdDiv').removeClass('opacity-3');
+            },
+            error: function (xhr, ajaxOptions, thrownError) {
+
+                $("#StudentName").val('');
+                $("#FatherName").val('');
+                $("#ClassSection").val('');
+                $('#stdDiv').removeClass('opacity-3');
+                $('.fa-cog').removeClass('fa-spin');
+                emptyFundControls();
+                // alert('Invalid ID');
+            }
+        });
+    }
+
+    function getFunds() {
+        $('#stdDiv').addClass('opacity-3');
+        var studentid = $("#StudentID").val();
+        $.ajax({
+            cache: false, async: false, type: "GET",
+            url: '/Funds/Generate/GetFunds',
+            data: { StudentID : studentid },
+            success: function (result) {
+                $('#adm').val(result.FundType_1);
+                $('#fund1').val(result.FundType_2);
+                $('#fund2').val(result.FundType_3);
+                $('#fund3').val(result.FundType_4);
+                $('.fa-cog').removeClass('fa-spin');
+                $('#stdDiv').removeClass('opacity-3');
+            },
+            error: function (xhr, ajaxOptions, thrownError) {
+                alert(xhr.responseText);
+                $('#stdDiv').removeClass('opacity-3');
+                $('.fa-cog').removeClass('fa-spin');
+                emptyFundControls();
+                // alert('Invalid ID');
+            }
+        });
+    }
+
+    function generateNow() {
+        if ($("#txtlab").val() != '' && $("#txtmisc").val() != '' && $("#txtadmission").val() != '') {
+            //  In case of all classes
+
+            if ($('#allclass').is(':checked')) {
+                generateForAllClass($("#txtlab").val(), $("#txtmisc").val(), $("#txtadmission").val());
+            }
+
+            //  In case of particular class
+
+            if ($('#thisclass').is(':checked')) {
+                if ($("#ddlClass").val() != '') {
+                    generateForThisClass($("#ddlClass").val(), $("#txtlab").val(), $("#txtmisc").val(), $("#txtadmission").val());
+                }
+                else {
+                    alert_error('Class Name Required', 'Please Select Class and Try again');
+                }
+            }
+
+            //  In case of paricular student
+
+            if ($('#thisstudent').is(':checked')) {
+                generateForThisStudent($("#StudentID").val(), $("#txtlab").val(), $("#txtmisc").val(), $("#txtadmission").val());
+            }
+        }
+        else {
+            alert_error('Required', 'Funds values are required');
+        }
+    }
+
+    // FUNCTION FOR ALL CLASSES
+
+    function generateForAllClass(lab, misc, admission) {
+        PostBackStart();
+        $.ajax({
+            cache: false, async: false, type: "POST",
+            url: "/Funds/Generate/ForAllClasses",
+            data: { lab: lab, misc: misc, admission: admission },
+            success: function (result) {
+                PostBackEnd();
+                alert_success('Success', 'Fund generated successfully');
+            },
+            error: function (xhr, ajaxOptions, thrownError) {
+                $("#btngenerate").attr('disabled', false);
+                alert('Something went wrong');
+            }
+        });
+    }
+
+    // FUNCTION FOR SINGLE CLASS
+
+    function generateForThisClass(classid, lab, misc, admission) {
+        // $("#btngenerate").attr('disabled', true);
+        if (classid != '') {
+            PostBackStart();
+
+            $.ajax({
+                cache: false, async: false, type: "POST",
+                url: '/Funds/Generate/ForThisClass',
+                data: { classid: classid, lab: lab, misc: misc, admission: admission },
+                success: function (result) {
+                    PostBackEnd();
+                    alert_success('Success', 'Fund generated successfully');
+                },
+                error: function (xhr, ajaxOptions, thrownError) {
+                    PostBackEnd();
+                    alert('Something went wrong');
+                }
+            });
+        }
+        else {
+            alert_error('Class Name Required', 'Please Select Class and Try again');
+        }
+    }
+
+    // FUNCTION FOR SINGLE STUDENT
+
+    function generateForThisStudent(lab, misc, admission) {
+
+        if ($('#StudentName').val() != '' && $("#adm").val() != '' && $("#fund1").val() != '' && $("#fund2").val() != '' && $("#fund3").val() != '') {
+            PostBackStart();
+            $.ajax({
+                cache: false, async: false, type: "POST",
+                url: "/Funds/Generate/ForThisStudent",
+                data: { StudentID: $("#StudentID").val(), Adm: $("#adm").val(), Fund1: $("#fund1").val(), Fund2: $("#fund2").val(), Fund3: $("#fund3").val() },
+                success: function (result) {
+                    PostBackEnd();
+                    alert_success('Success', 'Fund generated successfully');
+                },
+                error: function (xhr, ajaxOptions, thrownError) {
+                    PostBackEnd();
+                    alert(xhr.responseText);
+                }
+            });
+        }
+        else {
+            alert_error('Student ID Required', 'Provide valid Student ID and Try again');
+        }
+    }
+
+    function emptystdControls() {
+        $('#StudentID').val('');
+        $('#StudentName').val('');
+        $('#FatherName').val('');
+        $('#ClassSection').val('');
+        //  $('#txtamount').val('');
+        //  $('#ddlType').val('0');
+        $('#StudentID').removeClass('border-red');
+    }
+
+    function emptyFundControls() {
+        $('#adm').val('');
+        $('#fund1').val('');
+        $('#fund2').val('');
+        $('#fund3').val('');
+    }
+
+    function PostBackStart() {
+        $('.fa-cog').addClass('fa-spin');
+        $('#stdDiv').addClass('opacity-3');
+        $('#btngenerate').addClass('hide');
+        $('#btnwait').removeClass('hide');
+    }
+
+    function PostBackEnd() {
+        $('.fa-cog').removeClass('fa-spin');
+        $('#stdDiv').removeClass('opacity-3');
+        $('#btngenerate').removeClass('hide');
+        $('#btnwait').addClass('hide');
+        emptystdControls();
+        emptyFundControls();
+    }
+
+    function GoToTypePage() {
+        $('.container').css('opacity', '0.3');
+        window.location.href = '/Funds/Generate/ByType';
+    }
+
+       @if (Data.BLL.User.Rights.UserHasAccessToMudule("generate_fund_single", Session["user"].ToString()) == false)
+    {
+        <text>  $(".main").html(''); $(".main").html('<h4 class="alert alert-danger text-center"> <i class="la la-exclamation-circle"> You do not have permission to access this feature </h4>');   </text>
+     }
+
+       @if (Data.BLL.User.Rights.UserHasAccessToMudule("generate_fund_all", Session["user"].ToString()) == false)
+    {
+        <text>  $(".type").html(''); $(".type").addClass('hide');   </text>
+     }
+</script>
+
+<style>
+    .border-red {
+        border: 2px solid red !important;
+    }
+
+    .bg-grey {
+        background-color: #ccc !important;
+    }
+
+    .bottom-container {
+        width: 25%;
+        height: 30px;
+        float: left;
+        text-align: center;
+    }
+
+    .fa-spinner {
+        background-color: white;
+        border-radius: 50%;
+        float: right;
+    }
+
+    .opacity-3 {
+        opacity: 0.3;
+    }
+
+    .upper-label {
+        background: #FFCC2A;
+        margin-bottom: 5px;
+        color: rgba(23, 109, 165, 0.91);
+        height: 24px;
+        padding-left: 7px;
+        border-radius: 0.2em;
+        padding-bottom: 28px;
+        font-weight: bold;
+        letter-spacing: 1px;
+    }
+
+    .label:hover, .label:active, input:hover + .label, input:active + .label {
+        opacity: 0.7;
+        cursor: pointer;
+    }
+</style>

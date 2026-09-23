@@ -1,0 +1,24 @@
+---
+description: Always create new SQL Server tables in the dbo schema
+alwaysApply: true
+---
+
+# Campus DB tables must use `dbo`
+
+SQL logins on production campus databases often have a **non-dbo default schema** (e.g. `sbs_admin1`, `seico_admin`). Unqualified `CREATE TABLE` then lands under that login schema, not `dbo`.
+
+## Code enforcement
+
+- `AppDbContext` and `AcademicContext` both call `modelBuilder.HasDefaultSchema("dbo")`. New entities inherit `dbo` even if `ToTable` omits the schema argument.
+- Prefer being explicit anyway: `entity.ToTable("tblSomething", "dbo")`.
+
+## Rules for agents / migrations
+
+- New EF entities: always map with an explicit schema — `entity.ToTable("tblSomething", "dbo")`.
+- New EF migrations: **every** `CreateTable`, `CreateIndex` (when schema-qualified), `CreateSequence`, `EnsureSchema`, `InsertData`, and similar must use `schema: "dbo"` (and `EnsureSchema("dbo")` when creating objects). Never rely on the connection user’s default schema.
+- After scaffolding with `dotnet ef migrations add`, **grep the new migration** for `CreateTable(` / `name: "` and confirm `schema: "dbo"` is present. If EF omitted it, add it before applying.
+- Raw SQL in migrations that creates objects must qualify names as `dbo.TableName` (or `ALTER SCHEMA dbo TRANSFER` for repairs).
+- Prefer checking `dbo.TableName` in SSMS / scripts after applying migrations to remote campus DBs.
+- Do not create application tables under login-named schemas. If a mistaken non-`dbo` table appears, move it with `ALTER SCHEMA dbo TRANSFER ...` (preserve data); do not casually drop production objects.
+- When documenting or scripting DDL for campus DBs, qualify objects as `dbo.tbl...`.
+- Do **not** generate a mass `RenameTable(..., newSchema: "dbo")` for legacy mapped tables that are already physically in `dbo` — use targeted TRANSFER migrations only for known misplaced objects (see `MoveActivityLogTableToDboSchema` / `MovePermissionTableToDboSchema`).

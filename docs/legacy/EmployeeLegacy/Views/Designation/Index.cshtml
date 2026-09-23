@@ -1,0 +1,79 @@
+﻿@{
+    ViewBag.Title = "DESIGNATIONS";
+}
+
+<section class="">
+    <div class="row">
+        <div class="col-xs-12 col-md-8 offset-2">
+            <div class="card">
+                <div class="panel-heading text-center">
+                    <h3> <i class="la la-user"></i> DESIGNATIONS</h3>
+                </div>
+                <div class="panel-body table-responsive">
+                    <div class="progress_container" id="loading">
+                        <div class="progress progress-danger progress-striped active">
+                            <div class="bar" style="width: 100%;font-weight:bold; text-align:center">
+                                <i class="la la-spin fa-spinner"></i> Please wait
+                            </div>
+                        </div>
+                    </div>
+                    <table class="table table-hover table-bordered">
+                        <thead class="bg-soft-info">
+                            <tr>
+                                <th style="width:10%">#</th>
+                                <th style="width:45%">Designation</th>
+                                <th style="width:20%">Checkin Time</th>
+                                <th style="width:20%">Leaving Time</th>
+                                <th style="width:20%"></th>
+                            </tr>
+                        </thead>
+
+                        <tbody id="table-content"></tbody>
+                    </table>
+                    <br />
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+
+<script>
+
+    function getData() {
+
+        $.ajax({
+            cache: false,
+            type: 'Get',
+            url: '/Employee/Designation/_Index',
+            data: '',
+            datatype: 'Json',
+            success: function (result) {
+                $("#loading").addClass('hide');
+                $("#table-content").removeClass('hide');
+                $("#table-content").html(result);
+            },
+            error: function (xhr, ajaxOptions, thrownError) {
+                alert('error');
+                console.log(xhr.responseText);
+            }
+        });
+    }
+
+    // Load all on startup
+
+    $(document).ready(function () {
+        getData();
+    });
+
+    function TriggerEditPage(ID) {
+        window.location.href = '/Employee/Designation/Edit?ID=' + ID;
+    }
+</script>
+
+<style>
+    .table tbody td {
+        padding: 0.25rem !important;
+    }
+</style>

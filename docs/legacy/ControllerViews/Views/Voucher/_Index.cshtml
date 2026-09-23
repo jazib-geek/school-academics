@@ -1,0 +1,49 @@
+﻿@model List<Data.Viewmodel.Account.TransactionViewModel>
+
+@foreach (var item in Model)
+{
+    <tr style="background-color:white">
+        <td>@item.AccountID</td>
+        <td>@Data.BLL.Accounts.Chart.GetAccountTitle(item.AccountID)</td>
+        <td>@item.Narration</td>
+        <td>@item.Credit</td>
+        <td>@item.Debit</td>
+        <td>
+            <a href="javascript:;" onclick="DeleteRow(@item.ID)"><i class="la la-close" style="color:red"></i></a>
+        </td>
+    </tr>
+}
+<tr>
+    <td colspan="3"></td>
+    <td style="font-weight:bold">@Model.Sum(x => x.Credit)</td>
+    <td style="font-weight:bold">@Model.Sum(x => x.Debit)</td>
+=</tr>
+
+<script>
+    @if (Model.Count == 0)
+    {
+        <text>  $("#divSave").addClass('hide');  </text>
+    }
+    else
+    {
+        <text>  $("#divSave").removeClass('hide');  </text>
+    }
+
+    function DeleteRow(ID) {
+        $(".table").css('opacity', '0.2');
+        $.ajax({
+            cache: false,
+            type: 'POST',
+            url: '/Accounts/Voucher/DeleteRow',
+            data: { ID : ID },
+            datatype: 'Json',
+            success: function (result) {
+                $(".table").css('opacity', '1');
+                GetList();
+            },
+            error: function (xhr, ajaxOptions, thrownError) {
+                alert('error');
+            }
+        });
+    }
+</script>

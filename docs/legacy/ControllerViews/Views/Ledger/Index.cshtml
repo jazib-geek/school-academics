@@ -1,0 +1,110 @@
+﻿
+@{
+    ViewBag.Title = "Customer";
+}
+<script src="~/Content/select2/select2.min.js"></script>
+<link href="~/Content/select2/select2.min.css" rel="stylesheet" />
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.3.0/js/bootstrap-datepicker.js"></script>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.3.0/css/datepicker.css" rel="stylesheet" type="text/css" />
+
+<div class="row">
+    <div class="col-md-12 card">
+        <h3 class="text-center">
+            <i class="fas fa-bank text-success"></i>  ACCOUNT LEDGER
+        </h3>
+        <div class="main">
+            <div class="well" style="padding-top:10px;padding-bottom:8px;margin-bottom:0px; min-height:50px">
+                <div class="text-center" id="filters">
+                    <div class="col-md-1"></div>
+                    <div class="col-md-4">
+                        <select class="form-control select2" id="AccountID">
+                            <option value="">----Account----</option>
+                            @foreach (var item in Data.BLL.Accounts.Chart.ListAccount())
+                            {
+                                <option value="@item.AccountID">@item.AccountTitle</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <input type="text" id="From" class="form-control" placeholder="From Date" autocomplete="off" />
+                    </div>
+                    <div class="col-md-2">
+                        <input type="text" id="To" class="form-control" placeholder="To Date" autocomplete="off" />
+                    </div>
+                    <div class="col-md-2">
+                        <button class="btn btn-sm btn-success" id="btnGroup" onclick="GetLedger()">
+                            <i class="fas fa-search"></i>
+                        </button>
+                        <button class="btn btn-sm btn-info hide" id="btnPrint" onclick="printReport()">
+                            <i class="fas fa-print"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <table class="table table-bordered" id="DummyTable">
+                <thead class="bg-soft-info">
+                    <tr>
+                        <th style="width:20%">Date</th>
+                        <th style="width:50%">Narration</th>
+                        <th style="width:10%">Received</th>
+                        <th style="width:10%">Payment</th>
+                        <th style="width:10%">Balance</th>
+                    </tr>
+                </thead>
+                <tbody id="table-content">
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript">
+    $(document).ready(function () {
+        $('#AccountID').select2();
+    });
+
+    function GetLedger() {
+        $("#loading").removeClass('hide');
+
+        $.ajax({
+            cache: false,
+            type: 'Get',
+            url: '/Accounts/Ledger/_Index',
+            data: { AccountID: $("#AccountID").val(), From: $("#From").val(), To: $("#To").val() },
+            datatype: 'Json',
+            success: function (result) {
+                $("#loading").addClass('hide');
+                $("#table-content").removeClass('hide');
+                $("#table-content").html(result);
+            },
+            error: function (xhr, ajaxOptions, thrownError) {
+                $("#table-content").html(xhr.responseText);
+            }
+        });
+    }
+
+      function printReport() {
+        window.open('/Accounts/Ledger/PrintLedger?From=' + $("#From").val() + '&To=' + $("#To").val() + '&AccountID=' + $("#AccountID").val(), '_blank')
+    }
+
+    $(function () {
+        $("#From").datepicker({
+            autoclose: true,
+            todayHighlight: true
+        }).datepicker();
+    });
+
+    $(function () {
+        $("#To").datepicker({
+            autoclose: true,
+            todayHighlight: true
+        }).datepicker();
+    });
+
+      @if (Data.BLL.User.Rights.UserHasAccessToMudule("view_ledger", Session["user"].ToString()) == false)
+    {
+        <text>  $(".main").html(''); $(".main").html('<h4 class="alert alert-danger text-center"> <i class="la la-exclamation-circle"> You do not have permission to access this feature </h4>');   </text>
+     }
+</script>
+

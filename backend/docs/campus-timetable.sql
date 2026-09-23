@@ -129,6 +129,7 @@ BEGIN
         PeriodNumber    INT NOT NULL,
         -- 0 = daily (V1). 1–7 = Mon–Sun for future weekly schedules.
         DayOfWeek       TINYINT NOT NULL CONSTRAINT DF_CampusTimeTableSlot_DayOfWeek DEFAULT (0),
+        LineIndex       TINYINT NOT NULL CONSTRAINT DF_CampusTimeTableSlot_LineIndex DEFAULT (0),
         CreatedAtUtc    DATETIME2(3) NOT NULL CONSTRAINT DF_CampusTimeTableSlot_CreatedAtUtc DEFAULT (SYSUTCDATETIME()),
         UpdatedAtUtc    DATETIME2(3) NULL,
         CONSTRAINT PK_tblCampusTimeTableSlot PRIMARY KEY CLUSTERED (ID),
@@ -146,8 +147,8 @@ IF NOT EXISTS (
       AND object_id = OBJECT_ID(N'dbo.tblCampusTimeTableSlot')
 )
 BEGIN
-    CREATE UNIQUE NONCLUSTERED INDEX UX_CampusTimeTableSlot_ClassPeriodDay
-        ON dbo.tblCampusTimeTableSlot (TimeTableID, SectionID, PeriodNumber, DayOfWeek);
+    CREATE UNIQUE NONCLUSTERED INDEX UX_CampusTimeTableSlot_ClassPeriodLineDay
+        ON dbo.tblCampusTimeTableSlot (TimeTableID, SectionID, PeriodNumber, DayOfWeek, LineIndex);
 END;
 GO
 

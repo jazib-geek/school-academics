@@ -1,0 +1,100 @@
+﻿@{
+    ViewBag.Title = "Date";
+}
+<div class="card">
+    <h3 class="text-center"> <i class="la la-users"></i> Assigne Class to Staff</h3>
+</div>
+
+<div class="row main">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="row">
+                <div class="col-md-3">
+                </div>
+                <div class="col-md-4">
+                    <label>Staff Member</label>
+                    <select id="StaffID" class="form-control">
+                        <option value="">--Please select--</option>
+                        @foreach (var item in Data.BLL.Staff.List.All())
+                        {
+                            <option value="@item.ID">@item.TeacherName</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <br />
+                    <i id="spinner" class="la la-spin fa-spinner fa-2x hide"> </i>
+                </div>
+               
+            </div>
+
+            <div class="row" style="padding-top: 1em; border-top: 1px solid #8080801b; margin-top: 1em;">
+                <div class="col-md-12">
+                    <div id="table-content"></div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+
+
+<div style="margin-top:2em;margin-bottom:3em;" class="text-center hide">
+    <input type="button" class="btn btn-lg btn-primary" value="Print" onclick="printThis()" />
+</div>
+
+<script>
+
+    $(document).ready(function () {
+        //$("#StaffID").select2({
+        //    placeholder: "Select a Staff Member",
+        //});
+    });
+
+    $('#StaffID').on('change', function () {
+        var StaffID = $(this).val();
+        if (StaffID == '') {
+            alert_warning('', 'Please select Staff Member');
+            $("#spinner").addClass('hide');
+            $("#table-content").html('');
+            return false;
+        }
+
+        $.ajax({
+            cache: false,
+            type: 'Get',
+            url: '/Staff/Setting/_Class',
+            data: { StaffID: StaffID },
+            datatype: 'Json',
+            success: function (result) {
+                $("#spinner").addClass('hide');
+                $("#table-content").html(result);
+            },
+            error: function (xhr, ajaxOptions, thrownError) {
+                $("#table-content").html(xhr.responseText);
+            }
+        });
+    });
+
+    $(document).on('click', 'input[type="checkbox"]', function () {
+        var Id = $(this).attr('data-id');
+         if ($(this).is(':checked')) {
+            $(`.cls-${Id}`).addClass('bg-success'); // Add 'bg-success' class when checked
+        } else {
+            $(`.cls-${Id}`).removeClass('bg-success'); // Remove 'bg-success' class when unchecked
+        }
+
+        var staffID = $('#StaffID').val();
+    });
+
+    
+
+     @if (Data.BLL.User.Rights.UserHasAccessToMudule("trx", Session["user"]?.ToString()) == false)
+     {
+        <text>  $(".main").html(''); $(".main").html('<h4 class="alert alert-danger text-center"> <i class="la la-exclamation-circle"> You do not have permission to access this feature </h4>');   </text>
+     }
+</script>
+
+
+

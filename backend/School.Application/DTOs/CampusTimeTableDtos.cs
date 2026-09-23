@@ -59,6 +59,8 @@ public class CampusTimeTableSlotDto
     public int PeriodNumber { get; set; }
     /// <summary>0 = daily (V1). 1–7 reserved for Mon–Sun.</summary>
     public byte DayOfWeek { get; set; }
+    /// <summary>0 = primary line; 1 = second parallel group in the same class period.</summary>
+    public byte LineIndex { get; set; }
 }
 
 public class CampusTimeTableDetailDto
@@ -136,6 +138,8 @@ public class CampusTimeTableSlotInputDto
     public int PeriodNumber { get; set; }
     /// <summary>0 = daily (default). 1–7 reserved for Mon–Sun.</summary>
     public byte DayOfWeek { get; set; }
+    /// <summary>0 = primary line; 1 = second parallel group in the same class period.</summary>
+    public byte LineIndex { get; set; }
 }
 
 public class CampusTimeTableReplaceSlotsDto

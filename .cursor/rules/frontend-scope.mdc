@@ -1,0 +1,22 @@
+---
+description: Frontend-only work — stay in pages/components/API clients; skip backend unless asked
+globs: frontend/**/*
+alwaysApply: false
+---
+
+# Frontend scope (token)
+
+When the task is under `frontend/`, stay there unless the user asks for API or DB changes.
+
+## Stay in-stack
+
+- Prefer: page/component → existing hooks/API modules → shared UI patterns in the same area (`Campus/`, `Academics/`, `employee/`).
+- Do **not** open `backend/` to rediscover routes/DTOs if the frontend API client or types already show the contract.
+- Employee Portal (`components/employee/`): mobile-first only — do not pull desktop Campus admin patterns “for reference” unless needed.
+
+## Cheap lookups
+
+- Copy density/spacing/copy tone from a sibling page in the same folder; do not re-read `index.css` + Students list unless changing table/chrome styles.
+- Reuse existing axios/fetch helpers; do not invent new HTTP clients.
+- No `PUT` — use POST update routes already used by nearby screens.
+- User-facing copy: plain staff language; no developer jargon (no FundType IDs, “null”, “skipped”, table names).

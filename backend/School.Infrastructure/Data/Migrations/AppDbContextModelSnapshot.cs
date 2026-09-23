@@ -962,6 +962,11 @@ namespace School.Infrastructure.Data.Migrations
                     b.Property<int>("EmployeeID")
                         .HasColumnType("int");
 
+                    b.Property<byte>("LineIndex")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint")
+                        .HasDefaultValue((byte)0);
+
                     b.Property<int>("PeriodNumber")
                         .HasColumnType("int");
 
@@ -988,7 +993,7 @@ namespace School.Infrastructure.Data.Migrations
                     b.HasIndex("TimeTableID", "EmployeeID", "PeriodNumber", "DayOfWeek")
                         .IsUnique();
 
-                    b.HasIndex("TimeTableID", "SectionID", "PeriodNumber", "DayOfWeek")
+                    b.HasIndex("TimeTableID", "SectionID", "PeriodNumber", "DayOfWeek", "LineIndex")
                         .IsUnique();
 
                     b.ToTable("tblCampusTimeTableSlot", "dbo");

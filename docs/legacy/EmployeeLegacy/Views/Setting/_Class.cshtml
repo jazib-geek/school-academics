@@ -1,0 +1,18 @@
+﻿@model List<Data.DAL.v_StaffClass>
+@{
+    var lstAll = Data.BLL.Parameter.ClassAndSection.ListClassSection();
+}
+
+     @foreach (var classItem in lstAll)
+    {
+        // Check if the current classItem ID exists in the Model (pre-checked)
+        var isChecked = Model.Any(m => m.ClassID == classItem.ID) ? "checked" : "";
+        var CheckedClass = Model.Any(m => m.ClassID == classItem.ID) ? "bg-success" : "";
+        <div class="col-md-3 cls-@classItem.ID @CheckedClass" style="padding:4px">
+            <input type="checkbox" id="cls-@classItem.ID" data-id="@classItem.ID" name="classIDs" value="@classItem.ID" @isChecked />
+            <label for="cls-@classItem.ID" style="margin-bottom:0px !important">@classItem.Class_Name</label>
+        </div>
+    }
+ 
+
+ 

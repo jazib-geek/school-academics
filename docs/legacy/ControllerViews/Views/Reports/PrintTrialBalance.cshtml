@@ -1,0 +1,137 @@
+﻿@model List<Data.DAL.Fn_TrialBalance_Result>
+@using Data.BLL
+@{
+    decimal? FEE = Data.BLL.FeeAndFund.Collection.ByInterval(ViewBag.From, ViewBag.To, 1);
+    decimal? ADM = Data.BLL.FeeAndFund.Collection.ByInterval(ViewBag.From, ViewBag.To, 2);
+    decimal? MISC = Data.BLL.FeeAndFund.Collection.ByInterval(ViewBag.From, ViewBag.To, 3);
+    decimal? PREV = Data.BLL.FeeAndFund.Collection.ByInterval(ViewBag.From, ViewBag.To, 4);
+
+    Layout = "~/Views/Shared/_LayoutReport.cshtml";
+}
+<script src="~/Scripts/jquery-1.10.2.min.js"></script>
+
+<table cellpadding="0" cellspacing="0" style="width:100%;">
+    <tr>
+        <td class="top">
+            @Html.Partial("_CampusDetail")
+        </td>
+        <td class="top">
+        </td>
+        <td style="text-align:right;" class="top">
+            <h2>ACCOUNTS SUMMARY</h2>
+            From <b>@Data.BLL.DateFunctions.convertToStringDate(ViewBag.From)</b> to <b>@Data.BLL.DateFunctions.convertToStringDate(ViewBag.To)</b>
+        </td>
+    </tr>
+</table>
+
+<table border="1" cellpadding="5" cellspacing="0" style="width:100%;">
+    <thead style="background:#dddddd;">
+        <tr>
+            <th style="width:15%">Account Code</th>
+            <th style="width:36%">Account</th>
+            <th style="width:12%">Received</th>
+            <th style="width:12%">Payment</th>
+            <th style="width:12%">Balance</th>
+        </tr>
+    </thead>
+
+    @foreach (var item in Model.Where(x => (x.TotalDebit + x.TotalCredit) > 0))
+    {
+        <tr>
+            <td>@item.AccountID</td>
+            <td style="font-size:12px">@item.AccountTitle</td>
+            <td class="credit">@item.TotalCredit</td>
+            <td class="debit">@item.TotalDebit</td>
+            <td>@item.Balance</td>
+        </tr>
+    }
+
+    <tr>
+        <td></td>
+        <td>Tution Fee</td>
+        <td class="adm">@FEE</td>
+        <td>0</td>
+        <td></td>
+    </tr>
+    <tr>
+        <td></td>
+        <td>Admission Fee</td>
+        <td class="adm">@ADM</td>
+        <td>0</td>
+        <td></td>
+    </tr>
+    <tr>
+        <td></td>
+        <td>Misc Charges</td>
+        <td class="misc">@MISC</td>
+        <td>0</td>
+        <td></td>
+    </tr>
+    <tr>
+        <td></td>
+        <td>Prev Balance</td>
+        <td class="prev">@PREV</td>
+        <td>0</td>
+        <td></td>
+    </tr>
+
+    <tr>
+        <td></td>
+        <td></td>
+        <td style="font-weight:bold" id="CREDIT"></td>
+        <td style="font-weight:bold" id="DEBIT"></td>
+        <td style="font-weight:bold" id="BALANCE"></td>
+    </tr>
+</table>
+
+<script>
+    //////////////////////
+    var sum_tf = 0;
+    $(".tf").each(function () {
+        sum_tf += parseFloat($(this).text());
+    });
+
+    var sum_adm = 0;
+    $(".adm").each(function () {
+        sum_adm += parseFloat($(this).text());
+    });
+
+    var sum_misc = 0;
+    $(".misc").each(function () {
+        sum_misc += parseFloat($(this).text());
+    });
+
+    var sum_prev = 0;
+    $(".prev").each(function () {
+        sum_prev += parseFloat($(this).text());
+    });
+
+    var Total_Recv = sum_tf + sum_adm + sum_misc + sum_prev;
+    /////////////////////
+
+    var sum_debit = 0;
+    $(".debit").each(function () {
+        sum_debit += parseFloat($(this).text());
+    });
+    $('#DEBIT').text(sum_debit);
+
+    var sum_credit = 0;
+    $(".credit").each(function () {
+        sum_credit += parseFloat($(this).text());
+    });
+
+    var MasterRcv = Total_Recv + sum_credit;
+    $('#CREDIT').text(MasterRcv);
+    $('#DEBIT').text(sum_debit);
+    $('#BALANCE').text((MasterRcv - sum_debit));
+
+    window.onload = window.print();
+</script>
+
+<style>
+    .foot td {
+        font-weight: bold;
+        font-size: 14px !important;
+        background-color: lightgray;
+    }
+</style>

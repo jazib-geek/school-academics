@@ -1,0 +1,42 @@
+﻿@model List<Data.DAL.tblTempStaff>
+
+<table class="table-bordered">
+    <thead class="bg-soft-info">
+        <tr>
+            <th style="width:30%">Asset Name</th>
+            <th style="width:10%">Value</th>
+            <th style="width:10%">Date of issue</th>
+            <th style="width:45%">Remarks</th>
+            <th style="width:5%"></th>
+        </tr>
+    </thead>
+    <tbody style="background:white">
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.Asset_Name</td>
+                <td>@item.Asset_AssetWorth</td>
+                <td>@item.Asset_DateOfIssue</td>
+                <td>@item.Asset_Remarks</td>
+                <td> <a href="javascript:;" class="text-danger" onclick="DeleteRow(@item.ID)"> <i class="la la-close"></i> </a> </td>
+            </tr>
+        }
+        <tr>
+            <td> <input type="text" id="Asset_Name" class="input-borderless" /> </td>
+            <td> <input type="text" id="Asset_AssetWorth" class="input-borderless" /> </td>
+            <td> <input type="text" id="Asset_DateOfIssue" class="input-borderless datepicker" /> </td>
+            <td> <input type="text" id="Asset_Remarks" class="input-borderless" /> </td>
+            <td>   <a href="javascript:;" class="btn btn-sm btn-info" onclick="InsertAsset()"> <i class="la la-plus"></i> </a>  </td>
+        </tr>
+
+    </tbody>
+</table>
+
+<script>
+    $(function () {
+        $(".datepicker").datepicker({
+            autoclose: true,
+            todayHighlight: true
+        }).datepicker();
+    });
+</script>

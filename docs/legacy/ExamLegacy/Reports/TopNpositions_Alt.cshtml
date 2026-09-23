@@ -1,0 +1,103 @@
+﻿@model Data.Viewmodel.ExamViewModel
+
+@using Data.BLL
+@{
+    Layout = "~/Views/Shared/_LayoutReport.cshtml";
+}
+
+<script src="~/Scripts/jquery-1.10.2.min.js"></script>
+
+<style>
+    /*@@media print {
+        table {
+            font-size: large !important;
+        }
+    }*/
+</style>
+<table cellpadding="0" cellspacing="0" style="width:100%;">
+    <tr>
+        <td class="top">
+            @Html.Partial("_CampusDetail")
+        </td>
+        <td class="top">
+        </td>
+        <td style="text-align:right;" class="top">
+            <h2>TOP @Model.Position POSITIONS</h2>
+            <b>
+                @ViewBag.exam  <br />
+                <b>Date:</b> @DateTime.Now.Date.ToShortDateString()
+        </td>
+    </tr>
+</table>
+
+<table border="1" cellpadding="5" cellspacing="0" style="width:100%;">
+    <thead style="background:#dddddd;">
+        <tr>
+            <th>Branch</th>
+            <th class="text-left">Class Code</th>
+            <th class="text-left">Class Name</th>
+            <th>Serial</th>
+            <th>Student Name/Father Name</th>
+            <th>Position</th>
+            <th>Obtained Total Percentage</th>
+        </tr>
+    </thead>
+    @*@foreach (var item in StudentParameters.lstSection())
+        {
+            @Html.Partial("_Receivables", new Data.Viewmodel.FeeReportViewModel() { lstReport = Fee.lst_Receivable(item.Class_ID, item.SectionID), ClassID = item.Class_ID, SectionID = item.SectionID })
+        }*@
+    <tbody>
+        @foreach (var item in Data.BLL.Parameter.ClassAndSection.ListClassSection())
+        {
+            <tr>
+                <td>@System.Web.Configuration.WebConfigurationManager.AppSettings["Branch"] Campus</td>
+                <td>@item.Class_ID</td>
+                <td colspan="5" class="text-left" style="font-weight:bold">@item.Class_Name</td>
+            </tr>
+
+            foreach (var exam in Data.BLL.Exam.ExamSheetAlt(item.ID, Model.ExamTypeID, "").lstStudent.Where(x => x.exam.Position <= Model.Position && x.exam.Percentage > 0))
+            {
+                <tr>
+                    <td colspan="3" style="border:none!important"></td>
+                    <td class="text-center">@exam.Reg_Id</td>
+                    <td>@exam.FullName <br /> <small>@exam.FatherName</small> </td>
+                    <td class="text-center">@Data.BLL.Exam.PositionWithPostFix(exam.exam.Position)</td>
+                    <td>
+                        <span class="fraction">@exam.exam.Total_Obtained / @Data.BLL.Exam.GetSumOfTotalMarksOfThisExam_Alt(item.Class_ID, Model.ExamTypeID)</span> &nbsp;
+                        <span>   @exam.exam.Percentage%</span>
+                    </td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>
+
+<script>
+    $('.fraction').each(function (key, value) {
+        $this = $(this)
+        var split = $this.html().split("/")
+        if (split.length == 2) {
+            $this.html('<span class="top">' + split[0] + '</span><span class="bottom">' + split[1] + '</span>')
+        }
+    });
+
+</script>
+
+<style>
+    .fraction, .top, .bottom {
+        padding: 0 5px;
+    }
+
+    .fraction {
+        display: inline-block;
+        text-align: center;
+    }
+
+    .bottom {
+        border-top: 1px solid #000;
+        display: block;
+    }
+    body{
+        font-family:Arial !important;
+    }
+</style>

@@ -1,0 +1,189 @@
+﻿
+@model Data.Viewmodel.ExamViewModel
+@using Data.BLL
+
+@{
+    Layout = null;
+    var student = Data.BLL.Student.List.GetByID(Model.StudentID);
+    ViewBag.n = 8 - Model.lstExam.Count;
+    int? ExamTypeID = ViewData["ExamTypeID"] as int?;
+    string pType = ViewData["pType"] as string;
+    string ExamName = ExamType.GetByID(ExamTypeID).ExamType;
+    string type = Request.QueryString["type"];
+    int? Percentage = Model.Percentage;
+    // Model.Grade = Data.BLL.Exam.GetGrade(Percentage);
+    // Model.Position = Data.BLL.Exam.GetPosition_Alt(student.Reg_Id, ExamTypeID);
+
+    if (type == "G" || pType == "G")
+    {
+        Percentage = Data.BLL.Exam.GetPercentage(Data.BLL.Exam.GetTotalMarksObtained_Alt(student.Reg_Id, ExamTypeID), Data.BLL.Exam.GetSumOfTotalMarksOfThisExam_Alt(student.ClassCompositeID, ExamTypeID)); ;
+        Model.Grade = Data.BLL.Exam.GetGrade(Percentage);
+        Model.Position = Data.BLL.Exam.GetPosition_Alt(student.Reg_Id, ExamTypeID);
+    }
+}
+<link href="~/webfonts/style.css" rel="stylesheet" />
+
+<div class="main-container" style="page-break-after:always !important">
+    <br /><br /><br />
+    <div style="margin-top: 85px;left:35px">
+        <p style="margin-left:15px;margin-bottom:-38px; font-family:GoodDog Plain;font-size:37px;">of @ExamName </p>
+        <p style="margin-left:15px;font-family:GoodDog Plain;margin-bottom:60px;font-size:30px;">Session @System.Web.Configuration.WebConfigurationManager.AppSettings["academicsession"] </p>
+    </div>
+
+    <div class="left">
+        <br />
+        <table id="top-table">
+            <tr>
+                <td class="top-left-td">Serial No : </td>
+                <td class="top-right-td">@student.Reg_Id</td>
+            </tr>
+            <tr>
+                <td class="top-left-td">Student's Name : </td>
+                <td class="top-right-td">@student.FullName</td>
+            </tr>
+            <tr>
+                <td class="top-left-td">Father's Name : </td>
+                <td class="top-right-td">@student.FatherName</td>
+            </tr>
+            <tr>
+                <td class="top-left-td">Class : </td>
+                <td class="top-right-td">@student.ClassName</td>
+            </tr>
+        </table>
+
+        <table id="bottom-table">
+            <tr>
+                <th style="vertical-align:middle!important; font-size:medium" class="text-center">SUBJECT</th>
+                <th class="text-center" style="font-size:medium">TOTAL MARKS</th>
+                <th class="text-center" style="font-size:medium">OBTAINED MARKS</th>
+            </tr>
+            @foreach (var item in Model.lstExam.Where(x => x.TotalMarks > 0 && x.ClassID == student.ClassCompositeID))
+            {
+                if (type == "G")
+                {
+                    if (item.SubjectName != "Drawing")
+                    {
+                        <tr>
+                            <td style="width:65%;">@item.SubjectName </td>
+                            <td class="text-center">@item.TotalMarks</td>
+                            @if (item.ObtainedMarks == -1)
+                            {
+                                <td class="text-center">A</td>
+                            }
+                            else
+                            {
+                                <td class="text-center">@item.ObtainedMarks</td>
+                            }
+                        </tr>
+                    }
+                    else
+                    {
+                        <tr>
+                            <td style="width:65%;">@item.SubjectName</td>
+                            <td>Grade</td>
+                            <td>@Data.BLL.Exam.GetGrade(Data.BLL.Exam.GetPercentage(item.ObtainedMarks, item.TotalMarks))</td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td style="width:65%;">@item.SubjectName </td>
+                        <td class="text-center">@item.TotalMarks</td>
+                        @if (item.ObtainedMarks == -1)
+                        {
+                            <td class="text-center">A</td>
+                        }
+                        else
+                        {
+                            <td class="text-center">@item.ObtainedMarks</td>
+                        }
+                    </tr>
+                }
+            }
+            @{ int n = 10 - Model.lstExam.Where(x => x.TotalMarks > 0).Count(); }
+            @if (Model.lstExam.Where(x => x.TotalMarks > 0).Count() < 10)
+            {
+                for (int i = 0; i < n; i++)
+                {
+                    <tr>
+                        <td style="height:28px"></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                }
+            }
+
+            @if (type == "G")
+            {
+                <tr>
+                    <th class="text-right">GRAND TOTAL</th>
+                    <th class="text-center">@Model.lstExam.Where(x => x.ClassID == student.ClassCompositeID && x.SubjectName != "Drawing").Sum(x => x.TotalMarks)</th>
+                    <th class="text-center">@Model.lstExam.Where(x => x.ObtainedMarks != -1 && x.ClassID == student.ClassCompositeID && x.SubjectName != "Drawing").Sum(x => x.ObtainedMarks)</th>
+                </tr>
+            }
+            else
+            {
+                <tr>
+                    <th class="text-right">GRAND TOTAL</th>
+                    <th class="text-center">@Model.lstExam.Where(x => x.ClassID == student.ClassCompositeID).Sum(x => x.TotalMarks)</th>
+                    <th class="text-center">@Model.lstExam.Where(x => x.ObtainedMarks != -1 && x.ClassID == student.ClassCompositeID).Sum(x => x.ObtainedMarks)</th>
+                </tr>
+            }
+        </table>
+    </div>
+
+    <div class="right">
+        <table class="custom-table">
+            <tr>
+                <td class="left-td">Percentage : </td>
+                @*<td class="right-td">@Model.Percentage%</td>*@
+                <td class="right-td">@Percentage%</td>
+                <td></td>
+            </tr>
+            <tr>
+                <td class="left-td">Grade : </td>
+                <td class="right-td">@Model.Grade</td>
+                <td></td>
+            </tr>
+            <tr>
+                <td class="left-td">Position : </td>
+                <td class="right-td">@Exam.PositionWithPostFix(Model.Position)</td>
+                <td></td>
+            </tr>
+            <tr>
+                <td colspan="3">
+                    Remarks :
+                </td>
+            </tr>
+            <tr>
+                <td colspan="3" class="remarks">
+                    @Exam.GetLongRemarks(Model.Grade, student.Gender)
+                </td>
+            </tr>
+            <tr>
+                <td colspan="3" class="note">
+                    Note: Errors and ommissions are accepted within seven days after result declaration
+                </td>
+            </tr>
+            <tr>
+                <td style="width:33%;padding-top:8px">
+                    _______________
+                    <b style="font-size:smaller; padding-left:15px;">Head Teacher</b>
+                </td>
+                <td style="width:33%">
+                    @*___________
+                        <b style="font-size:smaller; padding-left:30px;">Issue Date</b>*@
+                </td>
+                <td style="width:33%">
+                    _________________
+                    <b style="font-size:smaller; padding-left:30px;">Class Teacher</b>
+                </td>
+            </tr>
+        </table>
+    </div>
+</div>
+
+<script>
+    window.onload = window.print();
+</script>

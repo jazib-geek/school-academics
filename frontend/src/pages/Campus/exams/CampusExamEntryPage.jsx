@@ -727,8 +727,8 @@ export default function CampusExamEntryPage() {
   }
 
   return (
-    <CampusShell headerContext="Exam entry">
-      <div className="space-y-4 p-4 pt-[4.25rem] md:p-6 md:pt-[4.5rem]">
+    <CampusShell headerContext="Exam entry" asideClassName="no-print" headerClassName="no-print">
+      <div className="exam-entry-screen space-y-4 p-4 pt-[4.25rem] md:p-6 md:pt-[4.5rem]">
         <div className="rounded-2xl bg-white shadow-sm">
           <form
             onSubmit={(event) => {
@@ -1108,7 +1108,7 @@ export default function CampusExamEntryPage() {
       />
 
       {isMarkSheetOpen ? (
-        <div className="fixed inset-0 z-[75] bg-slate-950/55 p-3 backdrop-blur-sm">
+        <div className="exam-mark-sheet-modal fixed inset-0 z-[75] bg-slate-950/55 p-3 backdrop-blur-sm">
           <div className="h-full w-full overflow-y-auto rounded-2xl bg-slate-100 shadow-2xl">
             <CampusExamMarkSheetPage
               embedded

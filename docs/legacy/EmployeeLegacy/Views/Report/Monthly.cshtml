@@ -1,0 +1,89 @@
+﻿@using Data.BLL
+@{
+    int m = ViewBag.m;
+    int y = ViewBag.y;
+}
+
+<input type="hidden" id="month" value="@m" />
+<input type="hidden" id="year" value="@y" />
+
+<div class="card">
+    <div class="header">
+        <h4 class="title text-center">ATTENDANCE SUMMARY @DateFunctions.convertToStringMonth(m).ToUpper() @y</h4>
+        <p class="category"></p>
+    </div>
+    <div class="content table-responsive table-full-width table-content">
+        <div class="text-center">
+            <i class="la la-spin fa-spinner fa-2x"></i>
+        </div>
+
+        <p class="text-center">
+            <a href="@Url.Action("Print", new { m =  ViewBag.m , y =  ViewBag.y })" class="btn btn-lg btn-success" target="_blank">
+                <i class="la la-print"></i> Print
+            </a>
+        </p>
+
+    </div>
+</div>
+
+<style>
+    .table {
+        display: table !important;
+    }
+    tbody td {
+        padding: 0.2rem !important;
+        font-family: Arial;
+        font-size: 12px !important;
+        text-align:center;
+        border:2px solid black;
+
+    }
+    table, th, td {
+        border: 1px solid black !important;
+        border-collapse: collapse !important;
+    }
+
+    .bg-light-grey{
+        background-color:#80808045 !important;
+    }
+</style>
+
+<script>
+    $(document).ready(function () {
+        getData();
+    });
+
+    function getData() {
+        $.ajax({
+            cache: false,
+            type: 'Get',
+            url: '/Employee/Report/_Monthly',
+            data: { m: $("#month").val(), y: $("#year").val() },
+            datatype: 'Json',
+            success: function (result) {
+                $(".table-content").html(result);
+                applyStatusStyling();
+            },
+            error: function (xhr, ajaxOptions, thrownError) {
+                alert(error);
+            }
+        });
+    }
+
+    function applyStatusStyling() {
+        $(".status").each(function () {
+            var cellValue = $(this).text().trim(); 
+
+            if (cellValue === "A") {
+                cellClass = "text-bold text-danger";
+            } else if (cellValue === "H" || cellValue === "L") {
+                cellClass = "bg-light-grey text-bold text-info";   
+            } else {
+                cellClass = "text-success text-bold";
+            }
+
+            $(this).addClass(cellClass);
+        });
+    }
+
+</script>

@@ -1,0 +1,49 @@
+﻿@model List<Data.DAL.tblTempStaff>
+
+<table class="table-bordered">
+    <thead class="bg-soft-info">
+        <tr>
+            <th style="width:20%">Degree</th>
+            <th style="width:20%">Board</th>
+            <th style="width:10%">Grade</th>
+            <th style="width:10%">Marks</th>
+            <th style="width:10%">Year</th>
+            <th style="width:30%">Remarks</th>
+            <th style="width:5%"></th>
+        </tr>
+    </thead>
+    <tbody style="background:white">
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.Qual_Degree</td>
+                <td>@item.Qual_Board</td>
+                <td>@item.Qual_Grade</td>
+                <td>@item.Qual_Marks</td>
+                <td>@item.Qual_Year</td>
+                <td>@item.Qual_Remarks</td>
+                <td> <a href="javascript:;" class="text-danger" onclick="DeleteRow(@item.ID)"> <i class="la la-close"></i> </a> </td>
+            </tr>
+        }
+        <tr>
+            <td> <input type="text" id="Qdegree" class="input-borderless" /> </td>
+            <td> <input type="text" id="Qboard" class="input-borderless" /> </td>
+            <td> <input type="text" id="Qgrade" class="input-borderless" /> </td>
+            <td> <input type="text" id="Qmarks" class="input-borderless" /> </td>
+            <td> <input type="text" id="Qyear" class="input-borderless" /> </td>
+            <td> <input type="text" id="Qremarks" class="input-borderless" /> </td>
+            <td>   <a href="javascript:;" class="btn btn-sm btn-info" onclick="InsertQual()"> <i class="la la-plus"></i> </a>  </td>
+        </tr>
+
+        <tr class="text-center">
+            <td> <strong>Professional Degree</strong> </td>
+            <td colspan="2"> <input name="ProfessionalDegree" type="radio" id="rbBED" value="B.ED" style="margin-top:6px" /> <label for="rbBED">B.ED</label> </td>
+            <td colspan="2"> <input name="ProfessionalDegree" type="radio" id="rbMED" value="M.ED" style="margin-top:6px" /> <label for="rbMED">M.ED</label> </td>
+            <td colspan="2"> <input name="ProfessionalDegree" type="radio" id="rbMA" value="M.A (Education)" style="margin-top:6px" /> <label for="rbMA">M.A (Education)</label></td>
+        </tr>
+    </tbody>
+</table>
+
+<script>
+  
+</script>

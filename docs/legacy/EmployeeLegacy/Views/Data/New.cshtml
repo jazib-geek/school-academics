@@ -1,0 +1,631 @@
+﻿@using Data.BLL.Staff
+@model Data.Viewmodel.TeacherViewModel
+
+@{
+    Layout = "~/Areas/Staff/Views/Shared/LayoutEmp.cshtml";
+}
+
+<body style="line-height:inherit !important; margin-bottom:80px;">
+    @using (Html.BeginForm("New", "Teacher", FormMethod.Post, new { id = "CreateStudentForm" }))
+    {
+        <div class="container inner-container">
+            <div class="heading-bar">
+                Admission Form
+            </div>
+
+            <div class="inner-col">
+                <div class="left">
+                    <div class="inner-left">
+                        Employee Name* &nbsp; <i class="la la-caret-right gray"></i> &nbsp;
+                    </div>
+                    <div class="inner-right">
+                        @Html.TextBoxFor(m => m.TeacherName, "", new { @class = "input-borderless" })
+                    </div>
+                </div>
+                <div class="right">
+                    <div class="inner-left">
+                        Father Name* &nbsp; <i class="la la-caret-right gray"></i> &nbsp;
+                    </div>
+                    <div class="inner-right">
+                        @Html.TextBoxFor(m => m.FatherName, "", new { @class = "input-borderless" })
+                    </div>
+                </div>
+            </div>
+
+            <div class="inner-col">
+                <div class="left">
+                    <div class="inner-left">
+                        Date of Birth* &nbsp; <i class="la la-caret-right gray"></i> &nbsp;
+                    </div>
+                    <div class="inner-right" style="padding-top: 7px !important;">
+                        @Html.TextBoxFor(m => m.DoB, "", new { @class = "input-borderless" })
+                    </div>
+                </div>
+                <div class="right">
+                    <div class="inner-left">
+                        Gender &nbsp; <i class="la la-caret-right gray"></i> &nbsp;
+                    </div>
+                    <div class="inner-right" style="padding-top: 7px !important;">
+                        @Html.RadioButtonFor(m => m.Gender, "Male", new { @style = "margin: -8px 0 0 !important", @checked = "checked" })&nbsp;
+                        <label for="rbMale">Male</label>
+                        &nbsp; &nbsp; &nbsp;
+                        @Html.RadioButtonFor(m => m.Gender, "Female", new { @style = "margin: -8px 0 0 !important" })&nbsp;
+                        <label for="rbFeMale">Female</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="inner-col">
+                <div class="left" style="float:right">
+                    <div class="inner-left">
+                        Religion &nbsp; <i class="la la-caret-right gray"></i> &nbsp;
+                    </div>
+                    <div class="inner-right" style="padding-top: 7px !important;">
+                        @Html.RadioButtonFor(m => m.Religion, "Muslim", new { @style = "margin: -8px 0 0 !important", @checked = "checked" })&nbsp;
+                        <label for="rbMuslim">Muslim</label>
+                        &nbsp; &nbsp; &nbsp;
+                        @Html.RadioButtonFor(m => m.Religion, "Non-Muslim", new { @style = "margin: -8px 0 0 !important" })&nbsp;
+                        <label for="rbNonMuslim">Non-Muslim</label>
+                    </div>
+                </div>
+                <div class="right">
+                    <div class="inner-left">
+                        Marital Status &nbsp; <i class="la la-caret-right gray"></i> &nbsp;
+                    </div>
+                    <div class="inner-right">
+                        <select id="IsMarried" class="input-borderless">
+                            <option value="N/A">N/A</option>
+                            <option value="Unmarried">Unmarried</option>
+                            <option value="Married">Married</option>
+                            <option value="Divorced">Divorced</option>
+                            <option value="Widowed">Widowed</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="inner-col">
+                <div class="left">
+                    <div class="inner-left">
+                        Blood Group &nbsp; <i class="la la-caret-right gray"></i> &nbsp;
+                    </div>
+                    <div class="inner-right">
+                        <select id="Blood_Group" class="input-borderless">
+                            <option value="N/A">N/A</option>
+                            <option value="O+">O+</option>
+                            <option value="O-">O-</option>
+                            <option value="A+">A+</option>
+                            <option value="A-">A-</option>
+                            <option value="B+">B+</option>
+                            <option value="B-">B-</option>
+                            <option value="AB+">AB+</option>
+                            <option value="AB-">AB-</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="right">
+                    <div class="inner-left">
+                        Locality &nbsp; <i class="la la-caret-right gray"></i> &nbsp;
+                    </div>
+                    <div class="inner-right">
+                        @Html.DropDownListFor(m => m.LocalityID, new SelectList(Data.BLL.LocalityFunctions.lstLocality(), "ID", "LocalityName"), new { @class = "input-borderless", @id = "loc" })
+                    </div>
+                </div>
+            </div>
+
+            <div class="inner-col">
+                <div class="full">
+                    <div class="left-15">
+                        Address* &nbsp; <i class="la la-caret-right gray"></i> &nbsp;
+                    </div>
+                    <div class="right-85">
+                        @Html.TextBoxFor(m => m.Permanent_Address, "", new { @class = "input-borderless" })
+                    </div>
+                </div>
+            </div>
+
+            <div class="inner-col">
+                <div class="left">
+                    <div class="inner-left">
+                        Home Phone &nbsp; <i class="la la-caret-right gray"></i> &nbsp;
+                    </div>
+                    <div class="inner-right">
+                        @Html.TextBoxFor(m => m.HomePhone, "", new { @class = "input-borderless" })
+                    </div>
+                </div>
+                <div class="right">
+                    <div class="inner-left">
+                        CNIC &nbsp; <i class="la la-caret-right gray"></i> &nbsp;
+                    </div>
+                    <div class="inner-right">
+                        @Html.TextBoxFor(m => m.CNIC, "", new { @class = "input-borderless" })
+                    </div>
+                </div>
+            </div>
+
+            <div class="inner-col">
+                <div class="left">
+                    <div class="inner-left">
+                        Mobile 1* &nbsp; <i class="la la-caret-right gray"></i> &nbsp;
+                    </div>
+                    <div class="inner-right">
+                        @Html.TextBoxFor(m => m.Contact1, "", new { @class = "input-borderless" })
+                    </div>
+                </div>
+                <div class="right">
+                    <div class="inner-left">
+                        Mobile 2 &nbsp; <i class="la la-caret-right gray"></i> &nbsp;
+                    </div>
+                    <div class="inner-right">
+                        @Html.TextBoxFor(m => m.Contact2, "", new { @class = "input-borderless" })
+                    </div>
+                </div>
+            </div>
+
+            <div class="inner-col">
+                <div class="left">
+                    <div class="inner-left">
+                        Mobile 3 &nbsp; <i class="la la-caret-right gray"></i> &nbsp;
+                    </div>
+                    <div class="inner-right">
+                        @Html.TextBoxFor(m => m.Contact3, "", new { @class = "input-borderless" })
+                    </div>
+                </div>
+                <div class="right">
+                    <div class="inner-left">
+                        Email &nbsp; <i class="la la-caret-right gray"></i> &nbsp;
+                    </div>
+                    <div class="inner-right">
+                        @Html.TextBoxFor(m => m.Email, "", new { @class = "input-borderless" })
+                    </div>
+                </div>
+            </div>
+
+            <div class="inner-col">
+                <div class="left">
+                    <div class="inner-left">
+                        Identity Mark &nbsp; <i class="la la-caret-right gray"></i> &nbsp;
+                    </div>
+                    <div class="inner-right">
+                        @Html.TextBoxFor(m => m.IdentityMark, "", new { @class = "input-borderless" })
+                    </div>
+                </div>
+                <div class="right">
+                    <div class="inner-left">
+                        Referred by &nbsp; <i class="la la-caret-right gray"></i> &nbsp;
+                    </div>
+                    <div class="inner-right">
+                        @Html.TextBoxFor(m => m.Refered_By, "", new { @class = "input-borderless" })
+                    </div>
+                </div>
+            </div>
+
+            @*UPPER SECTION END*@
+
+            <div class="heading-bar">
+                Academic Information
+            </div>
+
+            <div class="padded">
+                <table class="table-bordered">
+                    <thead class="bg-soft-info">
+                        <tr>
+                            <th style="width:20%">Degree</th>
+                            <th style="width:20%">Board</th>
+                            <th style="width:10%">Grade</th>
+                            <th style="width:10%">Marks</th>
+                            <th style="width:10%">Year</th>
+                            <th style="width:30%">Remarks</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>
+                                @Html.DropDownListFor(m => m.Qualification.matric_type, new SelectList(Teachers.lstDegreeByType("Matric"), "Degree", "Degree"), "--Matric--", new { @class = "input-borderless", @id = "matric_type", @onchange = "clear_matric()" })
+                            </td>
+                            <td>
+                                @Html.DropDownListFor(m => m.Qualification.matric_board, new SelectList(Teachers.lstInstitute("Board"), "Institute", "Institute"), "--Board--", new { @class = "input-borderless" })
+                            </td>
+                            <td>@Html.TextBoxFor(m => m.Qualification.matric_grade, "", new { @class = "input-borderless" })</td>
+                            <td>@Html.TextBoxFor(m => m.Qualification.matric_marks, "", new { @class = "input-borderless" })</td>
+                            <td>@Html.TextBoxFor(m => m.Qualification.matric_year, "", new { @class = "input-borderless" })</td>
+                            <td>@Html.TextBoxFor(m => m.Qualification.matric_remarks, "", new { @class = "input-borderless" })</td>
+                        </tr>
+
+                        <tr>
+                            <td>
+                                @Html.DropDownListFor(m => m.Qualification.inter_type, new SelectList(Teachers.lstDegreeByType("Intermediate"), "Degree", "Degree"), "--Intermediate--", new { @class = "input-borderless", @id = "inter_type" })
+                            </td>
+                            <td>
+                                @Html.DropDownListFor(m => m.Qualification.inter_institiute, new SelectList(Teachers.lstInstitute("Board"), "Institute", "Institute"), "--Board--", new { @class = "input-borderless", @id = "inter_institiute" })
+                            </td>
+                            <td>@Html.TextBoxFor(m => m.Qualification.inter_grade, "", new { @class = "input-borderless" })</td>
+                            <td>@Html.TextBoxFor(m => m.Qualification.inter_marks, "", new { @class = "input-borderless" })</td>
+                            <td>@Html.TextBoxFor(m => m.Qualification.inter_year, "", new { @class = "input-borderless" })</td>
+                            <td>@Html.TextBoxFor(m => m.Qualification.inter_remarks, "", new { @class = "input-borderless" })</td>
+                        </tr>
+
+                        <tr>
+                            <td>
+                                @Html.DropDownListFor(m => m.Qualification.bachelor_type, new SelectList(Teachers.lstDegreeByType("Bachelor"), "Degree", "Degree"), "--Bachelor--", new { @class = "input-borderless", @id = "bachelor_type" })
+                            </td>
+                            <td>
+                                @Html.DropDownListFor(m => m.Qualification.bachelor_institute, new SelectList(Teachers.lstInstitute("University"), "Institute", "Institute"), "--University--", new { @class = "input-borderless", @id = "bachelor_institute" })
+                            </td>
+                            <td>@Html.TextBoxFor(m => m.Qualification.bachelor_grade, "", new { @class = "input-borderless" })</td>
+                            <td>@Html.TextBoxFor(m => m.Qualification.bachelor_marks, "", new { @class = "input-borderless" })</td>
+                            <td>@Html.TextBoxFor(m => m.Qualification.bachelor_year, "", new { @class = "input-borderless" })</td>
+                            <td>@Html.TextBoxFor(m => m.Qualification.bachlor_remarks, "", new { @class = "input-borderless" })</td>
+                        </tr>
+
+                        <tr>
+                            <td>
+                                @Html.DropDownListFor(m => m.Qualification.master_type, new SelectList(Teachers.lstDegreeByType("Master"), "Degree", "Degree"), "--Master--", new { @class = "input-borderless", @id = "master_type" })
+                            </td>
+                            <td>
+                                @Html.DropDownListFor(m => m.Qualification.master_institute, new SelectList(Teachers.lstInstitute("University"), "Institute", "Institute"), "--University--", new { @class = "input-borderless", @id = "master_institute" })
+                            </td>
+                            <td>@Html.TextBoxFor(m => m.Qualification.master_grade, "", new { @class = "input-borderless" })</td>
+                            <td>@Html.TextBoxFor(m => m.Qualification.mater_marks, "", new { @class = "input-borderless" })</td>
+                            <td>@Html.TextBoxFor(m => m.Qualification.master_year, "", new { @class = "input-borderless" })</td>
+                            <td>@Html.TextBoxFor(m => m.Qualification.master_remarks, "", new { @class = "input-borderless" })</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+
+            @*OFFICE USE SECTION START*@
+
+            <div class="heading-bar">
+                FOR OFFICE USE
+            </div>
+
+            <div class="inner-col">
+                <div class="left">
+                    <div class="inner-left">
+                        Joining Date* &nbsp; <i class="la la-caret-right gray"></i> &nbsp;
+                    </div>
+                    <div class="inner-right">
+                        @Html.TextBoxFor(m => m.Joining_Date, "", new { @class = "input-borderless" })
+                    </div>
+                </div>
+                <div class="right">
+                    <div class="inner-left">
+                        Salary* &nbsp; <i class="la la-caret-right gray"></i> &nbsp;
+                    </div>
+                    <div class="inner-right">
+                        @Html.TextBoxFor(m => m.Salary, "", new { @class = "input-borderless" })
+                    </div>
+                </div>
+            </div>
+
+            <div class="inner-col">
+                <div class="left">
+                    <div class="inner-left">
+                        Designation &nbsp; <i class="la la-caret-right gray"></i> &nbsp;
+                    </div>
+                    <div class="inner-right">
+                        @Html.DropDownListFor(m => m.DesignationID, new SelectList(Teachers.lstDesignation(), "ID", "Designation"), new { @class = "input-borderless" })
+                    </div>
+                </div>
+                <div class="right">
+                    <div class="inner-left">
+                        Level &nbsp; <i class="la la-caret-right gray"></i> &nbsp;
+                    </div>
+                    <div class="inner-right">
+                        @Html.RadioButtonFor(m => m.IsTrained, true, new { @id = "rbTrained", @style = "margin: -8px 0 0 !important", @checked = "checked" })&nbsp;
+                        <label for="rbTrained">Trained</label>
+                        &nbsp; &nbsp; &nbsp;
+                        @Html.RadioButtonFor(m => m.IsTrained, false, new { @id = "rbTrained", @style = "margin: -8px 0 0 !important" })&nbsp;
+                        <label for="rbTrained">UnTrained</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="inner-col">
+                <div class="left">
+                    <div class="inner-left">
+                        Verfied By &nbsp; <i class="la la-caret-right gray"></i> &nbsp;
+                    </div>
+                    <div class="inner-right">
+                        @Html.TextBoxFor(m => m.VerifiedBy, "", new { @class = "input-borderless" })
+                    </div>
+                </div>
+                <div class="right">
+                    <div class="inner-left">
+                        Approved By &nbsp; <i class="la la-caret-right gray"></i> &nbsp;
+                    </div>
+                    <div class="inner-right">
+                        @Html.TextBoxFor(m => m.ApprovedBy, "", new { @class = "input-borderless" })
+                    </div>
+                </div>
+            </div>
+
+            <div class="inner-col">
+                <div class="text-center top-10">
+                    <input type="button" id="btnSubmit" class="btn btn-primary" value="Save" onclick="SubmitByAjax()" />
+
+                </div>
+            </div>
+        </div>
+
+    }
+</body>
+
+<script>
+
+    // SUBMIT
+
+    function SubmitByAjax() {
+
+        if ($("#TeacherName").val() == '' || $("#FatherName").val() == 0 || $("#DoB").val() == '' ||
+            $("#Permanent_Address").val() == '' || $("#HomePhone").val() == 0 || $("#Contact1").val() == '' ||
+            $("#Joining_Date").val() == '' || $("#Salary").val() == '') {
+            $.alert("Fill all required fileds");
+        }
+        else {
+            $("#btnSubmit").attr('disabled', true);
+
+            var data = new FormData();
+
+            data.append("DesignationID", $("#DesignationID").val());
+            data.append("TeacherName", $("#TeacherName").val());
+            data.append("FatherName", $("#FatherName").val());
+            data.append("DoB", $("#DoB").val());
+            data.append("Email", $("#Email").val());
+            data.append("Gender", $('[name="Gender"]:checked').val());
+            data.append("IdentityMark", $("#IdentityMark").val());
+            data.append("Religion", $("#Religion").val());
+            data.append("Blood_Group", $("#Blood_Group").val());
+            data.append("Joining_Date", $("#Joining_Date").val());
+            data.append("LocalityID", $("#loc").val());
+            data.append("IsMarried", $("#IsMarried").val());
+            data.append("Permanent_Address", $("#Permanent_Address").val());
+            data.append("CNIC", $("#CNIC").val());
+            data.append("HomePhone", $("#HomePhone").val());
+            data.append("Contact1", $("#Contact1").val());
+            data.append("Contact2", $("#Contact2").val());
+            data.append("Contact3", $("#Contact3").val());
+            data.append("IsTrained", $("#IsTrained").val());
+            data.append("Salary", $("#Salary").val());
+            data.append("Refered_By", $("#Refered_By").val());
+            data.append("HomePhone", $("#HomePhone").val());
+            data.append("ApprovedBy", $("#ApprovedBy").val());
+            data.append("VerifiedBy", $("#VerifiedBy").val());
+
+            data.append("Qualification.matric_type", $("#matric_type").val());
+            data.append("Qualification.matric_board", $("#Qualification_matric_board").val());
+            data.append("Qualification.matric_grade", $("#Qualification_matric_grade").val());
+            data.append("Qualification.matric_marks", $("#Qualification_matric_marks").val());
+            data.append("Qualification.matric_year", $("#Qualification_matric_year").val());
+            data.append("Qualification.matric_remarks", $("#Qualification_matric_remarks").val());
+
+            data.append("Qualification.inter_type", $("#inter_type").val());
+            data.append("Qualification.inter_institute", $("#inter_institiute").val());
+            data.append("Qualification.inter_grade", $("#Qualification_inter_grade").val());
+            data.append("Qualification.inter_marks", $("#Qualification_inter_marks").val());
+            data.append("Qualification.inter_year", $("#Qualification_inter_year").val());
+            data.append("Qualification.inter_remarks", $("#Qualification_inter_remarks").val());
+
+            data.append("Qualification.bachelor_type", $("#bachelor_type").val());
+            data.append("Qualification.bachelor_institute", $("#bachelor_institute").val());
+            data.append("Qualification.bachelor_grade", $("#Qualification_bachelor_grade").val());
+            data.append("Qualification.bachelor_marks", $("#Qualification_bachelor_marks").val());
+            data.append("Qualification.bachelor_year", $("#Qualification_bachelor_year").val());
+            data.append("Qualification.bachlor_remarks", $("#Qualification_bachlor_remarks").val());
+
+            data.append("Qualification.master_type", $("#master_type").val());
+            data.append("Qualification.master_institute", $("#master_institute").val());
+            data.append("Qualification.master_grade", $("#Qualification_master_grade").val());
+            data.append("Qualification.mater_marks", $("#Qualification_mater_marks").val());
+            data.append("Qualification.master_year", $("#Qualification_master_year").val());
+            data.append("Qualification.master_remarks", $("#Qualification_master_remarks").val());
+
+
+            $.ajax({
+                cache: false,
+                type: 'POST',
+                processData: false,
+                contentType: false,
+                url: '/Staff/Data/New',
+                data: data,
+                success: function (result) {
+                    $("#btnSubmit").removeAttr('disabled');
+                    ResetForm();
+                    $.alert(result.msg);
+                },
+                error: function (xhr, ajaxOptions, thrownError) {
+                    $("body").html(xhr.responseText);
+                }
+            });
+        }
+    }
+
+    function ResetForm() {
+        $("#DesignationID").val(1);
+        $("#TeacherName").val('');
+        $("#FatherName").val('');
+        $("#DoB").val('');
+        $("#Email").val('');
+        $("#IdentityMark").val('');
+        $("#Blood_Group").val('');
+        $("#Joining_Date").val('');
+        $("#Permanent_Address").val('');
+        $("#CNIC").val('');
+        $("#HomePhone").val('');
+        $("#Contact1").val('');
+        $("#Contact2").val('');
+        $("#Contact3").val('');
+        $("#IsTrained").val('');
+        $("#Salary").val('');
+        $("#Refered_By").val('');
+        $("#HomePhone").val('');
+        $("#ApprovedBy").val('');
+        $("#VerifiedBy").val('');
+
+
+        $("#matric_type").val('--Matric--');
+        $("#Qualification_matric_board").val('--Board--');
+        $("#Qualification_matric_grade").val('');
+        $("#Qualification_matric_marks").val('');
+        $("#Qualification_matric_year").val('');
+        $("#Qualification_matric_remarks").val('');
+
+        $("#inter_type").val('--Intermediate--');
+        $("#inter_institiute").val('--Board--');
+        $("#Qualification_inter_grade").val('');
+        $("#Qualification_inter_marks").val('');
+        $("#Qualification_inter_year").val('');
+        $("#Qualification_inter_remarks").val('');
+
+        $("#bachelor_type").val('--Bacehlor--');
+        $("#bachelor_institute").val('--University--');
+        $("#Qualification_bachelor_grade").val('');
+        $("#Qualification_bachelor_marks").val('');
+        $("#Qualification_bachelor_year").val('');
+        $("#Qualification_bachlor_remarks").val('');
+
+        $("#master_type").val('--Master--');
+        $("#master_institute").val('--University--');
+        $("#Qualification_master_grade").val('');
+        $("#Qualification_mater_marks").val('');
+        $("#Qualification_master_year").val('');
+        $("#Qualification_master_remarks").val('');
+    }
+
+</script>
+
+<style>
+
+    .heading-bar {
+        background-color: #176da5;
+        font-size: 14px;
+        color: white;
+        font-weight: bold;
+        padding: 6px;
+        padding-left: 50px;
+        text-transform: uppercase;
+    }
+
+    .inner-container {
+        background-color: rgba(239, 239, 239, 0.56);
+        padding: 10px;
+        border: 5px solid #176da5;
+    }
+
+    .inner-col {
+        border-top: 1px solid #176da5;
+        /*border-bottom: 1px solid blue;*/
+        height: 42px;
+    }
+
+    .input-borderless {
+        border: none;
+        width: 100%;
+        color: #176da5;
+        font-weight: bold;
+        padding-left: 10px;
+        height: 24px;
+    }
+
+        .input-borderless:focus {
+            /*border: 1px solid #166ca4;*/
+            border-radius: 0.2em;
+            box-shadow: 3px 3px rgba(23, 109, 165, 0.76);
+        }
+
+    .left {
+        width: 50%;
+        float: left;
+        padding: 6px;
+        padding-left: 20px;
+        font-size: 13px;
+        font-family: Arial;
+    }
+
+    .right {
+        width: 50%;
+        float: right;
+        padding: 6px;
+        padding-left: 20px;
+        font-size: 13px;
+        font-family: Arial;
+    }
+
+    .full {
+        width: 100%;
+        padding: 5px;
+        padding-left: 20px;
+        font-size: 13px;
+        font-family: Arial;
+    }
+
+    .inner-left {
+        width: 30%;
+        float: left;
+        padding-top: 8px;
+    }
+
+    .inner-right {
+        width: 70%;
+        float: right;
+        padding-top: 3px;
+    }
+
+    .gray {
+        color: gray;
+    }
+
+    .left-15 {
+        width: 14%;
+        float: left;
+        padding-top: 5px;
+    }
+
+    .right-85 {
+        width: 86%;
+        float: right;
+    }
+
+    .div-33 {
+        width: 33.33%;
+        float: left;
+        padding-left: 20px;
+        font-size: 13px;
+        font-family: Arial;
+    }
+
+    .top-10 {
+        margin-top: 0.5em;
+    }
+
+    .hide {
+        display: none;
+    }
+
+    .i {
+        color: #176da5;
+    }
+
+    table tbody tr td .input-borderless {
+        width: 98% !important;
+        font-size: small;
+        padding-left: 0px;
+    }
+
+    table thead tr th {
+        text-align: center;
+        border: 3px solid #176da5;
+    }
+
+    table tbody tr td {
+        text-align: center;
+        border: 3px solid #176da5;
+        padding: 3px;
+    }
+
+    .jconfirm-box-container {
+        margin-left: 0px !important;
+    }
+</style>

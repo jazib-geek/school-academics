@@ -1,0 +1,209 @@
+﻿@using Data.Helper
+@model Data.DAL.tblDesignation
+
+
+<div class="container mt-3">
+    <h4 class="text-center bg-soft-info">
+        EDIT DESIGNATION
+    </h4>
+    <div class="form-group mb-3">
+        <label for="e_Designation">Designation Name:</label>
+        <input type="text" class="form-control" id="e_Designation" value="@Model.Designation" placeholder="Enter designation name">
+    </div>
+
+    <div class="form-group mb-3">
+        <label>Default Check-in / Leaving Time:</label>
+        <div class="d-flex gap-2">
+            <select id="eHours" class="form-control w-auto">
+                @for (int i = 0; i <= 23; i++)
+                {
+                    <option value="@i">@i.ToString("D2")</option>
+                }
+            </select>
+            <select id="eMinutes" class="form-control w-auto">
+                @for (int i = 0; i <= 59; i++)
+                {
+                    <option value="@i">@i.ToString("D2")</option>
+                }
+            </select>
+            <select id="eLeavingHours" class="form-control w-auto">
+                @for (int i = 0; i <= 23; i++)
+                {
+                    <option value="@i">@i.ToString("D2")</option>
+                }
+            </select>
+            <select id="eLeavingMinutes" class="form-control w-auto">
+                @for (int i = 0; i <= 59; i++)
+                {
+                    <option value="@i">@i.ToString("D2")</option>
+                }
+            </select>
+        </div>
+    </div>
+
+    <div class="form-group mb-3">
+        <label>Range Wise Timings:</label>
+        <table class="table table-bordered table-sm mb-2 timing-table">
+            <colgroup>
+                <col style="width:42%" />
+                <col style="width:22%" />
+                <col style="width:22%" />
+                <col style="width:14%" />
+            </colgroup>
+            <thead>
+                <tr>
+                    <th>Effective From</th>
+                    <th>Check In</th>
+                    <th>Check Out</th>
+                    <th style="width:90px">Action</th>
+                </tr>
+            </thead>
+            <tbody id="timingRows"></tbody>
+        </table>
+        <button type="button" class="btn btn-sm btn-outline-info" onclick="AddTimingRow(null, true)">Add Range</button>
+    </div>
+
+    <button type="button" class="btn btn-info" onclick="Update()">Update</button>
+</div>
+
+
+@if (Model.Designation == Constants.SpecialDesignations.Coordinator || Model.Designation == Constants.SpecialDesignations.Teacher)
+{
+    <script>
+        $('#e_Designation').attr('disabled', true);
+    </script>
+}
+
+<script>
+    var timingRanges = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(ViewBag.TimingRanges ?? new object[0]));
+
+    $("#eHours").val('@(Model.MustCheckinTime?.Hour ?? 0)');
+    $("#eMinutes").val('@(Model.MustCheckinTime?.Minute ?? 0)');
+    $("#eLeavingHours").val('@(Model.LeavingTime?.Hour ?? 0)');
+    $("#eLeavingMinutes").val('@(Model.LeavingTime?.Minute ?? 0)');
+
+    function numberOptions(max, selected) {
+        var html = '';
+        for (var i = 0; i <= max; i++) {
+            var padded = i < 10 ? ('0' + i) : i.toString();
+            html += '<option value="' + i + '"' + (i === selected ? ' selected' : '') + '>' + padded + '</option>';
+        }
+        return html;
+    }
+
+    function AddTimingRow(data, insertAtTop) {
+        var item = data || {};
+        var effectiveDate = item.EffectiveFromDate ? item.EffectiveFromDate.toString().substring(0, 10) : new Date().toISOString().substring(0, 10);
+        var checkInHours = typeof item.CheckInHours === 'number' ? item.CheckInHours : parseInt($("#eHours").val() || "0");
+        var checkInMinutes = typeof item.CheckInMinutes === 'number' ? item.CheckInMinutes : parseInt($("#eMinutes").val() || "0");
+        var checkOutHours = typeof item.CheckOutHours === 'number' ? item.CheckOutHours : parseInt($("#eLeavingHours").val() || "0");
+        var checkOutMinutes = typeof item.CheckOutMinutes === 'number' ? item.CheckOutMinutes : parseInt($("#eLeavingMinutes").val() || "0");
+
+        var rowHtml =
+            '<tr>' +
+            '<td><input type="date" class="form-control timing-effective" value="' + effectiveDate + '"/></td>' +
+            '<td>' +
+            '<div class="timing-pair">' +
+            '<select class="form-control timing-ci-h timing-select">' + numberOptions(23, checkInHours) + '</select>' +
+            '<select class="form-control timing-ci-m timing-select">' + numberOptions(59, checkInMinutes) + '</select>' +
+            '</div>' +
+            '</td>' +
+            '<td>' +
+            '<div class="timing-pair">' +
+            '<select class="form-control timing-co-h timing-select">' + numberOptions(23, checkOutHours) + '</select>' +
+            '<select class="form-control timing-co-m timing-select">' + numberOptions(59, checkOutMinutes) + '</select>' +
+            '</div>' +
+            '</td>' +
+            '<td class="text-center"><button type="button" class="btn btn-sm btn-danger" onclick="$(this).closest(\'tr\').remove()">Remove</button></td>' +
+            '</tr>';
+
+        if (insertAtTop) {
+            $("#timingRows").prepend(rowHtml);
+        } else {
+            $("#timingRows").append(rowHtml);
+        }
+    }
+
+    function getTimingRanges() {
+        var rows = [];
+        $("#timingRows tr").each(function () {
+            var $row = $(this);
+            var effectiveFromDate = $row.find(".timing-effective").val();
+            if (!effectiveFromDate) {
+                return;
+            }
+
+            rows.push({
+                EffectiveFromDate: effectiveFromDate,
+                CheckInHours: parseInt($row.find(".timing-ci-h").val() || "0"),
+                CheckInMinutes: parseInt($row.find(".timing-ci-m").val() || "0"),
+                CheckOutHours: parseInt($row.find(".timing-co-h").val() || "0"),
+                CheckOutMinutes: parseInt($row.find(".timing-co-m").val() || "0")
+            });
+        });
+        return rows;
+    }
+
+    if (timingRanges && timingRanges.length > 0) {
+        for (var i = 0; i < timingRanges.length; i++) {
+            AddTimingRow(timingRanges[i], false);
+        }
+    } else {
+        AddTimingRow(null, false);
+    }
+
+    function Update() {
+           var data = new FormData();
+            var ranges = getTimingRanges();
+
+            data.append("ID", @Model.ID);
+            data.append("Designation", $("#e_Designation").val());
+            data.append("Minutes", $("#eMinutes").val());
+            data.append("Hours", $("#eHours").val());
+            data.append("LeavingHours", $("#eLeavingHours").val());
+            data.append("LeavingMinutes", $("#eLeavingMinutes").val());
+            data.append("TimingRangesJson", JSON.stringify(ranges));
+            data.append("EffectiveFromDate", ranges.length > 0 ? ranges[0].EffectiveFromDate : "");
+
+            $.ajax({
+                cache: false,
+                type: 'POST',
+                processData: false,
+                contentType: false,
+                url: '/Employee/Designation/Update',
+                data: data,
+                success: function (result) {
+                    window.location.href = '/Employee/Designation/Index';
+                },
+                error: function (xhr, ajaxOptions, thrownError) {
+                    $("body").html(xhr.responseText);
+                }
+            });
+    }
+</script>
+
+<style>
+    .timing-table {
+        table-layout: fixed;
+        width: 100%;
+    }
+
+    #timingRows .timing-pair {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+    }
+
+    #timingRows .timing-select {
+        width: 60px;
+        min-width: 60px;
+        padding-left: 4px;
+        padding-right: 4px;
+        margin-right: 4px;
+    }
+
+    #timingRows .timing-effective {
+        width: 100%;
+        min-width: 140px;
+    }
+</style>

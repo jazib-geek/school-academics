@@ -1,0 +1,49 @@
+﻿
+@model List<Data.DAL.tblAccountSubGroup>
+@using Data.DAL
+@{ dbSchoolEntities db = new dbSchoolEntities(); }
+
+@foreach (var item in Model.OrderBy(x => x.MasterID))
+{
+    <tr>
+        <td>@db.tblAccountMasters.Find(item.MasterID).Title</td>
+        <td>@db.tblAccountGroups.Where(x => x.GroupID == item.GroupID).First().GroupTitle</td>
+        <td>@item.SubGroupID</td>
+        <td>
+            <span ondblclick="EditState(@item.ID)" id="lblTitle-@item.ID">@item.SubGroupName</span>
+            <input type="text" id="txtTitle-@item.ID" value="@item.SubGroupName" class="hide" onkeypress="EditSubGroup(event,@item.ID)" style="max-width:90%" />
+        </td>    </tr>
+}
+
+    <script>
+    function EditSubGroup(e, id)
+    {
+        if (e.keyCode == 13) {
+            if ($("#txtTitle-" + id).val() != '') {
+                EditState(id);
+
+                $.ajax({
+                    cache: false,
+                    type: 'POST',
+                    url: '/Accounts/Settings/EditSubGroupName',
+                    data: { ID: id, Title: $("#txtTitle-" + id).val() },
+                    datatype: 'Json',
+                    success: function (result) {
+                        GetSubGroups();
+                    },
+                    error: function (xhr, ajaxOptions, thrownError) {
+                        alert('error');
+                    }
+                });
+            }
+        }
+    }
+
+    function EditState(id)
+    {
+        $("#txtTitle-" + id).removeClass('hide');
+        $("#lblTitle-" + id).addClass('hide');
+    }
+    </script>
+
+

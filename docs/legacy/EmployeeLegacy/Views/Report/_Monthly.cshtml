@@ -1,0 +1,56 @@
+﻿@model  List<Data.Viewmodel.EmployeeAttendanceViewModel>
+@{
+    int m = ViewBag.m;
+    int y = ViewBag.y;
+    int daysInMonth = DateTime.DaysInMonth(y, m);
+}
+
+<table class="table table-bordered">
+    <thead class="bg-soft-info">
+        <tr>
+            <th>Employee</th>
+            @for (int day = 1; day <= daysInMonth; day++)
+            {
+                var dayOfWeek = new DateTime(y, m, day).ToString("ddd");
+                if (dayOfWeek != "Sun")
+                {
+                    <th>@day</th>
+                }
+            }
+        </tr>
+        <tr>
+            <th></th>
+            @for (int day = 1; day <= daysInMonth; day++)
+            {
+                var dayOfWeek = new DateTime(y, m, day).ToString("ddd");
+                if (dayOfWeek != "Sun")
+                {
+                    <th>@dayOfWeek</th>
+                }
+            }
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var record in Model)
+        {
+            <tr>
+                <td class="text-left">
+                    <a href="/Employee/Attendance/Emp/@record.ID?m=@m&y=@y">@record.EmployeeName</a>
+                </td>
+                @for (int day = 1; day <= daysInMonth; day++)
+                {
+                    var date = new DateTime(y, m, day);
+                    bool isSunday = date.DayOfWeek == DayOfWeek.Sunday;
+                    var cellValue = record.Attendance.ContainsKey(day) ? record.Attendance[day] : "A";
+
+                    if (!isSunday)
+                    {
+                        var cellClass = cellValue == "A" ? "text-bold" : "text-success text-bold";
+                        <td class="status @cellClass">@cellValue</td>
+                    }
+                }
+            </tr>
+        }
+    </tbody>
+
+</table>

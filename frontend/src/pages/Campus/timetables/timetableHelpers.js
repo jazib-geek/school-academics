@@ -261,6 +261,49 @@ export const classSlotKey = (sectionId, periodNumber, dayOfWeek = 0) =>
 export const teacherSlotKey = (employeeId, periodNumber, dayOfWeek = 0) =>
   `${Number(employeeId)}:${slotKey(periodNumber, dayOfWeek)}`
 
+export const normalizeLineIndex = (slot) => {
+  const raw = getId(slot, 'lineIndex', 'LineIndex')
+  return raw === 1 ? 1 : 0
+}
+
+export const sortCellSlots = (cellSlots = []) =>
+  [...cellSlots].sort((a, b) => normalizeLineIndex(a) - normalizeLineIndex(b))
+
+/** Short label from subject master row (campus API uses SubjectShortName). */
+export const subjectShortLabelFromMaster = (subject) =>
+  getText(subject, 'subjectShortName', 'SubjectShortName') ||
+  getText(subject, 'shortName', 'ShortName') ||
+  ''
+
+export const slotSubjectLabel = (slot) =>
+  getText(slot, 'subjectShortName', 'SubjectShortName') ||
+  getText(slot, 'shortName', 'ShortName') ||
+  getText(slot, 'subjectName', 'SubjectName') ||
+  ''
+
+/** First name only — used after "/" in split cells to save space. */
+export const teacherCompactName = (name) => {
+  const full = String(name || '').trim()
+  if (!full) return 'Teacher'
+  return full.split(/\s+/)[0] || full
+}
+
+export const formatSplitCellLines = (cellSlots = []) => {
+  const lines = sortCellSlots(cellSlots).filter(Boolean)
+  if (lines.length === 0) return { subjectLine: '', teacherLine: '' }
+  const subjects = lines.map(slotSubjectLabel).filter(Boolean)
+  const teachers = lines.map((s, index) => {
+    const name = getText(s, 'employeeName', 'EmployeeName')
+    const gender = getText(s, 'gender', 'Gender')
+    if (index === 0) return teacherDisplayName(name, gender)
+    return teacherCompactName(name)
+  })
+  return {
+    subjectLine: subjects.join('/'),
+    teacherLine: teachers.join('/'),
+  }
+}
+
 export const buildSlotMaps = (slots = []) => {
   const byClass = new Map()
   const byTeacher = new Map()
@@ -269,11 +312,20 @@ export const buildSlotMaps = (slots = []) => {
     const employeeId = getId(slot, 'employeeID', 'EmployeeID')
     const periodNumber = getId(slot, 'periodNumber', 'PeriodNumber')
     const dayOfWeek = getId(slot, 'dayOfWeek', 'DayOfWeek')
-    byClass.set(classSlotKey(sectionId, periodNumber, dayOfWeek), slot)
+    const classKey = classSlotKey(sectionId, periodNumber, dayOfWeek)
+    const bucket = byClass.get(classKey)
+    if (bucket) bucket.push(slot)
+    else byClass.set(classKey, [slot])
     byTeacher.set(teacherSlotKey(employeeId, periodNumber, dayOfWeek), slot)
+  })
+  byClass.forEach((arr, key) => {
+    byClass.set(key, sortCellSlots(arr))
   })
   return { byClass, byTeacher }
 }
+
+export const getClassCellSlots = (byClass, sectionId, periodNumber, dayOfWeek = 0) =>
+  byClass.get(classSlotKey(sectionId, periodNumber, dayOfWeek)) || []
 
 export const slotsToPayload = (slots) =>
   slots.map((slot) => ({
@@ -283,6 +335,7 @@ export const slotsToPayload = (slots) =>
     employeeID: getId(slot, 'employeeID', 'EmployeeID'),
     periodNumber: getId(slot, 'periodNumber', 'PeriodNumber'),
     dayOfWeek: getId(slot, 'dayOfWeek', 'DayOfWeek') || 0,
+    lineIndex: normalizeLineIndex(slot),
   }))
 
 export const printTitle = (detail) => {

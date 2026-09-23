@@ -1,0 +1,11 @@
+﻿@model List<Data.DAL.tblTempStaff>
+@using Data.DAL
+
+@{ dbSchoolEntities db = new dbSchoolEntities(); }
+
+@foreach (var item in Model)
+{
+    <span class="label label-info" style="margin-right:12px" ondblclick="DeleteRow(@item.ID)" title="Double click to remove">
+        @db.tblSubjectMasters.Find(item.SubjectID).SubjectName
+    </span>
+}

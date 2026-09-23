@@ -1,0 +1,129 @@
+﻿@model List<Data.DAL.v_StudentList>
+@{
+    Layout = null;
+    int? ExamTypeID = ViewBag.ExamTypeID;
+}
+
+@foreach (var item in Model)
+{
+    @Html.Partial("_ResultCardAdvanced", Data.BLL.Exam.GetResultCard(item.Reg_Id, ExamTypeID), new ViewDataDictionary() { { "ExamTypeID", ExamTypeID } })
+}
+
+    <style>
+
+        @@font-face {
+            font-family: 'Amienne-Bold';
+            src: url('../../AMIENNE-BOLD.TTF') format('truetype'), /* Chrome 6+, Firefox 3.6+, IE 9+, Safari 5.1+ */
+            /*url('../../AMIENNE-BOLD.TTF') format('truetype');*/ /* Chrome 4+, Firefox 3.5, Opera 10+, Safari 3—5 */
+        }
+
+        @@media only print {
+            .main-container {
+                width: 100% !important;
+                margin: 0 auto !important;
+            }
+
+            .text-center {
+                text-align: center;
+            }
+
+            .left {
+                width: 46%;
+                float: left;
+            }
+
+            .right {
+                width: 50%;
+                float: right;
+                padding-top: 17%;
+            }
+            /*.table thead > tr > th, .table tbody > tr > th, .table tfoot > tr > th, .table thead > tr > td, .table tbody > tr, .table tfoot > tr {
+            padding: 4px !important;
+            border: 2px solid black !important;
+        }*/
+            /*.table thead > tr , .table tbody > tr , .table tfoot > tr , .table thead > tr , .table tbody > tr > td, .table tfoot > tr > td {
+            border: 2px solid black !important;
+        }*/
+            strong {
+                line-height: 3px !important;
+            }
+
+            body {
+                font-family: Arial !important;
+            }
+
+            .custom-table {
+                width: 100%;
+            }
+
+                .custom-table tr td {
+                    padding: 8px;
+                    font-weight: bold;
+                }
+
+            .left-td {
+                width: 35%;
+            }
+
+            .remarks {
+                font-style: italic;
+                text-decoration: underline;
+                font-size: 17px;
+                font-weight: normal !important;
+            }
+
+            .note {
+                font-size: 11px !important;
+                font-weight: normal !important;
+                padding-top: 0px !important;
+            }
+
+            #top-table {
+                width: 100%;
+                margin-bottom: 5px;
+            }
+
+                #top-table tr .top-left-td {
+                    width: 40%;
+                    font-size: medium;
+                    font-weight: 500;
+                    padding-top: 1px;
+                    padding-bottom: 1px;
+                    font-family: Arial;
+                }
+
+                #top-table tr .top-right-td {
+                    width: 60%;
+                    font-size: medium;
+                    font-weight: 500;
+                    text-align: left;
+                    padding-top: 1px;
+                    padding-bottom: 1px;
+                    font-family: Arial;
+                    text-decoration: underline;
+                }
+
+            #bottom-table {
+                border-collapse: collapse;
+                border: 1px solid black;
+                width: 100%;
+                margin-bottom: 10%;
+            }
+
+                #bottom-table tr td {
+                    border: 1px solid black;
+                    padding-left: 4px;
+                    padding-top: 4px;
+                    padding-bottom: 3px;
+                }
+
+                #bottom-table tr th {
+                    border: 1px solid black;
+                    padding-left: 2px;
+                    padding-top: 3px;
+                    padding-bottom: 3px;
+                    font-size: small !important;
+                    font-weight: bold;
+                }
+        }
+    </style>

@@ -84,6 +84,8 @@ public class CampusTimeTableSlot
     public int EmployeeID { get; set; }
     public int PeriodNumber { get; set; }
     public byte DayOfWeek { get; set; }
+    /// <summary>0 = primary line in cell; 1 = second parallel group (split period).</summary>
+    public byte LineIndex { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public DateTime? UpdatedAtUtc { get; set; }
 

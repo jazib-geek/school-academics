@@ -1,0 +1,345 @@
+﻿@model  List<Data.Viewmodel.EmployeeAttendanceViewModel>
+@{
+    int m = ViewBag.m;
+    int y = ViewBag.y;
+    int daysInMonth = DateTime.DaysInMonth(y, m);
+}
+
+<table class="table table-bordered text-center" id="table" data-month="@m" data-year="@y">
+    <thead class="bg-soft-info">
+        <tr>
+            <th>Employee</th>
+            @for (int day = 1; day <= daysInMonth; day++)
+            {
+                var dayOfWeek = new DateTime(y, m, day).ToString("ddd");
+                if (dayOfWeek != "Sun")
+                {
+                    <th>@day</th>
+                }
+            }
+        </tr>
+        <tr>
+            <th></th>
+            @for (int day = 1; day <= daysInMonth; day++)
+            {
+                var dayOfWeek = new DateTime(y, m, day).ToString("ddd");
+                if (dayOfWeek != "Sun")
+                {
+                    <th>@dayOfWeek</th>
+                }
+            }
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var record in Model)
+        {
+            <tr data-employee="@record.EmployeeName" data-employee-id="@record.ID">
+                <td style="text-align:left !important; padding-left:5px !important">
+                    <a class="text-info text-bold" href="/Employee/Attendance/Emp/@record.ID?m=@m&y=@y">@record.EmployeeName</a>
+                </td>
+                @for (int day = 1; day <= daysInMonth; day++)
+                {
+                    var date = new DateTime(y, m, day);
+                    bool isSunday = date.DayOfWeek == DayOfWeek.Sunday;
+                    //var cellValue = record.Attendance.ContainsKey(day) ? record.Attendance[day] : "A";
+                    var cellValue = record.Attendance.ContainsKey(day) && !string.IsNullOrWhiteSpace(record.Attendance[day])
+    ? record.Attendance[day]
+    : record.Attendance.ContainsKey(day) ? "P" : "A";
+
+                    if (!isSunday)
+                    {
+                        @*var cellClass = cellValue == "A" ? "text-bold" : "text-success text-bold";
+                <td class="status @cellClass">@cellValue</td>*@
+
+                        var lc = record.LateComingsDict.ContainsKey(day) ? record.LateComingsDict[day] : 0;
+                        var json = record.ChangeJsonDict.ContainsKey(day) ? record.ChangeJsonDict[day] : null;
+
+                        string cellClass = "text-bold";
+
+                        if (cellValue == "A")
+                        {
+                            cellClass += " text-danger";
+                        }
+                        else if (lc > 0)
+                        {
+                            cellClass += " text-warning"; // orange
+                        }
+                        else
+                        {
+                            cellClass += " text-success";
+                        }
+
+                        <td class="status @cellClass"
+                            data-json='@Html.Raw(json ?? "")'
+                            data-day="@day"
+                            data-value="@cellValue"
+                            onclick="showAttendanceDetail(this)">
+                            @cellValue
+                        </td>
+                    }
+                }
+            </tr>
+        }
+    </tbody>
+
+</table>
+
+<div class="modal fade" id="attendanceDetailModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5>Attendance Detail</h5>
+            </div>
+            <div class="modal-body" id="attendanceDetailBody"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+ function showAttendanceDetail(el) {
+        let json = el.getAttribute("data-json");
+        if (!json) return;
+
+        try {
+            let data = JSON.parse(json);
+
+            const late = Math.round(data?.Calculation?.lateMinutes || 0);
+            const early = Math.round(data?.Calculation?.earlyMinutes || 0);
+            const total = Math.round(data?.Calculation?.totalMinutes || 0);
+
+            // Arrival status
+            let arrivalText = "On Time";
+            let arrivalClass = "text-success";
+
+            if (late > 0) {
+                arrivalText = `Late by ${late} min${late > 1 ? 's' : ''}`;
+                arrivalClass = "text-danger";
+            }
+
+            // Departure status
+            let departureText = "Completed Shift";
+            let departureClass = "text-success";
+
+            if (!data?.Interpreted?.actualCheckOut) {
+                departureText = "No Checkout";
+                departureClass = "text-muted";
+            }
+            else if (early > 0) {
+                departureText = `Left Early by ${early} min${early > 1 ? 's' : ''}`;
+                departureClass = "text-warning";
+            }
+
+            let html = `
+<div class="attendance-card">
+
+    <!-- Times -->
+    <div class="row mb-3">
+        <div class="col-6">
+            <div class="soft-block soft-green">
+                <div class="label">Check In</div>
+                <div class="value">${formatTime(data?.Interpreted?.actualCheckIn)}</div>
+                <div class="sub ${arrivalClass}">${arrivalText}</div>
+            </div>
+        </div>
+        <div class="col-6">
+            <div class="soft-block soft-blue">
+                <div class="label">Check Out</div>
+                <div class="value">${formatTime(data?.Interpreted?.actualCheckOut)}</div>
+                <div class="sub ${departureClass}">${departureText}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Metrics -->
+    <div class="row text-center mb-3">
+        <div class="col-4">
+            <div class="soft-block soft-red-light">
+                <div class="metric text-danger">${late}</div>
+                <div class="label">Late (mins)</div>
+            </div>
+        </div>
+        <div class="col-4">
+            <div class="soft-block soft-orange">
+                <div class="metric text-warning">${early}</div>
+                <div class="label">Early (mins)</div>
+            </div>
+        </div>
+        <div class="col-4">
+            <div class="soft-block soft-gray">
+                <div class="metric">${total}</div>
+                <div class="label">Total Late (mins)</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="d-flex justify-content-between align-items-center">
+        <span class="badge bg-light text-primary border">
+            Rule: ${data?.Interpreted?.ruleApplied || '-'}
+        </span>
+
+        <span class="badge bg-danger fs-5">
+            Late Comings: ${data?.Calculation?.LC || 0}
+        </span>
+    </div>
+
+</div>
+`;
+
+            $("#attendanceDetailBody").html(html);
+            $("#attendanceDetailModal").modal("show");
+        }
+        catch (e) {
+            console.error("Invalid JSON in cell:", e);
+            return;
+        }
+    }
+
+        function formatTime(dt) {
+            if (!dt) return '-';
+
+            let d = new Date(dt);
+
+            return d.toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true   // ✅ forces 12-hour format
+            });
+        }
+
+</script>
+
+<style>
+    /* clickable cell */
+    td.status {
+        cursor: pointer;
+        transition: all 0.15s ease-in-out;
+    }
+
+        /* hover effect */
+        td.status:hover {
+            background-color: rgba(0, 123, 255, 0.08);
+            transform: scale(1.05);
+        }
+
+    /* LC highlight (optional stronger orange) */
+    td.text-warning {
+        color: #e67e22 !important;
+    }
+
+    .attendance-card .label {
+        font-size: 12px;
+        color: #888;
+    }
+
+    .attendance-card .value {
+        font-size: 16px;
+        font-weight: 600;
+    }
+
+    .attendance-card .metric {
+        font-size: 18px;
+        font-weight: bold;
+    }
+
+    /* base block */
+    .soft-block {
+        padding: 10px;
+        border-radius: 10px;
+        text-align: center;
+    }
+
+    /* colors */
+    .soft-green {
+        background: #eaf7f0;
+        color: #1e7e34;
+    }
+
+    .soft-blue {
+        background: #eef4ff;
+        color: #2c5cc5;
+    }
+
+    .soft-orange {
+        background: #fff4e6;
+        color: #d9822b;
+    }
+
+    .soft-red-light {
+        background: #fdecea;
+        color: #c0392b;
+    }
+
+    .soft-gray {
+        background: #f4f6f8;
+        color: #333;
+    }
+
+    /* typography */
+    .attendance-card .label {
+        font-size: 12px;
+        opacity: 0.7;
+    }
+
+    .attendance-card .value {
+        font-size: 18px;
+        font-weight: 600;
+    }
+
+    .attendance-card .metric {
+        font-size: 20px;
+        font-weight: bold;
+    }
+
+    .soft-block {
+        padding: 10px;
+        border-radius: 10px;
+        text-align: center;
+    }
+
+    .soft-green {
+        background: #eaf7f0;
+        color: #1e7e34;
+    }
+
+    .soft-blue {
+        background: #eef4ff;
+        color: #2c5cc5;
+    }
+
+    .soft-orange {
+        background: #fff4e6;
+        color: #d9822b;
+    }
+
+    .soft-red-light {
+        background: #fdecea;
+        color: #c0392b;
+    }
+
+    .soft-gray {
+        background: #f4f6f8;
+        color: #333;
+    }
+
+    .attendance-card .label {
+        font-size: 12px;
+        opacity: 0.7;
+    }
+
+    .attendance-card .value {
+        font-size: 18px;
+        font-weight: 600;
+    }
+
+    .attendance-card .metric {
+        font-size: 20px;
+        font-weight: bold;
+    }
+
+    .attendance-card .sub {
+        font-size: 12px;
+        margin-top: 4px;
+        font-weight: 500;
+    }
+</style>

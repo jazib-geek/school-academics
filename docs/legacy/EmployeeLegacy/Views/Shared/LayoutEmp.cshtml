@@ -1,0 +1,118 @@
+﻿@using Data.BLL
+@{
+    if (!Request.IsAuthenticated)
+    {
+        Response.Redirect("~/Auth");
+    }
+
+}
+<!DOCTYPE html>
+<html lang="en">
+
+@*POWERED BY
+    SOFTELLIGENT SOLUTIONS PAKISTAN
+        jazibiqbal77@gmail.com
+        info@softelligent-pak.com
+        +923214832357*@
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="school management system erp academy pakistan software student attendance teacher">
+    <link rel="shortcut icon" href="~/img/favicon.png">
+    <title>Science Base School</title>
+
+    @Scripts.Render("~/bundles/bootstrap")
+    @Styles.Render("~/Content/css")
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet" />
+
+    <style>
+        .hide {
+            display: none !important;
+        }
+
+        .pull-right {
+            float: right !important;
+        }
+
+        td {
+            font-size: 12px !important;
+        }
+
+        th {
+            font-size: 13px !important;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div class="container-fluid">
+            <nav class="navbar navbar-expand-lg navbar-light">
+                <a class="navbar-brand" href="/Staff/Data/">
+                    <img src="~/assets-custom/images/logo.PNG" alt="" style="width:50px;">
+                </a>
+                <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                @Html.Partial("_Nav")
+            </nav>
+        </div>
+    </header>
+
+    <div class="container-fluid">
+        @RenderBody()
+    </div>
+
+    <div aria-hidden="true" aria-labelledby="myModalLabel" role="dialog" tabindex="-1" id="AddStudentModal" class="modal fade">
+        <div id="newstd"></div>
+    </div>
+
+    <script>
+       // OPEN ADD STUDENT FORM
+
+        function StudentModal() {
+            $.ajax({
+                cache: false,
+                type: 'Get',
+                url: '/Home/NewStudent/',
+                data: '',
+                datatype: 'Json',
+                success: function (result) {
+                    document.getElementById('btnmodal').click();
+                    $("#newstd").html(result);
+                },
+                error: function (xhr, ajaxOptions, thrownError) {
+                    // alert(xhr.responseText);
+                }
+            });
+        }
+
+        // LOGOUT FORM SUBMIT
+        function logout() {
+            document.getElementById('logoffForm').submit();
+        }
+
+
+    </script>
+
+    <style>
+        .notif-icon {
+            padding: 6px 8px 6px 8px;
+            border: 1px solid white;
+            color: #176da5;
+            background: white;
+        }
+
+        .blink_me {
+            animation: blinker 1s linear infinite;
+        }
+
+        @@keyframes blinker {
+            50% {
+                opacity: 0;
+            }
+        }
+    </style>
+</body>
+
+</html>

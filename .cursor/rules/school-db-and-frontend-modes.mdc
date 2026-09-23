@@ -1,0 +1,69 @@
+---
+description: Campus-scoped vs Academics DB, TenantContext, and where each frontend area lives
+alwaysApply: true
+---
+
+# Data stores and frontend modes (School API)
+
+The solution uses **two SQL Server databases and two EF Core contexts**. Most school operations are **per campus** (one physical DB per campus). **Academics** is a **separate** database and context and is **not** selected by campus tenancy.
+
+## Backend: `AppDbContext` (campus / operational DB)
+
+- **Class:** `School.Infrastructure.Data.AppDbContext`
+- **Purpose:** Students, fees, attendance, employees, accounts, institute operational data, and other entities mapped to the legacy campus schema.
+- **Connection string:** Resolved per HTTP request via `TenantContext.ConnectionString` (see `School.API/Program.cs`: `AddDbContext<AppDbContext>` uses `tenantContext.ConnectionString`).
+- **Configuration:** Per-campus connection strings live under `CampusSettings:Campuses` in `School.API/appsettings.json` (each key is a campus slug, e.g. `main`, `mt`). `CampusSettings:DefaultCampus` is the fallback campus key when none is supplied.
+- **How the campus is chosen:** `School.API/Middleware/CampusMiddleware` sets `TenantContext` in this order:
+  1. JWT claim **`Campus`** (when the user is authenticated),
+  2. else request header **`X-Campus`**,
+  3. else **`CampusSettings:DefaultCampus`**.
+- If the resolved campus key has no connection string entry, the middleware returns **400** with `Invalid Campus.`
+
+## Backend: `AcademicContext` (standalone academics DB)
+
+- **Class:** `School.Infrastructure.Academics.Data.AcademicContext`
+- **Purpose:** Academics catalog and exam-maker domain (classes, subjects, chapters, question catalog, exam titles, question papers, academic users, institute settings for academics, etc.).
+- **Connection string:** Single entry **`ConnectionStrings:AcademicContext`** in configuration. Registered in `Program.cs` with `AddDbContext<AcademicContext>` — **not** wired through `TenantContext`.
+- **API surface:** Controllers under `School.API/Areas/Academics/` (e.g. auth, catalog, exam maker). This stack uses **`AcademicContext`** only; it does **not** follow campus DB switching for data access.
+
+## Backend: aggregating **all campuses** in one operation
+
+Some features must query **every** campus database (e.g. org-wide dashboard). Pattern: read all children of `CampusSettings:Campuses`, build `DbContextOptionsBuilder<AppDbContext>().UseSqlServer(...)`, and use a **short-lived** `AppDbContext` per campus (see `School.Application/Services/DashboardService.GetAllCampusesDashboardAsync`). The **scoped** injected `AppDbContext` only ever points at **one** campus per request — do not assume it can see other campuses without explicitly opening additional contexts.
+
+## Frontend: where each “mode” lives
+
+| Mode | DB / API tenancy | Typical frontend location |
+|------|------------------|---------------------------|
+| **Campus login & campus app** | User picks a campus; API calls carry campus context (`X-Campus` / JWT `Campus` after login). Data is the **campus** `AppDbContext` DB. | `frontend/src/pages/Auth/LoginPage.jsx` (campus selection); main campus UI under **`frontend/src/pages/Campus/`** |
+| **Cross-campus / org-wide views** | Backend iterates **`CampusSettings:Campuses`** and queries each campus DB (pattern above). | **`frontend/src/pages/Campus/CampusDashboardPage.jsx`** (e.g. campus-wise breakdown; intended to grow for more all-campus metrics) |
+| **Employee portal** | Still **campus-scoped** `AppDbContext` (same tenancy as the rest of the campus API after employee auth). | **`frontend/src/components/employee/`** |
+| **Academics app** | **`AcademicContext`** database only; **independent** of campus DB selection. | **`frontend/src/pages/Academics/`** |
+
+## Employee portal UI (mobile-first)
+
+- Any UI work under **`frontend/src/components/employee/`** (Employee Portal) should **default to a phone-first layout**: narrow viewport, large touch targets, single-column flows, and patterns that work without mouse hover or a wide desktop canvas.
+- Employees are expected to use **phones and tablets** on the go; design and review screens as if they were an **Android-style app** (full-width pages, vertical scrolling, primary actions reachable by thumb, legible type at arm’s length). Tablet layouts can add breathing room, but must not require a desktop breakpoint for core tasks.
+- **Desktop is secondary**: scale up from mobile; avoid dense data grids and tiny controls as the default experience.
+
+## Frontend UI copy (user-facing)
+
+- Never show **developer-oriented** text in the UI (toasts, empty states, helpers, dialogs, validation messages).
+- Avoid jargon such as: FundType IDs, ledger rows, DB/table names, “skipped”, “null”, internal flags, stack-ish explanations of what the system will do behind the scenes.
+- Prefer plain staff language (what to do / what was saved). If an option does not apply, **omit it** instead of explaining why it was skipped.
+- Technical details belong in code comments, docs, or admin logs — not on campus/academic screens.
+
+## Frontend listing / CRUD tables (density)
+
+- Match the **Students** list density app-wide: `text-[13px] leading-snug`, header cells `px-3 py-2`, body cells `px-3 py-1.5`, row actions `h-7 w-7` (see `.btn-icon-soft` / `.btn-table-action` in `frontend/src/index.css`).
+- Global defaults apply to normal `<table>` elements; opt out with `.table-comfortable`, `.exam-paper-student-table`, or `.legacy-print-table` for print/exam layouts that need different spacing.
+- Do not reintroduce roomy `px-4 py-3` / `h-9 w-9` patterns on admin listing CRUDs.
+- Under fixed campus/academics headers (`h-16`), page content should use tight top padding (`pt-[4.25rem]` / `md:pt-[4.5rem]`), not `pt-20` / `md:pt-24`.
+- Scrollbars should stay thin and soft (global styles in `frontend/src/index.css`); do not force thick OS-default scrollbars in app chrome.
+
+## Agent checklist
+
+- When adding or changing **campus** data access, use **`AppDbContext`** and respect **`TenantContext`** / middleware (or the explicit multi-context pattern for all-campus reads).
+- When adding or changing **academics catalog / papers / academic auth**, use **`AcademicContext`** and **`Areas/Academics`** — do not conflate with per-campus `AppDbContext` entities unless the product explicitly bridges them.
+- For **Employee Portal** UI under **`frontend/src/components/employee/`**, follow **mobile-first / Android-app-style** interaction and layout defaults (see **Employee portal UI** above).
+- For any **user-facing copy**, follow **Frontend UI copy** above — no developer-oriented explanations.
+- Do not put real connection strings, passwords, or keys in rules or commits; reference **configuration keys** only.

@@ -1,0 +1,32 @@
+---
+description: Keep agent work token-cheap — narrow search, short context, no extra agents or rewrites
+alwaysApply: true
+---
+
+# Token efficiency
+
+Prefer finishing the ask with the smallest useful context. This rule is short on purpose — do not expand it.
+
+## Search before reading
+
+- Use `Grep` / `Glob` first; open only the few matching files.
+- Prefer `Read` with `offset`/`limit` on large files. Do not dump whole controllers, services, or migrations.
+- Do not re-read a file already returned in this turn unless it changed.
+
+## No speculative exploration
+
+- Skip `Task` / explore / subagents for narrow edits, single-symbol lookups, or 1–3 known files — use tools directly.
+- Do not spawn parallel explore agents “just in case.”
+- Do not crawl the whole backend/frontend when the path is already clear from the user or open files.
+
+## Implement tightly
+
+- Change only what the task needs. Prefer `StrReplace` over rewriting whole files.
+- Do not add docs, README, comments, refactors, or drive-by cleanup unless asked.
+- Do not run broad builds, full test suites, or migrators unless required to verify this change or the user asked.
+- When Ask vs Agent would both work for research, keep tool use minimal and stop once the answer is clear.
+
+## Responses
+
+- Answer in a few short sentences or bullets. No recap of the task, no “next steps” essays, no restating unchanged code.
+- Cite only the lines that matter. Avoid pasting large unchanged blocks.

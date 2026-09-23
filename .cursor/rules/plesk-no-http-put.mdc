@@ -1,0 +1,17 @@
+---
+description: Do not use HTTP PUT — production is on Plesk, which blocks PUT
+alwaysApply: true
+---
+
+# No HTTP PUT (Plesk hosting)
+
+This app is hosted on **Plesk**. In practice, **PUT requests are blocked** at the edge (often **403** with an **HTML** error body, not JSON from the API). **POST and GET work.**
+
+## Rules
+
+- **Backend (ASP.NET):** Do not add endpoints that rely on `[HttpPut]` as the only way to mutate a resource. Prefer **`[HttpPost]`** for updates (you may keep `[HttpPut]` alongside `[HttpPost]` on the same action for compatibility, but clients used in production must call **POST**).
+- **Frontend:** Do not use **`axios.put`** / **`fetch(..., { method: 'PUT' })`** for School API calls. Use **`post`** with a dedicated route (e.g. `…/papers/{id}/from-selection` or `…/update`) instead.
+
+## Quick check
+
+Before merging API or client changes, grep for `HttpPut`, `.put(`, and `method: 'PUT'` in this repo and replace with POST-based patterns unless the route is internal-only and never hits Plesk.

@@ -1,0 +1,46 @@
+﻿@model List<Data.DAL.tblTempStaff>
+
+<table class="table-bordered">
+    <thead class="bg-soft-info">
+        <tr>
+            <th style="width:20%">Institute</th>
+            <th style="width:20%">Designation</th>
+            <th style="width:10%">Duration</th>
+            <th style="width:10%">From</th>
+            <th style="width:10%">To</th>
+            <th style="width:5%"></th>
+        </tr>
+    </thead>
+    <tbody style="background:white">
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.Exp_InstituteName</td>
+                <td>@item.Exp_Designation</td>
+                <td>@item.Exp_DurationYears</td>
+                <td>@item.Exp_FromDate</td>
+                <td>@item.Exp_ToDate</td>
+                <td> <a href="javascript:;" class="text-danger" onclick="DeleteRow(@item.ID)"> <i class="la la-close"></i> </a> </td>
+            </tr>
+        }
+        <tr>
+            <td> <input type="text" id="Exp_InstituteName" class="input-borderless" /> </td>
+            <td> <input type="text" id="Exp_Designation" class="input-borderless" /> </td>
+            <td> <input type="text" id="Exp_DurationYears" class="input-borderless" /> </td>
+            <td> <input type="text" id="Exp_FromDate" class="input-borderless datepicker" /> </td>
+            <td> <input type="text" id="Exp_ToDate" class="input-borderless datepicker" /> </td>
+            <td>   <a href="javascript:;" class="btn btn-sm btn-info" onclick="InsertExperience()"> <i class="la la-plus"></i> </a>  </td>
+        </tr>
+
+    </tbody>
+</table>
+
+
+<script>
+    $(function () {
+        $(".datepicker").datepicker({
+            autoclose: true,
+            todayHighlight: true
+        }).datepicker();
+    });
+</script>

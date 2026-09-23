@@ -1,0 +1,264 @@
+﻿@model Data.Viewmodel.ExamSheetViewModel
+@using Data.BLL
+
+@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+
+<html>
+
+<head>
+    <link href="~/css/bootstrap-theme.css" type="text/css" rel="stylesheet" media="all" />
+    <link href="~/css/bootstrap-responsive.min.css" rel="stylesheet" media="all" />
+    @Scripts.Render("~/bundles/bootstrap")
+    <style>
+        @@page {
+            /*margin: 20px !important;*/
+            width: 100%;
+        }
+
+
+        body {
+            font-family: Arial !important;
+        }
+
+        h2 {
+            font-size: 18px !important;
+            font-weight: bold !important;
+        }
+
+        h3 {
+            font-weight: bold !important;
+            font-size: 18px !important;
+            font-family: 'Arial' !important;
+            margin-top: 8px !important;
+        }
+
+
+        h4 {
+            font-size: 14px !important;
+            font-weight: bold !important;
+            margin-left: 40px !important;
+        }
+
+        th {
+            font-size: 13px !important;
+            font-family: Arial !important;
+        }
+
+        td {
+            font-size: 14px !important;
+            font-family: Arial !important;
+            padding: 3px !important;
+            line-height: 1.2 !important;
+            color: black !important;
+        }
+
+        .table-bordered > thead > tr > th, .table-bordered > tbody > tr > th, .table-bordered > tfoot > tr > th, .table-bordered > thead > tr > td, .table-bordered > tbody > tr > td, .table-bordered > tfoot > tr > td {
+            border: 1px solid black !important;
+        }
+
+        .table-bordered {
+            border: 1px solid black !important;
+        }
+
+        tfoot {
+            height: 34px !important;
+        }
+
+            tfoot tr td {
+                font-size: 14px !important;
+            }
+
+        /*td {
+            font-size: 14px !important;
+            font-family: Arial important;
+            padding: 2px !important;
+            line-height: 0.9 !important;
+            color: black !important;
+        }*/
+    </style>
+</head>
+<body>
+    <div id="MainDiv">
+        <div style="max-width:100%;">
+            <div class="col-xs-4 pull-left" style="padding-left:0px !important;font-size:15px!important;height:60px!important;">
+                <h4 style="font-weight:normal;font-family:Arial!important;font-size:15px!important;"> RESULT SHEET @Data.BLL.Exam.GetExamtypeType(Model.ExamTypeID).ToUpper() (Roll no. wise) </h4>
+                <h4 style="font-weight:normal;font-family:Arial!important">
+                    @DateTime.Now.Date.ToShortDateString() &nbsp; @DateTime.Now.ToShortTimeString()
+                </h4>
+                <br />
+            </div>
+            <div class="col-xs-1">
+            </div>
+            <div class="col-xs-3 text-center">
+                <h3 style="font-weight:bold; font-size:20px !important">SCIENCE BASE SCHOOL </h3>
+                <h5 style="font-family:arial!important;font-weight:bold!important;font-size:16px !important"> @System.Web.Configuration.WebConfigurationManager.AppSettings["campus_name"] </h5>
+            </div>
+            <div class="col-xs-4 pull-right" style="padding-right:0px !important;font-size:14px!important;text-align:center !important">
+                <h4 style="font-weight:normal;font-family:Arial!important">Class : @StudentParameters.ClassByID(Model.ClassID).Class_Name @StudentParameters.SectionColorByID(Model.SectionID)</h4>
+                <h4 style="font-family:Arial!important;font-size:15px!important;padding-right:43px!important">Strength &nbsp;:&nbsp; @Model.lstStudent.Count</h4>
+            </div>
+        </div>
+        <table class="table table-bordered" style="border-collapse:unset!important; border-radius:0px;">
+            <thead class="bg-soft-info">
+                <tr class="row-head">
+                    <th>#</th>
+                    <th>Reg</th>
+                    <th>Student Name</th>
+
+                    @foreach (var item in Model.lstSubject)
+                    {
+                        <th>@Subjects.GetByID(item.SubjectID).ShortName</th>
+                    }
+                    <th>Total</th>
+                    <th>Pos</th>
+                    <th>% age</th>
+                    <th>Grade</th>
+                    <th>Attend</th>
+                    <th>Remarks</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+                <tr class="top-row row-head" style="font-weight:bold !important">
+                    <td colspan="2"></td>
+                    <td style="text-align:right!important;">Total Marks</td>
+                    @foreach (var item in Model.lstSubject)
+                    {
+                        <td style="text-align:center!important">@Exam.GetRow(Model.ExamTypeID, item.SubjectID, Model.ClassID, Model.SectionID).TotalMarks</td>
+                    }
+                    <td style="text-align:center!important;font-weight:bold!important">
+                        @Exam.GetSumOfTotalMarksOfThisExam(Model.ClassID, Model.SectionID, Model.ExamTypeID)
+                    </td>
+                </tr>
+                <tr class="top-row row-head" style="text-align:center!important;font-weight:bold!important">
+                    <td colspan="2"></td>
+                    <td style="text-align:right!important;">Passing Marks</td>
+                    @foreach (var item in Model.lstSubject)
+                    {
+                        <td style="text-align:center!important">@Exam.GetRow(Model.ExamTypeID, item.SubjectID, Model.ClassID, Model.SectionID).PassingMarks</td>
+                    }
+                    <td></td>
+                </tr>
+                <tr class="top-row row-head" style="text-align:center!important; font-weight:bold!important">
+                    <td colspan="2"></td>
+                    <td style="text-align:right!important;">Max. Marks</td>
+                    @foreach (var item in Model.lstSubject)
+                    {
+                        <td style="text-align:center!important">@Exam.GetMaxMarks(Model.ClassID, Model.SectionID, item.SubjectID, Model.ExamTypeID)</td>
+                    }
+                    <td></td>
+                </tr>
+
+                @{ int serial = 0; }
+                @foreach (var item in Model.lstStudent.Where(x => x.exam.Percentage != 0).OrderBy(x => x.Reg_Id))
+                {
+                    <tr>
+                        <td style="width:60px">@{ serial += 1; } @serial </td>
+                        <td style="width:60px">@item.Reg_Id</td>
+                        <td style="width:22%!important">
+                            @item.FullName
+                        </td>
+
+                        @foreach (var item_ in item.lstExam)
+                        {
+                            if (item_.ObtainedMarks != -1)
+                            {
+                                <td style="text-align:center">@item_.ObtainedMarks</td>
+                            }
+                            else
+                            {
+                                <td style="color:red;text-align:center">A</td>
+                            }
+                        }
+                        <td style="width:50px!important;font-weight:bold!important;text-align:center">
+                            @item.exam.Total_Obtained
+                        </td>
+                        <td style="width:auto!important; text-align:center !important">
+                            @Exam.PositionWithPostFix(item.exam.Position)
+                        </td>
+                        <td style="width:auto!important; text-align:center !important">
+                            @item.exam.Percentage%
+                        </td>
+                        <td style="width:auto!important; text-align:center !important">
+                            @item.exam.Grade
+                        </td>
+                        <td>
+                            @Exam.GetAttendanceRatio(item.Reg_Id, Model.ExamTypeID)
+                        </td>
+                        <td>
+                            @item.exam.Remarks
+                        </td>
+                    </tr>
+                }
+
+                @foreach (var item in Model.lstStudent.Where(x => x.exam.Percentage == 0))
+                {
+                    <tr>
+                        <td style="width:60px">@{ serial += 1; } @serial </td>
+                        <td style="width:60px">@item.Reg_Id</td>
+                        <td style="width:22%!important">
+                            @item.FullName
+                        </td>
+
+                        <td colspan="@Model.lstSubject.Count"></td>
+
+                        <td style="width:50px!important;font-weight:bold!important;text-align:center">
+                            -
+                        </td>
+                        <td style="width:auto!important;text-align:center">
+                            -
+                        </td>
+                        <td style="width:auto!important;text-align:center">
+                            -
+                        </td>
+                        <td style="width:auto!important;text-align:center">
+                            -
+                        </td>
+                        <td style="text-align:center">
+                            -
+                        </td>
+                        <td style="text-align:center">
+                            -
+                        </td>
+                    </tr>
+                }
+
+            </tbody>
+            <tfoot>
+                <tr class="well" style="text-align:center!important; font-weight:bold !important">
+                    <td></td>
+                    <td></td>
+                    <td style="padding-top:7px!important">Subject Percentage</td>
+                    @foreach (var item in Model.lstSubject)
+                    {
+                        <td style="padding-top:7px!important">
+                            @Exam.GetSubjectPercentage(Model.ClassID, Model.SectionID, item.SubjectID, Model.ExamTypeID)
+                        </td>
+                    }
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</body>
+</html>
+<script>
+    function printDiv(divName) {
+        var printContents = document.getElementById(divName).innerHTML;
+        var originalContents = document.body.innerHTML;
+
+        document.body.innerHTML = printContents;
+
+        window.print();
+
+        document.body.innerHTML = originalContents;
+    }
+
+    $(document).ready(function () {
+        printDiv('MainDiv');
+    });
+</script>

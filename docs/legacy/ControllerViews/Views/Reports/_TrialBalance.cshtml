@@ -1,0 +1,112 @@
+﻿@model List<Data.DAL.Fn_TrialBalance_Result>
+@{
+    decimal? FEE = Data.BLL.FeeAndFund.Collection.ByInterval(ViewBag.From, ViewBag.To, 1);
+    decimal? ADM = Data.BLL.FeeAndFund.Collection.ByInterval(ViewBag.From, ViewBag.To, 2);
+    decimal? MISC = Data.BLL.FeeAndFund.Collection.ByInterval(ViewBag.From, ViewBag.To, 3);
+    decimal? PREV = Data.BLL.FeeAndFund.Collection.ByInterval(ViewBag.From, ViewBag.To, 4);
+}
+
+@foreach (var item in Model.Where(x => (x.TotalDebit + x.TotalCredit) > 0))
+{
+    <tr>
+        <td>@item.AccountID</td>
+        <td>@item.AccountTitle</td>
+        <td class="credit">@item.TotalCredit</td>
+        <td class="debit">@item.TotalDebit</td>
+        <td>@item.Balance</td>
+    </tr>
+}
+<tr>
+    <td></td>
+    <td>Tution Fee</td>
+    <td class="adm">@FEE</td>
+    <td>0</td>
+    <td></td>
+</tr>
+<tr>
+    <td></td>
+    <td>Admission Fee</td>
+    <td class="adm">@ADM</td>
+    <td>0</td>
+    <td></td>
+</tr>
+<tr>
+    <td></td>
+    <td>Misc Charges</td>
+    <td class="misc">@MISC</td>
+    <td>0</td>
+    <td></td>
+</tr>
+<tr>
+    <td></td>
+    <td>Prev Balance</td>
+    <td class="prev">@PREV</td>
+    <td>0</td>
+    <td></td>
+</tr>
+
+<tr>
+    <td></td>
+    <td></td>
+    <td style="font-weight:bold" id="CREDIT"></td>
+    <td style="font-weight:bold" id="DEBIT"></td>
+    <td style="font-weight:bold" id="BALANCE"></td>
+</tr>
+
+<script>
+        @if (Model.Count > 0)
+    {
+        <text> $("#btnPrint").removeClass('hide');  </text>
+    }
+    else
+    {
+        <text> $("#btnPrint").addClass('hide');  </text>
+    }
+
+     //////////////////////
+    var sum_tf = 0;
+    $(".tf").each(function () {
+        sum_tf += parseFloat($(this).text());
+    });
+
+    var sum_adm = 0;
+    $(".adm").each(function () {
+        sum_adm += parseFloat($(this).text());
+    });
+
+    var sum_misc = 0;
+    $(".misc").each(function () {
+        sum_misc += parseFloat($(this).text());
+    });
+
+    var sum_prev = 0;
+    $(".prev").each(function () {
+        sum_prev += parseFloat($(this).text());
+    });
+
+    var Total_Recv = sum_tf + sum_adm + sum_misc + sum_prev;
+    /////////////////////
+
+    var sum_debit = 0;
+    $(".debit").each(function () {
+        sum_debit += parseFloat($(this).text());
+    });
+    $('#DEBIT').text(sum_debit);
+
+    var sum_credit = 0;
+    $(".credit").each(function () {
+        sum_credit += parseFloat($(this).text());
+    });
+     var MasterRcv = Total_Recv + sum_credit;
+    $('#CREDIT').text(MasterRcv);
+    $('#DEBIT').text(sum_debit);
+    $('#BALANCE').text((MasterRcv - sum_debit));
+</script>
+
+<style>
+    .foot td {
+        font-weight: bold;
+        font-size: 14px !important;
+        background-color: lightgray;
+    }
+</style>

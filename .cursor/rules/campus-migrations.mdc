@@ -1,0 +1,77 @@
+---
+description: EF migrations for campus (multi-DB) and academics databases
+alwaysApply: true
+---
+
+# Campus and academics migrations
+
+The solution has **two EF contexts** with separate migration folders:
+
+| Context | Migrations folder | Connection |
+|---|---|---|
+| `AppDbContext` (campus) | `School.Infrastructure/Data/Migrations` | One DB per `CampusSettings:Campuses` key |
+| `AcademicContext` | `School.Infrastructure/Academics/Data/Migrations` | `ConnectionStrings:AcademicContext` |
+
+Each campus database has its own `__EFMigrationsHistory`. Applying a migration once on **local** does **not** update live campuses.
+
+## Add a migration (design-time → local only)
+
+`dotnet ef migrations add` uses `AppDbContextFactory` / `DesignTimeConfiguration`, which targets **`CampusSettings:Campuses:local`** (fallback: first campus entry). This is for **scaffolding only**.
+
+```bash
+# Campus DB
+dotnet ef migrations add <Name> \
+  --project backend/School.Infrastructure \
+  --startup-project backend/School.API \
+  --context AppDbContext \
+  --output-dir Data/Migrations
+
+# Academics DB
+dotnet ef migrations add <Name> \
+  --project backend/School.Infrastructure \
+  --startup-project backend/School.API \
+  --context AcademicContext \
+  --output-dir Academics/Data/Migrations
+```
+
+Do **not** rely on `dotnet ef database update` without `--connection` for production — it only hits **local**.
+
+## Apply migrations (all configured DBs)
+
+Use **`School.Migrator`**, which reads `School.API/appsettings.json` and runs `Database.MigrateAsync()` on:
+
+1. `AcademicContext`
+2. **Every** non-empty entry under `CampusSettings:Campuses`
+
+```bash
+# All academics + all campuses
+dotnet run --project backend/School.Migrator
+
+# Or PowerShell wrapper
+powershell -File backend/scripts/Update-AllCampusDatabases.ps1
+```
+
+**Single campus (dev):**
+
+```bash
+dotnet run --project backend/School.Migrator -- --campus-only --campus local
+```
+
+**Specific campuses:**
+
+```bash
+dotnet run --project backend/School.Migrator -- --campus main --campus mt
+```
+
+**Academics only:**
+
+```bash
+dotnet run --project backend/School.Migrator -- --academic-only
+```
+
+## Agent checklist
+
+- After adding a campus `AppDbContext` migration, remind the user to run **`School.Migrator`** (or the PS script) so **all** campus DBs are updated — not just local.
+- New campus/academics tables: follow `dbo-schema-for-new-tables.mdc`. Both contexts use `HasDefaultSchema("dbo")`; still pass `schema: "dbo"` on create operations and verify the scaffolded migration before applying.
+- Data migrations (`migrationBuilder.Sql(...)`) run **per campus** when the migrator runs; keep them idempotent where possible (e.g. `NOT EXISTS` guards).
+- Never put real connection strings or passwords in rules or commits.

@@ -1,0 +1,241 @@
+---
+description: Academics Exam Maker (compact) — FE/BE architecture, APIs, state, print, and refactor guide
+globs: frontend/src/pages/Academics/exams/**,frontend/src/services/academicExamMakerService.js,backend/**/ExamMaker*,backend/**/AcademicExamMakerService.cs
+alwaysApply: false
+---
+
+# Academics Exam Maker (compact)
+
+The **only** exam-maker UI in this repo. Route: `/academics/settings/exam-maker-compact`. Component: `AcademicExamMakerMinimalPage.jsx`. Nav label: “Exam Maker” in `AcademicLayout.jsx`.
+
+Uses **`AcademicContext`** only (not campus `AppDbContext`). Auth: `AcademicProtectedRoute` + JWT via `academicApi` (`localStorage.academicToken`). Policy: `AcademicsOnly` on `ExamMakerController`.
+
+The removed full-page exam maker (`AcademicExamMakerPage.jsx`) must not be reintroduced; extend the compact page or shared helpers instead.
+
+---
+
+## File map
+
+| Layer | Path | Role |
+|-------|------|------|
+| UI | `frontend/src/pages/Academics/exams/AcademicExamMakerMinimalPage.jsx` | ~1400-line monolith: editor, catalog, modals, print |
+| Print helpers | `frontend/src/pages/Academics/exams/examPaperPrintHelpers.js` | Sub-question labels, marks formatting, legacy paper name dates |
+| API client | `frontend/src/services/academicExamMakerService.js` | Axios wrappers for `/api/academics/exammaker/*` |
+| HTTP | `frontend/src/services/academicApi.js` | Base URL `VITE_API_BASE_URL`, Bearer token, 401 → login |
+| Styles | `frontend/src/index.css` | `.exam-paper`, `@media print`, `.exam-maker-catalog-table`, `body.printing-exam-paper` |
+| Controller | `backend/School.API/Areas/Academics/Controllers/ExamMakerController.cs` | REST surface |
+| Service | `backend/School.Application/Academics/Services/AcademicExamMakerService.cs` | Business rules, EF persistence |
+| DTOs | `backend/School.Application/Academics/DTOs/ExamMakerDtos.cs` | Request/response shapes |
+| Entities | `backend/School.Infrastructure/Academics/Entities/QuestionPaper.cs`, `QuestionPaperQuestion.cs` | DB tables |
+| SQL notes | `docs/academics_exam_maker_mw.sql` | Manual column adds on `QuestionPaper` (no EF migration) |
+
+Related (not in this folder): `academicCatalogService` (classes/subjects), `academicExamTitleService` (titles), `AcademicInstituteSettingsContext` (logo fallback).
+
+---
+
+## UI layout (compact)
+
+Standalone page — **does not** use `AcademicLayout`. Custom top bar + two-column grid:
+
+1. **Left — Live paper**: `renderPaperDocument({ includeSectionEditors: true })` — WYSIWYG preview with inline section config blocks (`.print-hidden` on editors).
+2. **Right — Catalog**: search-driven pool table + “Selected” list (order, section, marks, remove).
+
+Modals: **Paper setup**, **Generated papers**, **Preview** (read-only paper). Hidden host `#exam-paper-print` for `window.print()`.
+
+Toolbar actions: New Exam, Save Exam, Papers, Paper setup, Preview, Print, Back → dashboard.
+
+---
+
+## User flows
+
+### New exam
+
+`onCreateNewExam` → `resetExamWorkspace({ openPaperSetupModal: true, enablePreloadSuppression: true })`.
+
+- Clears selection, pool, `selectedPaper`, sets `suppressPaperPreload = true`.
+- Opens Paper setup modal; user must **Apply setup & continue** to set `suppressPaperPreload = false`.
+- Prevents auto-loading an existing paper for the wrong objective/subjective slot while class/subject/title are being chosen.
+
+### Edit existing paper
+
+- **Auto-preload**: When `classId`, `subjectId`, `examTitleId`, `examType`, and **paperName** match a row in `generatedPapers` and preload is not suppressed, `useEffect` calls `onOpenPaper` → `GET papers/{id}`. No preload when paper name is empty.
+- **Papers modal**: Lists papers; click loads full paper into editor.
+- **Save**: `onGenerateFromSelection` — if `selectedPaper.id` → update; else if `findMatchingPaper(..., paperName)` → update; else create. Create API rejects duplicate name in same slot (no silent upsert).
+
+### Catalog search
+
+Pool loads **only when** `debouncedPoolSearch` is non-empty (300ms debounce). Requires `form.classId` and `form.subjectId`; otherwise amber notice via `remindCatalogSearchNeedsPaperSetup`.
+
+Default pool filters: `type: 'mcq'`, `category: 'all'`, `take: 120`. No `chapterIds` filter in compact UI (BE supports it; FE never sends `chapterIds` on save).
+
+### Add question
+
+`addQuestionFromCatalog`: default marks by type — `mcq: 1`, `saq: 2`, `laq: 8`. Default section — `mcq → Q1`, `saq → Q2`, `laq → Q5`. Appends with `questionOrder = previous.length + 1`.
+
+---
+
+## Frontend state (key pieces)
+
+| State | Purpose |
+|-------|---------|
+| `form` | Paper metadata: class, subject, schoolName, examTitleId, **paperName** (version label), examType (`objective`\|`subjective`), session, duration, header/footer notes, showSectionNames, subQuestionNumberingStyle, wrapQuestionMarksInParentheses |
+| `selectedQuestions` | `{ questionId, questionOrder, section, marks }` — persisted payload |
+| `sectionConfigs` | `{ sectionKey, sectionName, headingText, instructionText, marksDisplayText, optionalQuestionsEnabled, optionalQuestionsAttemptCount }` — auto-created per section; `marksDisplayText` auto from `inferSectionMarksDisplay` (SAQ/LAQ optional mode uses attempt count) |
+| `questionPool` | Catalog rows from API (search results only) |
+| `selectedPaper` | Last saved/loaded `ExamPaperDto` snapshot |
+| `generatedPapers` | List from `GET papers` (summary rows, no question bodies) |
+| `suppressPaperPreload` | Blocks slot auto-load during “New Exam” setup |
+| `preloadKeyRef` | Dedupes preload: `classId\|subjectId\|examTitleId\|examType\|paperName` |
+
+**Paper slot key** (FE and BE must stay aligned):
+
+```text
+(classId, subjectId, examTitleId, normalizeExamType, normalizePaperName) → at most one paper
+```
+
+`normalizeExamTypeOption`: anything except `"subjective"` → `"objective"`.
+
+---
+
+## Sections model
+
+- Section keys: `Q1`, `Q2`, … regex `^Q(\d+)$` (`SECTION_KEY_REGEX`).
+- `sectionOptions` builds procedural `Q1..Qn` plus keys from configs/selection.
+- Preview groups questions by `section`, sorts by `order` within section.
+- Section metadata stored in `QuestionPaper.SectionMetaJson` as JSON array of `ExamSectionConfigDto`.
+- Empty section on save: BE defaults to `"Q1"` for selection rows.
+- **Optional questions (SAQ/LAQ only):** per-section `optionalQuestionsEnabled` + `optionalQuestionsAttemptCount` in section JSON (no new DB column). When enabled, extra instruction prints e.g. “Attempt any 5 questions.” and marks summary uses attempt count (`5x6=30` for 6 questions in pool). Paper `TotalMarks` on save counts optional sections by attempt count, not all listed questions.
+
+---
+
+## API surface (used by compact UI)
+
+Base: `GET|POST /api/academics/exammaker/...` via `academicExamMakerService.js`.
+
+| Method | Path | FE function | Used by compact? |
+|--------|------|-------------|------------------|
+| GET | `question-pool?classId&subjectId&search&type&category&take` | `getExamQuestionPool` | Yes (search required) |
+| POST | `create-from-selection` | `createAcademicExamPaperFromSelection` | Yes |
+| POST | `papers/{id}/from-selection` | `updateAcademicExamPaperFromSelection` | Yes (**POST only** — Plesk blocks PUT) |
+| GET | `papers` | `getAcademicExamPapers` | Yes |
+| GET | `papers/{id}` | `getAcademicExamPaperById` | Yes |
+| POST | `papers/{id}/print-adjustments` | `updateAcademicExamPaperPrintAdjustments` | Yes (preview **Save print layout**) |
+| POST | `generate` | `generateAcademicExamPaper` | **No** (blueprint auto-pick; legacy) |
+
+Response envelope: `response.data.data` (ApiResponse wrapper).
+
+### `CreateExamPaperFromSelectionRequestDto` (save payload)
+
+```json
+{
+  "classId", "subjectId", "schoolName", "schoolLogoUrl",
+  "examTitleId", "paperName", "sessionLabel", "examType",
+  "headerNote", "instructions", "footerNote",
+  "showSectionNames", "subQuestionNumberingStyle", "wrapQuestionMarksInParentheses",
+  "durationMinutes",
+  "chapterIds": [],  // compact sends omitted/empty
+  "selectedQuestions": [{ "questionId", "questionOrder", "marks", "section" }],
+  "sections": [{ "sectionKey", "sectionName", "headingText", "instructionText", "marksDisplayText", "optionalQuestionsEnabled", "optionalQuestionsAttemptCount" }],
+  "printAdjustments": { "headerNote", "footerNote", "sections", "questions", "spacing" }  // optional; persisted on QuestionPaper.PrintAdjustmentsJson
+}
+```
+
+### `ExamPaperDto` (load/save response)
+
+Includes `questions[]` with catalog fields + `order`, `section`, `marks`; `sections[]` deserialized from `SectionMetaJson`; `printAdjustments` from `PrintAdjustmentsJson` (full detail on GET by id / save responses; omitted on list).
+
+---
+
+## Backend rules (`AcademicExamMakerService`)
+
+- **Question pool**: Filters `QuestionsCatalog` by class/subject (+ optional chapters, type, category, LIKE search on stem/MCQ options). `take` clamped 20–250.
+- **Create from selection**: Validates class/subject/title/**paperName**, no duplicate question IDs, unique `questionOrder > 0`, questions belong to class/subject. **Slot collision**: if paper exists for same `(classId, subjectId, examTitleId, examType, paperName)` → **400** (no silent upsert).
+- **Update**: Replaces all `QuestionPaperQuestions` (remove range + new rows). Cannot change class/subject on existing id. Renaming or changing type blocked if another paper already uses that name in the same slot.
+- **Generate** (`POST generate`): Blueprint random pick — **not used by compact UI**; keep for API/tests or future features.
+- **Paper name**: User-supplied version label (required on create-from-selection). Optional on legacy `POST generate` (falls back to `{SubjectName} - {ExamTitle} ({dd MMM yyyy})`). DB unique index: `docs/academics_exam_maker_paper_name_unique.sql`.
+- **SubQuestionNumberingStyle**: BE normalizes `numeric`/`number`/`decimal`, `alpha`/`letter`/`letters`, default `roman`.
+
+Errors: `InvalidOperationException` → 400 with message; `DbUpdateException` → 500 with generic message (details in server logs).
+
+---
+
+## Math / LaTeX
+
+`MathText` component: heuristic `looksLikeLatex` → `katex.renderToString` with `throwOnError: false`. Backslash normalization: `\\\\` → `\`. Print CSS forces KaTeX wrap (`white-space: normal`, `max-width: 100%`).
+
+---
+
+## Print pipeline
+
+1. `onPrint` adds `document.body.classList.add('printing-exam-paper')`.
+2. `window.print()`; removes class after 200ms.
+3. `#exam-paper-print` duplicate of paper (no section editors); CSS hides everything except print host.
+
+Section editor blocks use class `print-hidden`. Global `@page { size: A4; margin: 10mm 12mm }`.
+
+---
+
+## Institute branding
+
+- `form.schoolName` default hardcoded in component (`SCIENCE BASE SCHOOL®`) — consider syncing from `instituteSettings` on refactor.
+- Logo: `form.schoolLogoUrl` || `selectedPaper.schoolLogoUrl` || `instituteSettings.instituteLogo` (base64 → `data:image/png;base64,...`).
+
+---
+
+## Refactoring guidance
+
+**Prefer extracting hooks**, not a second page:
+
+- `useExamPaperForm`, `useQuestionPool`, `usePaperPreload`, `useSectionConfigs`
+- Keep `examPaperPrintHelpers.js` for anything shared with print/PDF later
+- Keep save payload builder in one function mirroring `CreateExamPaperFromSelectionRequestDto`
+
+**Do not**:
+
+- Use `axios.put` for paper updates (use POST `papers/{id}/from-selection`).
+- Split catalog and paper into separate routes without updating preload/slot logic.
+- Assume pool loads without search text.
+- Add campus `AppDbContext` or `X-Campus` to these calls.
+
+**When changing slot uniqueness**: update `getPaperKey` / `findMatchingPaper` / `normalizePaperName` (FE), `FindPaperIdBySlotAndNameAsync` (BE), SQL in `docs/academics_exam_maker_paper_name_unique.sql`, and document in this rule.
+
+**When adding fields**: add column + `docs/academics_exam_maker_mw.sql` snippet, entity `QuestionPaper`, DTOs, service mapping, `form` + Paper setup modal + `hydratePaperInEditor` + save payload.
+
+**Print layout persistence**: `QuestionPaper.PrintAdjustmentsJson` (migration `AddQuestionPaperPrintAdjustmentsJson`). FE `printTweaks` ↔ `printAdjustments` via `examPaperPrintAdjustments.js`. Run **School.Migrator `--academic-only`** after deploy.
+
+**Testing checklist**:
+
+- New objective paper → save → reload via dropdown change / Papers modal
+- Same slot subjective vs objective as separate papers; same title/type with different paper names as separate papers
+- Save again updates (not duplicate) for same slot + paper name
+- New exam with new paper name creates a second objective paper for same class/subject/title
+- Search catalog with class+subject set
+- Print preview: MCQ options, LAQ marks column, roman/numeric/alpha labels
+- SAQ/LAQ section: optional “attempt any N” → instruction + marks summary + saved total marks
+- Plesk: confirm updates use POST
+
+---
+
+## Question catalog types (domain)
+
+| `type` | UI label | Default section | Default marks |
+|--------|----------|-----------------|---------------|
+| `mcq` | MCQ | Q1 | 1 |
+| `saq` | SAQ | Q2 | 2 |
+| `laq` | LAQ | Q5 | 8 |
+
+| `category` | Pool filter |
+|------------|-------------|
+| `exercise`, `text`, `board` | Filter dropdown |
+
+---
+
+## Error display
+
+FE reads `requestError.response.data.message` (also tries `detail`, `title`). Show in rose banner above main grid.
+
+---
+
+## Registration (DI)
+
+`IAcademicExamMakerService` → `AcademicExamMakerService` in academics API startup (see `Program.cs` / academics area registration). Controller route: `[controller]` → `exammaker` (case-insensitive).

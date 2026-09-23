@@ -1,0 +1,60 @@
+﻿@model List<Data.Viewmodel.Account.AccountLedgerViewModel>
+@using Data.BLL
+@{
+    Layout = "~/Views/Shared/_LayoutReport.cshtml"; decimal? Balance = Model.Sum(x => x.Debit) - Model.Sum(x => x.Credit);
+}
+<script src="~/Scripts/jquery-1.10.2.min.js"></script>
+
+<table cellpadding="0" cellspacing="0" style="width:100%;">
+    <tr>
+        <td class="top">
+            @Html.Partial("_CampusDetail")
+        </td>
+        <td class="top">
+        </td>
+        <td style="text-align:right;" class="top">
+            <h2>ACCOUNT LEDGER</h2>
+            <h4>@Data.BLL.Accounts.Chart.GetAccountTitle(ViewBag.AccountID as string)</h4>
+            From <b>@Data.BLL.DateFunctions.convertToStringDate(ViewBag.From)</b> to <b>@Data.BLL.DateFunctions.convertToStringDate(ViewBag.To)</b>
+        </td>
+    </tr>
+</table>
+
+<table border="1" cellpadding="5" cellspacing="0" style="width:100%;">
+    <thead style="background:#dddddd;">
+        <tr>
+            <th style="width:14%">Date</th>
+            <th style="width:44%">Narration</th>
+            <th style="width:14%">Received</th>
+            <th style="width:14%">Payment</th>
+            <th style="width:14%">Balance</th>
+        </tr>
+    </thead>
+    @foreach (var item in Model.OrderBy(x => x.Date))
+    {
+        <tr>
+            <td>@DateFunctions.convertToStringDate(item.Date)</td>
+            <td>@item.Narration</td>
+            <td>@item.Credit</td>
+            <td>@item.Debit</td>
+            @if (item.Balance > 0)
+            {
+                <td>@item.Balance</td>
+            }
+            else
+            {
+                <td>@{ var Bal = item.Balance * -1; } (@Bal) </td>
+            }
+        </tr>
+    }
+    <tr class="text-bold bg-grey">
+        <td colspan="2"></td>
+        <td>@Model.Sum(x => x.Credit)</td>
+        <td>@Model.Sum(x => x.Debit)</td>
+        <td style="font-weight:bold">@Balance</td>
+    </tr>
+</table>
+
+<script>
+    window.onload = window.print();
+</script>

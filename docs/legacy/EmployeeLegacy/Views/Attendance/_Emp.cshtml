@@ -1,0 +1,392 @@
+﻿@model List<Data.DAL.v_EmployeeAttendance>
+@using Data.BLL
+
+@{
+    ViewBag.Title = "Emp";
+    int targetMonth = DateTime.Now.Month; // Default to current month if not provided
+    int targetYear = DateTime.Now.Year;   // Default to current year if not provided
+
+    // If Model is not empty, we can infer month/year from the first record
+    if (Model != null && Model.Any() && Model.First().AttendanceDate.HasValue)
+    {
+        targetMonth = Model.First().AttendanceDate.Value.Month;
+        targetYear = Model.First().AttendanceDate.Value.Year;
+    }
+    // -------------------------------------------------------------------------------------
+
+    // Use a HashSet for efficient lookup of dates that have attendance records
+    var presentDates = new HashSet<DateTime>();
+    // This list will hold all attendance records (present + mocked absent)
+    // Using 'dynamic' for flexibility, but ideally you'd have a specific ViewModel type
+    var allAttendanceRecords = new List<Data.DAL.v_EmployeeAttendance>();
+
+    // 1. Populate presentDates and allAttendanceRecords with existing data from the Model
+    if (Model != null)
+    {
+        foreach (var item in Model)
+        {
+            if (item.AttendanceDate.HasValue)
+            {
+                presentDates.Add(item.AttendanceDate.Value.Date);
+                allAttendanceRecords.Add(item);
+            }
+        }
+    }
+
+    // 2. Generate all days for the target month and add mock absent days
+    int daysInMonth = DateTime.DaysInMonth(targetYear, targetMonth);
+
+    for (int day = 1; day <= daysInMonth; day++)
+    {
+        DateTime currentDate = new DateTime(targetYear, targetMonth, day);
+        if (currentDate.DayOfWeek == DayOfWeek.Sunday)
+        {
+            continue;
+        }
+
+        // Check if this date is NOT in our list of present dates
+        if (!presentDates.Contains(currentDate.Date))
+        {
+            // This day is absent, create a mock record
+            allAttendanceRecords.Add(new Data.DAL.v_EmployeeAttendance
+            {
+                ID = 0,
+                AttendanceDate = currentDate,
+                AttendanceTime = (string)null, // Absent days have no check-in time
+                LateComings = (int?)null,      // Absent days have no late comings
+                Status = "A",                   // Set status to Absent
+                TodaySalary = 0
+            });
+        }
+    }
+
+    // 3. Sort all records (original and mocked) by date for correct display order
+    var sortedRecords = allAttendanceRecords.OrderBy(x => x.AttendanceDate);
+}
+
+@if (sortedRecords.Count() > 0)
+{
+    <input type="hidden" id="EmpID" value="@sortedRecords.First().EmployeeID" />
+}
+
+<table class="table text-center table-bordered">
+    <thead>
+        <tr>
+            <th style="text-align:center !important">DAY</th>
+            <th style="text-align:center !important">DAY OF WEEK</th>
+            <th style="text-align:center !important">Checkin Time</th>
+            <th style="text-align:center !important">LC</th>
+            <th style="text-align:center !important">Day Salary</th>
+            <th style="text-align:center !important">Status</th>
+            <th style="text-align:center !important"></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in sortedRecords)
+        {
+            <tr>
+                <td>@item.AttendanceDate.Value.Day</td>
+                <td>@item.AttendanceDate.Value.DayOfWeek.ToString()</td>
+                <td>
+                    @* Display Checkin Time or N/A for absent days *@
+                    @( !string.IsNullOrEmpty(item.AttendanceTime) ? Html.Raw(DateFunctions.ConvertTo12HourFormat(item.AttendanceTime)) :
+           Html.Raw("<small class='text-muted'>N/A</small>")
+        )
+                </td>
+
+                <td class="@(!string.IsNullOrEmpty(item.ChangeJson) ? "bg-soft-info" : "")">
+                    @* Display LateComings or N/A for absent days *@
+                    @if (item.Status == "A")
+                    {
+                        @Html.Raw("<small class='text-muted'>N/A</small>")
+                    }
+                    else
+                    {
+                        @item.LateComings
+                    }
+
+                    @if (!string.IsNullOrEmpty(item.ChangeJson))
+                    {
+                        <br />
+                        <a href="javascriot:void()" data-json="@Html.Raw(HttpUtility.HtmlAttributeEncode(item.ChangeJson))" class="view-change-log badge bg-soft-info text-info">log</a>
+                    }
+                </td>
+                <td>@item.TodaySalary</td>
+                <td>
+                    @* Display Status badge *@
+                    @if (item.Status == "P")
+                    {
+                        <span class="badge bg-success"><i class="la la-check-square"></i> Present</span>
+                    }
+                    else if (item.Status == "A")
+                    {
+                        <span class="badge bg-danger"><i class="la la-close"></i> Absent</span>
+                    }
+                    else if (item.Status == "L")
+                    {
+                        <span class="badge bg-info"><i class="la la-exclamation-circle"></i> Leave</span>
+                    }
+                    else if (item.Status == "H")
+                    {
+                        <span class="badge bg-warning"><i class="la la-check-circle"></i> Holiday</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-danger"><i class="la la-close"></i> N/A</span>
+                    }
+
+                </td>
+
+                @if (item.Status == "P")
+                {
+                    <td>
+                        <button data-id="@item.ID" data-empid="@item.EmployeeID" data-date="@item.AttendanceDate" type="button" class="btn btn-sm btn-outline-danger fw-bold edit">
+                            <i class="la la-edit"></i> Force Edit
+                        </button>
+                    </td>
+                }
+                else
+                {
+                    <td>
+                        <button data-date="@item.AttendanceDate.Value.Date.ToShortDateString()" type="button" class="btn btn-sm btn-outline-success force_mark">
+                            <i class="la la-check-circle"></i> Mark as Present
+                        </button>
+                    </td>
+                }
+            </tr>
+        }
+    </tbody>
+</table>
+
+<script>
+    $(document).on('click', '.force_mark', function () {
+        let date = $(this).attr('data-date');
+        Swal.fire({
+            title: 'Confirm Mark present forcefully on ' + date + '?',
+            showDenyButton: true,
+            showCancelButton: false,
+            confirmButtonText: "Mark",
+            confirmButtonColor: 'Green',
+            denyButtonText: `Cancel`
+        }).then((result) => {
+            /* Read more about isConfirmed, isDenied below */
+            if (result.isConfirmed) {
+                ForceMarkPresent(date);
+                swal.close();
+            } else if (result.isDenied) {
+                swal.close();
+            }
+        });
+    });
+
+    function ForceMarkPresent(date) {
+        var data = new FormData();
+        var EmpID = $("#EmpID").val();
+
+        if (!EmpID || EmpID == 0) {
+            alert("Invalid Employee");
+            return;
+        }
+
+        data.append("EmpID", EmpID);
+        data.append("Date", date);
+        
+        $.ajax({
+            cache: false,
+            type: 'POST',
+            processData: false,
+            contentType: false,
+            url: '/Employee/Attendance/ForceMarkPresent',
+            data: data,
+            success: function (result) {
+                window.location.reload();
+            },
+            error: function (xhr, ajaxOptions, thrownError) {
+                $("body").html(xhr.responseText);
+            }
+        });
+    }
+
+    $(document).on('click', '.edit', function () {
+        let id = $(this).attr('data-id');
+        let empid = $(this).attr('data-empid');
+        let date = $(this).attr('data-date');
+        ShowModal('Force Edit Attendance');
+
+        $.ajax({
+            cache: false,
+            type: 'GET',
+            url: '/Employee/Attendance/_Edit',
+            data: { id: id, date: date, empid: empid },
+            datatype: 'Json',
+            success: function (result) {
+                SetModalBody(result)
+            },
+            error: function (xhr, ajaxOptions, thrownError) {
+                $("body").html(xhr.responseText);
+            }
+        });
+    });
+
+  document.querySelectorAll('.view-change-log').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+
+          const jsonData = this.getAttribute('data-json');
+          if (!jsonData) return;
+
+          try {
+              const data = JSON.parse(jsonData);
+
+              // --- Header ---
+              document.getElementById('log-updated-by').innerHTML =
+                  `<span class="badge bg-info">${data.Source || 'Unknown'}</span> ${data.UpdatedBy || '-'}`;
+
+              document.getElementById('log-updated-at').textContent =
+                  data.UpdatedAt || '-';
+
+              const tbody = document.getElementById('log-table-body');
+              tbody.innerHTML = '';
+
+              // --- Helper ---
+              function formatTime(val) {
+                  if (!val) return '-';
+
+                  if (typeof val === "string" && val.length <= 5) return val;
+
+                  let d = new Date(val);
+                  return d.toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      hour12: true
+                  });
+              }
+
+              // =============================
+              // 🔥 CASE 1: MANUAL EDIT
+              // =============================
+              if (data.Source === "ManualEdit") {
+
+                  const fields = [
+                      { key: 'Time', label: 'Check In' },
+                      { key: 'CheckOutTime', label: 'Check Out' },
+                      { key: 'LateComings', label: 'Late Comings' },
+                      { key: 'LateDeduction', label: 'Late Deduction' },
+                      { key: 'TodaySalary', label: 'Today Salary' }
+                  ];
+
+                  fields.forEach(f => {
+
+                      let before = data.Before?.[f.key];
+                      let after = data.After?.[f.key];
+
+                      if (f.key === 'Time' || f.key === 'CheckOutTime') {
+                          before = formatTime(before);
+                          after = formatTime(after);
+                      }
+
+                      const changed = before != after;
+
+                      const row = `
+                        <tr ${changed ? 'class="table-warning"' : ''}>
+                            <td>${f.label}</td>
+                            <td>${before ?? '-'}</td>
+                            <td>${after ?? '-'}</td>
+                        </tr>
+                    `;
+
+                      tbody.insertAdjacentHTML('beforeend', row);
+                  });
+              }
+
+              // =============================
+              // 🔥 CASE 2: IMPORT (NO EDIT)
+              // =============================
+              else if (data.Source === "Import") {
+
+                  const ci = formatTime(data?.Interpreted?.actualCheckIn);
+                  const co = formatTime(data?.Interpreted?.actualCheckOut);
+
+                  const rows = `
+                    <tr>
+                        <td>Check In</td>
+                        <td colspan="2">${ci}</td>
+                    </tr>
+                    <tr>
+                        <td>Check Out</td>
+                        <td colspan="2">${co}</td>
+                    </tr>
+                    <tr>
+                        <td>Rule Applied</td>
+                        <td colspan="2">${data?.Interpreted?.ruleApplied || '-'}</td>
+                    </tr>
+                `;
+
+                  tbody.insertAdjacentHTML('beforeend', rows);
+              }
+
+              // =============================
+              // 🔥 COMMON: CALCULATION
+              // =============================
+              const calc = data.Calculation;
+
+              if (calc) {
+                  const summary = `
+                    <tr class="table-light">
+                        <td><b>Late (mins)</b></td>
+                        <td colspan="2">${Math.round(calc.lateMinutes || 0)}</td>
+                    </tr>
+                    <tr class="table-light">
+                        <td><b>Early (mins)</b></td>
+                        <td colspan="2">${Math.round(calc.earlyMinutes || 0)}</td>
+                    </tr>
+                    <tr class="table-light">
+                        <td><b>Total (mins)</b></td>
+                        <td colspan="2">${Math.round(calc.totalMinutes || 0)}</td>
+                    </tr>
+                    <tr class="table-danger">
+                        <td><b>Final LC</b></td>
+                        <td colspan="2"><b>${calc.LC || 0}</b></td>
+                    </tr>
+                `;
+
+                  tbody.insertAdjacentHTML('beforeend', summary);
+              }
+
+              // =============================
+              // 🔥 COMMON: SALARY
+              // =============================
+              const salary = data.Salary || data.After;
+
+              if (salary) {
+                  const salaryRows = `
+                    <tr class="table-info">
+                        <td><b>Late Deduction</b></td>
+                        <td colspan="2">${salary.LateDeduction ?? '-'}</td>
+                    </tr>
+                    <tr class="table-info">
+                        <td><b>Today Salary</b></td>
+                        <td colspan="2">${salary.TodaySalary ?? '-'}</td>
+                    </tr>
+                `;
+
+                  tbody.insertAdjacentHTML('beforeend', salaryRows);
+              }
+
+              // --- Show Modal ---
+              $("#changeLogModal").modal('toggle');
+
+          } catch (err) {
+              alert("Invalid JSON format");
+              console.error(err);
+          }
+      });
+  });
+
+</script>
+
+<style>
+    td {
+        padding: .4rem !important;
+        vertical-align: middle !important;
+    }
+</style>

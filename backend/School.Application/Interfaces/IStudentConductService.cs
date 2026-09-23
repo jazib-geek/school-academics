@@ -32,5 +32,7 @@ public interface IStudentConductService
 
     Task<StudentConductDayReportDto> GetDayReportAsync(
         DateOnly date,
+        DateOnly? dateTo = null,
+        int? recordedByEmployeeId = null,
         CancellationToken cancellationToken = default);
 }

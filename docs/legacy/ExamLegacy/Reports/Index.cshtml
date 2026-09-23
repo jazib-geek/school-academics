@@ -1,0 +1,459 @@
+﻿@*darkslateblue*@
+@using Data.BLL
+
+<div class="">
+    <div class="card">
+        <h3 class="text-center">
+            <i class="la la-chart-line"></i> EXAM REPORTS
+        </h3>
+    </div>
+    <div class="card" style="padding: 30px;">
+        <div class="well" style="display:block !important">
+            <div class="row">
+                <div class="col-md-3">
+                    <input type="text" class="input-mini" id="studentid" placeholder="Student ID" />
+                    <input type="text" class="input-mini" id="position" placeholder="Positions" />
+                </div>
+                <div class="col-md-3">
+
+                    <select id="ClassID" style="width:100%">
+                        <option value="">---Class---</option>
+                        @foreach (var item in Data.BLL.Student.Parameters.ListOfClass())
+                        {
+                            <option value="@item.ID">@item.ClassName</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-1"></div>
+
+                <div class="col-md-5">
+
+                    @Html.DropDownList("examtypeid", new SelectList(ExamType.lstExamType(), "ID", "ExamType"), "--Exam type--", new { @id = "examtypeid" })
+
+                    <select id="FancyRptType" title="Only applicable on Fancy Multiple Report">
+                        <option value="G">Calculate Drawing as Grade</option>
+                        <option value="M">Calculate Drawing as Marks</option>
+                    </select>
+                </div>
+            </div>
+            </div>
+        <br />
+        <div class="row">
+            <div class="col-lg-4 col-sm-6" onclick="result_card_complete()">
+                <div class="info-box-2 bg-purple">
+                    <div class="icon">
+                        <i class="material-icons">contact_mail</i>
+                    </div>
+                    <div class="content">
+                        <div class="text">Class 1 to 10</div>
+                        <div class="number">Result Card</div>
+                    </div>
+                </div>
+            </div>
+
+
+
+            <div class="col-lg-4 col-sm-6" onclick="result_card_multiple()">
+                <div class="info-box-2 bg-blue-grey">
+                    <div class="icon">
+                        <i class="material-icons">view_list</i>
+                    </div>
+                    <div class="content">
+                        <div class="text">Class 1 to 10</div>
+                        <div class="number">Result Card Multiple</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4 col-sm-6" onclick="result_card_fancy('class')">
+                <div class="info-box-2 bg-teal">
+                    <div class="icon">
+                        <i class="material-icons">redeem</i>
+                    </div>
+                    <div class="content">
+                        <div class="text"></div>
+                        <div class="number">Result Card Fancy</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-lg-4 col-sm-6" onclick="result_card_junior()">
+                <div class="info-box-2 bg-red">
+                    <div class="icon">
+                        <i class="material-icons">contact_mail</i>
+                    </div>
+                    <div class="content">
+                        <div class="text">Juniors</div>
+                        <div class="number">Result Card</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4 col-sm-6" onclick="result_card_multiple_alt()">
+                <div class="info-box-2 bg-green">
+                    <div class="icon">
+                        <i class="material-icons">view_quilt</i>
+                    </div>
+                    <div class="content">
+                        <div class="text">Juniors</div>
+                        <div class="number">Result Card Multiple</div>
+                    </div>
+                </div>
+            </div>
+            
+
+            <div class="col-lg-4 col-sm-6" onclick="result_card_fancy_multiple()">
+                <div class="info-box-2 bg-orange">
+                    <div class="icon">
+                        <i class="material-icons">view_module</i>
+                    </div>
+                    <div class="content">
+                        <div class="text"></div>
+                        <div class="number">Fancy Multiple</div>
+                    </div>
+                </div>
+            </div>
+
+
+
+        </div>
+
+        <div class="row">
+
+
+            <div class="col-lg-4 col-sm-6" onclick="award_list_2c()">
+                <div class="info-box-2 bg-blue">
+                    <div class="icon">
+                        <i class="material-icons">view_agenda</i>
+                    </div>
+                    <div class="content">
+                        <div class="text"></div>
+                        <div class="number">Award List 2 Col</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4 col-sm-6" onclick="award_list_3c()">
+                <div class="info-box-2 bg-blue-grey">
+                    <div class="icon">
+                        <i class="material-icons">view_agenda</i>
+                    </div>
+                    <div class="content">
+                        <div class="text">with Remarks</div>
+                        <div class="number">Award List</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4 col-sm-6" onclick="award_list()">
+                <div class="info-box-2 bg-indigo">
+                    <div class="icon">
+                        <i class="material-icons">view_quilt</i>
+                    </div>
+                    <div class="content">
+                        <div class="text"></div>
+                        <div class="number">Award List 12 Col</div>
+                    </div>
+                </div>
+            </div>
+
+           
+        </div>
+
+        <div class="row">
+            <div class="col-lg-4 col-sm-6" onclick="TopNpositions()">
+                <div class="info-box-2 bg-blue-grey">
+                    <div class="icon">
+                        <i class="material-icons">star_rate</i>
+                    </div>
+                    <div class="content">
+                        <div class="text"></div>
+                        <div class="number">Top N Positions</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4 col-sm-6" onclick="TopNpositionsAlt()">
+                <div class="info-box-2 bg-teal">
+                    <div class="icon">
+                        <i class="material-icons">star_rate</i>
+                    </div>
+                    <div class="content">
+                        <div class="text"></div>
+                        <div class="number">Top N Positions (Junior)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+
+    // RESULT CARD COMPLETE OF THIS STUDENT
+
+    function result_card_complete() {
+        if ($("#studentid").val() != '') {
+            window.open(
+                '/Exam/Reports/AcademicReport/' + $("#studentid").val(), '_blank'
+            );
+        }
+        else {
+            $.alert('Student ID is required');
+        }
+    }
+
+    function result_card_junior() {
+        if ($("#studentid").val() != '') {
+            window.open(
+                '/Exam/Reports/AcademicReportAlt/' + $("#studentid").val(), '_blank'
+            );
+        }
+        else {
+            $.alert('Student ID is required');
+        }
+    }
+
+
+    function TopNpositions() {
+        if ($("#examtypeid").val() != '' && $("#position").val() != '') {
+            window.open(
+                '/Exam/Reports/TopNpositions/' + $("#examtypeid").val() + '/?n=' + $("#position").val(), '_blank'
+            );
+        }
+        else {
+            alert_warning('Exam Type and No of positions required');
+        }
+    }
+
+    function TopNpositionsAlt() {
+        if ($("#examtypeid").val() != '' && $("#position").val() != '') {
+            window.open(
+                '/Exam/Reports/TopNpositions_Alt/' + $("#examtypeid").val() + '/?n=' + $("#position").val(), '_blank'
+            );
+        }
+        else {
+            alert_warning('Exam Type and No of positions required');
+        }
+    }
+
+    function result_card_fancy() {
+        if ($("#examtypeid").val() != '' && $("#studentid").val() != '') {
+            window.open(
+                '/Exam/Print/ResultCardAdvanced/' + $("#studentid").val() + '/?ExamTypeID=' + $("#examtypeid").val() + '&type=' + $("#FancyRptType").val(), '_blank'
+            );
+        }
+        else {
+            $.alert('Exam Type and Student ID is required');
+        }
+    }
+
+    // Multiple
+
+    function result_card_multiple() {
+        if ($("#ClassID").val() != '' && $("#sectionid").val() != '') {
+            window.open(
+                '/Exam/Print/MultipleResultCards/?classid=' + $("#ClassID").val(), '_blank'
+            );
+        }
+        else {
+            alert_warning('*', 'Please select Class');
+        }
+    }
+
+    function result_card_multiple_alt() {
+        if ($("#ClassID").val() != '') {
+            window.open(
+                '/Exam/Print/MultipleResultCards/?classid=' + $("#ClassID").val() + '&mode=alt', '_blank'
+            );
+        }
+        else {
+            alert_warning('*', 'Please select Class');
+        }
+    }
+
+    // FANCY Multiple
+
+    function result_card_fancy_multiple() {
+        if ($("#classid").val() != '' && $("#sectionid").val() != '' && $("#examtypeid").val() != '') {
+            window.open(
+                '/Exam/Reports/ResultCardFancy_Multiple/?classid=' + $("#ClassID").val() + '&examtype=' + $("#examtypeid").val() + '&type=' + $("#FancyRptType").val(), '_blank'
+            );
+        }
+        else {
+            $.alert('Please select Class/Section and Exam type');
+        }
+    }
+    // Award List
+    function award_list() {
+        if ($("#ClassID").val() != '') {
+            window.open(
+                '/Exam/Reports/AwardList/?classid=' + $("#ClassID").val(), '_blank'
+            );
+        }
+        else {
+            alert_error('Class Required', 'Please select Class');
+        }
+    }
+
+    // Award List : 2 Column
+    function award_list_2c() {
+        if ($("#ClassID").val() != '' && $("#examtypeid").val() != '') {
+            window.open(
+                '/Exam/Reports/AwardList_2/?classid=' + $("#ClassID").val() + '&examtype=' + $("#examtypeid").val(), '_blank'
+            );
+        }
+        else {
+            alert_error('Class and Exam Required', 'Please select Class and Exam Type');
+        }
+    }
+
+    // Award List : 2 Column
+    function award_list_3c() {
+        if ($("#ClassID").val() != '' && $("#examtypeid").val() != '') {
+            window.open(
+                '/Exam/Reports/AwardList_3/?classid=' + $("#ClassID").val() + '&examtype=' + $("#examtypeid").val(), '_blank'
+            );
+        }
+        else {
+            alert_error('Class and Exam Required', 'Please select Class and Exam Type');
+        }
+    }
+
+    // RESULT COMPARIOSN 1
+    function result_comparison_1() {
+        if ($("#classid").val() != '' && $("#sectionid").val() != '') {
+            window.open(
+                '/Exam/Reports/ResultComparison/?classid=' + $("#classid").val() + '&sectionid=' + $("#sectionid").val() + '&examtype=' + $("#examtypeid").val(), '_blank'
+            );
+        }
+        else {
+            $.alert('Please select Class/Section');
+        }
+    }
+
+    // Get Sections
+    function getSection() {
+        var item = $("#classid").val();
+
+        if (item != '') {
+            $.ajax({
+                cache: false, async: false, type: "POST",
+                url: '/Student/AjaxMethods/GetSectionList',
+                data: { "ID": item },
+                success: function (result) {
+                    $(".myDdl").html("");
+                    if (result.length == 2) {
+                        $("#sectionid").attr("disabled", "disabled");
+                        $("#sectionid").append($('<option></option>').val(0).html('--No Section--'))
+
+                        alert('No section found');
+                    }
+                    else {
+                        $("#sectionid").removeAttr("disabled");
+                        $("#sectionid").html("");
+                        $("#sectionid").append($('<option></option>').val(0).html('--section--'))
+                        $.each($.parseJSON(result), function (i, myclass) {
+                            $("#sectionid").append($('<option></option>').val(myclass.ID).html(myclass.SectionName))
+                        })
+                    }
+
+                },
+                error: function (xhr, ajaxOptions, thrownError) {
+                    alert('Failed to retrieve Item.');
+                }
+            });
+        }
+        else {
+            $("#sectionid").html("");
+            $("#sectionid").append($('<option></option>').val(0).html('--section--'))
+            $("#sectionid").attr("disabled", "disabled");
+        }
+    }
+</script>
+
+<style>
+    .well {
+        padding: 12px;
+        background-color: lightgray;
+        border-radius: 10px;
+        display: flex;
+    }
+
+    .widget {
+        min-height: 72px !important;
+        margin-top: 10px !important;
+        padding: 12px !important;
+    }
+
+        .widget i {
+            font-size: 38px !important;
+            height: 31px !important;
+        }
+
+        .widget span.widget-fig {
+            font-size: 30px !important;
+        }
+
+    input[type=text], select {
+        height: 32px;
+        padding: 2px;
+        color: darkslateblue;
+        font-size: medium;
+        font-weight: bold;
+        font-family: Arial;
+        border-radius: 5px;
+        border: 2px solid darkslateblue;
+    }
+
+    .input-mini {
+        width: 87px;
+    }
+
+    .input-medium {
+        width: 120px;
+    }
+
+    .ds-btn a {
+        margin: 10px;
+        width: 31%;
+        margin-top: 50px;
+    }
+
+        .ds-btn a span {
+            padding-left: 15px;
+            padding-right: 5px;
+            width: 100%;
+            display: inline-block;
+            text-align: left;
+        }
+
+            .ds-btn a span small {
+                width: 100%;
+                display: inline-block;
+                text-align: left;
+            }
+
+    .blue-violet {
+        background-color: blueviolet;
+    }
+
+    .brown {
+        background-color: brown;
+    }
+
+    .magenta {
+        background-color: darkmagenta;
+    }
+
+    .info-box-2:hover {
+        cursor: pointer;
+    }
+
+    .icon {
+        margin-right: 10px !important;
+    }
+</style>

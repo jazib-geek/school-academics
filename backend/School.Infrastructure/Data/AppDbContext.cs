@@ -956,7 +956,8 @@ public class AppDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(e => e.EmployeeID)
                 .OnDelete(DeleteBehavior.Restrict);
-            entity.HasIndex(e => new { e.TimeTableID, e.SectionID, e.PeriodNumber, e.DayOfWeek }).IsUnique();
+            entity.Property(e => e.LineIndex).HasDefaultValue((byte)0);
+            entity.HasIndex(e => new { e.TimeTableID, e.SectionID, e.PeriodNumber, e.DayOfWeek, e.LineIndex }).IsUnique();
             entity.HasIndex(e => new { e.TimeTableID, e.EmployeeID, e.PeriodNumber, e.DayOfWeek }).IsUnique();
         });
         modelBuilder.Entity<CampusDateSheet>(entity =>

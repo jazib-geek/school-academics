@@ -1,0 +1,550 @@
+﻿@model Data.Viewmodel.ReceiptViewModel
+@using Data.BLL
+
+@{
+    ViewBag.Title = "Recpt";
+    Layout = null;
+    string ClassName = Data.BLL.Student.Parameters.GetClassNameFromCompositeID(Model.studentmodel.ClassCompositeID);
+    decimal? TotalFund = 0;
+
+    Data.DAL.dbSchoolEntities db = new Data.DAL.dbSchoolEntities();
+    string ManualRcpt = "";
+    var m = db.tblFeeAndFundCollections.Where(x => x.RcptID == Model.RcptID).FirstOrDefault();
+    if (m != null)
+    {
+        ManualRcpt = m.ManualRcptNo;
+    }
+}
+
+<head>
+    <link href="~/css/bootstrap-theme.css" type="text/css" rel="stylesheet" />
+    <link href="~/css/bootstrap-responsive.min.css" rel="stylesheet" />
+    <script src="~/Scripts/jquery-3.3.1.min.js"></script>
+    @Scripts.Render("~/bundles/bootstrap")
+    <script>
+        function printDiv(divName) {
+            var printContents = document.getElementById(divName).innerHTML;
+            var originalContents = document.body.innerHTML;
+
+            document.body.innerHTML = printContents;
+
+            window.onlo = window.print();
+
+            document.body.innerHTML = originalContents;
+        }
+
+        function getBack() {
+            window.location = '/Fee/Receive/';
+        }
+
+        $(document).ready(function () {
+            printDiv('MainDiv');
+        });
+    </script>
+
+    <style>
+        body {
+            font-family: Arial !important;
+        }
+
+        @@media print {
+
+            .table-bordered > thead > tr > th, .table-bordered > tbody > tr > th, .table-bordered > tfoot > tr > th, .table-bordered > thead > tr > td, .table-bordered > tbody > tr > td, .table-bordered > tfoot > tr > td {
+                border: 2px solid black !important;
+            }
+
+            .table-bordered {
+                border: 2px solid black !important;
+            }
+        }
+
+        @@Page {
+            margin: 12px !important;
+        }
+
+
+        .MakeBorder {
+            border: 1px solid black !important;
+            margin-bottom: 5px;
+        }
+
+        .GenBorder {
+            border: 1px solid black !important;
+        }
+
+        .custPadding {
+            padding-top: 4px;
+            padding-bottom: 4px;
+        }
+
+        .pad-lg {
+            padding-top: 10px;
+            padding-bottom: 10px;
+        }
+
+        .leftside {
+            border-left: 1px solid #153e07;
+        }
+
+        .rightside {
+            border-right: 1px solid #153e07;
+        }
+
+        .FeeBox {
+            padding-top: 3px;
+            padding-bottom: 3px;
+        }
+
+        .custom-padding {
+            padding: 6px;
+            font-size: 18px;
+        }
+
+        .custom-padding-sm {
+            padding: 3px;
+            font-size: 15px;
+        }
+
+        td {
+            padding: 2px !important;
+            font-size: 11px !important;
+        }
+
+        th {
+            padding: 4px !important;
+            font-size: 13px !important;
+        }
+
+        .divInfo {
+            width: 95%;
+            margin-top: 1em;
+            margin-left: 0.8em;
+        }
+
+        .divInfo-bottom {
+            width: 90%;
+            margin-top: 0.5em;
+            margin-left: 22px;
+        }
+
+        .master-block-upper {
+            height: 25px;
+            width: 100%;
+        }
+
+        .receipt-block-upper {
+            height: 25px;
+            width: 93%;
+            margin-left: 1.3em;
+        }
+
+        .child-block-upper-left {
+            width: 28%;
+            margin-left: 1.3em;
+            float: left;
+            font-size: smaller !important;
+        }
+
+        .child-block-upper-right {
+            width: 60%;
+            margin-left: 1.3em;
+            float: left;
+            text-decoration: underline;
+            font-size: smaller !important;
+        }
+    </style>
+</head>
+
+<div id="MainDiv">
+
+    @*LEFT SIDE*@
+
+    <div class="pull-left" style="width:50%;border-right: 2px dashed black;padding-left:10px;padding-right:15px;">
+        <div class="row" style="margin-left:0!important;padding-left:10px!important;">
+            <div style="width:30%;float:left">
+                <img src="/img/SBS MONO.png" style="max-width:50%" />
+            </div>
+            <div style="width:60%;float:left;" class="text-center">
+                <h5 style="font-size:17px!important;line-height:0.6!important;padding-top:0.4em;font-weight:bold;font-family:Arial!important">@System.Web.Configuration.WebConfigurationManager.AppSettings["school_name"]</h5>
+                <h6 style="font-size:12px!important;line-height:0.6!important;font-family:Arial!important">@System.Web.Configuration.WebConfigurationManager.AppSettings["campus_name"]</h6>
+                <h6 style="font-size:12px!important;line-height:0.6!important;padding-bottom:0.5em;font-family:Arial!important">Phone : @System.Web.Configuration.WebConfigurationManager.AppSettings["campus_landline"], @System.Web.Configuration.WebConfigurationManager.AppSettings["campus_mobile"]</h6>
+            </div>
+        </div>
+
+        <div class="divInfo">
+            <div class="master-block-upper">
+                <div class="child-block-upper-left">
+                    Date & Time :
+                </div>
+                <div class="child-block-upper-right">
+                    @DateFunctions.convertToNumericDate(Model.Date) &nbsp;&nbsp; @Model.Time
+                </div>
+            </div>
+
+            <div class="master-block-upper">
+                <div class="child-block-upper-left">
+                    Student Name :
+                </div>
+                <div class="child-block-upper-right">
+                    @Model.studentmodel.FullName
+                </div>
+            </div>
+
+            <div class="master-block-upper">
+                <div class="child-block-upper-left">
+                    Class-Section :
+                </div>
+                <div class="child-block-upper-right">
+                    @ClassName
+
+
+                </div>
+            </div>
+            <div class="receipt-block-upper">
+                <div style="width:35%;float:left">
+                    Recipt no : @Model.RcptID @*@Model.TransactionID-@Model.studentmodel.Reg_Id*@
+                    @if (!string.IsNullOrEmpty(ManualRcpt))
+                    {
+                        <small>/@ManualRcpt</small>
+                    }
+                </div>
+                <div style="width:35%;float:left;text-align:center">
+                    F No. @Model.studentmodel.Family_ID
+                </div>
+                <div style="width:30%;float:left;text-align:center">
+                    Acc/no. @Model.studentmodel.Reg_Id
+                </div>
+            </div>
+            <table style="max-width:95%;margin-top:0.1em;margin-left:0.8em;" class="table table-bordered border-thin">
+                <thead class="bg-soft-info">
+                    <tr>
+                        <th>Sr.</th>
+                        <th style="width:40%">Description</th>
+                        <th>Actual Amount</th>
+                        <th>Concession</th>
+                        <th>Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @{ int sr = 0; }
+                    @foreach (var item in Data.BLL.FeeAndFund.Receive.lstByTrxID(Model.TransactionID).Where(x => x.StudentID == Model.studentmodel.Reg_Id).ToList())
+                    {
+                        { sr += 1; }
+                        <tr>
+                            <td>@sr</td>
+                            @if (item.Month != null)
+                            {
+                                if (item.Month > 0)
+                                {
+                                    <td> @DateFunctions.convertToStringMonth(item.Month) @item.Year Fee</td>
+                                    <td>@Data.BLL.FeeAndFund.Receive.GetActualFee(item.StudentID)</td>
+                                    if (item.Discount == 0)
+                                    {
+                                        <td>@Data.BLL.FeeAndFund.Receive.GetConcession(item.StudentID)</td>
+                                    }
+                                    else
+                                    {
+                                        <td>
+                                            @Data.BLL.FeeAndFund.Receive.GetConcession(item.StudentID) <br />
+                                            @item.Discount <small></small>
+                                        </td>
+                                    }
+                                }
+                                else
+                                {
+                                    { TotalFund = Data.BLL.FeeAndFund.Funds.GetFunds(item.StudentID, item.FundTypeID) + item.Discount; }
+
+                                    <td> @item.Type </td>
+                                    <td>@TotalFund</td>
+                                    if (item.Discount == 0)
+                                    {
+                                        @*<td>@Data.BLL.FeeAndFund.Receive.GetConcession(item.StudentID)</td>*@
+                                        <td>0</td>
+                                    }
+                                    else
+                                    {
+                                        <td>@item.Discount <small>(covid-19)</small></td>
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                <td>@item.Type</td>
+                                <td>-</td>
+                                <td>-</td>
+                            }
+                            <td>@item.Recieved</td>
+                        </tr>
+                    }
+                    @{ sr = 0; }
+                    <tr>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td style="height:55px"></td>
+                    </tr>
+                </tbody>
+                <tfoot>
+                    <tr class="well" style="font-weight:bold">
+                        <td colspan="4" class="text-center">Total Amount Received</td>
+                        <td>@Model.SumOfReceived</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <div style="font-weight:bold; width:100%; height:3em;">
+            <div style="width:80%;" class="text-center pull-left border-thin padding-custom">
+                &nbsp;&nbsp;&nbsp;Total Amount Remaining
+            </div>
+            <div style="width:18%;" class="text-center pull-right border-thin padding-custom">
+                @Data.BLL.FeeAndFund.Balance.NetBalance(Model.studentmodel.Reg_Id)
+            </div>
+        </div>
+
+        <div class="border-thin padding-custom divInfo-bottom">
+            <div style="width:40%;" class="text-center pull-left border-thin padding-custom">
+                <small>Signature (Office copy)</small>
+            </div>
+            <div style="width:60%;" class="text-center pull-right border-thin padding-custom">
+                _____________________
+            </div>
+        </div>
+
+        <div class="border-thin padding-custom divInfo-bottom">
+            <div style="width:55%;" class="text-center pull-left border-thin padding-custom">
+
+            </div>
+            <div style="width:45%;" class="pull-right border-thin padding-custom">
+                <small>Received By : @Model.ReceivedBy</small>
+            </div>
+        </div>
+
+        <br /> <br />
+
+        <div class="border-thin padding-custom divInfo-bottom">
+            <b>Note :</b>
+            <br />
+            <ul style="padding-left:10px !important">
+                <li style="font-size:10.5px;font-weight:bold;font-style:italic">After 10th of every month Fee will be received with Fine.</li>
+                <li style="font-size: 10.5px;">Any kind of dues paid once are neither refundable nor adjustable in any case.</li>
+            </ul>
+        </div>
+    </div>
+
+    @*RIGHT SIDE*@
+
+    <div class="pull-right" style="width:50%;padding-left:10px;padding-right:15px;">
+        <div class="row" style="margin-left:0!important;padding-left:10px!important;">
+            <div style="width:30%;float:left">
+                <img src="/img/SBS MONO.png" style="max-width:50%" />
+            </div>
+            <div style="width:60%;float:left;" class="text-center">
+                <h5 style="font-size:17px!important;line-height:0.6!important;padding-top:0.4em;font-weight:bold;font-family:Arial!important">@System.Web.Configuration.WebConfigurationManager.AppSettings["school_name"]</h5>
+                <h6 style="font-size:12px!important;line-height:0.6!important;font-family:Arial!important">@System.Web.Configuration.WebConfigurationManager.AppSettings["campus_name"]</h6>
+                <h6 style="font-size:12px!important;line-height:0.6!important;padding-bottom:0.5em;font-family:Arial!important">Phone : 055-@System.Web.Configuration.WebConfigurationManager.AppSettings["campus_landline"], @System.Web.Configuration.WebConfigurationManager.AppSettings["campus_mobile"]</h6>
+            </div>
+        </div>
+
+        <div class="divInfo">
+            <div class="master-block-upper">
+                <div class="child-block-upper-left">
+                    Date & Time :
+                </div>
+                <div class="child-block-upper-right">
+                    @DateFunctions.convertToNumericDate(Model.Date)
+                </div>
+            </div>
+
+            <div class="master-block-upper">
+                <div class="child-block-upper-left">
+                    Student Name :
+                </div>
+                <div class="child-block-upper-right">
+                    @Model.studentmodel.FullName
+                </div>
+            </div>
+
+            <div class="master-block-upper">
+                <div class="child-block-upper-left">
+                    Class-Section :
+                </div>
+                <div class="child-block-upper-right">
+                    @ClassName
+                </div>
+            </div>
+
+            <div class="receipt-block-upper">
+                <div style="width:35%;float:left">
+                    Recipt no : @Model.RcptID
+                    @if (!string.IsNullOrEmpty(ManualRcpt))
+                    {
+                        <small>/@ManualRcpt</small>
+                    }
+                </div>
+                <div style="width:35%;float:left;text-align:center">
+                    F No. @Model.studentmodel.Family_ID
+                </div>
+                <div style="width:30%;float:left;text-align:center">
+                    Acc/no. @Model.studentmodel.Reg_Id
+                </div>
+            </div>
+            <table style="max-width:95%;margin-top:0.1em;margin-left:0.8em;" class="table table-bordered border-thin">
+                <thead class="bg-soft-info">
+                    <tr>
+                        <th>Sr.</th>
+                        <th style="width:40%">Description</th>
+                        <th>Actual Amount</th>
+                        <th>Concession</th>
+                        <th>Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @{ int ser = 0; }
+                    @foreach (var item in Data.BLL.FeeAndFund.Receive.lstByTrxID(Model.TransactionID).Where(x => x.StudentID == Model.studentmodel.Reg_Id).ToList())
+                    {
+                        { ser += 1; }
+                        <tr>
+                            <td>@ser</td>
+                            @if (item.Month != null)
+                            {
+                                if (item.Month > 0)
+                                {
+                                    <td> @DateFunctions.convertToStringMonth(item.Month) @item.Year Fee</td>
+                                    <td>@Data.BLL.FeeAndFund.Receive.GetActualFee(item.StudentID)</td>
+                                    if (item.Discount == 0)
+                                    {
+                                        <td>@Data.BLL.FeeAndFund.Receive.GetConcession(item.StudentID)</td>
+                                    }
+                                    else
+                                    {
+                                        <td>
+                                            @Data.BLL.FeeAndFund.Receive.GetConcession(item.StudentID) <br />
+                                            @item.Discount <small>(covid-19)</small>
+                                        </td>
+                                    }
+                                }
+                                else
+                                {
+                                    { TotalFund = Data.BLL.FeeAndFund.Funds.GetFunds(item.StudentID, item.FundTypeID) + item.Discount; }
+
+                                    <td> @item.Type </td>
+                                    <td>@TotalFund</td>
+                                    if (item.Discount == 0)
+                                    {
+                                        <td>0</td>
+                                    }
+                                    else
+                                    {
+                                        <td>@item.Discount <small>(covid-19)</small></td>
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                <td>@item.Type</td>
+                                <td>-</td>
+                                <td>-</td>
+                            }
+                            <td>@item.Recieved</td>
+                        </tr>
+                    }
+                    <tr>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td style="height:55px"></td>
+                    </tr>
+                </tbody>
+                <tfoot>
+                    <tr class="well" style="font-weight:bold">
+                        <td colspan="4" class="text-center">Total Amount Received</td>
+                        <td>@Model.SumOfReceived</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <div style="font-weight:bold; width:100%; height:3em;">
+            <div style="width:80%;" class="text-center pull-left border-thin padding-custom">
+                &nbsp;&nbsp;&nbsp;Total Amount Remaining
+            </div>
+            <div style="width:18%;" class="text-center pull-right border-thin padding-custom">
+                @Data.BLL.FeeAndFund.Balance.NetBalance(Model.studentmodel.Reg_Id)
+            </div>
+        </div>
+
+        <div class="border-thin padding-custom divInfo-bottom">
+            <div style="width:40%;" class="text-center pull-left border-thin padding-custom">
+                <small> Signature <br /> (Student copy)</small>
+            </div>
+            <div style="width:60%;" class="text-center pull-right border-thin padding-custom">
+                ____________________
+            </div>
+        </div>
+
+        <div class="border-thin padding-custom divInfo-bottom">
+            <div style="width:55%;" class="text-center pull-left border-thin padding-custom">
+
+            </div>
+            <div style="width:45%;" class="pull-right border-thin padding-custom">
+                <small>Received By : @Model.ReceivedBy </small>
+                <br />
+            </div>
+        </div>
+
+        <br /> <br />
+
+        <div class="border-thin padding-custom divInfo-bottom">
+            <b>Note :</b>
+            <br />
+            <ul style="padding-left:10px !important">
+                <li style="font-size:10.5px;font-weight:bold;font-style:italic">After 10th of every month Fee will be received with Fine.</li>
+                <li style="font-size: 10.5px;">Any kind of dues paid once are neither refundable nor adjustable in any case.</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<style>
+    body {
+        font-family: Arial !important;
+        font-size: 1.1em !important;
+        background-color: white !important;
+    }
+
+    .full-width {
+        width: 100%;
+    }
+
+    .half-width {
+        width: 50%;
+    }
+
+    .border-thinx {
+        border: 1px solid black;
+    }
+
+    .padding-custom {
+        padding-top: 0.4em;
+        padding-bottom: 0.4em;
+    }
+
+    .divInfo {
+        font-weight: bold;
+    }
+
+        .divInfo .pull-right {
+            text-decoration: underline !important;
+        }
+
+    .table-bordered > thead > tr > th, .table-bordered > tbody > tr > th, .table-bordered > tfoot > tr > th, .table-bordered > thead > tr > td, .table-bordered > tbody > tr > td, .table-bordered > tfoot > tr > td {
+        border: 2px solid black !important;
+    }
+
+    .table-bordered {
+        border: 2px solid black !important;
+    }
+</style>

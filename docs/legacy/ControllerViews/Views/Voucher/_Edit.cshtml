@@ -1,0 +1,87 @@
+﻿@model Data.DAL.tblTransactionDetail
+
+
+
+<div class="form-group">
+    <label for="Date">Date </label>
+    <input type="text" class="form-control" id="Date" value="@Model.Date.Value.ToShortDateString()">
+</div>
+
+<div class="form-group">
+    <label for="Date">Account</label>
+    <select id="AccountID" class="form-control">
+        @foreach (var item in Data.BLL.Accounts.Chart.ListAccount())
+        {
+            <option value="@item.AccountID" @(item.AccountID == Model.AccountID ? "selected" : "")>@item.AccountTitle</option>
+        }
+    </select>
+</div>
+
+<div class="form-group">
+    <label for="Debit">Debit</label>
+    <input type="text" class="form-control" id="Debit" value="@Model.Debit">
+</div>
+
+<div class="form-group">
+    <label for="Credit">Credit</label>
+    <input type="text" class="form-control" id="Credit" value="@Model.Credit">
+</div>
+
+<div class="form-group">
+    <label for="Narration">Narration</label>
+    <textarea class="form-control" id="Narration">@Model.Narration </textarea>
+</div>
+
+<div class="text-center">
+    <input type="button" class="btn btn-info btn-block" value="Update" onclick="EditVoucher()">
+</div>
+
+<script>
+      $(function () {
+        $("#Date").datepicker({
+            autoclose: true,
+            todayHighlight: true
+        }).datepicker();
+      });
+
+    @if (Model.VoucherType == "CPV")
+    {
+        <text> $("#Credit").attr('disabled', true); $("#Credit").css('background', 'lightgray'); </text>
+    }
+    else if(Model.VoucherType == "CRV")
+    {
+        <text> $("#Debit").attr('disabled', true); $("#Debit").css('background', 'lightgray'); </text>
+    }
+
+    function EditVoucher() {
+        if ($("#Date") != '' && $("#Debit") != '' && $("#Credit") != '' && $("#Narration") != '') {
+             var data = new FormData();
+
+            data.append("ID", @Model.ID);
+            data.append("Date", $("#Date").val());
+            data.append("Debit", $("#Debit").val());
+            data.append("Credit", $("#Credit").val());
+            data.append("Narration", $("#Narration").val());
+            data.append("AccountID", $("#AccountID").val());
+      
+            $.ajax({
+                cache: false,
+                type: 'POST',
+                processData: false,
+                contentType: false,
+                url: '/Accounts/Voucher/EditRow',
+                data: data,
+                success: function (result) {
+                    alert_success('','Updated');
+                    GetLedger();
+                     },
+                error: function (xhr, ajaxOptions, thrownError) {
+                    $("body").html(xhr.responseText);
+                }
+            });
+        }
+        else {
+            alert_warning('Incomplete Input', '');
+        }
+    }
+</script>

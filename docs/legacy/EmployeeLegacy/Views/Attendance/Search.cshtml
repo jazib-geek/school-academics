@@ -1,0 +1,437 @@
+﻿@*darkslateblue*@
+@using Data.BLL
+
+<div class="main">
+    <div class="card">
+        <h4 class="card-header text-center">
+            <i class="la la-search-location"></i> Search Attendance
+        </h4>
+    </div>
+    <div class="card">
+        <div class="row py-2">
+            <div class="col-md-3"></div>
+            <div class="col-md-2">
+                <select id="month" class="form-control">
+                    <option value="">------Month------</option>
+                    @for (int i = 1; i <= 12; i++)
+                    {
+                        <option value="@i">@DateFunctions.convertToStringMonth(i)</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select id="year" class="form-control">
+                    <option value="@(DateTime.Now.Year - 1)">@(DateTime.Now.Year - 1)</option>
+                    <option value="@DateTime.Now.Year" selected="selected">@DateTime.Now.Year</option>
+                </select>
+            </div>
+
+            <div class="col-md-3">
+                <div class="btn-group attendance-actions" role="group">
+                    <button type="button" class="btn btn-primary btnSearch"><i class="la la-search"></i> Search</button>
+                    <button type="button" class="btn btn-info" onclick="printTable()"> <i class="la la-print"></i> Print</button>
+                    <button type="button" class="btn btn-secondary" onclick="printDetailedReport()"><i class="la la-file-text"></i> Detailed Print</button>
+                </div>
+            </div>
+            @Html.Partial("_spinner")
+
+        </div>
+        
+        <div class="spinner-border text-primary d-none" role="status" id="divSpinner" style="position:fixed; left:50%;top:40%; color:rgb(64, 81, 137);z-index:999">
+            <span class="sr-only">Loading...</span>
+        </div>
+
+        <div id="table-content" class="table-responsive"></div>
+    </div>
+</div>
+
+<script>
+
+    $(".btnSearch").click(function () {
+
+        if ($("#month").val() == '') {
+            alert_warning('Please select Month/Year');
+            return;
+        }
+        $("#topnav-hamburger-icon").click();
+
+        $("select").attr('disabled',true);
+        $(".btn").attr('disabled', true);
+
+        $("#divSpinner").removeClass('d-none');
+        $.ajax({
+            cache: false,
+            type: 'Get',
+            url: '/Employee/Attendance/_Search',
+            data: { month: $("#month").val(), year: $("#year").val() },
+            datatype: 'Json',
+            success: function (result) {
+                $("select").removeAttr('disabled');
+                $(".btn").removeAttr('disabled');
+
+                $("#divSpinner").addClass('d-none');
+                $("#table-content").html(result);
+                applyStatusStyling();
+                //ToggleNavCollapse();
+            },
+            error: function (xhr, ajaxOptions, thrownError) {
+                $("#table-content").html(xhr.responseText);
+            }
+        });
+    });
+
+    function applyStatusStyling() {
+        $(".status").each(function () {
+            var cellValue = $(this).text().trim();
+
+            if (cellValue === "A") {
+                cellClass = "text-bold text-danger";
+            } else if (cellValue === "H" || cellValue === "L") {
+                cellClass = "bg-light-grey text-bold text-info";
+            } else {
+                cellClass = "text-success text-bold";
+            }
+
+            $(this).addClass(cellClass);
+        });
+    }
+
+    // Print
+    function printTable() {
+        var table = document.getElementById("table");
+        if (!table) {
+            alert_warning('Please search attendance first.');
+            return;
+        }
+
+        var tableHtml = document.getElementById("table").outerHTML;
+
+        var printWindow = window.open('', '', 'width=800,height=600');
+        printWindow.document.write(`
+        <html>
+            <head>
+                <title>Print Table</title>
+            </head>
+            <body>
+                ${tableHtml}
+            </body>
+            <style>
+
+     @@media print {
+          @@page {
+            size: landscape;
+        }
+         body {
+             margin: 0;
+         }
+
+        body {
+            font-family: Arial !important;
+            font-size: 7px !important;
+            margin: 1px !important;
+            color: #000 !important;
+        }
+
+     
+      table {
+	     border-collapse: collapse !important;
+        transform: scale(0.9); /* Adjust between 0.6–0.85 */
+        transform-origin: top left;
+    }
+
+    th, td {
+        padding: 3px;
+        white-space: nowrap;
+         border: 1px solid #000 !important;
+         text-align:center;
+         font-size:13px !important
+    }
+          a {
+        color: inherit !important;
+        text-decoration: none !important;
+        pointer-events: none;
+        cursor: default;
+    }
+     }
+</style>
+        </html>
+        `);
+        printWindow.document.close();
+        printWindow.focus();
+        printWindow.print();
+        printWindow.close();
+    }
+
+    function printDetailedReport() {
+        var table = document.getElementById("table");
+        if (!table) {
+            alert_warning('Please search attendance first.');
+            return;
+        }
+
+        var month = parseInt(table.getAttribute("data-month") || "0");
+        var year = parseInt(table.getAttribute("data-year") || "0");
+        var monthName = getMonthName(month);
+        var rows = Array.from(table.querySelectorAll("tbody tr"));
+        var reportDate = new Date().toLocaleString();
+
+        var sections = rows.map(function (row) {
+            var employeeName = row.getAttribute("data-employee") || "Employee";
+            var cells = Array.from(row.querySelectorAll("td.status"));
+
+            var detailRows = [];
+            var totalLateMinutes = 0;
+            var totalEarlyMinutes = 0;
+            var lateComingsCount = 0;
+
+            cells.forEach(function (cell) {
+                var day = parseInt(cell.getAttribute("data-day") || "0");
+                var json = cell.getAttribute("data-json");
+                if (!json) return;
+
+                try {
+                    var data = JSON.parse(json);
+                    var checkIn = formatTime(data?.Interpreted?.actualCheckIn);
+                    var checkOut = formatTime(data?.Interpreted?.actualCheckOut);
+                    var late = Math.round(data?.Calculation?.lateMinutes || 0);
+                    var early = Math.round(data?.Calculation?.earlyMinutes || 0);
+                    var lc = Math.round(data?.Calculation?.LC || 0);
+                    var ruleApplied = data?.Interpreted?.ruleApplied || "-";
+
+                    totalLateMinutes += late;
+                    totalEarlyMinutes += early;
+                    lateComingsCount += lc > 0 ? lc : 0;
+
+                    var hasDetail = checkIn !== "-" || checkOut !== "-" || late > 0 || early > 0 || lc > 0;
+                    if (!hasDetail) return;
+
+                    detailRows.push(`
+                        <tr>
+                            <td>${formatDate(day, month, year)}</td>
+                            <td>${checkIn}</td>
+                            <td>${checkOut}</td>
+                            <td>${late}</td>
+                            <td>${early}</td>
+                            <td>${lc}</td>
+                            <td>${ruleApplied}</td>
+                        </tr>
+                    `);
+                } catch (e) {
+                    // Ignore malformed row payloads so printing remains stable.
+                }
+            });
+
+            if (!detailRows.length) {
+                detailRows.push(`
+                    <tr>
+                        <td colspan="7" class="no-record">No detailed check-in/check-out data available for this month.</td>
+                    </tr>
+                `);
+            }
+
+            return `
+                <section class="employee-section">
+                    <div class="employee-header">
+                        <h3>${employeeName}</h3>
+                        <div class="employee-summary">
+                            <span><strong>Total Late Minutes:</strong> ${totalLateMinutes}</span>
+                            <span><strong>Total Early Minutes:</strong> ${totalEarlyMinutes}</span>
+                            <span><strong>Late Comings:</strong> ${lateComingsCount}</span>
+                        </div>
+                    </div>
+                    <table class="detail-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Check In</th>
+                                <th>Check Out</th>
+                                <th>Late (mins)</th>
+                                <th>Early (mins)</th>
+                                <th>Late Comings</th>
+                                <th>Rule</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${detailRows.join("")}
+                        </tbody>
+                    </table>
+                </section>
+            `;
+        }).join("");
+
+        var printWindow = window.open('', '', 'width=1200,height=800');
+        printWindow.document.write(`
+            <html>
+                <head>
+                    <title>Detailed Attendance Report</title>
+                    <style>
+                        body {
+                            font-family: Arial, Helvetica, sans-serif;
+                            color: #111;
+                            margin: 0;
+                            padding: 18px;
+                            font-size: 11px;
+                        }
+
+                        .report-header {
+                            margin-bottom: 16px;
+                            border-bottom: 2px solid #1f3d7a;
+                            padding-bottom: 10px;
+                        }
+
+                        .report-header h2 {
+                            margin: 0 0 6px;
+                            font-size: 20px;
+                        }
+
+                        .report-meta {
+                            display: flex;
+                            justify-content: space-between;
+                            flex-wrap: wrap;
+                            gap: 8px;
+                            font-size: 11px;
+                        }
+
+                        .employee-section {
+                            margin-bottom: 18px;
+                            page-break-inside: avoid;
+                            break-inside: avoid;
+                            border: 1px solid #d8deeb;
+                            border-radius: 6px;
+                            overflow: hidden;
+                        }
+
+                        .employee-header {
+                            background: #f5f8ff;
+                            padding: 10px 12px;
+                            border-bottom: 1px solid #d8deeb;
+                        }
+
+                        .employee-header h3 {
+                            margin: 0 0 6px;
+                            font-size: 15px;
+                            color: #1f3d7a;
+                        }
+
+                        .employee-summary {
+                            display: flex;
+                            gap: 18px;
+                            flex-wrap: wrap;
+                            font-size: 11px;
+                        }
+
+                        .detail-table {
+                            width: 100%;
+                            border-collapse: collapse;
+                        }
+
+                        .detail-table thead th {
+                            background: #eef2fb;
+                            color: #162f61;
+                            font-size: 10.5px;
+                            border: 1px solid #d3d8e2;
+                            padding: 6px;
+                            text-align: center;
+                        }
+
+                        .detail-table td {
+                            border: 1px solid #dfe4ee;
+                            padding: 6px;
+                            text-align: center;
+                            vertical-align: middle;
+                        }
+
+                        .no-record {
+                            text-align: center;
+                            color: #666;
+                            font-style: italic;
+                            padding: 10px 6px;
+                        }
+
+                        @@media print {
+                            @@page {
+                                size: A4 portrait;
+                                margin: 10mm;
+                            }
+
+                            body {
+                                margin: 0;
+                                padding: 0;
+                                -webkit-print-color-adjust: exact;
+                                print-color-adjust: exact;
+                                font-size: 10px;
+                            }
+
+                            .employee-section {
+                                border: 1px solid #cfd7e8;
+                                margin-bottom: 12px;
+                            }
+
+                            .detail-table thead {
+                                display: table-header-group;
+                            }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="report-header">
+                        <h2>Attendance Detailed Report</h2>
+                        <div class="report-meta">
+                            <span><strong>Month:</strong> ${monthName} ${year || ""}</span>
+                            <span><strong>Generated:</strong> ${reportDate}</span>
+                        </div>
+                    </div>
+                    ${sections}
+                </body>
+            </html>
+        `);
+        printWindow.document.close();
+        printWindow.focus();
+        printWindow.print();
+        printWindow.close();
+    }
+
+    function formatDate(day, month, year) {
+        if (!day || !month || !year) return "-";
+        var date = new Date(year, month - 1, day);
+        return date.toLocaleDateString([], {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric'
+        });
+    }
+
+    function getMonthName(month) {
+        if (!month) return "-";
+        return new Date(2000, month - 1, 1).toLocaleDateString([], { month: 'long' });
+    }
+
+    function formatTime(dt) {
+        if (!dt) return '-';
+        var d = new Date(dt);
+        if (isNaN(d.getTime())) return '-';
+
+        return d.toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+        });
+    }
+</script>
+
+<style>
+    .attendance-actions {
+        width: 100%;
+    }
+
+    .attendance-actions .btn {
+        min-width: 110px;
+    }
+
+    .table > :not(caption) > * > * {
+        padding: .10rem 0rem !important;
+        border: 1px solid #7788995e !important;
+    }
+
+</style>
+

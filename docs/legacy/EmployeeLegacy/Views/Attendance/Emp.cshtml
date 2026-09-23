@@ -1,0 +1,94 @@
+﻿@model List<Data.DAL.v_EmployeeAttendance>
+@using Data.BLL
+
+@{
+    ViewBag.Title = "Emp";
+    var Emp = Data.BLL.Employee.List.GetByID(ViewBag.EmpID as int?);
+}
+
+<input type="hidden" id="EmpID" value="@ViewBag.EmpID" />
+<input type="hidden" id="Month" value="@ViewBag.Month" />
+<input type="hidden" id="Year" value="@ViewBag.Year" />
+
+<div class="row">
+    <div class="col-md-10 offset-1">
+        <div class="card">
+            <h3 class="text-center card-header">
+                <i class="la la-user"></i> <b>@(Emp.EmployeeName?.ToUpper())</b> ATTENDANCE FOR @Data.BLL.DateFunctions.convertToStringMonth(ViewBag.Month).ToUpper() @ViewBag.Year
+            </h3>
+            <div id="table-content">
+                <table class="table text-center table-bordered">
+                    <thead>
+                        <tr>
+                            <th style="text-align:center !important">DAY</th>
+                            <th style="text-align:center !important">DAY OF WEEK</th>
+                            <th style="text-align:center !important">Checkin Time</th>
+                            <th style="text-align:center !important">LC</th>
+                            <th style="text-align:center !important">Day Salary</th>
+                            <th style="text-align:center !important">Status</th>
+                            <th style="text-align:center !important"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="7" class="text-center">
+                                <i class="la la-spin la-3x la-spinner"></i>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="changeLogModal" tabindex="-1" aria-labelledby="changeLogLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="changeLogLabel">Change Log</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p><strong>Updated By:</strong> <span id="log-updated-by"></span></p>
+                <p><strong>Updated At:</strong> <span id="log-updated-at"></span></p>
+
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Field</th>
+                            <th>Before</th>
+                            <th>After</th>
+                        </tr>
+                    </thead>
+                    <tbody id="log-table-body">
+                     </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script>
+    $(document).ready(function () {
+        GetList();
+    });
+
+    function GetList() {
+        $.ajax({
+            cache: false,
+            type: 'GET',
+            url: '/Employee/Attendance/_Emp',
+            data: { id: $("#EmpID").val(), m: $("#Month").val(), y: $("#Year").val() },
+            datatype: 'Json',
+            success: function (result) {
+                $("#table-content").html(result);
+            },
+            error: function (xhr, ajaxOptions, thrownError) {
+                $("body").html(xhr.responseText);
+            }
+        });
+    }
+</script>
+

@@ -1,0 +1,160 @@
+﻿
+@{
+    ViewBag.Title = "Customer";
+}
+
+<script src="~/Content/select2/select2.min.js"></script>
+<link href="~/Content/select2/select2.min.css" rel="stylesheet" />
+
+<div class="row">
+    <div class="col-md-12 card">
+        <h3 class="text-center py-2">
+            <i class="la la-book text-info"></i> EMPLOYEE LOAN MANAGER
+        </h3>
+        <div class="main">
+            <div style="text-align: center; padding: 10px 0;">
+                <div style="display: inline-block; vertical-align: middle;">
+                    <select id="EmpID" class="form-select wide-select2" style="width:20%">
+                        <option value=""></option>
+                        @foreach (var item in Data.BLL.Employee.List.All())
+                        {
+                            <option value="@item.ID">@item.EmployeeName</option>
+                        }
+                    </select>
+                </div>
+                <div style="display: inline-block; vertical-align: middle; margin-left: 10px;">
+                    <i class="loading fa fa-spin fa-spinner fa-2x text-muted d-none"></i>
+                </div>
+            </div>
+            <div class="col-md-12">
+                <table class="table table-bordered">
+                    <thead class="bg-soft-info">
+                        <tr>
+                            <th style="width:5%">#</th>
+                            <th style="width:10%">Month</th>
+                            <th style="width:10%">Year</th>
+                            <th style="width:20%">Type</th>
+                            <th style="width:10%">Amount</th>
+                            <th style="width:40%">Description</th>
+                            <th style="width:5%"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-content"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<script type="text/javascript">
+    $(document).ready(function () {
+        $('#EmpID').select2({
+            placeholder: "Select Employee"
+        });
+    });
+
+    $("#EmpID").change(function () {
+        var EmpID = $(this).val();
+        if (EmpID != '') {
+            $(".loading").removeClass('d-none');
+
+            $.ajax({
+                cache: false,
+                type: 'Get',
+                url: '/Employee/Loan/_EmployeeLoan',
+                data: { EmpID: EmpID },
+                datatype: 'Json',
+                success: function (result) {
+                    $(".loading").addClass('d-none');
+                    $("#table-content").removeClass('hide');
+                    $("#table-content").html(result);
+                },
+                error: function (xhr, ajaxOptions, thrownError) {
+                    alert('error');
+                }
+            });
+        }
+    });
+
+        function InsertComponent() {
+        if ($("#ComponentMonth").val() == '' || $("#ComponentYear").val() == '' || $("#ComponentAmount").val() == '' || $("#ComponentType").val() == '') {
+            alert_error('Please select following', '<ul> <li>Month</li><li>Year</li><li>Type</li><li>Amount</li> </ul>');
+            return;
+        }
+
+          $("#tblComponent").css('opacity', '0.2');
+          var data = new FormData();
+
+            data.append("EmpID", $("#EmpID").val());
+          data.append("Month", $("#ComponentMonth").val());
+          data.append("Year", $("#ComponentYear").val());
+        data.append("ComponentType", $("#ComponentType").val());
+          data.append("Amount", $("#ComponentAmount").val());
+          data.append("Description", $("#ComponentDescription").val());
+
+          $.ajax({
+              cache: false,
+              type: 'POST',
+              processData: false,
+              contentType: false,
+              url: '/Employee/Edit/InsertComponent',
+              data: data,
+              success: function (result) {
+                  $("#EmpID").trigger("change");
+                  $("#tblComponent").css('opacity', 1);
+              },
+              error: function (xhr, ajaxOptions, thrownError) {
+                  $("body").html(xhr.responseText);
+              }
+          });
+    }
+
+    $(document).on('click', '.deleterow', function () {
+        var id = $(this).attr('data-id');
+        showConfirmationDialog(
+            "Are you sure you want to delete this row?",
+            "selected row will be permanently deleted",
+            DeleteRow,
+            [id]
+        );
+    });
+
+    function DeleteRow(id) {
+        $.ajax({
+            cache: false,
+            type: 'POST',
+            url: '/Employee/Edit/Delete',
+            data: { ID: id, Type: 'Component' },
+            datatype: 'Json',
+            success: function (result) {
+                $("#EmpID").trigger("change");
+                alert_success('Row deleted');
+            },
+            error: function (xhr, ajaxOptions, thrownError) {
+                $("body").html(xhr.responseText);
+            }
+        }); 
+    }
+
+
+     @if (Data.BLL.User.Rights.UserHasAccessToMudule("cash_book", Session["user"]?.ToString()) == false)
+    {
+        <text>  $(".main").html(''); $(".main").html('<h4 class="alert alert-danger text-center"> <i class="la la-exclamation-circle"> You do not have permission to access this feature </h4>');   </text>
+     }
+</script>
+
+<style>
+    .wide-select2 + .select2-container {
+        width: 300px !important; /* Adjust this value as needed */
+    }
+
+    .select2-container .select2-selection--single .select2-selection__rendered {
+        text-align: left;
+    }
+
+    .select2-container--default .select2-search--dropdown .select2-search__field {
+        text-align: left;
+    }
+</style>

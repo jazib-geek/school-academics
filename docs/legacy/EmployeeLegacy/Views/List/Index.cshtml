@@ -1,0 +1,60 @@
+﻿
+@{
+    ViewBag.Title = "Employee Manager";
+}
+<div class="row">
+    <div class="col-md-12 card">
+        <h2 class="card-header text-center">
+            <i class="la la-user"></i> EMPLOYEES LIST
+            <a href="/Employee/New/" class="btn btn-primary pull-right"><i class="la la-plus"></i> Add New</a>
+        </h2>
+        <div class="well">
+
+        </div>  
+        
+        <div class="text-end py-1">
+            <input type="radio" name="gender" id="all" onclick="getData('')" checked="checked" />  <label for="all">All</label> &nbsp;&nbsp;&nbsp;
+            <input type="radio" name="gender" id="male" onclick="getData('Male')" />  <label for="male">Male</label> &nbsp;&nbsp;&nbsp;
+            <input type="radio" name="gender" id="female" onclick="getData('Female')" /> <label for="female">Female</label>&nbsp
+        </div>
+
+        <div id="table-content"></div>
+
+    </div>
+</div>
+
+<script>
+    $(document).ready(function () {
+        getData('');
+    });
+
+    function getData(gender) {
+        $("#divWait").removeClass('hide');
+        $.ajax({
+            cache: false,
+            type: 'Get',
+            url: '/Employee/List/_Index',
+            data: { gender: gender },
+            datatype: 'Json',
+            success: function (result) {
+
+                $("#divWait").addClass('hide');
+                $("#table-content").html(result);
+            },
+            error: function (xhr, ajaxOptions, thrownError) {
+                alert(error);
+            }
+        });
+    }
+
+</script>
+
+<style>
+    td {
+        font-size: 12px !important;
+    }
+
+    th {
+        font-size: 13px !important;
+    }
+</style>

@@ -1,0 +1,62 @@
+﻿@using Data.BLL.Staff
+@{
+    ViewBag.Title = "Holiday";
+}
+
+<div class="row">
+    <div class="col-md-6 offset-3">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="title text-center text-primary"> <span class="la la-bell"></span> &nbsp;MARK HOLIDAY</h5>
+            </div>
+            <div class="card-body">
+
+                <div class="row">
+                    <div class="col-md-6 offset-3">
+                        <div class="form-group">
+                            <label for="Date">Date <i class="la la-caret-down"></i> </label>
+                            <input type="date" id="Date" class="form-control" />
+                        </div>
+
+                        <div class="text-center my-3">
+                            <button type="button" onclick="mark_holiday()" id="btnUpdate" class="btn btn-primary">
+                                <span class="la la-check-double"></span> Mark Holiday
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<div class="clearfix"> </div>
+
+<script type="text/javascript">
+    function mark_holiday() {
+        if ($("#Date").val() == '') {
+            alert_error('*', 'Date is Required');
+            return fal;
+        }
+
+        $("#btnUpdate").attr('disabled', true);
+
+        $.ajax({
+            cache: false,
+            type: 'POST',
+            url: '/Employee/Attendance/Holiday',
+            data: { Date: $("#Date").val() },
+            datatype: 'Json',
+            success: function (result) {
+                alert_success(result.msg);
+                $("#btnUpdate").removeAttr('disabled');
+            },
+            error: function (xhr, ajaxOptions, thrownError) {
+                $("body").html(xhr.responseText);
+            }
+        });
+    }
+
+</script>
+ 

@@ -1,0 +1,394 @@
+﻿@*darkslateblue*@
+@using Data.BLL
+
+<div class="main">
+    <div class="card">
+        <h4 class="card-header text-center">
+            <i class="la la-money-bill"></i> CALCULATE SALARY
+
+        </h4>
+    </div>
+    <div class="card">
+        <div class="row py-2">
+            <div class="col-md-2"></div>
+            <div class="col-md-2">
+                <select id="month" class="form-control">
+                    <option value="">------Month------</option>
+                    @for (int i = 1; i <= 12; i++)
+                    {
+                        <option value="@i">@DateFunctions.convertToStringMonth(i)</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select id="year" class="form-control">
+                    <option value="@(DateTime.Now.Year - 1)">@(DateTime.Now.Year - 1)</option>
+                    <option value="@DateTime.Now.Year" selected="selected">@DateTime.Now.Year</option>
+                </select>
+            </div>
+
+            <div class="col-md-4">
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-primary" id="generateSalary"><i class="la la-calculator"></i> Calculate</button>
+                    <button type="button" class="btn btn-soft-secondary border-secondary" onclick="printTable()"> <i class="la la-print"></i> Print Report</button>
+                    <button type="button" class="btn btn-soft-success border-success" onclick="printSalarySlips()"> <i class="la la-print"></i> Print Slips</button>
+                </div>
+            </div>
+            @Html.Partial("_spinner")
+
+        </div>
+        <table id="table" class="table table-bordered">
+            <thead class="bg-soft-info">
+                <tr>
+                    <th style="text-align:center;width:5%">ID</th>
+                    <th style="text-align:center;width:20%">Name</th>
+                    <th style="text-align:center;width:10%">Basic Salary</th>
+                    <th style="text-align:center;width:10%">Days Present</th>
+                    <th style="text-align:center;width:5%">LC</th>
+                    <th style="text-align:center;width:10%">Late Deduction</th>
+                    <th style="text-align:center;width:10%">Absent Deduction</th>
+                    <th style="text-align:center;width:10%">Working Days Salary</th>
+                    <th style="text-align:center;width:10%">Loan/SC</th>
+                    <th style="text-align:center;width:10%">Bonus</th>
+                    <th style="text-align:center;width:15%">Net Salary</th>
+                </tr>
+            </thead>
+            <tbody id="salaryListContainer"></tbody>
+            <tfoot>
+                <tr class="text-center fs-14">
+                    <td colspan="9"></td>
+                    <td id="NET" class="bg-soft-info fw-bold">-</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+
+
+@*<script src="~/Scripts/jquery.signalR-2.4.3.min.js"></script>
+<script src="/signalr/hubs"></script>*@
+
+<script>
+    let generationId = crypto.randomUUID(); 
+
+    $(function () {
+        let pollInterval;
+        $("#generateSalary").click(function () {
+            if ($("#month").val() == '') {
+                alert_warning('Please select Month/Year');
+                return;
+            }
+
+            showSalaryProgressModal();
+            $("#status").text("Generating salaries...");
+
+            // Start generation
+            $.post('/Employee/Salary/StartGeneration', {
+                month: $("#month").val(),
+                year: $("#year").val(),
+                generationId: generationId
+            }, function () {
+                // Start polling
+                pollInterval = setInterval(pollProgress, 500);
+            });
+        });
+
+        function pollProgress() {
+            $.get('/Employee/Salary/GetSalaryProgress', { generationId: generationId }, function (percentage) {
+                $("#progressBar").css("width", percentage + "%").text(percentage + "%");
+
+                if (percentage >= 100) {
+                    clearInterval(pollInterval);
+                    $("#status").text("Completed");
+                    swal.close();
+                    setTimeout(function () {
+                        loadSalaryList(generationId);
+                    }, 500);
+                }
+            });
+        }
+
+        function loadSalaryList(generationId) {
+            $("#salaryListContainer").load('/Employee/Salary/GetGeneratedSalaryList', {
+                month: $("#month").val(),
+                year: $("#year").val(),
+                generationId: generationId,
+            });
+        }
+
+        function showSalaryProgressModal() {
+            Swal.fire({
+                title: "Generating Salaries...",
+                html: `
+            <div class="progress mt-3">
+                <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated"
+                     role="progressbar" style="width: 0%;">0%</div>
+            </div>
+        `,
+                allowOutsideClick: false,
+                showCancelButton: false,
+                showConfirmButton: false
+            });
+        }
+    });
+
+</script>
+
+<script>
+
+    //$(function () {
+    //    $.ajaxPrefilter(function (options, originalOptions, jqXHR) {
+    //        if (options.crossDomain) {
+    //            jqXHR.withCredentials = true;
+    //        }
+    //    });
+
+    //    var hub = $.connection.salaryHub;
+
+    //    hub.client.onSalaryGenerationProgress = function (percentage) {
+    //        $("#progressBar").css("width", percentage + "%").text(percentage + "%");
+    //    };
+
+    //    hub.client.onSalaryGenerationError = function (exception) {
+    //        alert_error('ERROR');
+    //        console.log(exception)
+    //    };
+
+    //    hub.client.onSalaryGenerationComplete = function (connectionId) {
+    //        $("#status").text('Completed');
+    //        swal.close();
+    //        loadSalaryList(connectionId); // Fetch and populate partial view
+    //    };
+
+     
+
+    //    $.connection.hub.start({ withCredentials: true }).done(function () {
+    //        var connectionId = $.connection.hub.id;
+    //        $("#generateSalary").click(function () {
+
+    //            if ($("#month").val() == '') {
+    //                alert_warning('Please select Month/Year');
+    //                return;
+    //            }
+
+    //            showSalaryProgressModal();
+    //            $.post('/Employee/Salary/StartGeneration', { month: $("#month").val(), year: $("#year").val(), connectionId: connectionId });
+    //            $("#status").text("Generating salaries...");
+    //        });
+    //    });
+    //});
+
+    //function loadSalaryList(connectionId) {
+    //    $("#salaryListContainer").load('/Employee/Salary/GetGeneratedSalaryList', { month: $("#month").val(), year: $("#year").val(), connectionId: connectionId });
+    //}
+
+    //function showSalaryProgressModal() {
+    //    Swal.fire({
+    //        title: "Generating Salaries...",
+    //        html: `
+    //        <div class="progress mt-3">
+    //            <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated"
+    //                 role="progressbar" style="width: 0%;">0%</div>
+    //        </div>
+    //    `,
+    //        allowOutsideClick: false,
+    //        showCancelButton: false,
+    //        showConfirmButton: false
+    //    });
+    //}
+
+    // Print
+    function printTable() {
+        var tableHtml = document.getElementById("table").outerHTML;
+
+        var printWindow = window.open('', '', 'width=800,height=600');
+        printWindow.document.write(`
+        <html>
+            <head>
+                <title>Print Table</title>
+            </head>
+            <body>
+                ${tableHtml}
+            </body>
+            <style>
+
+     @@media print {
+          @@page {
+            size: landscape;
+        }
+         body {
+             margin: 0;
+         }
+
+        body {
+            font-family: Arial !important;
+            font-size: 11px !important;
+            margin: 5px !important;
+            color: #000 !important;
+        }
+
+        table {
+            border-collapse: collapse !important;
+            width: 100% !important;
+        }
+
+        th, td {
+            border: 1px solid #000 !important;
+            padding: 3px !important;
+            text-align: left !important;
+        }
+
+        th {
+            background-color: #eee !important;
+            font-weight: bold !important;
+        }
+
+        .d-none {
+    display: none !important;
+}
+     }
+</style>
+        </html>
+        `);
+        printWindow.document.close();
+        printWindow.focus();
+        printWindow.print();
+        printWindow.close();
+    }
+    function printSalarySlips() {
+        const rows = document.querySelectorAll("#table tbody tr");
+        let slipsHtml = '';
+        let slipCount = 0;
+
+        rows.forEach((row, index) => {
+            const cells = row.querySelectorAll("td");
+            const data = {
+                account: cells[0]?.innerText.trim(),
+                name: cells[1]?.innerText.trim(),
+                basicPay: cells[2]?.innerText.trim(),
+                absences: cells[6]?.innerText.trim(),
+                absDeduction: cells[6]?.innerText.trim(),
+                lateComings: cells[4]?.innerText.trim(),
+                lateDeduction: cells[5]?.innerText.trim(),
+                advance: cells[13]?.innerText.trim(),
+                specialDeduction: cells[14]?.innerText.trim(),
+                totalSalary: cells[9]?.innerText.trim(),
+                bonus: cells[9]?.innerText.trim(),
+                netTotal: cells[11]?.innerText.trim(),
+
+                absences: cells[12]?.innerText.trim()
+            };
+
+            if (slipCount % 4 === 0) {
+                if (slipCount > 0) slipsHtml += `</div>`; // Close previous page
+                slipsHtml += `<div class="slip-page" style="display: flex; flex-wrap: wrap; page-break-after: always;">`; // New page
+            }
+
+            slipsHtml += `
+            <div class="salary-slip" style="width: 48%; border: 1px solid #000; margin: 1%; padding: 5px; border-radius: 6px; font-size: 11px; box-sizing: border-box; page-break-inside: avoid;">
+                <div class="slip-header" style="text-align: center; font-weight: bold; font-size: 13px; margin-bottom: 8px;">Salary for ${$("#month option:selected").text()} ${$("#year option:selected").text() }</div>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tbody>
+                        <tr><td style="border: 1px solid #000; padding: 3px 5px;">Account No:</td><td style="border: 1px solid #000; padding: 3px 5px;">${data.account}</td></tr>
+                        <tr><td style="border: 1px solid #000; padding: 3px 5px;">Name:</td><td style="border: 1px solid #000; padding: 3px 5px;">${data.name}</td></tr>
+                        <tr><td style="border: 1px solid #000; padding: 3px 5px;">Basic Pay:</td><td style="border: 1px solid #000; padding: 3px 5px;">${data.basicPay}</td></tr>
+                        <tr><td style="border: 1px solid #000; padding: 3px 5px;">Absences:</td><td style="border: 1px solid #000; padding: 3px 5px;">${data.absences}</td></tr>
+                        <tr><td style="border: 1px solid #000; padding: 3px 5px;">Absence Deduction:</td><td style="border: 1px solid #000; padding: 3px 5px;">${data.absDeduction}</td></tr>
+                        <tr><td style="border: 1px solid #000; padding: 3px 5px;">Late Comings:</td><td style="border: 1px solid #000; padding: 3px 5px;">${data.lateComings}</td></tr>
+                        <tr><td style="border: 1px solid #000; padding: 3px 5px;">Late Deduction:</td><td style="border: 1px solid #000; padding: 3px 5px;">${data.lateDeduction}</td></tr>
+                        <tr><td style="border: 1px solid #000; padding: 3px 5px;">Advance:</td><td style="border: 1px solid #000; padding: 3px 5px;">${data.advance}</td></tr>
+                        <tr><td style="border: 1px solid #000; padding: 3px 5px;">Special Deduction:</td><td style="border: 1px solid #000; padding: 3px 5px;">${data.specialDeduction}</td></tr>
+                       <tr><td style="border: 1px solid #000; padding: 3px 5px;">Bonus:</td><td style="border: 1px solid #000; padding: 3px 5px;">${data.bonus}</td></tr>
+                        <tr><td style="border: 1px solid #000; padding: 3px 5px;"><strong>Net Total:</strong></td><td style="border: 1px solid #000; padding: 3px 5px;">${data.netTotal}</td></tr>
+                   <tr> 
+<td colspan="2" class="urdu-note" style="font-family: 'Alvi Nastaleeq', serif; direction: rtl; text-align: center;">  
+برائے مہربانی اپنے پیسے آفس میں ہی پورے کر لیں بعد میں ذمہ داری نہیں ہوگی۔
+</td>
+</tr>
+                        </tbody>
+                </table>
+             <div>
+
+</div>
+            </div>
+        `;
+
+            slipCount++;
+        });
+
+        slipsHtml += `</div>`; // Close last slip-page
+
+        const printWindow = window.open('', '', 'width=800,height=600');
+        printWindow.document.write(`
+        <html>
+        <head>
+            <title>Salary Slips</title>
+            <link href="~/assets/css/bootstrap.min.css" rel="stylesheet" type="text/css" />
+            <style>
+                body {
+                    background: #fff;
+                    padding: 0.3cm;
+                    font-size: 12px;
+                    font-family: Arial, sans-serif;
+                    margin: 0;
+                }
+
+                @@font-face {
+  font-family: 'Alvi Nastaleeq';
+        src: url('../../../../fonts/Alvi Nastaleeq.ttf');
+}
+
+.urdu-note {
+  font-family: 'Alvi Nastaleeq', 'Noto Nastaliq Urdu', serif;
+  font-size: 13px;
+  direction: rtl;
+  text-align: right;
+  margin-top: 10px;
+}
+
+
+
+                @@media print {
+                    .slip-page {
+                        page-break-after: always;
+                        display: flex;
+                        flex-wrap: wrap;
+                    }
+
+                    .salary-slip {
+                        page-break-inside: avoid;
+                        break-inside: avoid;
+                    }
+
+
+                }
+
+
+
+            </style>
+        </head>
+        <body>
+            ${slipsHtml}
+        </body>
+        </html>
+    `);
+
+        printWindow.document.close();
+        printWindow.focus();
+        //printWindow.print();
+        //printWindow.close();
+
+        // Wait until all fonts, images, etc. are loaded before printing
+        printWindow.onload = function () {
+            setTimeout(() => {
+                printWindow.print();
+                printWindow.close();
+            }, 500); // small delay to ensure font/image is fully rendered
+        };
+    }
+
+
+</script>
+
+
+

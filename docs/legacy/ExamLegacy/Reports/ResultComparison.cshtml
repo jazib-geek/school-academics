@@ -1,0 +1,106 @@
+﻿@model Data.Viewmodel.StudentViewModel
+@using Data.BLL
+@{
+    Layout = "~/Views/Shared/_LayoutReport.cshtml";
+}
+
+<table cellpadding="0" cellspacing="0" style="width:100%;">
+    <tr>
+        <td class="top">
+            @Html.Partial("_CampusDetail")
+        </td>
+        <td class="top"></td>
+        <td style="text-align:right;" class="top">
+            <h2>RESULT COMPARISON REPORT</h2>
+            <b>FOR @StudentParameters.ClassSectionNameByID(Model.Class_ID, Model.Section_ID)</b> <br />
+        </td>
+    </tr>
+</table>
+
+<table border="1" cellpadding="5" cellspacing="0" style="width:100%;">
+    <thead class="text-center">
+
+        <tr>
+            <th style="font-size:12px !important; font-family:Arial !important; font-weight:bold" rowspan="2">R#</th>
+            <th style="font-size:12px !important; font-family:Arial !important; font-weight:bold" rowspan="2">Sr</th>
+            <th rowspan="2" style="font-size:12px !important; font-family:Arial !important">Name</th>
+            <th style="font-size:12px !important; font-family:Arial !important; font-weight:bold" colspan="5">April Test</th>
+            <th style="font-size:12px !important; font-family:Arial !important; font-weight:bold" colspan="5">FIRST TERM</th>
+            <th style="font-size:12px !important; font-family:Arial !important; font-weight:bold" colspan="5">SVHW</th>
+            <th style="font-size:12px !important; font-family:Arial !important; font-weight:bold" colspan="5">Second Term</th>
+            <th style="font-size:12px !important; font-family:Arial !important; font-weight:bold" colspan="5">Annual</th>
+        </tr>
+
+        <tr>
+            <th style="font-size:9px !important; font-family:Arial !important; font-weight:bold">Total</th>
+            <th style="font-size:9px !important; font-family:Arial !important; font-weight:bold">Pos</th>
+            <th style="font-size:9px !important; font-family:Arial !important; font-weight:bold">Grd</th>
+            <th style="font-size:9px !important; font-family:Arial !important; font-weight:bold">%Age</th>
+            <th style="font-size:9px !important; font-family:Arial !important; font-weight:bold">ATT</th>
+
+            <th style="font-size:9px !important; font-family:Arial !important; font-weight:bold">Total</th>
+            <th style="font-size:9px !important; font-family:Arial !important; font-weight:bold">Pos</th>
+            <th style="font-size:9px !important; font-family:Arial !important; font-weight:bold">Grd</th>
+            <th style="font-size:9px !important; font-family:Arial !important; font-weight:bold">%Age</th>
+            <th style="font-size:9px !important; font-family:Arial !important; font-weight:bold">ATT</th>
+
+            <th style="font-size:9px !important; font-family:Arial !important; font-weight:bold">Total</th>
+            <th style="font-size:9px !important; font-family:Arial !important; font-weight:bold">Pos</th>
+            <th style="font-size:9px !important; font-family:Arial !important; font-weight:bold">Grd</th>
+            <th style="font-size:9px !important; font-family:Arial !important; font-weight:bold">%Age</th>
+            <th style="font-size:9px !important; font-family:Arial !important; font-weight:bold">ATT</th>
+
+            <th style="font-size:9px !important; font-family:Arial !important; font-weight:bold">Total</th>
+            <th style="font-size:9px !important; font-family:Arial !important; font-weight:bold">Pos</th>
+            <th style="font-size:9px !important; font-family:Arial !important; font-weight:bold">Grd</th>
+            <th style="font-size:9px !important; font-family:Arial !important; font-weight:bold">%Age</th>
+            <th style="font-size:9px !important; font-family:Arial !important; font-weight:bold">ATT</th>
+
+            <th style="font-size:9px !important; font-family:Arial !important; font-weight:bold">Total</th>
+            <th style="font-size:9px !important; font-family:Arial !important; font-weight:bold">Pos</th>
+            <th style="font-size:9px !important; font-family:Arial !important; font-weight:bold">Grd</th>
+            <th style="font-size:9px !important; font-family:Arial !important; font-weight:bold">%Age</th>
+            <th style="font-size:9px !important; font-family:Arial !important; font-weight:bold; background-color:lightgrey">ATT</th>
+        </tr>
+
+
+    </thead>
+    <tbody>
+        @{ int serial = 0; }
+        @foreach (var item in Model.lstStudent)
+        {
+            { serial += 1; }
+            <tr style="background: white!important;">
+                <td style="width: 10px;font-size:12px !important;text-align:center">@StudentParameters.GetRollNumber(item.Reg_Id, item.Class_ID, item.Section_ID)</td>
+                <td style="width: 10px;font-size:12px !important;text-align:center">@item.Reg_Id</td>
+                <td style="font-size:12px !important; font-family:Arial !important; font-weight:bold">@item.FullName</td>
+
+                <td style="font-size:12px !important;text-align:center">@Exam.GetTotalMarksObtained(item.Reg_Id, 1)</td>
+                <td style="font-size:12px !important;text-align:center">@Exam.PositionWithPostFix(Exam.GetPosition(item.Reg_Id, 1))</td>
+                <td style="font-size:12px !important;text-align:center">@Exam.GetGrade(Exam.GetPercentageOfStudent(item.Reg_Id, item.Class_ID, item.Section_ID, 1))</td>
+                <td style="font-size:12px !important;text-align:center">@Exam.GetPercentageOfStudent(item.Reg_Id, item.Class_ID, item.Section_ID, 1)</td>
+                <td style="font-size:12px !important;text-align:center;background-color:lightgrey">@Exam.GetAttendanceRatio(item.Reg_Id, 1)</td>
+
+                <td style="font-size:12px !important;text-align:center">@Exam.GetTotalMarksObtained(item.Reg_Id, 2)</td>
+                <td style="font-size:12px !important;text-align:center">@Exam.PositionWithPostFix(Exam.GetPosition(item.Reg_Id, 2))</td>
+                <td style="font-size:12px !important;text-align:center">@Exam.GetPercentageOfStudent(item.Reg_Id, item.Class_ID, item.Section_ID, 2)</td>
+                <td style="font-size:12px !important;text-align:center">@Exam.GetPercentageOfStudent(item.Reg_Id, item.Class_ID, item.Section_ID, 2)</td>
+                <td style="font-size:12px !important;text-align:center;background-color:lightgrey">@Exam.GetAttendanceRatio(item.Reg_Id, 2)</td>
+
+                <td style="font-size:12px !important;text-align:center">@Exam.GetTotalMarksObtained(item.Reg_Id, 3)</td>
+                <td style="font-size:12px !important;text-align:center">@Exam.PositionWithPostFix(Exam.GetPosition(item.Reg_Id, 3))</td>
+                <td style="font-size:12px !important;text-align:center">@Exam.GetGrade(Exam.GetPercentageOfStudent(item.Reg_Id, item.Class_ID, item.Section_ID, 3))</td>
+                <td style="font-size:12px !important;text-align:center">@Exam.GetPercentageOfStudent(item.Reg_Id, item.Class_ID, item.Section_ID, 3)</td>
+                <td style="font-size:12px !important;text-align:center;background-color:lightgrey">@Exam.GetAttendanceRatio(item.Reg_Id, 3)</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<style>
+    @@media only print {
+        td {
+            font-size: 14px !important;
+        }
+    }
+</style>

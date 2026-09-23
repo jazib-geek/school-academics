@@ -1,0 +1,266 @@
+﻿@model Data.Viewmodel.TeacherViewModel
+
+
+<table class="table-fill table-striped" id="student_detail">
+    <thead class="bg-soft-info">
+        @if (Model.Gender == "Male")
+        {
+            <tr>
+                <th class="text-center" colspan="2"> <span class="la la-user"></span> @Model.TeacherName &nbsp; S/O &nbsp; @Model.FatherName</th>
+            </tr>
+        }
+        else
+        {
+            <tr>
+                <th class="text-center" colspan="2"> <span class="la la-user"></span> @Model.TeacherName &nbsp; D/O &nbsp; @Model.FatherName</th>
+            </tr>
+        }
+    </thead>
+    <tbody class="table-hover">
+        <tr>
+            <td class="text-left bold">DOB</td>
+            @if (Model.DoB != null)
+            {
+                <td class="text-left">@Data.BLL.DateFunctions.convertToStringDate(Model.DoB)</td>
+            }
+            else
+            {
+                <td class="text-left">-</td>
+            }
+        </tr>
+        <tr>
+            <td class="text-left bold">Marital Status/Religion</td>
+            @if (Model.IsMarried == true)
+            {
+                <td class="text-left">Married / @Model.Religion</td>
+            }
+            else
+            {
+                <td class="text-left">Single / @Model.Religion</td>
+            }
+        </tr>
+        <tr>
+            <td class="text-left bold">Contact</td>
+            <td class="text-left">@Model.HomePhone , @Model.Contact1 , @Model.Contact2 , @Model.Contact3</td>
+        </tr>
+        <tr>
+
+            <td class="text-left bold">CNIC</td>
+            <td class="text-left">@Model.CNIC</td>
+        </tr>
+        <tr>
+            <td class="text-left bold">Identity Mark/Blood Group</td>
+            <td class="text-left">@Model.IdentityMark / @Model.Blood_Group</td>
+        </tr>
+        <tr>
+            <td class="text-left bold">Designation</td>
+            <td class="text-left">@Model.Designation.Designation </td>
+        </tr>
+        <tr>
+            <td class="text-left bold">Salary</td>
+            <td class="text-left">@Model.Salary</td>
+        </tr>
+        <tr>
+            <td class="text-left bold">Referred/Approved By</td>
+            <td class="text-left">@Model.Refered_By / @Model.ApprovedBy</td>
+        </tr>
+        <tr>
+            <td class="text-left bold">Home Adress</td>
+            <td class="text-left">@Model.Permanent_Address</td>
+        </tr>
+
+        <tr>
+            <td colspan="2">
+                <table style="width:100%">
+                    <tr>
+                        <th style="width:20%">Degree</th>
+                        <th style="width:20%">Board</th>
+                        <th style="width:10%">Grade</th>
+                        <th style="width:10%">Marks</th>
+                        <th style="width:10%">Year</th>
+                        <th style="width:30%">Remarks</th>
+                    </tr>
+                    <tr>
+                        <td>@Model.Qualification.matric_type</td>
+                        <td>@Model.Qualification.matric_board</td>
+                        <td>@Model.Qualification.matric_grade</td>
+                        <td>@Model.Qualification.matric_marks</td>
+                        <td>@Model.Qualification.matric_year</td>
+                        <td>@Model.Qualification.matric_remarks</td>
+                    </tr>
+
+                    <tr>
+                        <td>@Model.Qualification.inter_type</td>
+                        <td>@Model.Qualification.inter_institiute</td>
+                        <td>@Model.Qualification.inter_grade</td>
+                        <td>@Model.Qualification.inter_marks</td>
+                        <td>@Model.Qualification.inter_year</td>
+                        <td>@Model.Qualification.inter_remarks</td>
+                    </tr>
+
+                    <tr>
+                        <td>@Model.Qualification.bachelor_type</td>
+                        <td>@Model.Qualification.bachelor_institute</td>
+                        <td>@Model.Qualification.bachelor_grade</td>
+                        <td>@Model.Qualification.bachelor_marks</td>
+                        <td>@Model.Qualification.bachelor_year</td>
+                        <td>@Model.Qualification.bachlor_remarks</td>
+                    </tr>
+
+                    <tr>
+                        <td>@Model.Qualification.master_type</td>
+                        <td>@Model.Qualification.master_institute</td>
+                        <td>@Model.Qualification.master_grade</td>
+                        <td>@Model.Qualification.mater_marks</td>
+                        <td>@Model.Qualification.master_year</td>
+                        <td>@Model.Qualification.master_remarks</td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+
+    </tbody>
+</table>
+
+<style>
+    div.table-title {
+        display: block;
+        margin: auto;
+        max-width: 600px;
+        padding: 5px;
+        width: 100%;
+    }
+
+    .table-title h3 {
+        color: #fafafa;
+        font-size: 30px;
+        font-weight: 400;
+        font-style: normal;
+        font-family: "Roboto", helvetica, arial, sans-serif;
+        text-shadow: -1px -1px 1px rgba(0, 0, 0, 0.1);
+        text-transform: uppercase;
+    }
+
+
+    /*** Table Styles **/
+
+    .table-fill {
+        background: white;
+        border-radius: 3px;
+        border-collapse: collapse;
+        height: 320px;
+        margin: auto;
+        width: 100%;
+        padding: 5px;
+        width: 100%;
+        box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1);
+        animation: float 5s infinite;
+    }
+
+    #student_detail thead tr th {
+        color: white;
+        background: #176da5;
+        border-bottom: 4px solid #9ea7af;
+        border-right: 1px solid #343a45;
+        font-size: 28px !important;
+        font-weight: bold;
+        padding: 10px;
+        text-align: left;
+        text-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
+        vertical-align: middle;
+    }
+
+    /*#student_detail thead tr th:first-child {
+      border-top-left-radius:3px;
+    }
+
+    #student_detail thead tr th:last-child {
+      border-top-right-radius:3px;
+      border-right:none;
+    }*/
+
+    #student_detail tbody tr {
+        border-top: 1px solid #C1C3D1;
+        border-bottom: 1px solid #C1C3D1;
+        color: #666B85;
+        font-size: 16px;
+        font-weight: normal;
+        text-shadow: 0 1px 1px rgba(256, 256, 256, 0.1);
+    }
+
+        #student_detail tbody tr:hover td {
+            background: rgba(0, 0, 0, 0.1);
+            color: #4E5066;
+            border-top: 1px solid #C1C3D1;
+        }
+
+        #student_detail tbody tr:first-child {
+            border-top: none;
+        }
+
+        #student_detail tbody tr:last-child {
+            border-bottom: none;
+        }
+
+        #student_detail tbody tr:nth-child(odd) td {
+            background: white;
+        }
+
+        #student_detail tbody tr:nth-child(odd):hover td {
+            background: rgba(0, 0, 0, 0.1);
+            color: #4E5066;
+            border-top: 1px solid #C1C3D1;
+        }
+
+        #student_detail tbody tr:last-child td:first-child {
+            border-bottom-left-radius: 3px;
+        }
+
+        #student_detail tbody tr:last-child td:last-child {
+            border-bottom-right-radius: 3px;
+        }
+
+        #student_detail tbody tr td {
+            background: #FFFFFF;
+            padding: 6px !important;
+            color: black;
+            text-align: left;
+            vertical-align: middle;
+            font-weight: normal;
+            font-size: 14px !important;
+            text-shadow: -1px -1px 1px rgba(0, 0, 0, 0.1);
+            border-right: 1px solid #C1C3D1;
+        }
+
+    td:last-child {
+        border-right: 0px;
+    }
+
+    th.text-left {
+        text-align: left;
+    }
+
+    th.text-center {
+        text-align: center;
+    }
+
+    th.text-right {
+        text-align: right;
+    }
+
+    td.text-left {
+        text-align: left;
+    }
+
+    td.text-center {
+        text-align: center;
+    }
+
+    td.text-right {
+        text-align: right;
+    }
+
+    .bold {
+        font-weight: bold !important;
+    }
+</style>

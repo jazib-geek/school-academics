@@ -18,8 +18,13 @@ import {
   TT_FORMAT,
   TT_FORMAT_META,
   buildSlotMaps,
-  classSlotKey,
   formatClassLabel,
+  formatSplitCellLines,
+  getClassCellSlots,
+  normalizeLineIndex,
+  slotSubjectLabel,
+  subjectShortLabelFromMaster,
+  sortCellSlots,
   formatTimeRange,
   getId,
   getText,
@@ -38,12 +43,27 @@ function CellSheet({ open, onClose, onSave, onClear, context, candidates, subjec
   const [sectionID, setSectionID] = useState('')
   const [subjectID, setSubjectID] = useState('')
   const [employeeID, setEmployeeID] = useState('')
+  const [splitEnabled, setSplitEnabled] = useState(false)
+  const [subjectID2, setSubjectID2] = useState('')
+  const [employeeID2, setEmployeeID2] = useState('')
 
   useEffect(() => {
     if (!open || !context) return
-    setSectionID(context.sectionID ? String(context.sectionID) : '')
-    setSubjectID(context.subjectID ? String(context.subjectID) : '')
-    setEmployeeID(context.employeeID ? String(context.employeeID) : '')
+    const cellSlots = sortCellSlots(context.cellSlots || [])
+    const line0 = cellSlots.find((s) => normalizeLineIndex(s) === 0) || cellSlots[0]
+    const line1 = cellSlots.find((s) => normalizeLineIndex(s) === 1)
+    setSectionID(String(context.sectionID || getId(line0, 'sectionID', 'SectionID') || ''))
+    setSubjectID(line0 ? String(getId(line0, 'subjectID', 'SubjectID')) : '')
+    setEmployeeID(
+      line0
+        ? String(getId(line0, 'employeeID', 'EmployeeID'))
+        : context.rowEmployeeID
+          ? String(context.rowEmployeeID)
+          : '',
+    )
+    setSplitEnabled(Boolean(line1))
+    setSubjectID2(line1 ? String(getId(line1, 'subjectID', 'SubjectID')) : '')
+    setEmployeeID2(line1 ? String(getId(line1, 'employeeID', 'EmployeeID')) : '')
   }, [context, open])
 
   const filteredCandidates = useMemo(() => {
@@ -53,6 +73,13 @@ function CellSheet({ open, onClose, onSave, onClear, context, candidates, subjec
     }
     return candidates.filter((c) => getId(c, 'employeeID', 'EmployeeID') === context.rowEmployeeID)
   }, [candidates, context, isClassWise])
+
+  const partnerLine = useMemo(() => {
+    if (!context?.cellSlots?.length) return null
+    const cellSlots = sortCellSlots(context.cellSlots)
+    const editingLine = context.editingLineIndex ?? 0
+    return cellSlots.find((s) => normalizeLineIndex(s) !== editingLine) || null
+  }, [context])
 
   if (!open || !context) return null
 
@@ -64,19 +91,43 @@ function CellSheet({ open, onClose, onSave, onClear, context, candidates, subjec
 
   const submit = (event) => {
     event.preventDefault()
-    const next = {
-      sectionID: Number(sectionID),
-      subjectID: Number(subjectID),
-      employeeID: Number(employeeID),
-      periodNumber: context.periodNumber,
-      dayOfWeek: 0,
-      id: context.slotId || undefined,
-    }
-    if (!next.sectionID || !next.subjectID || !next.employeeID) {
+    const resolvedSectionID = Number(sectionID)
+    const line0Employee = Number(employeeID) || Number(context.rowEmployeeID)
+    const lines = [
+      {
+        lineIndex: 0,
+        subjectID: Number(subjectID),
+        employeeID: line0Employee,
+        id: context.slotId0 || undefined,
+      },
+    ]
+    if (!resolvedSectionID || !lines[0].subjectID || !lines[0].employeeID) {
       onValidationError?.('Class, subject, and teacher are required.', 'Missing details')
       return
     }
-    onSave(next)
+    if (splitEnabled) {
+      const line1 = {
+        lineIndex: 1,
+        subjectID: Number(subjectID2),
+        employeeID: Number(employeeID2),
+        id: context.slotId1 || undefined,
+      }
+      if (!line1.subjectID || !line1.employeeID) {
+        onValidationError?.('Second group needs a subject and teacher.', 'Missing details')
+        return
+      }
+      if (line1.subjectID === lines[0].subjectID || line1.employeeID === lines[0].employeeID) {
+        onValidationError?.('Each group needs a different subject and teacher.', 'Check groups')
+        return
+      }
+      lines.push(line1)
+    }
+    onSave({
+      sectionID: resolvedSectionID,
+      periodNumber: context.periodNumber,
+      dayOfWeek: 0,
+      lines,
+    })
   }
 
   return (
@@ -155,11 +206,10 @@ function CellSheet({ open, onClose, onSave, onClear, context, candidates, subjec
               <option value="">Select subject</option>
               {subjects.map((subject) => {
                 const value = getId(subject, 'id', 'ID')
-                const shortName = getText(subject, 'shortName', 'ShortName')
                 const fullName = getText(subject, 'subjectName', 'SubjectName')
                 return (
                   <option key={value} value={value}>
-                    {shortName || fullName || 'Subject'}
+                    {fullName || 'Subject'}
                   </option>
                 )
               })}
@@ -186,6 +236,68 @@ function CellSheet({ open, onClose, onSave, onClear, context, candidates, subjec
                 })}
               </select>
             </label>
+          ) : null}
+
+          {partnerLine && !splitEnabled ? (
+            <p className="rounded-xl bg-slate-100 px-3 py-2 text-xs text-slate-600">
+              Also this period: {slotSubjectLabel(partnerLine)} with{' '}
+              {getText(partnerLine, 'employeeName', 'EmployeeName') || 'another teacher'}.
+            </p>
+          ) : null}
+
+          <label className="flex items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              className="h-4 w-4 rounded border-slate-300"
+              checked={splitEnabled}
+              onChange={(e) => setSplitEnabled(e.target.checked)}
+            />
+            Split period (second group)
+          </label>
+
+          {splitEnabled ? (
+            <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Second group</p>
+              <label className="block text-sm font-medium text-slate-700">
+                Subject
+                <select
+                  className="mt-1.5 h-12 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm"
+                  value={subjectID2}
+                  onChange={(e) => setSubjectID2(e.target.value)}
+                  required={splitEnabled}
+                >
+                  <option value="">Select subject</option>
+                  {subjects.map((subject) => {
+                    const value = getId(subject, 'id', 'ID')
+                    const fullName = getText(subject, 'subjectName', 'SubjectName')
+                    return (
+                      <option key={value} value={value}>
+                        {fullName || 'Subject'}
+                      </option>
+                    )
+                  })}
+                </select>
+              </label>
+              <label className="block text-sm font-medium text-slate-700">
+                Teacher
+                <select
+                  className="mt-1.5 h-12 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm"
+                  value={employeeID2}
+                  onChange={(e) => setEmployeeID2(e.target.value)}
+                  required={splitEnabled}
+                >
+                  <option value="">Select teacher</option>
+                  {(context.teacherOptions || []).map((teacher) => {
+                    const value = getId(teacher, 'employeeID', 'EmployeeID') || getId(teacher, 'id', 'ID')
+                    return (
+                      <option key={value} value={value}>
+                        {getText(teacher, 'employeeName', 'EmployeeName')}
+                      </option>
+                    )
+                  })}
+                </select>
+              </label>
+            </div>
           ) : null}
         </div>
         <div className="flex gap-2 border-t border-slate-200 bg-white px-4 py-3">
@@ -311,6 +423,7 @@ function EmployeeTimetableEditorPage() {
     return {
       ...input,
       dayOfWeek: input.dayOfWeek || 0,
+      lineIndex: input.lineIndex ?? 0,
       className:
         getText(cls, 'className', 'ClassName') ||
         getText(fromCandidate, 'className', 'ClassName') ||
@@ -320,7 +433,8 @@ function EmployeeTimetableEditorPage() {
         getText(fromCandidate, 'subjectName', 'SubjectName') ||
         'Subject',
       subjectShortName:
-        getText(subject, 'shortName', 'ShortName') || getText(fromCandidate, 'subjectShortName', 'SubjectShortName'),
+        subjectShortLabelFromMaster(subject) ||
+        getText(fromCandidate, 'subjectShortName', 'SubjectShortName'),
       employeeName:
         getText(teacher, 'employeeName', 'EmployeeName') ||
         getText(fromCandidate, 'employeeName', 'EmployeeName') ||
@@ -329,63 +443,99 @@ function EmployeeTimetableEditorPage() {
     }
   }
 
-  const openCell = ({ sectionId, employeeId, periodNumber, slot, rowLabel }) => {
+  const openCell = ({ sectionId, employeeId, periodNumber, slot, cellSlots, rowLabel }) => {
     if (!canEdit) return
     const isClassWise = formatType === TT_FORMAT.CLASS_WISE
+    const slotsForCell = sortCellSlots(cellSlots || (slot ? [slot] : []))
+    const line0 = slotsForCell.find((s) => normalizeLineIndex(s) === 0) || slotsForCell[0]
+    const line1 = slotsForCell.find((s) => normalizeLineIndex(s) === 1)
+    const activeSlot = slot || line0
+    const editingLineIndex = activeSlot ? normalizeLineIndex(activeSlot) : 0
     setEditor({
       periodNumber,
       rowLabel,
-      rowSectionID: isClassWise ? sectionId : getId(slot, 'sectionID', 'SectionID'),
-      rowEmployeeID: isClassWise ? getId(slot, 'employeeID', 'EmployeeID') : employeeId,
-      sectionID: isClassWise ? sectionId : getId(slot, 'sectionID', 'SectionID'),
-      employeeID: isClassWise ? getId(slot, 'employeeID', 'EmployeeID') : employeeId,
-      subjectID: getId(slot, 'subjectID', 'SubjectID'),
-      slotId: getId(slot, 'id', 'ID') || undefined,
+      rowSectionID: isClassWise ? sectionId : getId(activeSlot, 'sectionID', 'SectionID'),
+      rowEmployeeID: isClassWise ? getId(activeSlot, 'employeeID', 'EmployeeID') : employeeId,
+      sectionID: isClassWise ? sectionId : getId(activeSlot, 'sectionID', 'SectionID'),
+      employeeID: isClassWise ? getId(activeSlot, 'employeeID', 'EmployeeID') : employeeId,
+      subjectID: getId(activeSlot, 'subjectID', 'SubjectID'),
+      slotId0: getId(line0, 'id', 'ID') || undefined,
+      slotId1: getId(line1, 'id', 'ID') || undefined,
+      editingLineIndex,
+      cellSlots: slotsForCell,
       classOptions,
       teacherOptions,
     })
   }
 
-  const applyEditorSlot = (next) => {
-    const isClassWise = formatType === TT_FORMAT.CLASS_WISE
-    const isSameCell = (slot) => {
-      const periodNumber = getId(slot, 'periodNumber', 'PeriodNumber')
-      const dayOfWeek = getId(slot, 'dayOfWeek', 'DayOfWeek') || 0
-      if (periodNumber !== next.periodNumber || dayOfWeek !== 0) return false
-      if (isClassWise) return getId(slot, 'sectionID', 'SectionID') === next.sectionID
-      return getId(slot, 'employeeID', 'EmployeeID') === next.employeeID
-    }
+  const applyEditorSlot = (payload) => {
+    const { sectionID, periodNumber, dayOfWeek = 0, lines: rawLines } = payload
 
-    const teacherClash = slots.find(
-      (slot) =>
-        !isSameCell(slot) &&
-        getId(slot, 'employeeID', 'EmployeeID') === next.employeeID &&
-        getId(slot, 'periodNumber', 'PeriodNumber') === next.periodNumber &&
-        (getId(slot, 'dayOfWeek', 'DayOfWeek') || 0) === 0,
-    )
-    if (teacherClash) {
-      showError(
-        `${getText(teacherClash, 'employeeName', 'EmployeeName') || 'Teacher'} is already booked in period ${next.periodNumber}.`,
-        'Teacher clash',
+    let lines = rawLines.map((line) => ({ ...line, lineIndex: line.lineIndex ?? 0 }))
+    if (lines.length === 1) {
+      const existingLine = slots.find(
+        (slot) =>
+          getId(slot, 'sectionID', 'SectionID') === sectionID &&
+          getId(slot, 'periodNumber', 'PeriodNumber') === periodNumber &&
+          (getId(slot, 'dayOfWeek', 'DayOfWeek') || 0) === dayOfWeek,
       )
-      return
+      if (
+        existingLine &&
+        normalizeLineIndex(existingLine) === 0 &&
+        getId(existingLine, 'employeeID', 'EmployeeID') !== lines[0].employeeID
+      ) {
+        lines = [
+          {
+            lineIndex: 0,
+            subjectID: getId(existingLine, 'subjectID', 'SubjectID'),
+            employeeID: getId(existingLine, 'employeeID', 'EmployeeID'),
+            id: getId(existingLine, 'id', 'ID') || undefined,
+          },
+          { ...lines[0], lineIndex: 1 },
+        ]
+      }
     }
 
-    setSlots((current) => [...current.filter((slot) => !isSameCell(slot)), enrichSlot(next)])
+    const isSameClassCell = (slot) => {
+      if (getId(slot, 'periodNumber', 'PeriodNumber') !== periodNumber) return false
+      if ((getId(slot, 'dayOfWeek', 'DayOfWeek') || 0) !== dayOfWeek) return false
+      return getId(slot, 'sectionID', 'SectionID') === sectionID
+    }
+
+    for (const line of lines) {
+      const next = { sectionID, periodNumber, dayOfWeek, ...line }
+      const teacherClash = slots.find(
+        (slot) =>
+          !isSameClassCell(slot) &&
+          getId(slot, 'employeeID', 'EmployeeID') === next.employeeID &&
+          getId(slot, 'periodNumber', 'PeriodNumber') === next.periodNumber &&
+          (getId(slot, 'dayOfWeek', 'DayOfWeek') || 0) === dayOfWeek,
+      )
+      if (teacherClash) {
+        showError(
+          `${getText(teacherClash, 'employeeName', 'EmployeeName') || 'Teacher'} is already booked in period ${next.periodNumber}.`,
+          'Teacher clash',
+        )
+        return
+      }
+    }
+
+    setSlots((current) => [
+      ...current.filter((slot) => !isSameClassCell(slot)),
+      ...lines.map((line) => enrichSlot({ sectionID, periodNumber, dayOfWeek, ...line })),
+    ])
     setDirty(true)
     setEditor(null)
   }
 
   const clearEditorSlot = () => {
     if (!editor) return
-    const isClassWise = formatType === TT_FORMAT.CLASS_WISE
     setSlots((current) =>
       current.filter((slot) => {
         const periodNumber = getId(slot, 'periodNumber', 'PeriodNumber')
         const dayOfWeek = getId(slot, 'dayOfWeek', 'DayOfWeek') || 0
         if (periodNumber !== editor.periodNumber || dayOfWeek !== 0) return true
-        if (isClassWise) return getId(slot, 'sectionID', 'SectionID') !== editor.sectionID
-        return getId(slot, 'employeeID', 'EmployeeID') !== editor.employeeID
+        return getId(slot, 'sectionID', 'SectionID') !== editor.sectionID
       }),
     )
     setDirty(true)
@@ -498,26 +648,19 @@ function EmployeeTimetableEditorPage() {
                                   />
                                 )
                               }
-                              const slot = byClass.get(classSlotKey(sectionId, periodNumber, 0))
+                              const cellSlots = getClassCellSlots(byClass, sectionId, periodNumber, 0)
+                              const { subjectLine, teacherLine } = formatSplitCellLines(cellSlots)
                               return (
                                 <td key={`${sectionId}-${periodNumber}`} className="border border-slate-200 p-0">
                                   <button
                                     type="button"
-                                    onClick={() => openCell({ sectionId, periodNumber, slot, rowLabel })}
+                                    onClick={() => openCell({ sectionId, periodNumber, cellSlots, rowLabel })}
                                     className="flex min-h-14 min-w-24 w-full flex-col items-center justify-center px-1.5 py-2 text-center active:bg-indigo-50"
                                   >
-                                    {slot ? (
+                                    {cellSlots.length > 0 ? (
                                       <>
-                                        <span className="text-xs font-bold text-slate-800">
-                                          {getText(slot, 'subjectShortName', 'SubjectShortName') ||
-                                            getText(slot, 'subjectName', 'SubjectName')}
-                                        </span>
-                                        <span className="mt-0.5 text-[10px] text-slate-500">
-                                          {teacherDisplayName(
-                                            getText(slot, 'employeeName', 'EmployeeName'),
-                                            getText(slot, 'gender', 'Gender'),
-                                          )}
-                                        </span>
+                                        <span className="text-xs font-bold text-slate-800">{subjectLine}</span>
+                                        <span className="mt-0.5 text-[10px] text-slate-500">{teacherLine}</span>
                                       </>
                                     ) : (
                                       <span className="text-xs text-slate-300">+</span>
@@ -551,11 +694,17 @@ function EmployeeTimetableEditorPage() {
                                 )
                               }
                               const slot = byTeacher.get(teacherSlotKey(employeeId, periodNumber, 0))
+                              const slotSectionId = getId(slot, 'sectionID', 'SectionID')
+                              const cellSlots = slotSectionId
+                                ? getClassCellSlots(byClass, slotSectionId, periodNumber, 0)
+                                : []
                               return (
                                 <td key={`${employeeId}-${periodNumber}`} className="border border-slate-200 p-0">
                                   <button
                                     type="button"
-                                    onClick={() => openCell({ employeeId, periodNumber, slot, rowLabel })}
+                                    onClick={() =>
+                                      openCell({ employeeId, periodNumber, slot, cellSlots, rowLabel })
+                                    }
                                     className="flex min-h-14 min-w-24 w-full flex-col items-center justify-center px-1.5 py-2 text-center active:bg-indigo-50"
                                   >
                                     {slot ? (

@@ -1,0 +1,461 @@
+﻿@using Data.BLL
+@model Data.Viewmodel.FeeCollectionViewModel
+
+@{
+    ViewBag.Title = "Generate Fee";
+    var ThisYear = DateTime.Now.Year + 1;
+    var NextYear = DateTime.Now.Year + 1;
+}
+
+<style>
+    @@import url(https://fonts.googleapis.com/css?family=Roboto:400,300,600,400italic);
+
+
+    .container {
+        max-width: 500px;
+        width: 100%;
+        margin: 0 auto;
+        position: relative;
+    }
+
+    #contact input[type="text"],
+    #contact input[type="email"],
+    #contact input[type="tel"],
+    #contact input[type="url"],
+    #contact textarea,
+    #contact button[type="submit"] {
+        font: 400 12px/16px "Roboto", Helvetica, Arial, sans-serif;
+    }
+
+    #contact {
+        background: #F9F9F9;
+        padding: 25px;
+        box-shadow: 0 0 20px 0 rgba(0, 0, 0, 0.2), 0 5px 5px 0 rgba(0, 0, 0, 0.24);
+    }
+
+        #contact h3 {
+            display: block;
+            font-size: 30px;
+            font-weight: bold;
+            margin-bottom: 18px;
+        }
+
+        #contact h4 {
+            margin: 5px 0 15px;
+            display: block;
+            font-size: 13px;
+            font-weight: 400;
+        }
+
+    fieldset {
+        border: medium none !important;
+        margin: 0 0 10px;
+        min-width: 100%;
+        padding: 0;
+        width: 100%;
+    }
+
+    #contact input[type="text"],
+    #contact input[type="email"],
+    #contact input[type="tel"],
+    #contact input[type="url"],
+    #contact textarea {
+        width: 100%;
+        border: 1px solid #ccc;
+        background: #FFF;
+        margin: 0 0 5px;
+        padding: 10px;
+    }
+
+    select {
+        width: 100%;
+        border: 1px solid #ccc;
+        background: #FFF;
+        margin: 0 0 5px;
+        padding: 10px;
+    }
+
+    #contact input[type="text"]:hover,
+    #contact input[type="email"]:hover,
+    #contact input[type="tel"]:hover,
+    #contact input[type="url"]:hover,
+    #contact textarea:hover {
+        -webkit-transition: border-color 0.3s ease-in-out;
+        -moz-transition: border-color 0.3s ease-in-out;
+        transition: border-color 0.3s ease-in-out;
+        border: 1px solid #aaa;
+    }
+
+    #contact textarea {
+        height: 100px;
+        max-width: 100%;
+        resize: none;
+    }
+
+    #contact button[type="button"] {
+        cursor: pointer;
+        width: 100%;
+        border: none;
+        background: #176da5;
+        color: #FFF;
+        margin: 0 0 5px;
+        padding: 10px;
+        font-size: 16px;
+        font-weight: bold;
+    }
+
+        #contact button[type="button"]:hover {
+            background: rgba(23, 109, 165, 0.92);
+            -webkit-transition: background 0.3s ease-in-out;
+            -moz-transition: background 0.3s ease-in-out;
+            transition: background-color 0.3s ease-in-out;
+        }
+
+        #contact button[type="button"]:active {
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
+        }
+
+    .copyright {
+        text-align: center;
+    }
+
+    #contact input:focus,
+    #contact textarea:focus {
+        outline: 0;
+        border: 1px solid #aaa;
+    }
+
+    ::-webkit-input-placeholder {
+        color: #888;
+    }
+
+    :-moz-placeholder {
+        color: #888;
+    }
+
+    ::-moz-placeholder {
+        color: #888;
+    }
+
+    :-ms-input-placeholder {
+        color: #888;
+    }
+
+    .margin-top-8 {
+        margin-top: 8px;
+    }
+</style>
+
+<div class="container main">
+    <button onclick="GoToPage('/Fee/Generate/Nullify')" class="btn btn-primary btn-sm" style="margin-top:60px; font-size:16px; margin-left:0%">
+        <i class="la la-exclamation-circle"></i> Nullify Fee
+    </button>
+    <button onclick="GoToPage('/')" class="btn btn-danger btn-sm" style="margin-top:60px; font-size:16px; margin-left:0%">
+        <i class="la la-close"></i> Close screen
+    </button>
+
+    <form id="contact" action="" method="post">
+        <h3 class="text-center" style="margin-top:0!important">
+            <i class="la la-cog"></i>
+            GENERATE FEE
+        </h3>
+        <fieldset>
+            <select id="ddlMonth" style="width:49%">
+                <option value="">---Fee Month---</option>
+                @for (int i = 1; i <= 12; i++)
+                {
+                    <option value="@i">@DateFunctions.convertToStringMonth(i)</option>
+                }
+            </select>
+            <select id="ddlYear" style="width:49%; float:right">
+                <option value="@DateTime.Now.Year" selected="selected">@DateTime.Now.Year</option>
+                <option value="@NextYear">@NextYear</option>
+            </select>
+        </fieldset>
+        <fieldset id="f_allclass">
+            <input id="allclass" type="radio" name="mode" onclick="All()" checked="checked" /> &nbsp; <label onclick="All()" for="allclass">FOR ALL CLASSES</label>
+        </fieldset>
+
+        <fieldset class="hide">
+            <input id="thisclass" type="radio" name="mode" onclick="thisClass()" /> &nbsp; <label for="thisclass" onclick="thisClass()">FOR SINGLE CLASS</label>
+        </fieldset>
+
+        <fieldset>
+            <input id="thisstudent" type="radio" name="mode" onclick="thisStudent()" /> &nbsp; <label for="thisstudent" onclick="thisStudent()">FOR SINGLE STUDENT</label>
+        </fieldset>
+        <fieldset>
+            @Html.DropDownListFor(m => m.ClassID, new SelectList(StudentParameters.lstClass(), "Class_ID", "Class_Name"), "---select class---", new { @tabindex = "1", @id = "ddlClass", @class = "hide" })
+        </fieldset>
+
+        <div id="stdDiv" class="hide">
+            <fieldset>
+                @Html.TextBoxFor(m => m.StudentID, new { @tabindex = "1", @style = "width:22%", @placeholder = "Reg ID" })
+                <span id="std_loading" style="width:5%" class="hide"><i class="la la-spin fa-spinner"></i></span>
+                <input type="text" id="StudentName" style="width:72%" placeholder="Student Name" disabled />
+            </fieldset>
+            <fieldset>
+                <input type="text" id="FatherName" style="width:49%" placeholder="Father name" disabled />
+                <input type="text" id="ClassSection" style="width:49%" placeholder="Class/Section" disabled />
+            </fieldset>
+
+            <fieldset>
+                <input id="TutionFee" type="radio" name="feetype" onclick="disableFeetxt()" style="margin-left:4em;" class="margin-top-8" /> &nbsp; <label id="lblTutionFee" for="TutionFee">Tution Fee</label> &nbsp;
+                <span id="r_thisamount">
+                    <input id="thisamount" type="radio" name="feetype" onclick="enableFeetxt()" /> &nbsp; <label for="thisamount" class="margin-top-8">This amount</label>
+                </span>
+                @Html.TextBoxFor(m => m.TotalAmount, new { @tabindex = "1", @style = "width:25%; float:right", @placeholder = "Amount", @disabled = "disabled", @class = "bg-grey" })
+            </fieldset>
+        </div>
+
+        <button name="submit" type="button" onclick="generateNow()" id="btngenerate">Generate Fee</button>
+        <button name="submit" type="button" class="hide" id="btnwait" style="background-color:lightgray;color:darkgreen" disabled="disabled">
+            <i class="la la-spin fa-spinner"></i> Generating...
+        </button>
+
+    </form>
+</div>
+
+<script>
+
+    function delay(callback, ms) {
+        var timer = 0;
+        return function () {
+            var context = this, args = arguments;
+            clearTimeout(timer);
+            timer = setTimeout(function () {
+                callback.apply(context, args);
+            }, ms || 0);
+        };
+    }
+
+
+    // Trigger Student Search after delay
+
+    $('#StudentID').keyup(delay(function (e) {
+        $('.fa-cog').addClass('fa-spin');
+        getstudent();
+    }, 500));
+
+    function thisClass() {
+        $("#ddlClass").removeClass('hide');
+        $("#stdDiv").addClass('hide');
+    }
+    function thisStudent() {
+        $("#stdDiv").removeClass('hide');
+        $("#ddlClass").addClass('hide');
+    }
+    function All() {
+        $("#stdDiv").addClass('hide');
+        $("#ddlClass").addClass('hide');
+    }
+
+    function enableFeetxt() {
+        $("#TotalAmount").attr("disabled", false);
+        $("#TotalAmount").removeClass('bg-grey');
+        $("#TotalAmount").val('');
+        $("#TotalAmount").focus();
+    }
+
+    function disableFeetxt() {
+        $("#TotalAmount").attr("disabled", true);
+        $("#TotalAmount").addClass('bg-grey');
+        $("#TotalAmount").val('');
+    }
+
+    // Get student data (FOR SINGLE STUDENT RADIO)
+
+    function getstudent() {
+        $('#stdDiv').addClass('opacity-3');
+        var studentid = $("#StudentID").val();
+        $("#std_loading").removeClass('hide');
+        $.ajax({
+            cache: false, async: false, type: "POST",
+            url: '/Student/AjaxMethods/GetStudent',
+            data: { "ID": studentid },
+            success: function (result) {
+                $("#StudentName").val(result.name);
+                $("#FatherName").val(result.fname);
+                $("#ClassSection").val(result.classname);
+                $("#lblTutionFee").text('Tution Fee (' + result.TutionFee + ')');
+                $("#TutionFee").prop("checked", true);
+                $("#std_loading").addClass('hide');
+                $('.fa-cog').removeClass('fa-spin');
+                $('#stdDiv').removeClass('opacity-3');
+            },
+            error: function (xhr, ajaxOptions, thrownError) {
+
+                $("#StudentName").val('');
+                $("#FatherName").val('');
+                $("#ClassSection").val('');
+                $("#std_loading").addClass('hide');
+                $('.fa-cog').removeClass('fa-spin');
+                $('#stdDiv').removeClass('opacity-3');
+            }
+        });
+    }
+
+    function generateNow() {
+        var month = $("#ddlMonth").val();
+        var year = $("#ddlYear").val();
+        var selected_class = $("#ddlClass").val();
+        var student_id = $("#StudentID").val();
+        var amount = $("#TotalAmount").val().toString();
+
+        if (month != '' && year != '') {
+
+            $('#btngenerate').attr('disabled', true);
+
+            //  In case of all classes
+
+            if ($('#allclass').is(':checked')) {
+                generateForAllClass(month, year);
+            }
+
+            //  In case of paricular student
+
+            if ($('#thisstudent').is(':checked')) {
+                if ($("#StudentID").val() != '') {
+
+                    if ($('#TutionFee').is(':checked')) {
+                        GenerateFeeForThisStudent(student_id, month, year, -1);
+                    }
+                    else if ($('#thisamount').is(':checked')) {
+                        if (amount != '') {
+                            GenerateFeeForThisStudent(student_id, month, year, amount);
+                        }
+                        else {
+                            alert_error('Amount Required', 'Please Enter Amount');
+                        }
+                    }
+                }
+                else {
+                    alert_error('Student ID Required', 'Provide valid Student ID and Try again');
+                }
+            }
+        }
+        else {
+            alert_error('Month Required', 'Please select month and year');
+        }
+    }
+
+    function generateForAllClass(feemonth, feeyear) {
+        if (feemonth != '') {
+            PostBackStart();
+
+            $.ajax({
+                cache: false, async: false, type: "POST",
+                url: '/Fee/Generate/ForAllClasses',
+                data: { month: feemonth, year: feeyear },
+                success: function (result) {
+                    alert_success('success', 'Fee generated successfully');
+                    PostBackEnd();
+                },
+                error: function (xhr, ajaxOptions, thrownError) {
+                    PostBackEnd();
+                    Console.log(xhr.responseText);
+                    //$.alert('Something went wrong');
+                }
+            });
+        }
+    }
+
+    function GenerateFeeForThisClass(feemonth, feeyear, classid) {
+        PostBackStart();
+
+        $.ajax({
+            cache: false, async: false, type: "POST",
+            url: '/Fee/Generate/ForThisClass',
+            data: { "month": feemonth, "year": feeyear, "classid": classid },
+            success: function (result) {
+                PostBackEnd();
+
+                if (result.msg == "success") {
+                    alert_success('success', 'Fee generated successfully');
+                }
+                else if (result.msg == "no student") {
+                    alert_error('No students', 'No student found in selected class');
+                }
+            },
+            error: function (xhr, ajaxOptions, thrownError) {
+                PostBackEnd();
+                $.alert('Something went wrong');
+            }
+        });
+    }
+
+    function GenerateFeeForThisStudent(studentid, feemonth, feeyear, amount) {
+        PostBackStart();
+        $.ajax({
+            cache: false, async: false, type: "POST",
+            url: '/Fee/Generate/ForThisStudent',
+            data: { id: studentid , month : feemonth,  year : feeyear, amount : amount},
+            success: function (result) {
+                PostBackEnd();
+                alert_success('success', 'Fee generated successfully');
+                emptystdControls();
+            },
+            error: function (xhr, ajaxOptions, thrownError) {
+                $("#btngenerate").attr('disabled', false);
+                $.alert(thrownError);
+            }
+        });
+    }
+
+    // Empty all Student Controls
+    function emptystdControls() {
+        $("#TotalAmount").val('');
+        $("#StudentID").val('');
+        $("#StudentName").val('');
+        $("#ClassSection").val('');
+        $("#FatherName").val('');
+        $("#TotalAmount").attr('disabled', true);
+        $("#thisamount").prop("checked", false);
+    }
+
+    function PostBackStart() {
+        $('.fa-cog').addClass('fa-spin');
+        $('#stdDiv').addClass('opacity-3');
+        $('#btngenerate').attr('disabled', true);
+        $('#btngenerate').addClass('hide');
+        $('#btnwait').removeClass('hide');
+    }
+
+    function PostBackEnd() {
+        $('.fa-cog').removeClass('fa-spin');
+        $('#stdDiv').removeClass('opacity-3');
+        $('#btngenerate').removeClass('hide');
+        $('#btngenerate').attr('disabled', false);
+        $('#btnwait').addClass('hide');
+        emptystdControls();
+    }
+
+
+     @if (Data.BLL.User.Rights.UserHasAccessToMudule("generate_fee_all", Session["user"]?.ToString()) == false)
+      {
+        <text>  $("#f_allclass").addClass('hide'); $("#thisstudent").prop('checked', true); thisStudent();   </text>
+      }
+
+     @if (Data.BLL.User.Rights.UserHasAccessToMudule("generate_fee_single", Session["user"]?.ToString()) == false)
+      {
+        <text>    $("#r_thisamount").addClass('hide');  </text>
+      }
+</script>
+
+<style>
+    .border-red {
+        border: 2px solid red !important;
+    }
+
+    .bg-grey {
+        background-color: #ccc !important;
+    }
+
+    .opacity-3 {
+        opacity: 0.3;
+    }
+
+    .label:hover, .label:active, input:hover + .label, input:active + .label {
+        opacity: 0.7;
+        cursor: pointer;
+    }
+</style>
