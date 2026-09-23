@@ -1050,11 +1050,20 @@ public class ExamService : IExamService
         if (allExams.Count == 0)
             return null;
 
-        var students = await _context.Students
+        var examStudentIds = allExams
+            .Where(x => x.StudentID != null)
+            .Select(x => x.StudentID!.Value)
+            .Distinct()
+            .OrderBy(x => x)
+            .ToList();
+
+        if (examStudentIds.Count == 0)
+            return null;
+
+        var studentLookup = await _context.Students
             .AsNoTracking()
-            .Where(x => x.ClassCompositeID == sectionId && x.IsActive == true)
-            .OrderBy(x => x.Reg_Id)
-            .ToListAsync();
+            .Where(x => examStudentIds.Contains(x.Reg_Id))
+            .ToDictionaryAsync(x => x.Reg_Id);
 
         var subjectColumns = allExams
             .GroupBy(x => x.SubjectID)
@@ -1087,10 +1096,11 @@ public class ExamService : IExamService
 
         var studentTotals = new List<(int StudentId, int TotalObtained, ExamMarkSheetStudentRowDto Row)>();
 
-        foreach (var student in students)
+        foreach (var studentId in examStudentIds)
         {
-            examsByStudent.TryGetValue(student.Reg_Id, out var studentExams);
+            examsByStudent.TryGetValue(studentId, out var studentExams);
             studentExams ??= new List<Infrastructure.Entities.Exam>();
+            studentLookup.TryGetValue(studentId, out var student);
 
             var countedExams = studentExams
                 .Where(x => !ShouldExcludeFromTotals(x.SubjectID, specialSubjects, options))
@@ -1121,8 +1131,8 @@ public class ExamService : IExamService
 
             var row = new ExamMarkSheetStudentRowDto
             {
-                RegId = student.Reg_Id,
-                StudentName = student.FullName,
+                RegId = studentId,
+                StudentName = student?.FullName ?? $"Student {studentId}",
                 AttendanceRatio = studentExams
                     .Select(x => x.AttendanceRatio)
                     .FirstOrDefault(x => !string.IsNullOrWhiteSpace(x)),
@@ -1134,7 +1144,7 @@ public class ExamService : IExamService
                 Remarks = GetRemarks(grade)
             };
 
-            studentTotals.Add((student.Reg_Id, totalObtained, row));
+            studentTotals.Add((studentId, totalObtained, row));
         }
 
         var positions = CalculateClassPositions(
@@ -1172,7 +1182,7 @@ public class ExamService : IExamService
             ClassName = section.ClassName,
             ExamTypeId = examTypeId,
             ExamTypeName = examTypeName,
-            Strength = students.Count,
+            Strength = examStudentIds.Count,
             GrandTotalMarks = grandTotalMarks,
             Subjects = subjectColumns,
             Students = sortedRows,
