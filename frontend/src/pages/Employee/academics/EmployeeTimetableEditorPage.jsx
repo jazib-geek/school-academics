@@ -29,7 +29,6 @@ import {
   getId,
   getText,
   slotsToPayload,
-  teacherDisplayName,
   teacherSlotKey,
   isBreakPeriod,
   sortPeriods,

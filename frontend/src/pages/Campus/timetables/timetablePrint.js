@@ -8,7 +8,6 @@ import {
   getId,
   getText,
   printTitle,
-  teacherDisplayName,
   teacherSlotKey,
   breakLabel,
   isBreakPeriod,

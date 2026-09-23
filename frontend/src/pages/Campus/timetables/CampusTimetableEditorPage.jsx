@@ -40,7 +40,6 @@ import {
   getText,
   printTitle,
   slotsToPayload,
-  teacherDisplayName,
   teacherSlotKey,
   isBreakPeriod,
   sortPeriods,
