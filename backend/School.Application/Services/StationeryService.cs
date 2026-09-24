@@ -465,6 +465,41 @@ public class StationeryService : IStationeryService
         }
 
         var stock = await GetStockAsync(cancellationToken);
+        var stockById = stock.ToDictionary(x => x.ItemId);
+        var lifetimeAvgUnitPrice = await _context.StationeryPurchaseLines
+            .AsNoTracking()
+            .GroupBy(x => x.ItemID)
+            .Select(g => new
+            {
+                ItemId = g.Key,
+                Qty = g.Sum(x => x.Quantity),
+                Amount = g.Sum(x => x.LineTotal)
+            })
+            .ToDictionaryAsync(
+                x => x.ItemId,
+                x => x.Qty > 0 ? x.Amount / x.Qty : (decimal?)null,
+                cancellationToken);
+
+        foreach (var row in spendByItem)
+        {
+            if (stockById.TryGetValue(row.ItemId, out var stockRow))
+            {
+                row.Unit = stockRow.Unit;
+                row.OnHandQty = stockRow.OnHandQty;
+            }
+
+            row.AvgUnitPrice = row.QtyBought > 0
+                ? row.AmountSpent / row.QtyBought
+                : lifetimeAvgUnitPrice.GetValueOrDefault(row.ItemId);
+
+            var unitPrice = row.AvgUnitPrice ?? 0m;
+            row.EstimatedConsumptionValue = row.QtyHandedOver > 0 && unitPrice > 0
+                ? row.QtyHandedOver * unitPrice
+                : 0m;
+        }
+
+        var periodTotalHandedOver = spendByItem.Sum(x => x.QtyHandedOver);
+        var periodEstimatedConsumption = spendByItem.Sum(x => x.EstimatedConsumptionValue);
         var allPurchaseLines = await _context.StationeryPurchaseLines
             .AsNoTracking()
             .Include(x => x.Purchase)
@@ -521,6 +556,8 @@ public class StationeryService : IStationeryService
             From = fromDate,
             To = toDate,
             PeriodTotalSpent = purchases.Sum(x => x.TotalAmount),
+            PeriodTotalHandedOverQty = periodTotalHandedOver,
+            PeriodEstimatedConsumptionValue = periodEstimatedConsumption,
             Purchases = purchases.ToList(),
             SpendByItem = spendByItem,
             StockLasting = lasting

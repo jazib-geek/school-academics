@@ -146,6 +146,8 @@ public class StationeryExpenseReportDto
     public DateTime From { get; set; }
     public DateTime To { get; set; }
     public decimal PeriodTotalSpent { get; set; }
+    public decimal PeriodTotalHandedOverQty { get; set; }
+    public decimal PeriodEstimatedConsumptionValue { get; set; }
     public List<StationeryPurchaseDto> Purchases { get; set; } = [];
     public List<StationerySpendByItemDto> SpendByItem { get; set; } = [];
     public List<StationeryStockLastingDto> StockLasting { get; set; } = [];
@@ -156,9 +158,13 @@ public class StationerySpendByItemDto
     public int ItemId { get; set; }
     public string ItemName { get; set; } = string.Empty;
     public string Category { get; set; } = string.Empty;
+    public string Unit { get; set; } = string.Empty;
     public decimal QtyBought { get; set; }
     public decimal AmountSpent { get; set; }
     public decimal QtyHandedOver { get; set; }
+    public decimal OnHandQty { get; set; }
+    public decimal? AvgUnitPrice { get; set; }
+    public decimal EstimatedConsumptionValue { get; set; }
 }
 
 public class StationeryStockLastingDto
