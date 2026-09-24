@@ -286,7 +286,7 @@ export const CAMPUS_SHELL_NAV = [
       { label: 'Items', to: '/campus/stationery/items', permission: 'manage_stationery' },
       { label: 'Purchases', to: '/campus/stationery/purchases', permission: 'manage_stationery' },
       { label: 'Handovers', to: '/campus/stationery/handovers', permission: 'manage_stationery' },
-      { label: 'Expense Report', to: '/campus/stationery/reports', permission: 'manage_stationery' },
+      { label: 'Consumption report', to: '/campus/stationery/reports', permission: 'manage_stationery' },
       { label: 'Item History', to: '/campus/stationery/history', permission: 'manage_stationery' },
     ],
   },

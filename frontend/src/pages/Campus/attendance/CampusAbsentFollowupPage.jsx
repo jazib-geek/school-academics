@@ -1,12 +1,15 @@
-import { useEffect, useState } from 'react'
-import { Check, Loader2, PhoneCall, Save } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Check, Loader2, PhoneCall, Printer, Save } from 'lucide-react'
 import { toast } from 'sonner'
 import CampusShell from '../../../components/campus/CampusShell.jsx'
+import CampusReportPrintHeader from '../../../components/campus/CampusReportPrintHeader.jsx'
+import { CAMPUS_REPORT_PRINT_STYLES } from '../../../utils/campusReportPrint.js'
 import {
   getAbsentFollowupByDate,
   getAbsentFollowupReasons,
   saveAbsentFollowup,
 } from '../../../services/absentFollowupService'
+import { sortClassesByCustomOrder } from '../../../services/classSort.js'
 import { FILTER_INPUT_AUTOCOMPLETE_PROPS } from '../../../utils/filterInputProps'
 
 const getPakistanToday = () => {
@@ -23,6 +26,23 @@ const getPakistanToday = () => {
   return `${year}-${month}-${day}`
 }
 
+const OTHER_REASON_NOTE_MESSAGE = 'Add follow-up notes when the reason is Other.'
+
+const isOtherReason = (reasonId, reasonList, reasonName) => {
+  const name =
+    reasonName ??
+    reasonList.find((r) => r.id === reasonId)?.name ??
+    ''
+  return String(name).trim().toLowerCase() === 'other'
+}
+
+const formatPrintSubtitleDate = (isoDate) => {
+  if (!isoDate) return ''
+  const d = new Date(`${isoDate}T12:00:00`)
+  if (Number.isNaN(d.getTime())) return isoDate
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+}
+
 export default function CampusAbsentFollowupPage() {
   const [date, setDate] = useState(getPakistanToday)
   const [reasons, setReasons] = useState([])
@@ -32,6 +52,19 @@ export default function CampusAbsentFollowupPage() {
   const [savingStudentId, setSavingStudentId] = useState(null)
   const [reasonUpdatedIds, setReasonUpdatedIds] = useState(() => new Set())
   const [error, setError] = useState('')
+  const [printIncludeContacts, setPrintIncludeContacts] = useState(false)
+  const followupInputRefs = useRef({})
+
+  const sortedRows = useMemo(() => sortClassesByCustomOrder(rows), [rows])
+
+  const focusFollowup = (studentId) => {
+    const el = followupInputRefs.current[studentId]
+    if (!el) return
+    requestAnimationFrame(() => {
+      el.focus()
+      el.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+    })
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -117,6 +150,13 @@ export default function CampusAbsentFollowupPage() {
     if (!date || !studentId) return
 
     const row = rows.find((r) => r.studentId === studentId)
+    const description = (drafts[studentId] ?? '').trim()
+    if (isOtherReason(row?.reasonId, reasons, row?.reasonName) && !description) {
+      toast.message(OTHER_REASON_NOTE_MESSAGE)
+      focusFollowup(studentId)
+      return
+    }
+
     const toastId = `absent-followup-${studentId}`
     toast.loading('Saving follow-up…', { id: toastId })
     setSavingStudentId(studentId)
@@ -126,7 +166,7 @@ export default function CampusAbsentFollowupPage() {
         studentId,
         date,
         reasonId: row?.reasonId ?? null,
-        description: drafts[studentId] ?? '',
+        description,
       })
       applySaved(studentId, saved)
       toast.success('Follow-up saved.', { id: toastId })
@@ -146,12 +186,19 @@ export default function CampusAbsentFollowupPage() {
     const previousReasonId = previous?.reasonId ?? null
     const reasonId = nextReasonId ? Number(nextReasonId) : null
     const reasonName = reasons.find((r) => r.id === reasonId)?.name ?? null
+    const description = (drafts[studentId] ?? previous?.description ?? '').trim()
 
     setRows((prev) =>
       prev.map((row) =>
         row.studentId === studentId ? { ...row, reasonId, reasonName } : row,
       ),
     )
+
+    if (isOtherReason(reasonId, reasons, reasonName) && !description) {
+      toast.message(OTHER_REASON_NOTE_MESSAGE)
+      focusFollowup(studentId)
+      return
+    }
 
     const toastId = `absent-followup-reason-${studentId}`
     toast.loading('Saving reason…', { id: toastId })
@@ -162,7 +209,7 @@ export default function CampusAbsentFollowupPage() {
         studentId,
         date,
         reasonId,
-        description: drafts[studentId] ?? previous?.description ?? '',
+        description,
       })
       applySaved(studentId, saved)
       setReasonUpdatedIds((prev) => {
@@ -191,10 +238,18 @@ export default function CampusAbsentFollowupPage() {
     }
   }
 
+  const printSubtitle = formatPrintSubtitleDate(date)
+
   return (
-    <CampusShell>
-      <div className="space-y-4 p-4 pt-[4.25rem] md:p-6 md:pt-[4.5rem]">
-        <div className="rounded-2xl bg-white p-4 shadow-sm">
+    <div className="print-page-root min-h-screen bg-slate-100 text-slate-700">
+      <style>{CAMPUS_REPORT_PRINT_STYLES}</style>
+      <CampusShell
+        rowClassName="print-main-wrap flex min-h-screen w-full"
+        asideClassName="no-print"
+        headerClassName="no-print"
+      >
+        <div className="print-content-wrap w-full space-y-4 p-4 pt-[4.25rem] md:p-6 md:pt-[4.5rem]">
+        <div className="no-print rounded-2xl bg-white p-4 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="flex items-start gap-3">
               <div className="grid h-10 w-10 place-items-center rounded-xl bg-[var(--campus-primary)] text-white">
@@ -206,6 +261,26 @@ export default function CampusAbsentFollowupPage() {
                   Call parents of absent students and save a short follow-up note.
                 </p>
               </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="inline-flex cursor-pointer items-center gap-2 text-[13px] text-slate-600">
+                <input
+                  type="checkbox"
+                  checked={printIncludeContacts}
+                  onChange={(e) => setPrintIncludeContacts(e.target.checked)}
+                  className="h-4 w-4 rounded border-slate-300 text-[var(--campus-primary)] focus:ring-[#405189]/30"
+                />
+                Include contact no.
+              </label>
+              <button
+                type="button"
+                disabled={loading || rows.length === 0}
+                onClick={() => window.print()}
+                className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Printer size={16} />
+                Print
+              </button>
             </div>
           </div>
 
@@ -226,12 +301,12 @@ export default function CampusAbsentFollowupPage() {
         </div>
 
         {error ? (
-          <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          <div className="no-print rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
             {error}
           </div>
         ) : null}
 
-        <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
+        <div className="no-print overflow-hidden rounded-2xl bg-white shadow-sm">
           {loading ? (
             <div className="flex items-center justify-center gap-2 px-4 py-16 text-sm text-slate-500">
               <Loader2 size={16} className="animate-spin" />
@@ -273,10 +348,13 @@ export default function CampusAbsentFollowupPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((row) => {
+                  {sortedRows.map((row) => {
                     const saving = savingStudentId === row.studentId
                     const draft = drafts[row.studentId] ?? ''
                     const dirty = draft !== (row.description ?? '')
+                    const needsOtherNote =
+                      isOtherReason(row.reasonId, reasons, row.reasonName) &&
+                      !draft.trim()
 
                     return (
                       <tr key={row.studentId} className="border-t border-slate-100">
@@ -324,6 +402,10 @@ export default function CampusAbsentFollowupPage() {
                         </td>
                         <td className="px-3 py-1.5">
                           <textarea
+                            ref={(el) => {
+                              if (el) followupInputRefs.current[row.studentId] = el
+                              else delete followupInputRefs.current[row.studentId]
+                            }}
                             rows={2}
                             value={draft}
                             onChange={(e) =>
@@ -333,8 +415,14 @@ export default function CampusAbsentFollowupPage() {
                               }))
                             }
                             maxLength={1000}
-                            placeholder="Follow-up notes…"
-                            className="w-full min-w-[14rem] resize-y rounded-md border border-slate-200 px-2 py-1.5 text-[13px] leading-snug text-slate-800 outline-none focus:border-[var(--campus-primary)] focus:ring-1 focus:ring-[#405189]/40"
+                            placeholder={
+                              needsOtherNote ? 'Required for Other — add follow-up notes…' : 'Follow-up notes…'
+                            }
+                            className={`w-full min-w-[14rem] resize-y rounded-md border px-2 py-1.5 text-[13px] leading-snug text-slate-800 outline-none focus:ring-1 ${
+                              needsOtherNote
+                                ? 'border-amber-400 focus:border-amber-500 focus:ring-amber-500/40'
+                                : 'border-slate-200 focus:border-[var(--campus-primary)] focus:ring-[#405189]/40'
+                            }`}
                           />
                         </td>
                         <td className="px-3 py-1.5 text-right">
@@ -360,7 +448,61 @@ export default function CampusAbsentFollowupPage() {
             </div>
           )}
         </div>
-      </div>
-    </CampusShell>
+
+        {rows.length > 0 ? (
+          <div className="print-only print-sheet">
+            <CampusReportPrintHeader
+              title="ABSENT FOLLOWUP"
+              subtitle={printSubtitle}
+              showPhones={false}
+            />
+            <table className="legacy-print-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Father name</th>
+                  <th>Class</th>
+                  {printIncludeContacts ? (
+                    <>
+                      <th>Father contact</th>
+                      <th>Mother contact</th>
+                    </>
+                  ) : null}
+                  <th>Reason</th>
+                  <th>Followup</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sortedRows.map((row) => {
+                  const followup =
+                    (drafts[row.studentId] ?? row.description ?? '').trim() || '—'
+                  const reasonLabel =
+                    row.reasonName ??
+                    reasons.find((r) => r.id === row.reasonId)?.name ??
+                    '—'
+
+                  return (
+                    <tr key={row.studentId}>
+                      <td>{row.fullName || '—'}</td>
+                      <td>{row.fatherName || '—'}</td>
+                      <td>{row.className || '—'}</td>
+                      {printIncludeContacts ? (
+                        <>
+                          <td>{row.fatherMobile || '—'}</td>
+                          <td>{row.motherPhone || '—'}</td>
+                        </>
+                      ) : null}
+                      <td>{reasonLabel}</td>
+                      <td>{followup}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
+        </div>
+      </CampusShell>
+    </div>
   )
 }

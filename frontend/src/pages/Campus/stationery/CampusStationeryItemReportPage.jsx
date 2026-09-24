@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import Select from 'react-select'
 import { FileSearch, Loader2, Printer, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
@@ -43,10 +44,14 @@ function formatDate(value) {
 }
 
 function CampusStationeryItemReportPage() {
+  const [searchParams] = useSearchParams()
   const [items, setItems] = useState([])
-  const [itemId, setItemId] = useState(null)
-  const [from, setFrom] = useState(monthStartInputValue())
-  const [to, setTo] = useState(todayInputValue())
+  const [itemId, setItemId] = useState(() => {
+    const id = Number(searchParams.get('itemId'))
+    return Number.isFinite(id) && id > 0 ? id : null
+  })
+  const [from, setFrom] = useState(() => searchParams.get('from') || monthStartInputValue())
+  const [to, setTo] = useState(() => searchParams.get('to') || todayInputValue())
   const [report, setReport] = useState(null)
   const [isLoadingItems, setIsLoadingItems] = useState(true)
   const [isLoading, setIsLoading] = useState(false)
