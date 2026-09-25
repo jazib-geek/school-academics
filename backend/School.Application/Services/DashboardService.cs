@@ -15,15 +15,18 @@ namespace School.Application.Services
         private readonly AppDbContext _context;
         private readonly IConfiguration _configuration;
         private readonly IParentConductService _parentConductService;
+        private readonly IAttendanceService _attendanceService;
 
         public DashboardService(
             AppDbContext context,
             IConfiguration configuration,
-            IParentConductService parentConductService)
+            IParentConductService parentConductService,
+            IAttendanceService attendanceService)
         {
             _context = context;
             _configuration = configuration;
             _parentConductService = parentConductService;
+            _attendanceService = attendanceService;
         }
 
         public async Task<DashboardDto> GetDashboardAsync(
@@ -60,29 +63,19 @@ namespace School.Application.Services
             }
 
             // -------------------------
-            // 2️⃣ Attendance Summary (Current Month)
+            // 2️⃣ Attendance Summary (current month — same rules as GET attendance/student/{id}/summary)
             // -------------------------
-            var now = DateTime.Now;
-
-            var attendanceQuery = _context.Attendances
-                .Where(x =>
-                    x.StudentID == studentId &&
-                    x.Month == now.Month &&
-                    x.Year == now.Year);
-
-            var totalDays = await attendanceQuery.CountAsync();
-            var presentDays = await attendanceQuery
-                .CountAsync(x => x.IsPresent == true);
-
-            decimal percentage = 0;
-            if (totalDays > 0)
-                percentage = Math.Round((decimal)presentDays / totalDays * 100, 2);
+            var today = DateTime.Today;
+            var attendanceSummary = await _attendanceService.GetStudentAttendanceSummaryAsync(
+                studentId,
+                today.Month,
+                today.Year);
 
             dashboard.Attendance = new AttendanceSummaryDto
             {
-                TotalDays = totalDays,
-                PresentDays = presentDays,
-                Percentage = percentage
+                TotalDays = attendanceSummary.TotalDays,
+                PresentDays = attendanceSummary.DaysPresent,
+                Percentage = ParseAttendanceSummaryPercentage(attendanceSummary.Percentage),
             };
 
             // -------------------------
@@ -1618,6 +1611,20 @@ namespace School.Application.Services
                 parts.Add($"{days} day{(days == 1 ? "" : "s")}");
 
             return parts.Count > 0 ? string.Join(" ", parts) : "Less than 1 month";
+        }
+
+        private static decimal ParseAttendanceSummaryPercentage(string percentage)
+        {
+            if (string.IsNullOrWhiteSpace(percentage))
+                return 0;
+
+            var trimmed = percentage.Trim();
+            if (trimmed.EndsWith('%'))
+                trimmed = trimmed[..^1].Trim();
+
+            return decimal.TryParse(trimmed, NumberStyles.Number, CultureInfo.InvariantCulture, out var value)
+                ? value
+                : 0;
         }
 
         private sealed record CampusConnection(string Campus, string ConnectionString);
