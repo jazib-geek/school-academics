@@ -11,6 +11,8 @@ public class StudentConductNote
     public string? RecordedByName { get; set; }
     public DateTime CreatedAtPkt { get; set; }
     public DateTime? UpdatedAtPkt { get; set; }
+    /// <summary>When the family acknowledged this note in the parent app; null = unread.</summary>
+    public DateTime? ParentAcknowledgedAtPkt { get; set; }
 
     public Student Student { get; set; } = null!;
     public StudentConductType ConductType { get; set; } = null!;

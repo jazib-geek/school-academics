@@ -19,10 +19,46 @@ namespace School.API.Controllers
 
         // GET: api/Dashboard/5
         [HttpGet("{studentId}")]
-        public async Task<IActionResult> GetDashboard(int studentId)
+        public async Task<IActionResult> GetDashboard(int studentId, CancellationToken cancellationToken)
         {
-            var result = await _service.GetDashboardAsync(studentId);
-            return Ok(ApiResponse<object>.SuccessResponse(result));
+            int? familyDbId = null;
+            int? familyId = null;
+            if (TryGetFamilyPortalIdentity(out var fdb, out var fid))
+            {
+                familyDbId = fdb;
+                familyId = fid;
+            }
+
+            try
+            {
+                var result = await _service.GetDashboardAsync(
+                    studentId,
+                    familyDbId,
+                    familyId,
+                    cancellationToken);
+                return Ok(ApiResponse<object>.SuccessResponse(result));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(ApiResponse<object>.FailureResponse(ex.Message));
+            }
+        }
+
+        private bool TryGetFamilyPortalIdentity(out int familyDbId, out int familyId)
+        {
+            familyDbId = 0;
+            familyId = 0;
+
+            if (!string.IsNullOrWhiteSpace(User.FindFirst(AuthSourceClaims.ClaimType)?.Value))
+                return false;
+
+            if (!int.TryParse(User.FindFirst("FamilyDbId")?.Value, out familyDbId) || familyDbId <= 0)
+                return false;
+
+            if (!int.TryParse(User.FindFirst("FamilyID")?.Value, out familyId) || familyId <= 0)
+                return false;
+
+            return true;
         }
 
         // GET: api/Dashboard/all-campuses

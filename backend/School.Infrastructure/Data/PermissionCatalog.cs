@@ -187,6 +187,8 @@ public static class PermissionCatalog
         Add("edit_past_employee_loans", "Edit Past Employee Salary Adjustments", "Employee");
         Add("manage_family_announcements", "Manage Family Portal Announcements", "Family Portal");
         Add("manage_family_accounts", "Manage Family Portal Accounts", "Family Portal");
+        Add("view_leave_applications", "View Leave Applications", "Family Portal");
+        Add("manage_leave_applications", "Manage Leave Applications", "Family Portal");
 
         return items
             .Select((item, index) => new Permission

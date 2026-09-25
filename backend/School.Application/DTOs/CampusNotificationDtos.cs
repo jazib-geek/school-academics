@@ -11,6 +11,7 @@ public static class CampusNotificationTypes
     public const string FeeReceived = "fee_received";
     public const string DayClosed = "day_closed";
     public const string StudentConduct = "student_conduct";
+    public const string LeaveApplication = "leave_application";
 }
 
 public static class CampusNotificationSeverities

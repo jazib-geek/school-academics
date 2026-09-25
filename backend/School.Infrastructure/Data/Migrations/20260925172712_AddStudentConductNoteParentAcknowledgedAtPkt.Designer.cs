@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using School.Infrastructure.Data;
 
@@ -11,9 +12,11 @@ using School.Infrastructure.Data;
 namespace School.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260925172712_AddStudentConductNoteParentAcknowledgedAtPkt")]
+    partial class AddStudentConductNoteParentAcknowledgedAtPkt
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -3793,24 +3796,6 @@ namespace School.Infrastructure.Data.Migrations
                             ModuleHead = "Family Portal",
                             Name = "Manage Family Portal Accounts",
                             SortOrder = 1410
-                        },
-                        new
-                        {
-                            Id = 142,
-                            Code = "view_leave_applications",
-                            IsActive = true,
-                            ModuleHead = "Family Portal",
-                            Name = "View Leave Applications",
-                            SortOrder = 1420
-                        },
-                        new
-                        {
-                            Id = 143,
-                            Code = "manage_leave_applications",
-                            IsActive = true,
-                            ModuleHead = "Family Portal",
-                            Name = "Manage Leave Applications",
-                            SortOrder = 1430
                         });
                 });
 
@@ -4823,62 +4808,6 @@ namespace School.Infrastructure.Data.Migrations
                     b.ToTable("tblStudentFamilyDetail", "dbo");
                 });
 
-            modelBuilder.Entity("School.Infrastructure.Entities.StudentLeaveApplication", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("FamilyId")
-                        .HasColumnType("int");
-
-                    b.Property<DateOnly>("LeaveDate")
-                        .HasColumnType("date");
-
-                    b.Property<string>("ReasonCode")
-                        .IsRequired()
-                        .HasMaxLength(40)
-                        .HasColumnType("nvarchar(40)");
-
-                    b.Property<string>("ReasonDetails")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<string>("ReviewNote")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<DateTime?>("ReviewedAtPkt")
-                        .HasColumnType("datetime2(3)");
-
-                    b.Property<string>("ReviewedByUserKey")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<int>("StudentId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("SubmittedAtPkt")
-                        .HasColumnType("datetime2(3)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Status", "LeaveDate")
-                        .HasDatabaseName("IX_StudentLeaveApplication_Status_LeaveDate");
-
-                    b.HasIndex("StudentId", "LeaveDate")
-                        .HasDatabaseName("IX_StudentLeaveApplication_Student_LeaveDate");
-
-                    b.ToTable("tblStudentLeaveApplication", "dbo");
-                });
-
             modelBuilder.Entity("School.Infrastructure.Entities.StudentLog", b =>
                 {
                     b.Property<int>("ID")
@@ -5882,17 +5811,6 @@ namespace School.Infrastructure.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("ConductType");
-                });
-
-            modelBuilder.Entity("School.Infrastructure.Entities.StudentLeaveApplication", b =>
-                {
-                    b.HasOne("School.Infrastructure.Entities.Student", "Student")
-                        .WithMany()
-                        .HasForeignKey("StudentId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Student");
                 });
 
             modelBuilder.Entity("School.Infrastructure.Entities.SubjectClasswise", b =>

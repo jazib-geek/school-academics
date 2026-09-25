@@ -4,10 +4,14 @@ namespace School.Application.Interfaces;
 
 public interface IParentConductService
 {
-    Task<ParentConductInboxDto> GetInboxAsync(int familyDbId, int familyId, CancellationToken cancellationToken = default);
+    Task<ParentConductInboxDto> GetInboxAsync(int familyId, CancellationToken cancellationToken = default);
+
+    Task<ParentConductUnreadCountDto> GetUnreadCountAsync(
+        int familyId,
+        int studentId,
+        CancellationToken cancellationToken = default);
 
     Task<ParentConductMonthReportDto> GetMonthReportAsync(
-        int familyDbId,
         int familyId,
         int studentId,
         int month,
@@ -15,8 +19,12 @@ public interface IParentConductService
         CancellationToken cancellationToken = default);
 
     Task AcknowledgeAsync(
-        int familyDbId,
         int familyId,
         ParentConductAcknowledgeRequestDto request,
+        CancellationToken cancellationToken = default);
+
+    Task<ParentConductAcknowledgeAllResultDto> AcknowledgeAllForStudentAsync(
+        int familyId,
+        int studentId,
         CancellationToken cancellationToken = default);
 }

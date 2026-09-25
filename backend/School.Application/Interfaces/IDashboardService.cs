@@ -9,7 +9,11 @@ namespace School.Application.Interfaces
 {
     public interface IDashboardService
     {
-        Task<DashboardDto> GetDashboardAsync(int studentId);
+        Task<DashboardDto> GetDashboardAsync(
+            int studentId,
+            int? familyDbId = null,
+            int? familyId = null,
+            CancellationToken cancellationToken = default);
         Task<AllCampusDashboardDto> GetAllCampusesDashboardAsync();
         Task<CampusFeeCollectionByDateDto> GetAllCampusesFeeCollectionByDateAsync(DateTime date);
         Task<CampusExpenseByIntervalDto> GetAllCampusesExpenseByIntervalAsync(int days);

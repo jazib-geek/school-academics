@@ -14,14 +14,23 @@ namespace School.Application.Services
     {
         private readonly AppDbContext _context;
         private readonly IConfiguration _configuration;
+        private readonly IParentConductService _parentConductService;
 
-        public DashboardService(AppDbContext context, IConfiguration configuration)
+        public DashboardService(
+            AppDbContext context,
+            IConfiguration configuration,
+            IParentConductService parentConductService)
         {
             _context = context;
             _configuration = configuration;
+            _parentConductService = parentConductService;
         }
 
-        public async Task<DashboardDto> GetDashboardAsync(int studentId)
+        public async Task<DashboardDto> GetDashboardAsync(
+            int studentId,
+            int? familyDbId = null,
+            int? familyId = null,
+            CancellationToken cancellationToken = default)
         {
             var dashboard = new DashboardDto();
 
@@ -115,6 +124,16 @@ namespace School.Application.Services
                     Date = x.Date
                 })
                 .ToListAsync();
+
+            if (familyId is > 0)
+            {
+                var unread = await _parentConductService.GetUnreadCountAsync(
+                    familyId.Value,
+                    studentId,
+                    cancellationToken);
+                dashboard.UnreadConductCount = unread.UnreadCount;
+                dashboard.UnreadConductNoteIds = unread.UnreadNoteIds;
+            }
 
             return dashboard;
         }

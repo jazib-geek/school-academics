@@ -19,6 +19,7 @@ namespace School.Application.Interfaces
     Task<ClassAttendanceSheetDto> SetClassAttendanceStatusForAllAsync(DateTime date, int classSectionCompositeId, string status);
     Task<ClassAttendanceSheetDto> SetSchoolAttendancePresentForAllAsync(DateTime date);
     Task<ClassAttendanceSheetDto> SetStudentAttendanceStatusAsync(DateTime date, int classSectionCompositeId, int studentId, string status);
+    Task SetStudentStatusForDateAsync(int studentId, DateTime date, string status);
     Task<EmployeeAttendanceStatsDto> GetEmployeeAttendanceStatsAsync(DateTime? date = null);
     Task<AttendanceReportDto> GetAttendanceReportAsync(
         DateTime dateFrom,

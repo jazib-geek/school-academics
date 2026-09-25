@@ -3,10 +3,10 @@ using School.Application.Common;
 using School.Application.DTOs;
 using School.Application.Interfaces;
 using School.Infrastructure.Data;
-using School.Infrastructure.Entities;
 
 namespace School.Application.Services;
 
+/// <summary>Family portal conduct reads/acks use <c>StudentConductNote.ParentAcknowledgedAtPkt</c> (tblStudentConductParentAck is deprecated).</summary>
 public class ParentConductService : IParentConductService
 {
     private readonly AppDbContext _context;
@@ -17,7 +17,6 @@ public class ParentConductService : IParentConductService
     }
 
     public async Task<ParentConductInboxDto> GetInboxAsync(
-        int familyDbId,
         int familyId,
         CancellationToken cancellationToken = default)
     {
@@ -28,17 +27,10 @@ public class ParentConductService : IParentConductService
         }
 
         var studentIds = students.Select(s => s.StudentId).ToList();
-        var acknowledgedNoteIds = await _context.StudentConductParentAcks
-            .AsNoTracking()
-            .Where(a => a.FamilyDbId == familyDbId)
-            .Select(a => a.NoteId)
-            .ToListAsync(cancellationToken);
-
-        var ackSet = acknowledgedNoteIds.ToHashSet();
 
         var notes = await _context.StudentConductNotes
             .AsNoTracking()
-            .Where(n => studentIds.Contains(n.StudentId))
+            .Where(n => studentIds.Contains(n.StudentId) && n.ParentAcknowledgedAtPkt == null)
             .OrderByDescending(n => n.NoteDate)
             .ThenByDescending(n => n.Id)
             .Select(n => new
@@ -61,7 +53,6 @@ public class ParentConductService : IParentConductService
             .ToListAsync(cancellationToken);
 
         var unreadByStudent = notes
-            .Where(n => !ackSet.Contains(n.Id))
             .GroupBy(n => n.StudentId)
             .ToDictionary(g => g.Key, g => g.ToList());
 
@@ -106,8 +97,30 @@ public class ParentConductService : IParentConductService
         };
     }
 
+    public async Task<ParentConductUnreadCountDto> GetUnreadCountAsync(
+        int familyId,
+        int studentId,
+        CancellationToken cancellationToken = default)
+    {
+        await EnsureFamilyStudentAsync(familyId, studentId, cancellationToken);
+
+        var unreadNoteIds = await _context.StudentConductNotes
+            .AsNoTracking()
+            .Where(n => n.StudentId == studentId && n.ParentAcknowledgedAtPkt == null)
+            .OrderByDescending(n => n.NoteDate)
+            .ThenByDescending(n => n.Id)
+            .Select(n => n.Id)
+            .ToListAsync(cancellationToken);
+
+        return new ParentConductUnreadCountDto
+        {
+            StudentId = studentId,
+            UnreadCount = unreadNoteIds.Count,
+            UnreadNoteIds = unreadNoteIds,
+        };
+    }
+
     public async Task<ParentConductMonthReportDto> GetMonthReportAsync(
-        int familyDbId,
         int familyId,
         int studentId,
         int month,
@@ -139,6 +152,7 @@ public class ParentConductService : IParentConductService
                 n.Remarks,
                 n.RecordedByName,
                 n.CreatedAtPkt,
+                n.ParentAcknowledgedAtPkt,
                 Tags = n.NoteTags
                     .OrderBy(t => t.Tag.SortOrder)
                     .ThenBy(t => t.Tag.Name)
@@ -151,16 +165,6 @@ public class ParentConductService : IParentConductService
                     .ToList(),
             })
             .ToListAsync(cancellationToken);
-
-        var noteIds = rawNotes.Select(n => n.Id).ToList();
-        var ackIds = noteIds.Count == 0
-            ? new HashSet<int>()
-            : (await _context.StudentConductParentAcks
-                .AsNoTracking()
-                .Where(a => a.FamilyDbId == familyDbId && noteIds.Contains(a.NoteId))
-                .Select(a => a.NoteId)
-                .ToListAsync(cancellationToken))
-              .ToHashSet();
 
         var notes = rawNotes.Select(n =>
         {
@@ -177,7 +181,7 @@ public class ParentConductService : IParentConductService
                 Tags = tags,
                 Remarks = n.Remarks,
                 RecordedByName = n.RecordedByName,
-                IsAcknowledged = ackIds.Contains(n.Id),
+                IsAcknowledged = n.ParentAcknowledgedAtPkt != null,
                 CreatedAtPkt = n.CreatedAtPkt,
             };
         }).ToList();
@@ -216,7 +220,6 @@ public class ParentConductService : IParentConductService
     }
 
     public async Task AcknowledgeAsync(
-        int familyDbId,
         int familyId,
         ParentConductAcknowledgeRequestDto request,
         CancellationToken cancellationToken = default)
@@ -229,44 +232,54 @@ public class ParentConductService : IParentConductService
         if (noteIds.Count == 0)
             throw new ArgumentException("At least one note id is required.");
 
-        var studentIds = await _context.Students
+        var studentIds = await GetActiveFamilyStudentIdsAsync(familyId, cancellationToken);
+
+        var matchingCount = await _context.StudentConductNotes
+            .AsNoTracking()
+            .CountAsync(
+                n => noteIds.Contains(n.Id) && studentIds.Contains(n.StudentId),
+                cancellationToken);
+
+        if (matchingCount == 0)
+            throw new KeyNotFoundException("No matching conduct notes found for this family.");
+
+        var now = PakistanTime.Now;
+        await _context.StudentConductNotes
+            .Where(n => noteIds.Contains(n.Id) && studentIds.Contains(n.StudentId) && n.ParentAcknowledgedAtPkt == null)
+            .ExecuteUpdateAsync(
+                s => s.SetProperty(n => n.ParentAcknowledgedAtPkt, now),
+                cancellationToken);
+    }
+
+    public async Task<ParentConductAcknowledgeAllResultDto> AcknowledgeAllForStudentAsync(
+        int familyId,
+        int studentId,
+        CancellationToken cancellationToken = default)
+    {
+        await EnsureFamilyStudentAsync(familyId, studentId, cancellationToken);
+
+        var now = PakistanTime.Now;
+        var acknowledgedCount = await _context.StudentConductNotes
+            .Where(n => n.StudentId == studentId && n.ParentAcknowledgedAtPkt == null)
+            .ExecuteUpdateAsync(
+                s => s.SetProperty(n => n.ParentAcknowledgedAtPkt, now),
+                cancellationToken);
+
+        return new ParentConductAcknowledgeAllResultDto
+        {
+            AcknowledgedCount = acknowledgedCount,
+        };
+    }
+
+    private async Task<List<int>> GetActiveFamilyStudentIdsAsync(
+        int familyId,
+        CancellationToken cancellationToken)
+    {
+        return await _context.Students
             .AsNoTracking()
             .Where(s => s.Family_Code == familyId && s.IsActive == true)
             .Select(s => s.Reg_Id)
             .ToListAsync(cancellationToken);
-
-        var validNoteIds = await _context.StudentConductNotes
-            .AsNoTracking()
-            .Where(n => noteIds.Contains(n.Id) && studentIds.Contains(n.StudentId))
-            .Select(n => n.Id)
-            .ToListAsync(cancellationToken);
-
-        if (validNoteIds.Count == 0)
-            throw new KeyNotFoundException("No matching conduct notes found for this family.");
-
-        var alreadyAcked = await _context.StudentConductParentAcks
-            .AsNoTracking()
-            .Where(a => a.FamilyDbId == familyDbId && validNoteIds.Contains(a.NoteId))
-            .Select(a => a.NoteId)
-            .ToListAsync(cancellationToken);
-
-        var alreadySet = alreadyAcked.ToHashSet();
-        var now = PakistanTime.Now;
-        var toAdd = validNoteIds
-            .Where(id => !alreadySet.Contains(id))
-            .Select(id => new StudentConductParentAck
-            {
-                FamilyDbId = familyDbId,
-                NoteId = id,
-                AcknowledgedAtPkt = now,
-            })
-            .ToList();
-
-        if (toAdd.Count > 0)
-        {
-            _context.StudentConductParentAcks.AddRange(toAdd);
-            await _context.SaveChangesAsync(cancellationToken);
-        }
     }
 
     private async Task<List<FamilyStudentRow>> GetActiveFamilyStudentsAsync(

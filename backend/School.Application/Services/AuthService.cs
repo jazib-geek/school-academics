@@ -15,22 +15,19 @@ public class AuthService : IAuthService
     private readonly TenantContext _tenantContext;
     private readonly IConfiguration _configuration;
     private readonly ICampusProfileService _campusProfileService;
-    private readonly IParentConductService _parentConductService;
 
     public AuthService(
         AppDbContext context,
         ITokenService tokenService,
         TenantContext tenantContext,
         IConfiguration configuration,
-        ICampusProfileService campusProfileService,
-        IParentConductService parentConductService)
+        ICampusProfileService campusProfileService)
     {
         _context = context;
         _tokenService = tokenService;
         _tenantContext = tenantContext;
         _configuration = configuration;
         _campusProfileService = campusProfileService;
-        _parentConductService = parentConductService;
     }
 
     public async Task<LoginResponseDto?> LoginAsync(LoginRequestDto request)
@@ -49,10 +46,6 @@ public class AuthService : IAuthService
             family.ID,
             family.FamilyID,
             _tenantContext.Campus);
-
-        var conductInbox = family.FamilyID is int familyId && familyId > 0
-            ? await _parentConductService.GetInboxAsync(family.ID, familyId)
-            : new ParentConductInboxDto();
 
         return new LoginResponseDto
         {
@@ -84,8 +77,6 @@ public class AuthService : IAuthService
                     ClassName = s.Section != null ? s.Section.ClassName : null,
                 })
                 .ToList(),
-
-            ConductInbox = conductInbox,
         };
     }
 

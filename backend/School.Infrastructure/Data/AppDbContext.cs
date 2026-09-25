@@ -116,6 +116,7 @@ public class AppDbContext : DbContext
     public DbSet<StudentConductType> StudentConductTypes => Set<StudentConductType>();
     public DbSet<StudentConductTag> StudentConductTags => Set<StudentConductTag>();
     public DbSet<StudentConductNote> StudentConductNotes => Set<StudentConductNote>();
+    public DbSet<StudentLeaveApplication> StudentLeaveApplications => Set<StudentLeaveApplication>();
     public DbSet<StudentConductNoteTag> StudentConductNoteTags => Set<StudentConductNoteTag>();
     public DbSet<StudentConductParentAck> StudentConductParentAcks => Set<StudentConductParentAck>();
     public DbSet<AbsentStudentFollowup> AbsentStudentFollowups => Set<AbsentStudentFollowup>();
@@ -1089,6 +1090,7 @@ public class AppDbContext : DbContext
         modelBuilder.ApplyConfiguration(new StudentConductNoteConfiguration());
         modelBuilder.ApplyConfiguration(new StudentConductNoteTagConfiguration());
         modelBuilder.ApplyConfiguration(new StudentConductParentAckConfiguration());
+        modelBuilder.ApplyConfiguration(new StudentLeaveApplicationConfiguration());
         modelBuilder.ApplyConfiguration(new AbsentFollowupReasonConfiguration());
         modelBuilder.ApplyConfiguration(new AbsentStudentFollowupConfiguration());
         modelBuilder.ApplyConfiguration(new StationeryItemConfiguration());

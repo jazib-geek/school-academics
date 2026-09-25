@@ -76,7 +76,20 @@ public class ParentConductCalendarDayDto
     public string Polarity { get; set; } = ConductPolarities.None;
 }
 
+public class ParentConductUnreadCountDto
+{
+    public int StudentId { get; set; }
+    public int UnreadCount { get; set; }
+    /// <summary>Conduct note ids (same ids as <c>noteIds</c> on acknowledge).</summary>
+    public List<int> UnreadNoteIds { get; set; } = [];
+}
+
 public class ParentConductAcknowledgeRequestDto
 {
     public List<int> NoteIds { get; set; } = [];
+}
+
+public class ParentConductAcknowledgeAllResultDto
+{
+    public int AcknowledgedCount { get; set; }
 }

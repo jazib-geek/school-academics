@@ -53,6 +53,7 @@ public class StudentConductNoteConfiguration : IEntityTypeConfiguration<StudentC
         entity.Property(e => e.RecordedByName).HasMaxLength(150);
         entity.Property(e => e.CreatedAtPkt).HasColumnType("datetime2(3)").IsRequired();
         entity.Property(e => e.UpdatedAtPkt).HasColumnType("datetime2(3)");
+        entity.Property(e => e.ParentAcknowledgedAtPkt).HasColumnType("datetime2(3)");
 
         entity.HasIndex(e => new { e.StudentId, e.NoteDate, e.ConductTypeId })
             .IsUnique()

@@ -229,6 +229,20 @@ namespace School.Application.Services
             return await BuildClassAttendanceSheetAsync(normalizedDate, classSectionCompositeId);
         }
 
+        public async Task SetStudentStatusForDateAsync(int studentId, DateTime date, string status)
+        {
+            var classId = await _context.Students
+                .AsNoTracking()
+                .Where(x => x.Reg_Id == studentId && x.IsActive == true)
+                .Select(x => x.ClassCompositeID)
+                .FirstOrDefaultAsync();
+
+            if (!classId.HasValue)
+                throw new InvalidOperationException("Student class is not set.");
+
+            await SetStudentAttendanceStatusAsync(date, classId.Value, studentId, status);
+        }
+
         public async Task<EmployeeAttendanceStatsDto> GetEmployeeAttendanceStatsAsync(DateTime? date = null)
         {
             var targetDate = (date ?? DateTime.Today).Date;
