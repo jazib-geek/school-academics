@@ -17,6 +17,7 @@ const TYPE_ACCENT = {
   fee_received: 'campus-realtime-toast--fee',
   day_closed: 'campus-realtime-toast--day-close',
   student_conduct: 'campus-realtime-toast--conduct',
+  leave_application: 'campus-realtime-toast--info',
 }
 
 function accentClass(type, severity) {
@@ -83,7 +84,13 @@ function showCampusRealtimeToast(notification, navigate) {
   const accent = accentClass(notification.type, notification.severity)
 
   toast.custom(
-    (t) => (
+    (t) => {
+      const goToLink = () => {
+        toast.dismiss(t)
+        if (link) navigate(link)
+      }
+
+      return (
       <div className={`campus-realtime-toast ${accent}`}>
         <div className="campus-realtime-toast__body">
           <div className="campus-realtime-toast__text">
@@ -95,10 +102,7 @@ function showCampusRealtimeToast(notification, navigate) {
               <button
                 type="button"
                 className="campus-realtime-toast__detail"
-                onClick={() => {
-                  toast.dismiss(t)
-                  navigate(link)
-                }}
+                onClick={goToLink}
               >
                 Detail
               </button>
@@ -114,7 +118,8 @@ function showCampusRealtimeToast(notification, navigate) {
           </div>
         </div>
       </div>
-    ),
+      )
+    },
     {
       id: notification.id,
       toasterId: CAMPUS_REALTIME_TOASTER_ID,

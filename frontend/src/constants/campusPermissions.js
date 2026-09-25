@@ -142,6 +142,7 @@ export const CAMPUS_ROUTE_PERMISSIONS = [
   { prefix: '/campus/student-conduct', permission: 'view_student_conduct' },
   { prefix: '/campus/family-portal/announcements', permission: 'manage_family_announcements' },
   { prefix: '/campus/family-portal/accounts', permission: 'manage_family_accounts' },
+  { prefix: '/campus/leave-applications', permission: 'view_leave_applications' },
   { prefix: '/campus/reports/attendance', permission: 'rpt_attnd' },
   { prefix: '/campus/accounts/cash-payment', permission: 'issue_voucher' },
   { prefix: '/campus/accounts/cash-receipt', permission: 'issue_voucher' },

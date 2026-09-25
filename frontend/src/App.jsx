@@ -46,6 +46,7 @@ import CampusAbsentFollowupPage from './pages/Campus/attendance/CampusAbsentFoll
 import CampusStudentConductPage from './pages/Campus/conduct/CampusStudentConductPage.jsx'
 import CampusAnnouncementsPage from './pages/Campus/family-portal/CampusAnnouncementsPage.jsx'
 import CampusFamilyAccountsPage from './pages/Campus/family-portal/CampusFamilyAccountsPage.jsx'
+import CampusLeaveApplicationsPage from './pages/Campus/leave/CampusLeaveApplicationsPage.jsx'
 import CampusClassesPage from './pages/Campus/settings/CampusClassesPage.jsx'
 import CampusSectionsPage from './pages/Campus/settings/CampusSectionsPage.jsx'
 import CampusSectionColorsPage from './pages/Campus/settings/CampusSectionColorsPage.jsx'
@@ -504,6 +505,14 @@ function App() {
         element={
           <ProtectedRoute>
             <CampusFamilyAccountsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/campus/leave-applications"
+        element={
+          <ProtectedRoute>
+            <CampusLeaveApplicationsPage />
           </ProtectedRoute>
         }
       />

@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   Bell,
   BookOpen,
+  CalendarDays,
   Check,
   ChevronRight,
   Clock3,
@@ -61,6 +62,9 @@ function iconForNotification(item) {
   }
   if (type === 'student_conduct') {
     return { Icon: AlertTriangle, wrap: 'bg-rose-100 text-rose-600' }
+  }
+  if (type === 'leave_application') {
+    return { Icon: CalendarDays, wrap: 'bg-sky-100 text-sky-700' }
   }
   if (severity === 'warning') {
     return { Icon: Clock3, wrap: 'bg-amber-100 text-amber-600' }
