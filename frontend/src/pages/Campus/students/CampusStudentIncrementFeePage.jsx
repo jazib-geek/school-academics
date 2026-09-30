@@ -37,6 +37,7 @@ export default function CampusStudentIncrementFeePage() {
   const [rows, setRows] = useState([])
   const [selected, setSelected] = useState(new Set())
   const [tuition, setTuition] = useState('')
+  const [newTotal, setNewTotal] = useState('')
   const [loading, setLoading] = useState(false)
   const [busy, setBusy] = useState(false)
   const [preview, setPreview] = useState(null)
@@ -95,15 +96,20 @@ export default function CampusStudentIncrementFeePage() {
     if (submitting.current) return
     invalidate()
     const tuitionIncrement = Number(tuition)
+    const newTotalFee = Number(newTotal)
+    if (newTotal === '' || !Number.isSafeInteger(newTotalFee) || newTotalFee < 0 || newTotalFee > 2147483647) {
+      setError('Enter a nonnegative whole-number New Total Fee. This fixed amount replaces each selected student’s Total Fee.')
+      return
+    }
     if (tuition === '' || !Number.isSafeInteger(tuitionIncrement) || tuitionIncrement <= 0 ||
       tuitionIncrement > 2147483647) {
-      setError('Enter a positive whole-number tuition increment. The same amount is added to Total Fee.')
+      setError('Enter a positive whole-number tuition increment.')
       return
     }
     submitting.current = true
     setBusy(true)
     try {
-      const result = await previewFeeIncrement({ scope, tuitionIncrement,
+      const result = await previewFeeIncrement({ scope, tuitionIncrement, newTotalFee,
         classCompositeId: scope === 'class' ? Number(classId) : null,
         studentIds: scope === 'class' ? [...selected] : [],
       })
@@ -124,6 +130,7 @@ export default function CampusStudentIncrementFeePage() {
       toast.success(message)
       setPreview(null)
       setTuition('')
+      setNewTotal('')
       if (scope === 'class') {
         setRows([])
         setSelected(new Set())
@@ -151,7 +158,7 @@ export default function CampusStudentIncrementFeePage() {
             <div className="flex items-start gap-3">
               <div className="mt-0.5 rounded-xl bg-emerald-50 p-2 text-emerald-700"><Banknote aria-hidden="true" className="h-5 w-5" /></div>
               <div><h1 className="text-lg font-semibold text-slate-900">Increment Fee</h1>
-                <p className="mt-0.5 text-[13px] text-slate-500">Increase tuition and total fees together, then review each student's revised amounts.</p></div>
+                <p className="mt-0.5 text-[13px] text-slate-500">Set a new total fee, increase tuition, then review each student's revised amounts.</p></div>
             </div>
             <div className="flex items-center gap-2 text-xs font-medium" aria-label="Progress">
               <span className={`rounded-full px-3 py-1.5 ${preview ? 'bg-slate-100 text-slate-500' : 'bg-indigo-50 text-indigo-700'}`}>1. Select</span>
@@ -164,7 +171,7 @@ export default function CampusStudentIncrementFeePage() {
           {success && <div role="status" className="rounded-xl bg-emerald-50 p-4 text-sm text-emerald-800">{success}</div>}
           <form onSubmit={createPreview} className="rounded-2xl bg-white p-5 shadow-sm">
             <fieldset disabled={busy} className="space-y-4">
-              <div className={`grid items-end gap-4 md:grid-cols-2 ${scope === 'class' ? 'lg:grid-cols-[1fr_1fr_1fr_auto]' : 'lg:grid-cols-[1fr_1fr_auto]'}`}>
+              <div className={`grid items-end gap-4 md:grid-cols-2 ${scope === 'class' ? 'lg:grid-cols-[1fr_1fr_1fr_1fr_auto]' : 'lg:grid-cols-[1fr_1fr_1fr_auto]'}`}>
                 <label className="space-y-1 text-sm font-medium">Apply to
                   <select className={field} value={scope} onChange={(e) => changeScope(e.target.value)}>
                     <option value="class">Class</option><option value="school">Entire school (current campus)</option>
@@ -174,6 +181,9 @@ export default function CampusStudentIncrementFeePage() {
                     <option value="">Choose class</option>
                     {classes.map((item) => <option key={item.id} value={item.id}>{item.className}</option>)}
                   </select></label>}
+                <label className="space-y-1 text-sm font-medium">New Total Fee (fixed)
+                  <input required type="number" min="0" max="2147483647" step="1" className={field} value={newTotal}
+                    onChange={(e) => { invalidate(); setNewTotal(e.target.value) }} placeholder="e.g. 6000" /></label>
                 <label className="space-y-1 text-sm font-medium">Increase Tuition Fee by
                   <input required type="number" min="1" max="2147483647" step="1" className={field} value={tuition}
                     onChange={(e) => { invalidate(); setTuition(e.target.value) }} placeholder="e.g. 300" /></label>
@@ -181,7 +191,7 @@ export default function CampusStudentIncrementFeePage() {
                   {busy ? 'Please wait…' : 'Preview Changes'}
                 </button>
               </div>
-              <p className="text-xs text-slate-500">The same amount is added to Tuition Fee and Total Fee. Concession is recalculated from their difference and stays unchanged when existing fees are consistent.</p>
+              <p className="text-xs text-slate-500">New Total Fee replaces each selected student's total. The tuition increment is added to their existing tuition. Concession = New Total Fee − New Tuition Fee.</p>
               {scope === 'school' && <p className="text-sm text-amber-800">All active students across all classes in the current campus will be included.</p>}
             </fieldset>
           </form>
@@ -202,7 +212,7 @@ export default function CampusStudentIncrementFeePage() {
               </div>
               <div className="grid gap-3 sm:grid-cols-3">
                 <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3"><p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Students included</p><p className="mt-1 text-xl font-bold tabular-nums text-slate-900">{displayed.length}</p><p className="mt-1 text-xs text-slate-500">{scope === 'school' ? 'All active students in this campus' : classes.find((c) => String(c.id) === classId)?.className}</p></div>
-                <div className="rounded-xl border border-emerald-100 bg-emerald-50/70 p-3"><p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700">Increase per student</p><p className="mt-1 text-xl font-bold tabular-nums text-emerald-800">+{money(tuition)}</p><p className="mt-1 text-xs text-emerald-700">Added to tuition and total fee</p></div>
+                <div className="rounded-xl border border-emerald-100 bg-emerald-50/70 p-3"><p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700">Tuition increase per student</p><p className="mt-1 text-xl font-bold tabular-nums text-emerald-800">+{money(tuition)}</p><p className="mt-1 text-xs text-emerald-700">Total Fee set to <strong>{money(newTotal)}</strong> for every student</p></div>
                 <div className={`rounded-xl border p-3 ${preview.canApply ? 'border-slate-200 bg-slate-50/70' : 'border-rose-200 bg-rose-50'}`}><p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Review status</p><p className={`mt-1 flex items-center gap-2 font-semibold ${preview.canApply ? 'text-slate-800' : 'text-rose-700'}`}>{preview.canApply ? <CheckCircle2 aria-hidden="true" className="h-4 w-4 text-emerald-600" /> : <AlertCircle aria-hidden="true" className="h-4 w-4" />}{preview.canApply ? 'Ready for your review' : `${displayed.filter((row) => row.error).length} rows need attention`}</p><p className="mt-2 text-xs text-slate-500">Check names, amounts and concessions</p></div>
               </div>
             </div>}
@@ -245,7 +255,7 @@ export default function CampusStudentIncrementFeePage() {
         icon={<TriangleAlert aria-hidden="true" className="h-6 w-6" />}
         onCancel={() => setConfirm(false)} onConfirm={apply}
         description={<div className="space-y-3">
-          <p>Apply to <strong>{preview?.rows.length} active students</strong> in campus <strong>{preview?.campus}</strong> ({scope === 'school' ? 'entire school' : classes.find((c) => String(c.id) === classId)?.className})? Add {money(tuition)} to both Tuition Fee and Total Fee for each student, and save the calculated concessions.</p>
+          <p>Apply to <strong>{preview?.rows.length} active students</strong> in campus <strong>{preview?.campus}</strong> ({scope === 'school' ? 'entire school' : classes.find((c) => String(c.id) === classId)?.className})? Set each student's Total Fee to <strong>{money(newTotal)}</strong>, add <strong>{money(tuition)}</strong> to their existing Tuition Fee, and calculate Concession as the new total minus the new tuition.</p>
           <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-amber-900">
             <p className="font-semibold">Fee values will be permanently overwritten.</p>
             <p className="mt-1 text-xs leading-5">This replaces the selected students’ stored Total Fee, Tuition Fee and Concession with the reviewed amounts. Please check carefully before confirming.</p>
