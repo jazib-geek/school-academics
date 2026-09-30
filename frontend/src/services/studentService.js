@@ -21,12 +21,16 @@ export const getStudents = async (filters) => {
 }
 
 /** Server-side student lookup for autocomplete (name or reg no.). */
-export const searchStudents = async (search, pageSize = 20) => {
+export const searchStudents = async (search, pageSize = 20, { exactNumericRegId = false } = {}) => {
   const term = search?.trim()
   if (!term) return []
 
+  const numericLookup = exactNumericRegId && /^\d+$/.test(term)
+  const regId = numericLookup ? Number(term) : null
+  if (numericLookup && (!Number.isSafeInteger(regId) || regId > 2147483647)) return []
+
   const data = await getStudents({
-    search: term,
+    ...(numericLookup ? { reg_Id: regId } : { search: term }),
     pageNumber: 1,
     pageSize,
     isActive: true,

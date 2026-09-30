@@ -35,16 +35,14 @@ const inputClass =
 
 function debouncePromise(fn, waitMs) {
   let timer
-  let pending
   return (...args) =>
     new Promise((resolve, reject) => {
       if (timer) clearTimeout(timer)
-      pending = { resolve, reject }
       timer = setTimeout(async () => {
         try {
-          pending.resolve(await fn(...args))
+          resolve(await fn(...args))
         } catch (error) {
-          pending.reject(error)
+          reject(error)
         }
       }, waitMs)
     })
@@ -106,8 +104,8 @@ function CampusStudentUpdateFeePage() {
   const loadStudentOptions = useRef(
     debouncePromise(async (inputValue) => {
       const term = inputValue?.trim()
-      if (!term || term.length < 2) return []
-      const items = await searchStudents(term, 20)
+      if (!term || (term.length < 2 && !/^\d+$/.test(term))) return []
+      const items = await searchStudents(term, 20, { exactNumericRegId: true })
       return items.map(mapStudentToSelectOption)
     }, 300),
   ).current
