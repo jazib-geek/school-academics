@@ -6,6 +6,7 @@ public class StudentFeeIncrementRequestDto
     public int? ClassCompositeId { get; set; }
     public List<int> StudentIds { get; set; } = [];
     public decimal TuitionIncrement { get; set; }
+    public int? NewTotalFee { get; set; }
 }
 
 public class StudentFeeIncrementRowDto

@@ -73,8 +73,9 @@ public class StudentFeeIncrementService(AppDbContext context)
             throw new ArgumentException("Choose class or entire school.");
         if (request.TuitionIncrement <= 0 || request.TuitionIncrement > int.MaxValue ||
             decimal.Truncate(request.TuitionIncrement) != request.TuitionIncrement)
-            throw new ArgumentException("Enter a positive whole-number tuition increment. The same amount is added to Total Fee.");
-        var increment = (int)request.TuitionIncrement;
+            throw new ArgumentException("Enter a positive whole-number tuition increment.");
+        if (request.NewTotalFee is null or < 0)
+            throw new ArgumentException("Enter a nonnegative whole-number New Total Fee.");
         if (request.Scope == "class" && (request.ClassCompositeId is not > 0 || request.StudentIds == null || request.StudentIds.Count == 0))
             throw new ArgumentException("Choose a class and at least one student.");
         if (request.Scope == "school" && (request.ClassCompositeId != null || request.StudentIds?.Count > 0))
@@ -95,11 +96,9 @@ public class StudentFeeIncrementService(AppDbContext context)
                 row.Error = "Missing total or tuition fee. Correct this student's fees first.";
             else if (row.TotalFee < 0 || row.TuitionFee < 0)
                 row.Error = "Existing fees cannot be negative.";
-            else if ((long)row.TotalFee.Value + increment > int.MaxValue)
-                row.Error = "Total fee exceeds the supported amount.";
             else
             {
-                row.NewTotalFee = row.TotalFee + increment;
+                row.NewTotalFee = request.NewTotalFee.Value;
                 row.NewTuitionFee = row.TuitionFee + request.TuitionIncrement;
                 row.NewConcession = row.NewTotalFee - row.NewTuitionFee;
                 if (row.NewConcession < 0) row.Error = "New tuition exceeds new total fee.";
@@ -133,7 +132,7 @@ public class StudentFeeIncrementService(AppDbContext context)
                 UserId = userId, UserName = userName, OccurredAtPkt = PakistanTime.Now,
                 DetailsJson = JsonSerializer.Serialize(new
                 {
-                    source = "fee-increment", operationId, request.Scope, request.TuitionIncrement,
+                    source = "fee-increment", operationId, request.Scope, request.NewTotalFee, request.TuitionIncrement,
                     before = new { classFee = row.TotalFee, tuitionFee = row.TuitionFee, feeConcession = row.Concession },
                     after = new { classFee = row.NewTotalFee, tuitionFee = row.NewTuitionFee, feeConcession = row.NewConcession },
                     changes = new[]
