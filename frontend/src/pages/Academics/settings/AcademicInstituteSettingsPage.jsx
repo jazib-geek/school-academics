@@ -188,7 +188,7 @@ function AcademicInstituteSettingsPage() {
             />
           </label>
           <div>
-            <span className="mb-1 block text-sm font-medium text-slate-700">Logo (saved as Base64)</span>
+            <span className="mb-1 block text-sm font-medium text-slate-700">Logo</span>
             <input
               type="file"
               accept="image/*"

@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   ArrowRight,
   BookCopy,
   CheckCircle2,
-  CircleAlert,
   FileOutput,
   FileQuestion,
+  FolderOpen,
   Layers,
   LayoutDashboard,
   Loader2,
@@ -25,8 +25,8 @@ const WORKFLOW_STEPS = [
     description: 'Define classes, subjects, and chapters—the structure every campus shares.',
     href: '/academics/settings/classes',
     cta: 'Open curriculum',
-    shell: 'border-indigo-100/90 bg-indigo-50/40',
     iconWrap: 'bg-indigo-100/90 text-indigo-600',
+    topAccent: 'border-t-indigo-400',
     Icon: Shapes,
     buildSummary: (data) => {
       const parts = [
@@ -43,8 +43,8 @@ const WORKFLOW_STEPS = [
     description: 'Build MCQs, short answers, and long questions tied to chapters.',
     href: '/academics/settings/question-catalog',
     cta: 'Browse catalog',
-    shell: 'border-rose-100/90 bg-rose-50/35',
     iconWrap: 'bg-rose-100/70 text-rose-700',
+    topAccent: 'border-t-rose-400',
     Icon: FileQuestion,
     buildSummary: (data) => {
       const total = data.questions || 0
@@ -65,8 +65,8 @@ const WORKFLOW_STEPS = [
     description: 'Configure exam titles, assemble papers, and print ready-to-use sheets.',
     href: '/academics/settings/exam-maker-compact',
     cta: 'Open exam maker',
-    shell: 'border-sky-100/90 bg-sky-50/40',
     iconWrap: 'bg-sky-100/80 text-sky-700',
+    topAccent: 'border-t-sky-500',
     Icon: FileOutput,
     buildSummary: (data) => {
       const papers = data.questionPapers || 0
@@ -171,15 +171,6 @@ function buildSetupHints(data) {
     })
   }
 
-  if (data.chaptersWithoutQuestions > 0) {
-    hints.push({
-      tone: 'warn',
-      message: `${data.chaptersWithoutQuestions} chapter${data.chaptersWithoutQuestions === 1 ? '' : 's'} still ha${data.chaptersWithoutQuestions === 1 ? 's' : 've'} no questions.`,
-      href: '/academics/settings/question-catalog',
-      label: 'Review catalog',
-    })
-  }
-
   if (data.questions > 0 && !data.questionPapers) {
     hints.push({
       tone: 'action',
@@ -202,9 +193,18 @@ function buildSetupHints(data) {
 }
 
 function AcademicDashboardPage() {
+  const navigate = useNavigate()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [dashboard, setDashboard] = useState(EMPTY_DASHBOARD)
+
+  const openExamPaper = useCallback(
+    (paperId) => {
+      if (paperId == null || paperId === '') return
+      navigate(`/academics/settings/exam-maker-compact?paperId=${encodeURIComponent(paperId)}`)
+    },
+    [navigate],
+  )
 
   const loadDashboard = useCallback(async () => {
     setIsLoading(true)
@@ -316,11 +316,7 @@ function AcademicDashboardPage() {
                   }`}
                 >
                   <div className="flex items-start gap-3">
-                    {hint.tone === 'warn' ? (
-                      <CircleAlert size={18} className="mt-0.5 shrink-0 text-amber-600" strokeWidth={2} />
-                    ) : (
-                      <CheckCircle2 size={18} className="mt-0.5 shrink-0 text-indigo-500" strokeWidth={2} />
-                    )}
+                    <CheckCircle2 size={18} className="mt-0.5 shrink-0 text-indigo-500" strokeWidth={2} />
                     <p className="leading-relaxed">{hint.message}</p>
                   </div>
                   <Link
@@ -335,25 +331,27 @@ function AcademicDashboardPage() {
           ) : null}
 
           <section>
-            <h3 className="mb-4 text-lg font-semibold text-slate-800">Your workspace</h3>
-            <div className="grid gap-4 lg:grid-cols-3">
-              {WORKFLOW_STEPS.map(({ key, title, description, href, cta, shell, iconWrap, Icon, buildSummary }) => (
-                <article key={key} className={`rounded-2xl border p-5 shadow-sm ${shell}`}>
-                  <div className="flex items-start gap-3">
-                    <div className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl ${iconWrap}`}>
-                      <Icon size={20} strokeWidth={2} />
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {WORKFLOW_STEPS.map(({ key, title, description, href, cta, iconWrap, topAccent, Icon, buildSummary }) => (
+                <article
+                  key={key}
+                  className={`flex min-h-0 flex-col rounded-xl border border-slate-200/90 border-t-[3px] bg-white px-3.5 py-3 shadow-sm transition hover:border-slate-300 ${topAccent}`}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg ${iconWrap}`}>
+                      <Icon size={16} strokeWidth={2} />
                     </div>
-                    <div className="min-w-0">
-                      <h4 className="font-semibold text-slate-800">{title}</h4>
-                      <p className="mt-1 text-sm leading-snug text-slate-600">{description}</p>
-                    </div>
+                    <h4 className="text-[13px] font-semibold leading-snug text-slate-800">{title}</h4>
                   </div>
-                  <p className="mt-4 text-sm font-medium text-slate-700">{buildSummary(dashboard)}</p>
+                  <p className="mt-1.5 text-[12px] leading-snug text-slate-500 line-clamp-2">{description}</p>
+                  <p className="mt-2 text-[12px] font-medium leading-snug text-slate-700">
+                    {buildSummary(dashboard)}
+                  </p>
                   <Link
                     to={href}
-                    className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-slate-800 transition hover:text-slate-950"
+                    className="mt-2 inline-flex items-center gap-0.5 text-[12px] font-semibold text-[#405189] transition hover:text-[#2f3d66]"
                   >
-                    {cta} <ArrowRight size={14} strokeWidth={2} />
+                    {cta} <ArrowRight size={12} strokeWidth={2.5} />
                   </Link>
                 </article>
               ))}
@@ -365,7 +363,6 @@ function AcademicDashboardPage() {
               <div className="flex flex-col gap-2 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h3 className="text-lg font-semibold text-slate-800">Recent exam papers</h3>
-                  <p className="text-sm text-slate-500">Pick up where you left off in the exam maker.</p>
                 </div>
                 <Link
                   to="/academics/settings/exam-maker-compact"
@@ -384,16 +381,25 @@ function AcademicDashboardPage() {
                       <th className="px-5 py-3">Type</th>
                       <th className="px-5 py-3">Marks</th>
                       <th className="px-5 py-3">Created</th>
+                      <th className="px-5 py-3 text-right">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {dashboard.recentPapers.map((paper) => (
                       <tr key={paper.id} className="text-slate-700">
                         <td className="px-5 py-3">
-                          <p className="font-medium text-slate-800">{paper.paperName || 'Untitled'}</p>
-                          {paper.examTitle ? (
-                            <p className="mt-0.5 text-xs text-slate-500">{paper.examTitle}</p>
-                          ) : null}
+                          <button
+                            type="button"
+                            onClick={() => openExamPaper(paper.id)}
+                            className="w-full max-w-md rounded-md text-left transition hover:bg-sky-50/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40"
+                          >
+                            <p className="font-medium text-sky-800 hover:text-sky-950">
+                              {paper.paperName || 'Untitled'}
+                            </p>
+                            {paper.examTitle ? (
+                              <p className="mt-0.5 text-xs text-slate-500">{paper.examTitle}</p>
+                            ) : null}
+                          </button>
                         </td>
                         <td className="px-5 py-3">{paper.className || '—'}</td>
                         <td className="px-5 py-3">{paper.subjectName || '—'}</td>
@@ -403,6 +409,16 @@ function AcademicDashboardPage() {
                         </td>
                         <td className="px-5 py-3 whitespace-nowrap text-slate-500">
                           {formatShortDate(paper.createdOn)}
+                        </td>
+                        <td className="px-5 py-3 text-right">
+                          <button
+                            type="button"
+                            onClick={() => openExamPaper(paper.id)}
+                            className="inline-flex items-center gap-1 rounded-lg border border-sky-200 bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-800 transition hover:border-sky-300 hover:bg-sky-100"
+                          >
+                            <FolderOpen size={14} strokeWidth={2} />
+                            Load
+                          </button>
                         </td>
                       </tr>
                     ))}

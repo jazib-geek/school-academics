@@ -394,6 +394,18 @@ function AcademicQuestionCatalogPage() {
   const mathFieldRefs = useRef({})
 
   const isMcq = useMemo(() => form.type === 'mcq', [form.type])
+  const showUrduSidePanel = urduKeyboard && !scientificEditor
+  const questionModalWide = isMcq
+  const questionModalMaxWidthClass = questionModalWide
+    ? 'max-w-[min(1400px,calc(100vw-1.5rem))]'
+    : showUrduSidePanel
+      ? 'max-w-[min(1100px,calc(100vw-1.5rem))]'
+      : 'max-w-[min(960px,calc(100vw-1.5rem))]'
+  const questionBodyGridClass = isMcq
+    ? 'grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(400px,520px)]'
+    : showUrduSidePanel
+      ? 'grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]'
+      : 'grid gap-3'
   const useFormulaEditor = scientificEditor
   const useUrduFormOptionLabels =
     urduKeyboard ||
@@ -1029,22 +1041,70 @@ function AcademicQuestionCatalogPage() {
         }`}
       >
         <div
-          className={`flex max-h-[calc(100vh-2rem)] w-full max-w-6xl flex-col rounded-2xl bg-white shadow-2xl transition-all duration-300 ${
+          className={`flex max-h-[calc(100vh-1.5rem)] w-full ${questionModalMaxWidthClass} flex-col rounded-2xl bg-white shadow-2xl transition-all duration-300 ${
             isModalOpen ? 'translate-y-0 scale-100 opacity-100' : 'translate-y-3 scale-95 opacity-0'
           }`}
         >
-          <div className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-100 px-4 py-4">
-            <div>
+          <div className="flex shrink-0 flex-wrap items-start gap-3 border-b border-slate-100 px-4 py-3">
+            <div className="min-w-[12rem] shrink-0">
               <h3 className="text-lg font-semibold text-slate-800">
                 {form.id ? 'Edit Question' : 'Add New Question'}
               </h3>
-              <p className="mt-1 text-sm text-slate-500">Manage question metadata and content.</p>
+              <p className="mt-0.5 text-sm text-slate-500">Manage question metadata and content.</p>
+            </div>
+            <div className="flex min-w-0 flex-1 flex-wrap items-stretch justify-end gap-2">
+              <label
+                className="flex max-w-[17rem] cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-slate-50/80 px-2.5 py-2 text-xs text-slate-700"
+                title="Visual math and chemistry entry, with Chem and Math keys on the on-screen keyboard."
+              >
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 shrink-0 rounded border-slate-300 text-[#405189] focus:ring-[#405189]"
+                  checked={scientificEditor}
+                  disabled={isSaving}
+                  onChange={(event) => {
+                    const enabled = event.target.checked
+                    if (enabled) {
+                      setUrduKeyboard(false)
+                      setScientificEditor(true)
+                      setActiveFormulaField('descriptionText')
+                    } else {
+                      setScientificEditor(false)
+                    }
+                    bumpMathFieldSession()
+                  }}
+                />
+                <span className="font-medium leading-snug text-slate-800">Scientific keyboard (formula editor)</span>
+              </label>
+              <label
+                className="flex max-w-[15rem] cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-slate-50/80 px-2.5 py-2 text-xs text-slate-700"
+                title="Native Urdu typing, pasted Urdu text, and on-screen Urdu keyboard."
+              >
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 shrink-0 rounded border-slate-300 text-[#405189] focus:ring-[#405189]"
+                  checked={urduKeyboard}
+                  disabled={isSaving}
+                  onChange={(event) => {
+                    const enabled = event.target.checked
+                    if (enabled) {
+                      setScientificEditor(false)
+                      setUrduKeyboard(true)
+                      setActiveUrduField('descriptionText')
+                      bumpMathFieldSession()
+                    } else {
+                      setUrduKeyboard(false)
+                    }
+                  }}
+                />
+                <span className="font-medium leading-snug text-slate-800">Urdu keyboard (Jameel Noori)</span>
+              </label>
             </div>
             <button
               type="button"
               onClick={closeModal}
               disabled={isSaving}
-              className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+              className="ml-auto shrink-0 rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 sm:ml-0"
             >
               <X size={18} />
             </button>
@@ -1083,55 +1143,8 @@ function AcademicQuestionCatalogPage() {
               />
             </div>
 
-            <div className="grid gap-3 md:grid-cols-2">
-              <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm text-slate-700">
-                <input
-                  type="checkbox"
-                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-[#405189] focus:ring-[#405189]"
-                  checked={scientificEditor}
-                  disabled={isSaving}
-                  onChange={(event) => {
-                    setScientificEditor(event.target.checked)
-                    if (event.target.checked) {
-                      setUrduKeyboard(false)
-                      setActiveFormulaField('descriptionText')
-                    }
-                    bumpMathFieldSession()
-                  }}
-                />
-                <span>
-                  <span className="font-medium text-slate-800">Scientific keyboard (formula editor)</span>
-                  <span className="mt-0.5 block text-xs text-slate-500">
-                    Visual math and chemistry entry, with Chem and Math keys on the on-screen keyboard.
-                  </span>
-                </span>
-              </label>
-
-              <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm text-slate-700">
-                <input
-                  type="checkbox"
-                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-[#405189] focus:ring-[#405189]"
-                  checked={urduKeyboard}
-                  disabled={isSaving || useFormulaEditor}
-                  onChange={(event) => {
-                    setUrduKeyboard(event.target.checked)
-                    if (event.target.checked) {
-                      setScientificEditor(false)
-                      setActiveUrduField('descriptionText')
-                    }
-                  }}
-                />
-                <span>
-                  <span className="font-medium text-slate-800">Urdu keyboard (Jameel Noori)</span>
-                  <span className="mt-0.5 block text-xs text-slate-500">
-                    Native Urdu typing, pasted Urdu text, and on-screen Urdu keyboard.
-                  </span>
-                </span>
-              </label>
-            </div>
-
-            <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(380px,460px)]">
-              <div className="grid content-start gap-3">
+            <div className={questionBodyGridClass}>
+              <div className="grid min-w-0 content-start gap-3">
                 <div className="grid gap-1.5">
                   <span className="text-sm font-medium text-slate-700">Question text</span>
                   {formError ? (
@@ -1226,8 +1239,9 @@ function AcademicQuestionCatalogPage() {
                 </div>
               </div>
 
-              <div className="grid content-start gap-3">
-                {urduKeyboard && !useFormulaEditor ? (
+              {isMcq || showUrduSidePanel ? (
+              <div className="grid min-w-0 content-start gap-3">
+                {showUrduSidePanel ? (
                   <UrduKeyboard disabled={isSaving} onKeyPress={handleUrduKeyPress} />
                 ) : null}
 
@@ -1392,6 +1406,7 @@ function AcademicQuestionCatalogPage() {
                   </>
                 ) : null}
               </div>
+              ) : null}
             </div>
             </div>
 

@@ -26,7 +26,7 @@ import {
   normalizePastedChemistryText,
   normalizePastedScientificProseText,
 } from '../../../components/academics/academicQuestionLatexUtils.js'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import QuestionStemImage from '../../../components/academics/QuestionStemImage.jsx'
 import ExamPaperMathText from './examPaperMathText.jsx'
 import ExamPaperRichTextField, {
@@ -450,6 +450,7 @@ const downloadBlob = (blob, fileName) => {
 }
 
 function AcademicExamMakerMinimalPage() {
+  const [searchParams, setSearchParams] = useSearchParams()
   const { instituteSettings } = useAcademicInstituteSettings()
   const instituteLogoSrc = useMemo(
     () => instituteLogoToSrc(instituteSettings?.instituteLogo),
@@ -521,6 +522,7 @@ function AcademicExamMakerMinimalPage() {
     wrapQuestionMarksInParentheses: false,
   })
   const preloadKeyRef = useRef('')
+  const openPaperRequestIdRef = useRef(0)
   const loadInitialRequestIdRef = useRef(0)
   const initialPapersModalShownRef = useRef(false)
   const cleanSnapshotRef = useRef(null)
@@ -935,6 +937,13 @@ function AcademicExamMakerMinimalPage() {
     }
     markWorkspaceSaved(buildEditorSnapshot(formForSnapshot, selected, configs))
     pendingPaperBaselineSyncIdRef.current = paper.id
+    preloadKeyRef.current = getPaperKey(
+      paper.classId,
+      paper.subjectId,
+      paper.examTitleId,
+      paper.examType,
+      paper.paperName,
+    )
 
     if (!syncForm) return
 
@@ -980,7 +989,9 @@ function AcademicExamMakerMinimalPage() {
       setExamTitles(titleData)
       if (!initialPapersModalShownRef.current) {
         initialPapersModalShownRef.current = true
-        setIsGeneratedPapersOpen(true)
+        if (!searchParams.get('paperId')) {
+          setIsGeneratedPapersOpen(true)
+        }
       }
     } catch (requestError) {
       if (requestId !== loadInitialRequestIdRef.current) return
@@ -1307,19 +1318,36 @@ function AcademicExamMakerMinimalPage() {
     paperNamesMatch(paper.paperName, form.paperName)
 
   const onOpenPaper = async (id, { syncForm = true, showPopupLoader = false } = {}) => {
+    const requestId = ++openPaperRequestIdRef.current
     setSuppressPaperPreload(false)
     setIsLoading(true)
     setError('')
     if (showPopupLoader) setPopupLoaderText('Loading Exam')
     try {
       const paper = await getAcademicExamPaperById(id)
+      if (requestId !== openPaperRequestIdRef.current) return
+      if (!paper) {
+        setError('Unable to load selected paper.')
+        return
+      }
       hydratePaperInEditor(paper, { syncForm })
     } catch (requestError) {
-      const msg = requestError?.message?.includes('timeout') ? 'Paper loading timed out. Please try again.' : 'Unable to load selected paper.'
+      if (requestId !== openPaperRequestIdRef.current) return
+      const cancelled =
+        requestError?.name === 'AbortError' ||
+        requestError?.name === 'CanceledError' ||
+        requestError?.code === 'ERR_CANCELED' ||
+        requestError?.message === 'Request cancelled'
+      if (cancelled) return
+      const msg = requestError?.message?.includes('timeout')
+        ? 'Paper loading timed out. Please try again.'
+        : 'Unable to load selected paper.'
       setError(requestError?.response?.data?.message || msg)
     } finally {
-      setIsLoading(false)
-      if (showPopupLoader) setPopupLoaderText('')
+      if (requestId === openPaperRequestIdRef.current) {
+        setIsLoading(false)
+        if (showPopupLoader) setPopupLoaderText('')
+      }
     }
   }
 
@@ -1385,6 +1413,24 @@ function AcademicExamMakerMinimalPage() {
     },
     [requestDestructiveAction, selectedPaper?.id],
   )
+
+  useEffect(() => {
+    if (isLoading) return
+    const raw = searchParams.get('paperId')
+    if (!raw) return
+    const id = Number(raw)
+    setSearchParams(
+      (params) => {
+        const next = new URLSearchParams(params)
+        next.delete('paperId')
+        return next
+      },
+      { replace: true },
+    )
+    if (!Number.isFinite(id) || id <= 0) return
+    setIsGeneratedPapersOpen(false)
+    void onOpenPaper(id, { syncForm: true, showPopupLoader: true })
+  }, [isLoading, searchParams, setSearchParams])
 
   const onCreateNewExam = () => {
     requestDestructiveAction({ kind: 'newExam' })
