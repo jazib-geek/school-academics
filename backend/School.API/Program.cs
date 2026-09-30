@@ -181,6 +181,9 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
+builder.Services.AddMemoryCache();
+builder.Services.AddScoped<StudentFeeIncrementService>();
+
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("AcademicsOnly", policy =>
