@@ -397,8 +397,15 @@ input[type="reset"]:disabled,
 }
 
 table thead {
-  background: linear-gradient(280deg, #405189, #283357);
-  color: #eef2ff;
+  background: var(--brand-bg, linear-gradient(280deg, #405189, #283357));
+  color: var(--brand-text, #eef2ff);
+}
+
+/* Page heading icon square (icon tile placed right before the page h1). */
+.place-items-center.text-white:has(+ h1),
+.place-items-center.text-white:has(+ div > h1) {
+  background: var(--brand-bg, var(--campus-primary));
+  color: var(--brand-text, #fff);
 }
 
 /*

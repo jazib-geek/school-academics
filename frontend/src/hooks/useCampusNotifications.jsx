@@ -66,6 +66,44 @@ function normalizeList(items) {
     .slice(0, MAX_NOTIFICATIONS)
 }
 
+export const THEME_SETTINGS_NOTICE_LINK = '#theme-settings'
+const THEME_SETTINGS_NOTICE_READ_KEY = 'campusNotice:theme-settings:read'
+
+function buildLocalNotices() {
+  let read = false
+  try {
+    read = localStorage.getItem(THEME_SETTINGS_NOTICE_READ_KEY) === '1'
+  } catch {
+    // ignore
+  }
+  return [
+    {
+      id: 'local-theme-settings',
+      type: 'theme_settings',
+      title: 'New: Theme settings',
+      message: 'Pick colors for the side menu, table headings and page icons. Tap to try it.',
+      severity: 'info',
+      link: THEME_SETTINGS_NOTICE_LINK,
+      occurredAt: '2026-09-30T18:00:00.000Z',
+      read,
+    },
+  ]
+}
+
+function markLocalNoticesRead() {
+  try {
+    localStorage.setItem(THEME_SETTINGS_NOTICE_READ_KEY, '1')
+  } catch {
+    // ignore
+  }
+}
+
+function withLocalNotices(items) {
+  return [...buildLocalNotices(), ...items]
+    .sort((a, b) => new Date(b.occurredAt) - new Date(a.occurredAt))
+    .slice(0, MAX_NOTIFICATIONS)
+}
+
 function clearLegacyLocalCache() {
   try {
     const user = (localStorage.getItem('username') || '').trim().toLowerCase()
@@ -137,15 +175,16 @@ export function useCampusNotifications() {
   const navigateRef = useRef(navigate)
   navigateRef.current = navigate
 
-  const [notifications, setNotifications] = useState([])
+  const [notifications, setNotifications] = useState(() => withLocalNotices([]))
   const unreadCount = notifications.reduce((total, item) => total + (item && !item.read ? 1 : 0), 0)
 
   const fetchFromServer = useCallback(async () => {
     const { data } = await api.get('/api/notifications')
-    setNotifications(normalizeList(data))
+    setNotifications(withLocalNotices(normalizeList(data)))
   }, [])
 
   const markAllRead = useCallback(() => {
+    markLocalNoticesRead()
     setNotifications((prev) => prev.map((item) => (item ? { ...item, read: true } : item)))
     api.post('/api/notifications/mark-read').catch(() => {
       // Badge already cleared; next fetch will resync if mark-read failed.
@@ -167,7 +206,7 @@ export function useCampusNotifications() {
       try {
         await fetchFromServer()
       } catch {
-        if (!cancelled) setNotifications([])
+        if (!cancelled) setNotifications(withLocalNotices([]))
       }
     }
 

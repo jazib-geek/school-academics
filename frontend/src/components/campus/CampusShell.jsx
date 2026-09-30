@@ -19,6 +19,7 @@ import {
   Loader2,
   LogOut,
   Menu,
+  Palette,
   Receipt,
   School,
   Settings,
@@ -34,6 +35,9 @@ import { toast } from 'sonner'
 import { changeCampusPassword, hasAnyCampusPermission, hasCampusPermission, hasCampusPermissionStrict, isCampusSuperAdmin, logout, switchCampusSession } from '../../services/authService'
 import { getAppCampusOptions, getCampusLabel, isCampusAllowedInApp } from '../../constants/branding'
 import { getCampusSchoolName, resolveCampusLogoSrc } from '../../utils/campusBranding'
+import { loadSidebarTheme, toCssVars } from '../../utils/sidebarTheme'
+import useSidebarTheme from '../../hooks/useSidebarTheme'
+import SidebarThemeDialog from './SidebarThemeDialog'
 import {
   BIOMETRIC_ATTENDANCE_TYPES,
   CAMPUS_PROFILE_CHANGED_EVENT,
@@ -41,7 +45,7 @@ import {
   normalizeBiometricAttendanceType,
 } from '../../utils/campusProfile'
 import softelligentLogo from '../../assets/softelligent-transparent.png'
-import { useCampusNotifications } from '../../hooks/useCampusNotifications.jsx'
+import { THEME_SETTINGS_NOTICE_LINK, useCampusNotifications } from '../../hooks/useCampusNotifications.jsx'
 import CampusNotificationsDrawer from './CampusNotificationsDrawer.jsx'
 
 const FORBIDDEN_ACCESS_MESSAGE = "You don't have access to this."
@@ -408,6 +412,8 @@ export default function CampusShell({
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false)
   const [isChangingPassword, setIsChangingPassword] = useState(false)
+  const [sidebarTheme, setSidebarTheme] = useSidebarTheme()
+  const [isSidebarThemeOpen, setIsSidebarThemeOpen] = useState(false)
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: '',
     newPassword: '',
@@ -533,6 +539,16 @@ export default function CampusShell({
     setIsChangePasswordOpen(true)
   }
 
+  const openSidebarTheme = () => {
+    setIsUserMenuOpen(false)
+    setIsSidebarThemeOpen(true)
+  }
+
+  const closeSidebarTheme = () => {
+    setIsSidebarThemeOpen(false)
+    setSidebarTheme(loadSidebarTheme())
+  }
+
   const closeChangePassword = () => {
     if (isChangingPassword) return
     setIsChangePasswordOpen(false)
@@ -641,11 +657,17 @@ export default function CampusShell({
             type="button"
             disabled={!parentAllowed && Boolean(item.to)}
             className={`flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-left transition ${
-              parentActive ? 'bg-white/15 font-medium text-white' : 'text-indigo-100 hover:bg-white/10'
+              parentActive
+                ? 'bg-[color:var(--sb-active-bg)] font-medium text-[color:var(--sb-active-text)]'
+                : 'text-[color:var(--sb-text)] hover:bg-[color:var(--sb-hover-bg)]'
             } ${!parentAllowed && item.to ? 'cursor-not-allowed opacity-45 hover:bg-transparent' : 'cursor-pointer'}`}
             onClick={() => onNavParentClick(item)}
           >
-            <Icon size={16} className={`shrink-0 ${item.iconClass || 'text-indigo-100'}`} />
+            {sidebarTheme.iconColor ? (
+              <Icon size={16} className="shrink-0 text-[color:var(--sb-icon)]" />
+            ) : (
+              <Icon size={16} className={`shrink-0 ${item.iconClass || 'text-[color:var(--sb-text)]'}`} />
+            )}
             <span className="flex-1">{item.label}</span>
             {hasChildren ? (
               <ChevronDown
@@ -673,8 +695,10 @@ export default function CampusShell({
                         type="button"
                         disabled={!childAllowed}
                         className={`block w-full rounded-lg px-3 py-1.5 text-left text-xs transition ${
-                          childActive ? 'bg-white/15 text-white' : 'text-indigo-200 hover:bg-white/10 hover:text-white'
-                        } ${childAllowed ? 'cursor-pointer' : 'cursor-not-allowed opacity-45 hover:bg-transparent hover:text-indigo-200'}`}
+                          childActive
+                            ? 'bg-[color:var(--sb-active-bg)] text-[color:var(--sb-active-text)]'
+                            : 'text-[color:var(--sb-muted)] hover:bg-[color:var(--sb-hover-bg)] hover:text-[color:var(--sb-active-text)]'
+                        } ${childAllowed ? 'cursor-pointer' : 'cursor-not-allowed opacity-45 hover:bg-transparent hover:text-[color:var(--sb-muted)]'}`}
                         onClick={() => onNavChildClick(child)}
                       >
                         {child.label}
@@ -704,21 +728,22 @@ export default function CampusShell({
 
         {!hideSidebar ? (
         <aside
-          className={`fixed inset-y-0 left-0 z-50 flex h-screen w-72 flex-col bg-[linear-gradient(280deg,#405189,#283357)] text-indigo-50 transition-transform duration-300 lg:sticky lg:top-0 lg:z-auto lg:translate-x-0 ${
+          style={{ ...toCssVars(sidebarTheme), background: 'var(--sb-bg)' }}
+          className={`fixed inset-y-0 left-0 z-50 flex h-screen w-72 flex-col text-[color:var(--sb-text)] transition-transform duration-300 lg:sticky lg:top-0 lg:z-auto lg:translate-x-0 ${
             isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
           } ${asideClassName}`.trim()}
         >
-          <div className="flex h-16 items-center gap-3 border-b border-white/15 px-5">
-            <div className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-xl bg-white/15 p-1">
+          <div className="flex h-16 items-center gap-3 border-b border-[color:var(--sb-border)] px-5">
+            <div className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-xl bg-[color:var(--sb-active-bg)] p-1">
               <img src={softelligentLogo} alt="Softelligent" className="h-full w-full object-contain" />
             </div>
             <div>
-              <p className="text-[22px] font-semibold leading-5">Softelligent</p>
-              <p className="text-xs text-indigo-200">School Suite</p>
+              <p className="text-[22px] font-semibold leading-5 text-[color:var(--sb-active-text)]">Softelligent</p>
+              <p className="text-xs text-[color:var(--sb-muted)]">School Suite</p>
             </div>
             <button
               type="button"
-              className="ml-auto rounded-lg p-2 text-indigo-100 hover:bg-white/10 lg:hidden"
+              className="ml-auto rounded-lg p-2 text-[color:var(--sb-text)] hover:bg-[color:var(--sb-hover-bg)] lg:hidden"
               onClick={closeMobileSidebar}
               aria-label="Close menu"
             >
@@ -730,14 +755,23 @@ export default function CampusShell({
             {visibleNav.map(renderNavItem)}
           </nav>
 
-          <div className="border-t border-white/15 p-3">
+          <div className="flex items-center gap-1 border-t border-[color:var(--sb-border)] p-3">
             <button
               type="button"
               onClick={onLogout}
-              className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-4 py-2.5 text-left text-indigo-100 transition hover:bg-white/10"
+              className="flex flex-1 cursor-pointer items-center gap-3 rounded-xl px-4 py-2.5 text-left text-[color:var(--sb-text)] transition hover:bg-[color:var(--sb-hover-bg)]"
             >
               <LogOut size={16} className="shrink-0 text-red-400" />
               <span>Sign out</span>
+            </button>
+            <button
+              type="button"
+              onClick={openSidebarTheme}
+              className="grid h-10 w-10 shrink-0 cursor-pointer place-items-center rounded-xl text-[color:var(--sb-text)] transition hover:bg-[color:var(--sb-hover-bg)]"
+              title="Theme settings"
+              aria-label="Theme settings"
+            >
+              <Palette size={16} />
             </button>
           </div>
         </aside>
@@ -978,6 +1012,14 @@ export default function CampusShell({
                         <KeyRound size={15} />
                         Change password
                       </button>
+                      <button
+                        type="button"
+                        onClick={openSidebarTheme}
+                        className="flex w-full cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-100"
+                      >
+                        <Palette size={15} />
+                        Theme settings
+                      </button>
                       {hasCampusPermission('manage_campus_profile') ? (
                         <button
                           type="button"
@@ -1129,13 +1171,23 @@ export default function CampusShell({
         </div>
       ) : null}
 
+      {isSidebarThemeOpen ? (
+        <SidebarThemeDialog
+          initialTheme={sidebarTheme}
+          onPreview={setSidebarTheme}
+          onClose={closeSidebarTheme}
+          onSaved={() => setIsSidebarThemeOpen(false)}
+        />
+      ) : null}
+
       <CampusNotificationsDrawer
         open={isNotificationsOpen}
         notifications={notifications}
         onClose={() => setIsNotificationsOpen(false)}
         onSelect={(item) => {
           setIsNotificationsOpen(false)
-          if (item?.link) navigate(item.link)
+          if (item?.link === THEME_SETTINGS_NOTICE_LINK) openSidebarTheme()
+          else if (item?.link) navigate(item.link)
         }}
       />
     </div>

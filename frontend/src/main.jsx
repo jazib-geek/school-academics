@@ -6,6 +6,9 @@ import './index.css'
 import App from './App.jsx'
 import { AcademicInstituteSettingsProvider } from './contexts/AcademicInstituteSettingsContext.jsx'
 import { CAMPUS_REALTIME_TOASTER_ID } from './hooks/useCampusNotifications.jsx'
+import { applyTableHeaderTheme, loadSidebarTheme } from './utils/sidebarTheme'
+
+applyTableHeaderTheme(loadSidebarTheme())
 
 createRoot(document.getElementById('root')).render(
     <StrictMode>
