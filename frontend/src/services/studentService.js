@@ -1,7 +1,7 @@
 import api from './api'
 
-export const getFeeIncrementStudents = async (classCompositeId) => {
-  const response = await api.get('/api/student/fee-increment/students', { params: { classCompositeId } })
+export const getFeeIncrementStudents = async (classCompositeId, filters = {}) => {
+  const response = await api.get('/api/student/fee-increment/students', { params: { classCompositeId, ...filters } })
   return response?.data?.data || []
 }
 
