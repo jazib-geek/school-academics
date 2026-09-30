@@ -29,11 +29,20 @@ public class StudentFeeIncrementController(StudentFeeIncrementService service, T
     private string CacheKey(string id) => $"fee-increment:{tenant.Campus}:{UserId}:{id}";
 
     [HttpGet("students")]
-    public async Task<IActionResult> Students([FromQuery] int classCompositeId, CancellationToken ct)
+    public async Task<IActionResult> Students([FromQuery] int? classCompositeId, CancellationToken ct,
+        [FromQuery] string scope = "class", [FromQuery] string registrationDateMode = "all",
+        [FromQuery] DateOnly? registrationDate = null)
     {
         if (!await CanAccess(ct)) return Forbid();
-        if (classCompositeId <= 0) return BadRequest(ApiResponse<object>.FailureResponse("Choose a class."));
-        return Ok(ApiResponse<object>.SuccessResponse(await service.GetRowsAsync(classCompositeId, ct)));
+        if (scope is not ("class" or "school") || (scope == "class" && classCompositeId is not > 0) ||
+            (scope == "school" && classCompositeId.HasValue))
+            return BadRequest(ApiResponse<object>.FailureResponse("Choose a valid scope and class."));
+        try
+        {
+            return Ok(ApiResponse<object>.SuccessResponse(await service.GetRowsAsync(classCompositeId, ct,
+                registrationDateMode, registrationDate)));
+        }
+        catch (ArgumentException ex) { return BadRequest(ApiResponse<object>.FailureResponse(ex.Message)); }
     }
 
     [HttpPost("preview")]

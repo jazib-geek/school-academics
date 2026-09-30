@@ -7,6 +7,8 @@ public class StudentFeeIncrementRequestDto
     public List<int> StudentIds { get; set; } = [];
     public decimal TuitionIncrement { get; set; }
     public int? NewTotalFee { get; set; }
+    public string RegistrationDateMode { get; set; } = "all";
+    public DateOnly? RegistrationDate { get; set; }
 }
 
 public class StudentFeeIncrementRowDto

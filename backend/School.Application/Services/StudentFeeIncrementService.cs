@@ -18,10 +18,23 @@ public class StudentFeeIncrementService(AppDbContext context)
             .AnyAsync(x => x.UserName == user.Username && x.ModuleCode == "update_fee" && x.HasAccess == true, ct));
     }
 
-    public async Task<List<StudentFeeIncrementRowDto>> GetRowsAsync(int? classId, CancellationToken ct)
+    public async Task<List<StudentFeeIncrementRowDto>> GetRowsAsync(int? classId, CancellationToken ct,
+        string registrationDateMode = "all", DateOnly? registrationDate = null)
     {
+        if (registrationDateMode is not ("all" or "before" or "after"))
+            throw new ArgumentException("Choose All, Before or After for registration date.");
+        if (registrationDateMode != "all" && registrationDate == null)
+            throw new ArgumentException("Registration date is required for Before or After.");
         var query = context.Students.AsNoTracking().Where(x => x.IsActive == true);
         if (classId.HasValue) query = query.Where(x => x.ClassCompositeID == classId);
+        if (registrationDateMode != "all")
+        {
+            var date = registrationDate!.Value.ToDateTime(TimeOnly.MinValue);
+            // Compare calendar dates: exclude the entire selected day and missing registration dates.
+            query = registrationDateMode == "before"
+                ? query.Where(x => x.RegDate.HasValue && x.RegDate.Value.Date < date)
+                : query.Where(x => x.RegDate.HasValue && x.RegDate.Value.Date > date);
+        }
         var rows = await query.OrderBy(x => x.ClassCompositeID).ThenBy(x => x.Reg_Id)
             .Select(x => new StudentFeeIncrementRowDto
             {
@@ -81,7 +94,8 @@ public class StudentFeeIncrementService(AppDbContext context)
         if (request.Scope == "school" && (request.ClassCompositeId != null || request.StudentIds?.Count > 0))
             throw new ArgumentException("Entire school includes all active students in this campus.");
 
-        var rows = await GetRowsAsync(request.Scope == "class" ? request.ClassCompositeId : null, ct);
+        var rows = await GetRowsAsync(request.Scope == "class" ? request.ClassCompositeId : null, ct,
+            request.RegistrationDateMode, request.RegistrationDate);
         if (request.Scope == "class")
         {
             var ids = request.StudentIds!.ToHashSet();
@@ -133,6 +147,7 @@ public class StudentFeeIncrementService(AppDbContext context)
                 DetailsJson = JsonSerializer.Serialize(new
                 {
                     source = "fee-increment", operationId, request.Scope, request.NewTotalFee, request.TuitionIncrement,
+                    request.RegistrationDateMode, request.RegistrationDate,
                     before = new { classFee = row.TotalFee, tuitionFee = row.TuitionFee, feeConcession = row.Concession },
                     after = new { classFee = row.NewTotalFee, tuitionFee = row.NewTuitionFee, feeConcession = row.NewConcession },
                     changes = new[]
