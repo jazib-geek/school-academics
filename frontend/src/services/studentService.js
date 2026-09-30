@@ -1,5 +1,20 @@
 import api from './api'
 
+export const getFeeIncrementStudents = async (classCompositeId) => {
+  const response = await api.get('/api/student/fee-increment/students', { params: { classCompositeId } })
+  return response?.data?.data || []
+}
+
+export const previewFeeIncrement = async (payload) => {
+  const response = await api.post('/api/student/fee-increment/preview', payload)
+  return response?.data?.data
+}
+
+export const applyFeeIncrement = async (previewId) => {
+  const response = await api.post('/api/student/fee-increment/apply', { previewId })
+  return response?.data?.data
+}
+
 export const getStudents = async (filters) => {
   const response = await api.get('/api/student', { params: filters })
   return response?.data?.data

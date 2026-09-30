@@ -157,12 +157,38 @@ const toTeachingDraft = (period, index) => ({
   isBreak: false,
 })
 
+const sortPeriodsForStructureEdit = (periods = []) =>
+  [...periods].sort((a, b) => {
+    const aStart = timeToMinutes(getText(a, 'startTime', 'StartTime'))
+    const bStart = timeToMinutes(getText(b, 'startTime', 'StartTime'))
+
+    // A structure has no manual reordering control. Time is therefore the
+    // source of truth when legacy data has an inconsistent SortOrder.
+    if (aStart != null && bStart != null && aStart !== bStart) return aStart - bStart
+    if (aStart != null && bStart == null) return -1
+    if (aStart == null && bStart != null) return 1
+
+    return (
+      getId(a, 'sortOrder', 'SortOrder') - getId(b, 'sortOrder', 'SortOrder') ||
+      getId(a, 'periodNumber', 'PeriodNumber') - getId(b, 'periodNumber', 'PeriodNumber')
+    )
+  })
+
+const normalizeTeachingPeriodLabels = (periods) =>
+  periods.map((period, index) => {
+    const expectedLabel = `Period ${index + 1}`
+    // Keep intentional labels (e.g. "Assembly"), but keep generated labels
+    // aligned with the re-numbered period after a period is removed/reordered.
+    const isGeneratedLabel = /^period\s+\d+$/i.test(String(period.label || '').trim())
+    return isGeneratedLabel ? { ...period, label: expectedLabel } : period
+  })
+
 /** Load structure editor state from saved periods (strips break into base times + break settings). */
 export const splitPeriodsForBreakEdit = (periods = []) => {
-  const sorted = sortPeriods(periods)
+  const sorted = sortPeriodsForStructureEdit(periods)
   const breakIndex = sorted.findIndex((p) => isBreakPeriod(p))
   if (breakIndex < 0) {
-    const base = sorted.map(toTeachingDraft)
+    const base = normalizeTeachingPeriodLabels(sorted.map(toTeachingDraft))
     return {
       basePeriods: base.map((p, i) => ({ ...p, periodNumber: i + 1, sortOrder: i + 1 })),
       breakEnabled: false,
@@ -187,7 +213,7 @@ export const splitPeriodsForBreakEdit = (periods = []) => {
     }
   })
 
-  const base = [...before, ...after].map((p, i) => ({
+  const base = normalizeTeachingPeriodLabels([...before, ...after]).map((p, i) => ({
     ...p,
     periodNumber: i + 1,
     sortOrder: i + 1,

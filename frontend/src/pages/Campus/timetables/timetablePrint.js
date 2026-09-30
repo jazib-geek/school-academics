@@ -3,7 +3,6 @@ import {
   TT_FORMAT,
   buildSlotMaps,
   formatSplitCellLines,
-  formatTimeRange,
   getClassCellSlots,
   getId,
   getText,
@@ -21,6 +20,14 @@ const escapeHtml = (value) =>
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;')
+
+const printTimeHtml = (value) => {
+  const match = /^(\d{1,2}):([0-5]\d)(?::[0-5]\d)?$/.exec(String(value ?? ''))
+  if (!match || Number(match[1]) > 23) return escapeHtml(value)
+  const hour = Number(match[1])
+  if (hour < 12) return escapeHtml(`${match[1]}:${match[2]}`)
+  return `${hour % 12 || 12}:${match[2]}<span class="time-suffix">PM</span>`
+}
 
 const cellSubjectTeacher = (cellSlots) => {
   const slots = Array.isArray(cellSlots) ? cellSlots : cellSlots ? [cellSlots] : []
@@ -86,7 +93,8 @@ const sharedStyles = `
   }
   table.tt tbody tr:nth-child(even) td { background: #f3f3f3; }
   table.tt tbody tr:nth-child(odd) td { background: #fff; }
-  .time { font-size: 10px; font-weight: 700; }
+  .time { font-size: 10px; font-weight: 700; white-space: nowrap; }
+  .time-suffix { font-size: 75%; margin-left: 1px; }
   .line { font-weight: 700; line-height: 1.2; color: #111; }
   .sub { font-size: 10px; margin-top: 2px; line-height: 1.15; font-weight: 600; color: #111; }
   .free-cell { font-weight: 700; color: #555; font-size: 11px; }
@@ -127,8 +135,11 @@ function renderClassWise(detail) {
 
   const timeHeaders = periods
     .map((p) => {
-      const range = formatTimeRange(getText(p, 'startTime', 'StartTime'), getText(p, 'endTime', 'EndTime'))
-      return `<th class="time">${escapeHtml(range)}</th>`
+      const range = [getText(p, 'startTime', 'StartTime'), getText(p, 'endTime', 'EndTime')]
+        .filter(Boolean)
+        .map(printTimeHtml)
+        .join('-')
+      return `<th class="time">${range}</th>`
     })
     .join('')
 

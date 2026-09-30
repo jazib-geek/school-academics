@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, Plus, Trash2, X } from 'lucide-react'
 import {
   TT_FORMAT_META,
   DEFAULT_PERIOD_TIMES,
+  addMinutesToTime,
   formatClassLabel,
   getId,
   getText,
@@ -249,13 +250,23 @@ export default function ManageStructureModal({
     const row = displayPeriods[displayIndex]
     if (!row || isBreakPeriod(row)) return
     const basePn = displayPeriodToBaseNumber(row.periodNumber, breakAfterPeriod, breakEnabled)
+    const isTime = field === 'startTime' || field === 'endTime'
+    const followsBreak = displayPeriods.slice(0, displayIndex).some(isBreakPeriod)
+    // Display times include the break; the draft stores times without it.
+    // Wrap through midnight so partially edited hours also round-trip unchanged.
+    const baseValue = isTime && followsBreak
+      ? addMinutesToTime(value, 24 * 60 - Number(breakMinutes))
+      : value
     setBasePeriods((current) =>
-      current.map((period) => (period.periodNumber === basePn ? { ...period, [field]: value } : period)),
+      current.map((period) => (period.periodNumber === basePn ? { ...period, [field]: baseValue } : period)),
     )
   }
 
   const rememberTimeFocus = (index) => {
-    const period = displayPeriods[index]
+    const row = displayPeriods[index]
+    if (!row || isBreakPeriod(row)) return
+    const basePn = displayPeriodToBaseNumber(row.periodNumber, breakAfterPeriod, breakEnabled)
+    const period = basePeriods.find((item) => item.periodNumber === basePn)
     if (!period) return
     timeFocusRef.current[index] = {
       startTime: period.startTime,
@@ -285,27 +296,41 @@ export default function ManageStructureModal({
     setBasePeriods((current) => {
       const nextNumber = current.reduce((max, p) => Math.max(max, p.periodNumber), 0) + 1
       const preset = DEFAULT_PERIOD_TIMES.find((p) => p.periodNumber === nextNumber)
+      const previous = current[current.length - 1]
+      const previousStart = timeToMinutes(previous?.startTime)
+      const previousEnd = timeToMinutes(previous?.endTime)
+      const presetDuration = preset
+        ? timeToMinutes(preset.endTime) - timeToMinutes(preset.startTime)
+        : 40
+      const duration = previousStart != null && previousEnd != null && previousEnd > previousStart
+        ? previousEnd - previousStart
+        : presetDuration
+      const startTime = previousEnd != null ? previous.endTime : preset?.startTime || ''
+      const endTime = previousEnd != null ? addMinutesToTime(previous.endTime, duration) : preset?.endTime || ''
       const next = [
         ...current,
         {
           periodNumber: nextNumber,
           label: `Period ${nextNumber}`,
-          startTime: preset?.startTime || '',
-          endTime: preset?.endTime || '',
+          startTime,
+          endTime,
           sortOrder: nextNumber,
           isBreak: false,
         },
       ]
-      const error = findPeriodTimeError(next, next.length - 1)
-      if (error && preset) {
-        // Still allow add with empty times if preset would overlap.
+      const nextDisplay = breakEnabled
+        ? applyBreakToTeachingPeriods(next, breakAfterPeriod, breakMinutes)
+        : next
+      const error = findPeriodTimeError(nextDisplay, nextDisplay.length - 1)
+      if (error) {
+        // Validate the actual schedule, including the shift after the break.
         next[next.length - 1] = {
           ...next[next.length - 1],
           startTime: '',
           endTime: '',
         }
         showError(
-          `Period ${nextNumber} was added without times because the preset would overlap another period.`,
+          `Period ${nextNumber} was added without times: ${error}`,
           'Times needed',
         )
       }
@@ -468,7 +493,7 @@ export default function ManageStructureModal({
                       />
                     </label>
                     <p className="pb-1 text-xs text-slate-500">
-                      Later periods shift when you save. Assignments in the break column are cleared.
+                      Later period times include the break. Assignments in the break column are cleared when you save.
                     </p>
                   </div>
                 ) : null}

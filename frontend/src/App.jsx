@@ -6,6 +6,7 @@ import CampusStudentAdmitPage from './pages/Campus/students/CampusStudentAdmitPa
 import CampusStudentBulkEditPage from './pages/Campus/students/CampusStudentBulkEditPage.jsx'
 import CampusStudentTransferPage from './pages/Campus/students/CampusStudentTransferPage.jsx'
 import CampusStudentUpdateFeePage from './pages/Campus/students/CampusStudentUpdateFeePage.jsx'
+import CampusStudentIncrementFeePage from './pages/Campus/students/CampusStudentIncrementFeePage.jsx'
 import CampusActivityLogsPage from './pages/Campus/activity-logs/CampusActivityLogsPage.jsx'
 import VoidReceiptsPage from './pages/Campus/activity-logs/VoidReceiptsPage.jsx'
 import CampusDashboardPage from './pages/Campus/dashboard/CampusDashboardPage.jsx'
@@ -353,6 +354,14 @@ function App() {
         element={
           <ProtectedRoute>
             <CampusStudentTransferPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/campus/students/increment-fee"
+        element={
+          <ProtectedRoute>
+            <CampusStudentIncrementFeePage />
           </ProtectedRoute>
         }
       />
