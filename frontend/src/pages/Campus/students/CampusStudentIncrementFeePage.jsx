@@ -36,6 +36,7 @@ export default function CampusStudentIncrementFeePage() {
   const [classId, setClassId] = useState('')
   const [registrationDateMode, setRegistrationDateMode] = useState('all')
   const [registrationDate, setRegistrationDate] = useState('')
+  const [includeRegistrationDate, setIncludeRegistrationDate] = useState(false)
   const [rows, setRows] = useState([])
   const [selected, setSelected] = useState(new Set())
   const [tuition, setTuition] = useState('')
@@ -60,7 +61,7 @@ export default function CampusStudentIncrementFeePage() {
     let cancelled = false
     if ((scope === 'class' && !classId) || (registrationDateMode !== 'all' && !registrationDate)) return
     getFeeIncrementStudents(scope === 'class' ? Number(classId) : null, {
-      scope, registrationDateMode, registrationDate: registrationDateMode === 'all' ? null : registrationDate,
+      scope, registrationDateMode, registrationDate: registrationDateMode === 'all' ? null : registrationDate, includeRegistrationDate,
     }).then((data) => {
       if (cancelled) return
       setRows(data)
@@ -69,7 +70,7 @@ export default function CampusStudentIncrementFeePage() {
       if (!cancelled) setError(err?.response?.data?.message || 'Could not load students.')
     }).finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
-  }, [scope, classId, registrationDateMode, registrationDate, reload])
+  }, [scope, classId, registrationDateMode, registrationDate, includeRegistrationDate, reload])
 
   const invalidate = () => { setPreview(null); setConfirm(false); setError(''); setSuccess('') }
   const changeScope = (value) => {
@@ -86,10 +87,11 @@ export default function CampusStudentIncrementFeePage() {
     setSelected(new Set())
     setLoading(Boolean(value) && (registrationDateMode === 'all' || Boolean(registrationDate)))
   }
-  const changeRegistrationFilter = (mode, date) => {
+  const changeRegistrationFilter = (mode, date, includeDate = includeRegistrationDate) => {
     invalidate()
     setRegistrationDateMode(mode)
     setRegistrationDate(date)
+    setIncludeRegistrationDate(includeDate)
     setRows([])
     setSelected(new Set())
     setLoading((scope === 'school' || Boolean(classId)) && (mode === 'all' || Boolean(date)))
@@ -113,16 +115,16 @@ export default function CampusStudentIncrementFeePage() {
       setError('Enter a nonnegative whole-number New Total Fee. This fixed amount replaces each selected student’s Total Fee.')
       return
     }
-    if (tuition === '' || !Number.isSafeInteger(tuitionIncrement) || tuitionIncrement <= 0 ||
+    if (tuition === '' || !Number.isSafeInteger(tuitionIncrement) || tuitionIncrement < 0 ||
       tuitionIncrement > 2147483647) {
-      setError('Enter a positive whole-number tuition increment.')
+      setError('Enter a nonnegative whole-number tuition increment. Zero keeps tuition unchanged.')
       return
     }
     submitting.current = true
     setBusy(true)
     try {
       const result = await previewFeeIncrement({ scope, tuitionIncrement, newTotalFee,
-        registrationDateMode, registrationDate: registrationDateMode === 'all' ? null : registrationDate,
+        registrationDateMode, registrationDate: registrationDateMode === 'all' ? null : registrationDate, includeRegistrationDate,
         classCompositeId: scope === 'class' ? Number(classId) : null,
         studentIds: scope === 'class' ? [...selected] : [],
       })
@@ -190,7 +192,14 @@ export default function CampusStudentIncrementFeePage() {
                 <label className="space-y-1 text-sm font-medium">Reg Date
                   <input type="date" className={field} required={registrationDateMode !== 'all'} disabled={registrationDateMode === 'all'} value={registrationDate}
                     onChange={(e) => changeRegistrationFilter(registrationDateMode, e.target.value)} /></label>
-                <p className="pb-2 text-xs text-slate-500">{registrationDateMode === 'all' ? 'Load students regardless of registration date.' : 'Only students registered strictly before/after the selected date are loaded. The selected day is excluded.'}</p>
+                <div className="space-y-2 pb-1">
+                  <label className="inline-flex items-center gap-2 text-sm font-medium text-slate-700">
+                    <input type="checkbox" checked={includeRegistrationDate} disabled={registrationDateMode === 'all'}
+                      onChange={(e) => changeRegistrationFilter(registrationDateMode, registrationDate, e.target.checked)} />
+                    Include selected date
+                  </label>
+                  <p className="text-xs text-slate-500">{registrationDateMode === 'all' ? 'Load students regardless of registration date.' : `Load students registered ${registrationDateMode}${includeRegistrationDate ? ' or on' : ''} the selected date.`}</p>
+                </div>
               </div>
               <div className={`grid items-end gap-4 md:grid-cols-2 ${scope === 'class' ? 'lg:grid-cols-[1fr_1fr_1fr_1fr_auto]' : 'lg:grid-cols-[1fr_1fr_1fr_auto]'}`}>
                 <label className="space-y-1 text-sm font-medium">Apply to
@@ -206,13 +215,13 @@ export default function CampusStudentIncrementFeePage() {
                   <input required type="number" min="0" max="2147483647" step="1" className={field} value={newTotal}
                     onChange={(e) => { invalidate(); setNewTotal(e.target.value) }} placeholder="e.g. 6000" /></label>
                 <label className="space-y-1 text-sm font-medium">Increase Tuition Fee by
-                  <input required type="number" min="1" max="2147483647" step="1" className={field} value={tuition}
+                  <input required type="number" min="0" max="2147483647" step="1" className={field} value={tuition}
                     onChange={(e) => { invalidate(); setTuition(e.target.value) }} placeholder="e.g. 300" /></label>
                 <button className={`${button} h-10 whitespace-nowrap`} disabled={busy || loading || rows.length === 0 || (registrationDateMode !== 'all' && !registrationDate) || (scope === 'class' && (!classId || selected.size === 0))}>
                   {busy ? 'Please wait…' : 'Preview Changes'}
                 </button>
               </div>
-              <p className="text-xs text-slate-500">New Total Fee replaces each selected student's total. The tuition increment is added to their existing tuition. Concession = New Total Fee − New Tuition Fee.</p>
+              <p className="text-xs text-slate-500">New Total Fee replaces each selected student's total. The tuition increment is added to their existing tuition. Enter 0 to keep tuition unchanged and clean up Total Fee and Concession. Concession = New Total Fee − New Tuition Fee.</p>
               {scope === 'school' && <p className="text-sm text-amber-800">All active students matching the registration date filter across this campus will be included.</p>}
             </fieldset>
           </form>
@@ -229,7 +238,7 @@ export default function CampusStudentIncrementFeePage() {
             {preview && <div className="space-y-4 border-b border-slate-200 p-4 md:p-5">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div><p className="text-sm text-slate-600">Compare the current and proposed amounts below before confirming.</p>
-                  {registrationDateMode !== 'all' && <p className="mt-1 text-xs font-medium text-amber-800">Registered {registrationDateMode} {registrationDate} · Selected date excluded</p>}</div>
+                  {registrationDateMode !== 'all' && <p className="mt-1 text-xs font-medium text-amber-800">Registered {registrationDateMode} {registrationDate} · Selected date {includeRegistrationDate ? 'included' : 'excluded'}</p>}</div>
                 <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">Review only · Not saved</span>
               </div>
               <div className="grid gap-3 sm:grid-cols-3">
@@ -277,7 +286,8 @@ export default function CampusStudentIncrementFeePage() {
         icon={<TriangleAlert aria-hidden="true" className="h-6 w-6" />}
         onCancel={() => setConfirm(false)} onConfirm={apply}
         description={<div className="space-y-3">
-          {registrationDateMode !== 'all' && <p className="text-xs font-semibold text-slate-600">Registered {registrationDateMode} {registrationDate} (selected date excluded).</p>}
+          {registrationDateMode !== 'all' && <p className="text-xs font-semibold text-slate-600">Registered {registrationDateMode} {registrationDate} (selected date {includeRegistrationDate ? 'included' : 'excluded'}).</p>}
+          {tuition !== '' && Number(tuition) === 0 && <p className="rounded-lg bg-emerald-50 p-3 text-sm font-medium text-emerald-800">Cleanup only: Tuition Fee stays unchanged. Total Fee will be replaced and Concession recalculated.</p>}
           <p>Apply to <strong>{preview?.rows.length} active students</strong> in campus <strong>{preview?.campus}</strong> ({scope === 'school' ? 'entire school' : classes.find((c) => String(c.id) === classId)?.className})? Set each student's Total Fee to <strong>{money(newTotal)}</strong>, add <strong>{money(tuition)}</strong> to their existing Tuition Fee, and calculate Concession as the new total minus the new tuition.</p>
           <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-amber-900">
             <p className="font-semibold">Fee values will be permanently overwritten.</p>

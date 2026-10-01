@@ -259,6 +259,7 @@ function CampusUsersPage() {
 
   const revealPassword = (row, event) => {
     event.stopPropagation()
+    if (row.isSuperAdmin) return
     const password = row.password || ''
     if (!password) {
       toast.error('No password is set for this user.')
@@ -405,6 +406,11 @@ function CampusUsersPage() {
                         </div>
                       </td>
                       <td className="px-3 py-1.5">
+                        {row.isSuperAdmin ? (
+                          <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 font-mono text-[12px] tracking-widest text-slate-600">
+                            ***
+                          </span>
+                        ) : (
                         <button
                           type="button"
                           onClick={(event) => revealPassword(row, event)}
@@ -413,6 +419,7 @@ function CampusUsersPage() {
                         >
                           ***
                         </button>
+                        )}
                       </td>
                       <td className="px-3 py-1.5 text-slate-700">{row.grantedPermissionCount ?? 0}</td>
                       <td className="px-3 py-1.5">
