@@ -93,6 +93,8 @@ import EmployeeMyTimetablePage from './pages/Employee/EmployeeMyTimetablePage.js
 import EmployeeBrowseDateSheetsPage from './pages/Employee/EmployeeBrowseDateSheetsPage.jsx'
 import EmployeeBrowseDateSheetDetailPage from './pages/Employee/EmployeeBrowseDateSheetDetailPage.jsx'
 import CoordinatorDailyReportPage from './pages/Employee/CoordinatorDailyReportPage.jsx'
+import CoordinatorWorkspacePage from './pages/Employee/CoordinatorWorkspacePage.jsx'
+import HeadMonitoringPage from './pages/Heads/HeadMonitoringPage.jsx'
 import EmployeeSubjectAllocationPage from './pages/Employee/academics/EmployeeSubjectAllocationPage.jsx'
 import EmployeeDiaryPage from './pages/Employee/academics/EmployeeDiaryPage.jsx'
 import EmployeeDiaryUploadPage from './pages/Employee/academics/EmployeeDiaryUploadPage.jsx'
@@ -234,6 +236,18 @@ function App() {
         element={
           <EmployeeCoordinatorRoute>
             <CoordinatorDailyReportPage />
+          </EmployeeCoordinatorRoute>
+        }
+      />
+      <Route
+        path="/heads/monitoring-preview"
+        element={<HeadMonitoringPage />}
+      />
+      <Route
+        path="/employee/coordinator-workspace"
+        element={
+          <EmployeeCoordinatorRoute>
+            <CoordinatorWorkspacePage />
           </EmployeeCoordinatorRoute>
         }
       />

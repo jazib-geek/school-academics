@@ -331,6 +331,20 @@ function EmployeeDashboardPage() {
           </h2>
           <button
             type="button"
+            className="emp-action-row mb-2"
+            onClick={() => navigate('/employee/coordinator-workspace')}
+          >
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[0.65rem] bg-emerald-50 text-emerald-700">
+              <NotebookPen size={20} strokeWidth={2.25} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[0.9375rem] font-semibold leading-tight text-[var(--emp-text)]">Coordinator workspace <span className="ml-1 text-[10px] font-medium text-emerald-700">PREVIEW</span></span>
+              <span className="mt-0.5 block text-xs leading-snug text-[var(--emp-text-muted)]">Daily entries, academic checks & follow-ups</span>
+            </span>
+            <ChevronRight size={18} className="shrink-0 text-[var(--emp-border-strong)]" aria-hidden />
+          </button>
+          <button
+            type="button"
             className="emp-action-row"
             onClick={() => navigate('/employee/coordinator-daily-report')}
           >
