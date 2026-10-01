@@ -31,7 +31,7 @@ public class StudentFeeIncrementController(StudentFeeIncrementService service, T
     [HttpGet("students")]
     public async Task<IActionResult> Students([FromQuery] int? classCompositeId, CancellationToken ct,
         [FromQuery] string scope = "class", [FromQuery] string registrationDateMode = "all",
-        [FromQuery] DateOnly? registrationDate = null)
+        [FromQuery] DateOnly? registrationDate = null, [FromQuery] bool includeRegistrationDate = false)
     {
         if (!await CanAccess(ct)) return Forbid();
         if (scope is not ("class" or "school") || (scope == "class" && classCompositeId is not > 0) ||
@@ -40,7 +40,7 @@ public class StudentFeeIncrementController(StudentFeeIncrementService service, T
         try
         {
             return Ok(ApiResponse<object>.SuccessResponse(await service.GetRowsAsync(classCompositeId, ct,
-                registrationDateMode, registrationDate)));
+                registrationDateMode, registrationDate, includeRegistrationDate)));
         }
         catch (ArgumentException ex) { return BadRequest(ApiResponse<object>.FailureResponse(ex.Message)); }
     }

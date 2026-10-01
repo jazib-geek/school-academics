@@ -66,7 +66,7 @@ public class CampusUserService : ICampusUserService
         {
             Id = u.ID,
             Username = u.Username ?? string.Empty,
-            Password = u.Password ?? string.Empty,
+            Password = u.IsSuperAdmin ? string.Empty : u.Password ?? string.Empty,
             RoleId = u.RoleID,
             IsActive = u.IsActive == true,
             IsSuperAdmin = u.IsSuperAdmin,

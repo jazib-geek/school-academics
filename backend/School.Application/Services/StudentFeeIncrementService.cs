@@ -19,7 +19,7 @@ public class StudentFeeIncrementService(AppDbContext context)
     }
 
     public async Task<List<StudentFeeIncrementRowDto>> GetRowsAsync(int? classId, CancellationToken ct,
-        string registrationDateMode = "all", DateOnly? registrationDate = null)
+        string registrationDateMode = "all", DateOnly? registrationDate = null, bool includeRegistrationDate = false)
     {
         if (registrationDateMode is not ("all" or "before" or "after"))
             throw new ArgumentException("Choose All, Before or After for registration date.");
@@ -30,10 +30,10 @@ public class StudentFeeIncrementService(AppDbContext context)
         if (registrationDateMode != "all")
         {
             var date = registrationDate!.Value.ToDateTime(TimeOnly.MinValue);
-            // Compare calendar dates: exclude the entire selected day and missing registration dates.
+            // Compare calendar dates so inclusion covers the entire selected day, regardless of time.
             query = registrationDateMode == "before"
-                ? query.Where(x => x.RegDate.HasValue && x.RegDate.Value.Date < date)
-                : query.Where(x => x.RegDate.HasValue && x.RegDate.Value.Date > date);
+                ? query.Where(x => x.RegDate.HasValue && (x.RegDate.Value.Date < date || (includeRegistrationDate && x.RegDate.Value.Date == date)))
+                : query.Where(x => x.RegDate.HasValue && (x.RegDate.Value.Date > date || (includeRegistrationDate && x.RegDate.Value.Date == date)));
         }
         var rows = await query.OrderBy(x => x.ClassCompositeID).ThenBy(x => x.Reg_Id)
             .Select(x => new StudentFeeIncrementRowDto
@@ -84,9 +84,9 @@ public class StudentFeeIncrementService(AppDbContext context)
     {
         if (request.Scope != "class" && request.Scope != "school")
             throw new ArgumentException("Choose class or entire school.");
-        if (request.TuitionIncrement <= 0 || request.TuitionIncrement > int.MaxValue ||
+        if (request.TuitionIncrement < 0 || request.TuitionIncrement > int.MaxValue ||
             decimal.Truncate(request.TuitionIncrement) != request.TuitionIncrement)
-            throw new ArgumentException("Enter a positive whole-number tuition increment.");
+            throw new ArgumentException("Enter a nonnegative whole-number tuition increment. Zero keeps tuition unchanged.");
         if (request.NewTotalFee is null or < 0)
             throw new ArgumentException("Enter a nonnegative whole-number New Total Fee.");
         if (request.Scope == "class" && (request.ClassCompositeId is not > 0 || request.StudentIds == null || request.StudentIds.Count == 0))
@@ -95,7 +95,7 @@ public class StudentFeeIncrementService(AppDbContext context)
             throw new ArgumentException("Entire school includes all active students in this campus.");
 
         var rows = await GetRowsAsync(request.Scope == "class" ? request.ClassCompositeId : null, ct,
-            request.RegistrationDateMode, request.RegistrationDate);
+            request.RegistrationDateMode, request.RegistrationDate, request.IncludeRegistrationDate);
         if (request.Scope == "class")
         {
             var ids = request.StudentIds!.ToHashSet();
@@ -137,7 +137,7 @@ public class StudentFeeIncrementService(AppDbContext context)
         {
             var student = students[row.RegId];
             student.Fee = row.NewTotalFee;
-            student.TutionFee = row.NewTuitionFee;
+            if (request.TuitionIncrement > 0) student.TutionFee = row.NewTuitionFee;
             student.FeeConcession = row.NewConcession;
             context.ActivityLogs.Add(new ActivityLog
             {
@@ -146,8 +146,8 @@ public class StudentFeeIncrementService(AppDbContext context)
                 UserId = userId, UserName = userName, OccurredAtPkt = PakistanTime.Now,
                 DetailsJson = JsonSerializer.Serialize(new
                 {
-                    source = "fee-increment", operationId, request.Scope, request.NewTotalFee, request.TuitionIncrement,
-                    request.RegistrationDateMode, request.RegistrationDate,
+                    source = request.TuitionIncrement == 0 ? "fee-cleanup" : "fee-increment", operationId, request.Scope, request.NewTotalFee, request.TuitionIncrement,
+                    request.RegistrationDateMode, request.RegistrationDate, request.IncludeRegistrationDate,
                     before = new { classFee = row.TotalFee, tuitionFee = row.TuitionFee, feeConcession = row.Concession },
                     after = new { classFee = row.NewTotalFee, tuitionFee = row.NewTuitionFee, feeConcession = row.NewConcession },
                     changes = new[]

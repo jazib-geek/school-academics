@@ -9,6 +9,7 @@ public class StudentFeeIncrementRequestDto
     public int? NewTotalFee { get; set; }
     public string RegistrationDateMode { get; set; } = "all";
     public DateOnly? RegistrationDate { get; set; }
+    public bool IncludeRegistrationDate { get; set; }
 }
 
 public class StudentFeeIncrementRowDto
