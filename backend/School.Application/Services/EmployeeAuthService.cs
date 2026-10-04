@@ -56,6 +56,8 @@ public class EmployeeAuthService : IEmployeeAuthService
             Designation = employee.DesignationName,
             BranchID = employee.BranchID,
             IsCoordinator = employee.DesignationId == EmployeeDesignations.Coordinator,
+            WingCode = employee.WingCode?.ToString(),
+            IsAcademicHead = employee.IsAcademicHead,
             Token = token,
             CampusProfile = campusProfile,
             AppAccess = new EmployeeAppAccessDto
@@ -93,6 +95,8 @@ public class EmployeeAuthService : IEmployeeAuthService
             EmployeeName = employee.EmployeeName ?? string.Empty,
             Gender = employee.Gender,
             Designation = employee.DesignationName,
+            WingCode = employee.WingCode?.ToString(),
+            IsAcademicHead = employee.IsAcademicHead,
         };
     }
 

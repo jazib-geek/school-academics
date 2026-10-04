@@ -4,7 +4,13 @@ namespace School.Application.Interfaces;
 
 public interface IFeeGenerateService
 {
-    Task GenerateForAllAsync(GenerateFeeAllRequestDto request, CancellationToken cancellationToken = default);
+    Task GenerateForAllAsync(
+        GenerateFeeAllRequestDto request,
+        int? userId = null,
+        CancellationToken cancellationToken = default);
 
-    Task GenerateForStudentAsync(GenerateFeeStudentRequestDto request, CancellationToken cancellationToken = default);
+    Task GenerateForStudentAsync(
+        GenerateFeeStudentRequestDto request,
+        int? userId = null,
+        CancellationToken cancellationToken = default);
 }

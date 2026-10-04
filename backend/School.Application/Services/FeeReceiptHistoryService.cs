@@ -549,6 +549,7 @@ public class FeeReceiptHistoryService : IFeeReceiptHistoryService
             .ToDictionaryAsync(x => x.ID, x => x.FundTypeName, cancellationToken);
 
         var ledgerRows = await _context.FeeAndFundCollections
+            .Where(x => (x.VoidAmount ?? 0) == 0)
             .AsNoTracking()
             .Where(x => x.StudentID == studentId)
             .Select(x => new
@@ -642,6 +643,7 @@ public class FeeReceiptHistoryService : IFeeReceiptHistoryService
         CancellationToken cancellationToken)
     {
         var rows = await _context.FeeAndFundCollections
+            .Where(x => (x.VoidAmount ?? 0) == 0)
             .AsNoTracking()
             .Where(x =>
                 x.StudentID == studentId

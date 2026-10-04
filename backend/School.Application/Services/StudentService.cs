@@ -235,6 +235,7 @@ public class StudentService : IStudentService
         var studentLookup = students.ToDictionary(x => x.Reg_Id);
 
         var ledgerRows = await _context.FeeAndFundCollections
+            .Where(x => (x.VoidAmount ?? 0) == 0)
             .AsNoTracking()
             .Where(x => x.StudentID.HasValue && studentIds.Contains(x.StudentID.Value))
             .Select(x => new
@@ -382,6 +383,7 @@ public class StudentService : IStudentService
             .ToDictionaryAsync(x => x.ID, x => x.FundTypeName);
 
         var ledgerRows = await _context.FeeAndFundCollections
+            .Where(x => (x.VoidAmount ?? 0) == 0)
             .Where(x => x.StudentID.HasValue && studentIds.Contains(x.StudentID.Value))
             .Select(x => new
             {

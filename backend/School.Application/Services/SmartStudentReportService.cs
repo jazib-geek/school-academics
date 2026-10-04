@@ -470,6 +470,7 @@ public class SmartStudentReportService : ISmartStudentReportService
         var outstandingBalances = regIds.Count == 0
             ? []
             : await _context.FeeAndFundCollections
+                .Where(x => (x.VoidAmount ?? 0) == 0)
                 .AsNoTracking()
                 .Where(x =>
                     x.StudentID != null &&
@@ -953,6 +954,7 @@ public class SmartStudentReportService : ISmartStudentReportService
         }
 
         var charges = await _context.FeeAndFundCollections
+            .Where(x => (x.VoidAmount ?? 0) == 0)
             .AsNoTracking()
             .Where(x =>
                 x.StudentID != null &&

@@ -23,6 +23,7 @@ public class FeeReportService : IFeeReportService
         var day = date.Date;
 
         var items = await _context.FeeAndFundCollections
+            .Where(x => (x.VoidAmount ?? 0) == 0)
             .Where(x =>
                 x.Date.HasValue &&
                 x.Date.Value.Date == day &&
@@ -61,6 +62,7 @@ public class FeeReportService : IFeeReportService
         var to = dateTo.Date;
 
         var items = await _context.FeeAndFundCollections
+            .Where(x => (x.VoidAmount ?? 0) == 0)
             .Where(x =>
                 x.Date.HasValue &&
                 x.Date.Value.Date >= from &&
@@ -98,6 +100,7 @@ public class FeeReportService : IFeeReportService
     public async Task<FeeReportResponseDto<FeeDefaulterItemDto>> GetFeeDefaultersAsync(int month, int year)
     {
         var rows = await _context.FeeAndFundCollections
+            .Where(x => (x.VoidAmount ?? 0) == 0)
             .Where(x =>
                 x.FundTypeID == 1 &&
                 x.Month == month &&
@@ -141,6 +144,7 @@ public class FeeReportService : IFeeReportService
     public async Task<FeeReportResponseDto<FeeDefaulterItemDto>> GetFundDefaultersAsync(int fundTypeId)
     {
         var rows = await _context.FeeAndFundCollections
+            .Where(x => (x.VoidAmount ?? 0) == 0)
             .Where(x =>
                 (x.FundTypeID ?? 0) > 1 &&
                 x.FundTypeID == fundTypeId &&
@@ -202,6 +206,7 @@ public class FeeReportService : IFeeReportService
 
         // Legacy-accurate: SUM(Payment) - SUM(Recieved). Discount is unused.
         var fundBalances = await _context.FeeAndFundCollections
+            .Where(x => (x.VoidAmount ?? 0) == 0)
             .AsNoTracking()
             .Where(x =>
                 x.StudentID != null &&
@@ -335,6 +340,7 @@ public class FeeReportService : IFeeReportService
             .Select(x => x.Reg_Id);
 
         var tuitionRows = await _context.FeeAndFundCollections
+            .Where(x => (x.VoidAmount ?? 0) == 0)
             .AsNoTracking()
             .Where(x =>
                 x.FundTypeID == 1 &&
@@ -378,6 +384,7 @@ public class FeeReportService : IFeeReportService
         // Payment − Recieved for active students, but omit student/fund buckets with no charges
         // (orphan receipts only — e.g. Payment=0, Recieved>0 — are absent from the view).
         var perStudentFund = await _context.FeeAndFundCollections
+            .Where(x => (x.VoidAmount ?? 0) == 0)
             .AsNoTracking()
             .Where(x =>
                 (x.FundTypeID ?? 0) > 1 &&
@@ -443,7 +450,7 @@ public class FeeReportService : IFeeReportService
 
     public async Task<IncomeStatementReportDto> GetIncomeStatementAsync(int month, int year)
     {
-        var totalIncome = await _context.FeeAndFundCollections.Where(x => x.Date != null && x.Date.Value.Month == month && x.Date.Value.Year == year).SumAsync(x => x.Recieved ?? 0);
+        var totalIncome = await _context.FeeAndFundCollections.Where(x => (x.VoidAmount ?? 0) == 0 && x.Date != null && x.Date.Value.Month == month && x.Date.Value.Year == year).SumAsync(x => x.Recieved ?? 0);
 
         var ownerAccountId = await _systemAccounts.GetOwnerDrawingsAccountIdAsync();
 
@@ -572,6 +579,7 @@ public class FeeReportService : IFeeReportService
         var activeStudentIds = activeStudentsQuery.Select(x => x.Reg_Id);
 
         var tuitionRows = await _context.FeeAndFundCollections
+            .Where(x => (x.VoidAmount ?? 0) == 0)
             .AsNoTracking()
             .Where(x =>
                 x.FundTypeID == tuitionFundTypeId &&
@@ -603,6 +611,7 @@ public class FeeReportService : IFeeReportService
                 x => x.Outstanding);
 
         var fundRows = await _context.FeeAndFundCollections
+            .Where(x => (x.VoidAmount ?? 0) == 0)
             .AsNoTracking()
             .Where(x =>
                 (x.FundTypeID == prevFundTypeId || x.FundTypeID == miscFundTypeId) &&

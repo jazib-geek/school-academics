@@ -45,6 +45,40 @@ public class AppDbContext : DbContext
     public DbSet<EmpAttendance> EmpAttendances => Set<EmpAttendance>();
     public DbSet<Employee> Employees => Set<Employee>();
     public DbSet<CoordinatorDailyReport> CoordinatorDailyReports => Set<CoordinatorDailyReport>();
+    public DbSet<CoordinatorProformaActor> CoordinatorProformaActorRecords => Set<CoordinatorProformaActor>();
+    public DbSet<CoordinatorProformaReport> CoordinatorProformaReportRecords => Set<CoordinatorProformaReport>();
+    public DbSet<CoordinatorProformaSection> CoordinatorProformaSectionRecords => Set<CoordinatorProformaSection>();
+    public DbSet<CoordinatorProformaEntry> CoordinatorProformaEntryRecords => Set<CoordinatorProformaEntry>();
+    public DbSet<CoordinatorProformaEntryStudent> CoordinatorProformaEntryStudentRecords => Set<CoordinatorProformaEntryStudent>();
+    public DbSet<CoordinatorProformaEntryEmployee> CoordinatorProformaEntryEmployeeRecords => Set<CoordinatorProformaEntryEmployee>();
+    public DbSet<CoordinatorProformaCheckResponse> CoordinatorProformaCheckResponseRecords => Set<CoordinatorProformaCheckResponse>();
+    public DbSet<CoordinatorProformaSummaryTick> CoordinatorProformaSummaryTickRecords => Set<CoordinatorProformaSummaryTick>();
+    public DbSet<CoordinatorProformaNotebookSchedule> CoordinatorProformaNotebookScheduleRecords => Set<CoordinatorProformaNotebookSchedule>();
+    public DbSet<CoordinatorProformaAttendanceSnapshot> CoordinatorProformaAttendanceSnapshotRecords => Set<CoordinatorProformaAttendanceSnapshot>();
+    public DbSet<CoordinatorProformaAbsentFaculty> CoordinatorProformaAbsentFacultyRecords => Set<CoordinatorProformaAbsentFaculty>();
+    public DbSet<CoordinatorProformaRevision> CoordinatorProformaRevisionRecords => Set<CoordinatorProformaRevision>();
+    public DbSet<CoordinatorProformaReviewEvent> CoordinatorProformaReviewEventRecords => Set<CoordinatorProformaReviewEvent>();
+    public DbSet<CoordinatorProformaComment> CoordinatorProformaCommentRecords => Set<CoordinatorProformaComment>();
+    public DbSet<CoordinatorProformaAuditEvent> CoordinatorProformaAuditEventRecords => Set<CoordinatorProformaAuditEvent>();
+    public DbSet<CoordinatorProformaAction> CoordinatorProformaActionRecords => Set<CoordinatorProformaAction>();
+    public DbSet<CoordinatorProformaActionEvent> CoordinatorProformaActionEventRecords => Set<CoordinatorProformaActionEvent>();
+    public DbSet<CoordinatorProformaAttachment> CoordinatorProformaAttachmentRecords => Set<CoordinatorProformaAttachment>();
+    public DbSet<CoordinatorProformaMeeting> CoordinatorProformaMeetingRecords => Set<CoordinatorProformaMeeting>();
+    public DbSet<CoordinatorProformaDispatch> CoordinatorProformaDispatchRecords => Set<CoordinatorProformaDispatch>();
+    public DbSet<CoordinatorProformaActivity> CoordinatorProformaActivityRecords => Set<CoordinatorProformaActivity>();
+    public DbSet<CoordinatorProformaPriorityResponse> CoordinatorProformaPriorityResponseRecords => Set<CoordinatorProformaPriorityResponse>();
+    public DbSet<CoordinatorProformaCriticalDiary> CoordinatorProformaCriticalDiaryRecords => Set<CoordinatorProformaCriticalDiary>();
+    public DbSet<CoordinatorProformaParentContact> CoordinatorProformaParentContactRecords => Set<CoordinatorProformaParentContact>();
+    public DbSet<CoordinatorProformaTestConfirmation> CoordinatorProformaTestConfirmationRecords => Set<CoordinatorProformaTestConfirmation>();
+    public DbSet<CoordinatorProformaOxygenPeriod> CoordinatorProformaOxygenPeriodRecords => Set<CoordinatorProformaOxygenPeriod>();
+    public DbSet<CoordinatorProformaStudentKaizen> CoordinatorProformaStudentKaizenRecords => Set<CoordinatorProformaStudentKaizen>();
+    public DbSet<CoordinatorProformaDiaryCheck> CoordinatorProformaDiaryCheckRecords => Set<CoordinatorProformaDiaryCheck>();
+    public DbSet<CoordinatorProformaNotebookCheck> CoordinatorProformaNotebookCheckRecords => Set<CoordinatorProformaNotebookCheck>();
+    public DbSet<CoordinatorProformaClassObservation> CoordinatorProformaClassObservationRecords => Set<CoordinatorProformaClassObservation>();
+    public DbSet<CoordinatorProformaTeacherFollowup> CoordinatorProformaTeacherFollowupRecords => Set<CoordinatorProformaTeacherFollowup>();
+    public DbSet<CoordinatorProformaFacultyCounselling> CoordinatorProformaFacultyCounsellingRecords => Set<CoordinatorProformaFacultyCounselling>();
+    public DbSet<CoordinatorProformaClosing> CoordinatorProformaClosingRecords => Set<CoordinatorProformaClosing>();
+    public DbSet<CoordinatorProformaDailyCheck> CoordinatorProformaDailyCheckRecords => Set<CoordinatorProformaDailyCheck>();
     public DbSet<CoordinatorModDuty> CoordinatorModDuties => Set<CoordinatorModDuty>();
     public DbSet<CoordinatorDailyAbsentTeacher> CoordinatorDailyAbsentTeachers => Set<CoordinatorDailyAbsentTeacher>();
     public DbSet<CoordinatorWorkingReportLine> CoordinatorWorkingReportLines => Set<CoordinatorWorkingReportLine>();
@@ -113,6 +147,8 @@ public class AppDbContext : DbContext
     public DbSet<ActivityLog> ActivityLogs => Set<ActivityLog>();
     public DbSet<CampusRealtimeNotification> CampusRealtimeNotifications => Set<CampusRealtimeNotification>();
     public DbSet<CampusRealtimeNotificationRead> CampusRealtimeNotificationReads => Set<CampusRealtimeNotificationRead>();
+    public DbSet<EmployeeRealtimeNotification> EmployeeRealtimeNotifications => Set<EmployeeRealtimeNotification>();
+    public DbSet<EmployeeRealtimeNotificationRead> EmployeeRealtimeNotificationReads => Set<EmployeeRealtimeNotificationRead>();
     public DbSet<StudentConductType> StudentConductTypes => Set<StudentConductType>();
     public DbSet<StudentConductTag> StudentConductTags => Set<StudentConductTag>();
     public DbSet<StudentConductNote> StudentConductNotes => Set<StudentConductNote>();
@@ -602,7 +638,6 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<EmpAttendance>(entity => { entity.ToTable("tblEmp_Attendance"); entity.HasKey(e => e.Id); });
         modelBuilder.Entity<Employee>(entity =>
         {
-            entity.ToTable("tblEmployee");
             entity.HasKey(e => e.ID);
 
             entity.Property(e => e.Thumb_ID).HasMaxLength(150);
@@ -647,6 +682,11 @@ public class AppDbContext : DbContext
             entity.Property(e => e.CanViewStudentExamDetail).HasDefaultValue(false);
             entity.Property(e => e.CanRecordStudentConduct).HasDefaultValue(false);
             entity.Property(e => e.CanViewStudentConduct).HasDefaultValue(false);
+            entity.Property(e => e.WingCode).HasConversion<string>().HasMaxLength(64).IsUnicode(false);
+            entity.Property(e => e.IsAcademicHead).HasDefaultValue(false);
+            entity.ToTable("tblEmployee", "dbo", t => t.HasCheckConstraint(
+                ProformaWingCodeRules.EmployeeCheckConstraintName,
+                $"[WingCode] IS NULL OR [WingCode] IN ({ProformaWingCodeRules.SqlInList})"));
             entity.HasOne(e => e.Designation)
                 .WithMany(e => e.Employees)
                 .HasForeignKey(e => e.DesignationID)
@@ -1082,6 +1122,7 @@ public class AppDbContext : DbContext
         modelBuilder.ApplyConfiguration(new PermissionConfiguration());
         modelBuilder.ApplyConfiguration(new DayClosingConfiguration());
         modelBuilder.ApplyConfiguration(new CoordinatorDailyReportConfiguration());
+        CoordinatorProformaConfiguration.Configure(modelBuilder);
         modelBuilder.ApplyConfiguration(new CoordinatorModDutyConfiguration());
         modelBuilder.ApplyConfiguration(new CoordinatorDailyAbsentTeacherConfiguration());
         modelBuilder.ApplyConfiguration(new CoordinatorWorkingReportLineConfiguration());
@@ -1100,5 +1141,7 @@ public class AppDbContext : DbContext
         modelBuilder.ApplyConfiguration(new StationeryHandoverLineConfiguration());
         modelBuilder.ApplyConfiguration(new CampusRealtimeNotificationConfiguration());
         modelBuilder.ApplyConfiguration(new CampusRealtimeNotificationReadConfiguration());
+        modelBuilder.ApplyConfiguration(new EmployeeRealtimeNotificationConfiguration());
+        modelBuilder.ApplyConfiguration(new EmployeeRealtimeNotificationReadConfiguration());
     }
 }

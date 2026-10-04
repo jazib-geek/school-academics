@@ -31,7 +31,7 @@ public class SmartFeeReportService : ISmartFeeReportService
         var lastMonth = monthStart.AddMonths(-1);
         var lastMonthSameDay = lastMonth.AddDays(Math.Min(today.Day, DateTime.DaysInMonth(lastMonth.Year, lastMonth.Month)) - 1);
 
-        var receipts = _context.FeeAndFundCollections.Where(x =>
+        var receipts = _context.FeeAndFundCollections.Where(x => (x.VoidAmount ?? 0) == 0 &&
             x.Date.HasValue &&
             (x.Recieved ?? 0) > 0 &&
             x.Student != null);
@@ -1709,19 +1709,19 @@ public class SmartFeeReportService : ISmartFeeReportService
     /// Active = IsActive only (matches legacy Receivables).
     /// </summary>
     private IQueryable<FeeAndFundCollection> ActiveStudentLedger() =>
-        _context.FeeAndFundCollections.Where(x =>
+        _context.FeeAndFundCollections.Where(x => (x.VoidAmount ?? 0) == 0 &&
             x.Student != null &&
             x.Student.IsActive == true);
 
     /// <summary>Ledger for inactive students (recovery / write-off report only).</summary>
     private IQueryable<FeeAndFundCollection> InactiveStudentLedger() =>
-        _context.FeeAndFundCollections.Where(x =>
+        _context.FeeAndFundCollections.Where(x => (x.VoidAmount ?? 0) == 0 &&
             x.Student != null &&
             x.Student.IsActive != true);
 
     /// <summary>Receipt lines in a date range (any student with a payment row — historical cash).</summary>
     private IQueryable<FeeAndFundCollection> ReceiptsInRange(DateTime from, DateTime to) =>
-        _context.FeeAndFundCollections.Where(x =>
+        _context.FeeAndFundCollections.Where(x => (x.VoidAmount ?? 0) == 0 &&
             x.Student != null &&
             x.Date.HasValue &&
             x.Date.Value.Date >= from.Date &&

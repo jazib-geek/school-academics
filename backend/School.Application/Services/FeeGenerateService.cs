@@ -14,14 +14,17 @@ public class FeeGenerateService : IFeeGenerateService
     private const int SpCommandTimeoutSeconds = 180;
 
     private readonly AppDbContext _context;
+    private readonly IActivityLogService _activityLogService;
 
-    public FeeGenerateService(AppDbContext context)
+    public FeeGenerateService(AppDbContext context, IActivityLogService activityLogService)
     {
         _context = context;
+        _activityLogService = activityLogService;
     }
 
     public async Task GenerateForAllAsync(
         GenerateFeeAllRequestDto request,
+        int? userId = null,
         CancellationToken cancellationToken = default)
     {
         ValidateMonthYear(request.Month, request.Year);
@@ -40,10 +43,28 @@ public class FeeGenerateService : IFeeGenerateService
         {
             _context.Database.SetCommandTimeout(previousTimeout);
         }
+
+        var periodLabel = FormatMonthYear(request.Month, request.Year);
+        await _activityLogService.WriteAsync(
+            ActivityLogTypes.FeeGenerateAll,
+            null,
+            null,
+            $"All students · {periodLabel}",
+            userId,
+            new
+            {
+                source = "fee-generate-all",
+                month = request.Month,
+                year = request.Year,
+                period = periodLabel
+            },
+            cancellationToken);
+        await _context.SaveChangesAsync(cancellationToken);
     }
 
     public async Task GenerateForStudentAsync(
         GenerateFeeStudentRequestDto request,
+        int? userId = null,
         CancellationToken cancellationToken = default)
     {
         ValidateMonthYear(request.Month, request.Year);
@@ -88,6 +109,23 @@ public class FeeGenerateService : IFeeGenerateService
             now,
             cancellationToken);
 
+        var periodLabel = FormatMonthYear(request.Month, request.Year);
+        await _activityLogService.WriteAsync(
+            ActivityLogTypes.FeeGenerateSingle,
+            ActivityLogEntityTypes.Student,
+            student.Reg_Id,
+            student.FullName,
+            userId,
+            new
+            {
+                source = "fee-generate-single",
+                month = request.Month,
+                year = request.Year,
+                period = periodLabel,
+                amount,
+                usedStoredTuition = request.Amount == -1
+            },
+            cancellationToken);
         await _context.SaveChangesAsync(cancellationToken);
     }
 
@@ -146,5 +184,11 @@ public class FeeGenerateService : IFeeGenerateService
             throw new ArgumentException("Month must be between 1 and 12.");
         if (year < 2000 || year > 2100)
             throw new ArgumentException("Year is invalid.");
+    }
+
+    private static string FormatMonthYear(int month, int year)
+    {
+        var monthName = CultureInfo.InvariantCulture.DateTimeFormat.GetMonthName(month);
+        return $"{monthName} {year}";
     }
 }

@@ -48,6 +48,8 @@ public class EmployeeAuthRepository : IEmployeeAuthRepository
                 CanViewStudentExamDetail = employee.CanViewStudentExamDetail,
                 CanRecordStudentConduct = employee.CanRecordStudentConduct,
                 CanViewStudentConduct = employee.CanViewStudentConduct,
+                WingCode = employee.WingCode,
+                IsAcademicHead = employee.IsAcademicHead,
             })
             .FirstOrDefaultAsync();
     }
@@ -81,6 +83,8 @@ public class EmployeeAuthRepository : IEmployeeAuthRepository
                 CanViewStudentExamDetail = employee.CanViewStudentExamDetail,
                 CanRecordStudentConduct = employee.CanRecordStudentConduct,
                 CanViewStudentConduct = employee.CanViewStudentConduct,
+                WingCode = employee.WingCode,
+                IsAcademicHead = employee.IsAcademicHead,
             })
             .FirstOrDefaultAsync(cancellationToken);
 

@@ -1257,6 +1257,1473 @@ namespace School.Infrastructure.Data.Migrations
                     b.ToTable("tblCoordinatorModDuty", "dbo");
                 });
 
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaAbsentFaculty", b =>
+                {
+                    b.Property<int>("ReportId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("EmployeeId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Note")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("ReportId", "EmployeeId");
+
+                    b.HasIndex("EmployeeId");
+
+                    b.ToTable("tblCoordinatorProformaAbsentFaculty", "dbo");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaAction", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<int>("CreatedByActorId")
+                        .HasColumnType("int");
+
+                    b.Property<DateOnly?>("DueDate")
+                        .HasColumnType("date");
+
+                    b.Property<int?>("OwnerEmployeeId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ReportId")
+                        .HasColumnType("int");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<int>("SourceEntryId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("SourceRevisionId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("StatusCode")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<int>("UpdatedByActorId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByActorId");
+
+                    b.HasIndex("ReportId");
+
+                    b.HasIndex("UpdatedByActorId");
+
+                    b.HasIndex("OwnerEmployeeId", "StatusCode");
+
+                    b.HasIndex("SourceEntryId", "ReportId");
+
+                    b.HasIndex("SourceRevisionId", "ReportId");
+
+                    b.HasIndex("StatusCode", "DueDate");
+
+                    b.ToTable("tblCoordinatorProformaAction", "dbo", t =>
+                        {
+                            t.HasCheckConstraint("CK_CoordProforma_Action_StatusCode", "[StatusCode] IN ('Open', 'InProgress', 'ReadyForVerification', 'Closed')");
+
+                            t.HasCheckConstraint("CK_CoordProforma_Action_Title", "LEN(LTRIM(RTRIM([Title]))) > 0");
+                        });
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaActionEvent", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ActionId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ActorDisplayNameSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
+                    b.Property<int>("ActorId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ChangeJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("ChangeSchemaVersion")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("EventCode")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("FromStatus")
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("Note")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ToStatus")
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActorId");
+
+                    b.HasIndex("ActionId", "CreatedAtUtc");
+
+                    b.ToTable("tblCoordinatorProformaActionEvent", "dbo", t =>
+                        {
+                            t.HasCheckConstraint("CK_CoordProforma_ActionEvent_EventCode", "[EventCode] IN ('Created', 'Updated', 'Assigned', 'DueDateChanged', 'StatusChanged', 'ReadyForVerification', 'VerifiedClosed', 'Reopened')");
+
+                            t.HasCheckConstraint("CK_CoordProforma_ActionEvent_FromStatus", "[FromStatus] IN ('Open', 'InProgress', 'ReadyForVerification', 'Closed')");
+
+                            t.HasCheckConstraint("CK_CoordProforma_ActionEvent_Json", "[ChangeJson] IS NULL OR ISJSON([ChangeJson]) = 1");
+
+                            t.HasCheckConstraint("CK_CoordProforma_ActionEvent_ToStatus", "[ToStatus] IN ('Open', 'InProgress', 'ReadyForVerification', 'Closed')");
+
+                            t.HasCheckConstraint("CK_CoordProforma_ActionEvent_Version", "[ChangeSchemaVersion] > 0");
+                        });
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaActivity", b =>
+                {
+                    b.Property<int>("EntryId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ActivityTypeCode")
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("Details")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SectionCode")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.HasKey("EntryId");
+
+                    b.HasIndex("EntryId", "SectionCode")
+                        .IsUnique();
+
+                    b.ToTable("tblCoordinatorProformaActivity", "dbo", t =>
+                        {
+                            t.HasCheckConstraint("CK_CoordProforma_Activity_ActivityTypeCode", "[ActivityTypeCode] IN ('ZLesson', 'SpecialPeriod', 'Competition', 'Event', 'Ptm', 'Other')");
+
+                            t.HasCheckConstraint("CK_CoordProforma_Activity_Section", "[SectionCode] = 'Activities'");
+                        });
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaActor", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("DisplayNameSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
+                    b.Property<string>("HomeCampusKey")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("PrincipalId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("PrincipalType")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("HomeCampusKey", "PrincipalType", "PrincipalId")
+                        .IsUnique();
+
+                    b.ToTable("tblCoordinatorProformaActor", "dbo", t =>
+                        {
+                            t.HasCheckConstraint("CK_CoordProforma_Actor_PrincipalId", "[PrincipalId] > 0");
+
+                            t.HasCheckConstraint("CK_CoordProforma_Actor_PrincipalType", "[PrincipalType] IN ('Employee', 'CampusUser')");
+                        });
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaAttachment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ActorDisplayNameSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime?>("DeletedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<int>("EntryId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ObjectKey")
+                        .IsRequired()
+                        .HasMaxLength(1024)
+                        .HasColumnType("nvarchar(1024)");
+
+                    b.Property<string>("OriginalFileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<long>("SizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("StorageProvider")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<string>("UploadStatus")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<DateTime>("UploadedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<int>("UploadedByActorId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EntryId");
+
+                    b.HasIndex("UploadedByActorId");
+
+                    b.ToTable("tblCoordinatorProformaAttachment", "dbo", t =>
+                        {
+                            t.HasCheckConstraint("CK_CoordProforma_Attachment_ObjectKey", "LEN(LTRIM(RTRIM([ObjectKey]))) > 0");
+
+                            t.HasCheckConstraint("CK_CoordProforma_Attachment_Size", "[SizeBytes] >= 0");
+
+                            t.HasCheckConstraint("CK_CoordProforma_Attachment_UploadStatus", "[UploadStatus] IN ('Pending', 'Completed', 'Failed')");
+                        });
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaAttendanceSnapshot", b =>
+                {
+                    b.Property<int>("ReportId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("AbsentStudents")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("ActiveStudents")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CapturedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<int?>("PresentFaculty")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("PresentStudents")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ScopeCode")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("SourceCode")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("SourceNotes")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("TotalFaculty")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("UnmarkedStudents")
+                        .HasColumnType("int");
+
+                    b.HasKey("ReportId");
+
+                    b.ToTable("tblCoordinatorProformaAttendanceSnapshot", "dbo", t =>
+                        {
+                            t.HasCheckConstraint("CK_CoordProforma_AttendanceSnapshot_Counts", "[ActiveStudents] >= 0 AND [PresentStudents] >= 0 AND [AbsentStudents] >= 0 AND [UnmarkedStudents] >= 0 AND [TotalFaculty] >= 0 AND ([PresentFaculty] IS NULL OR [PresentFaculty] >= 0)");
+
+                            t.HasCheckConstraint("CK_CoordProforma_AttendanceSnapshot_ScopeCode", "[ScopeCode] IN ('Campus')");
+
+                            t.HasCheckConstraint("CK_CoordProforma_AttendanceSnapshot_SourceCode", "[SourceCode] IN ('AttendanceService', 'Manual')");
+                        });
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaAuditEvent", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ActorDisplayNameSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
+                    b.Property<int>("ActorId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ChangeJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("ChangeSchemaVersion")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<int?>("EntryId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("EventCode")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<int>("ReportId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActorId");
+
+                    b.HasIndex("EntryId", "ReportId");
+
+                    b.HasIndex("ReportId", "CreatedAtUtc");
+
+                    b.ToTable("tblCoordinatorProformaAuditEvent", "dbo", t =>
+                        {
+                            t.HasCheckConstraint("CK_CoordProforma_AuditEvent_Json", "[ChangeJson] IS NULL OR ISJSON([ChangeJson]) = 1");
+
+                            t.HasCheckConstraint("CK_CoordProforma_AuditEvent_Version", "[ChangeSchemaVersion] > 0");
+                        });
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaCheckResponse", b =>
+                {
+                    b.Property<int>("EntryId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("CriterionCode")
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("Remarks")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ResponseCode")
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("SectionCode")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.HasKey("EntryId", "CriterionCode");
+
+                    b.HasIndex("EntryId", "SectionCode");
+
+                    b.ToTable("tblCoordinatorProformaCheckResponse", "dbo", t =>
+                        {
+                            t.HasCheckConstraint("CK_CoordProforma_CheckResponse_CriterionCode", "[CriterionCode] IN ('RoutineMoralLessonDelivered', 'RoutineAbsenteesFollowup', 'RoutineHomeworkFirstLesson', 'RoutineModsWelcome', 'FridayEvidenceMatters', 'FridayTeachersDiary', 'FridayLessonPlanning', 'FridayTeachingMaterial', 'FridayOtherPlanning', 'OxygenQuestionPaper', 'OxygenAnswerSheets', 'OxygenAwardList', 'OxygenBoardUse', 'ObservationReferenceMaterial', 'ObservationSosRelevance', 'ObservationStudentEngagement', 'ObservationDemonstration', 'ObservationDiscipline', 'ObservationBoardAvUse', 'ObservationQuestionsAnswers', 'ObservationHomeworkAsScheduled', 'DailyUniform', 'DailyCampusCleanliness', 'DailyTeachersInClasses')");
+
+                            t.HasCheckConstraint("CK_CoordProforma_CheckResponse_CriterionScope", "([SectionCode] = 'Routine' AND [CriterionCode] IN ('RoutineMoralLessonDelivered', 'RoutineAbsenteesFollowup', 'RoutineHomeworkFirstLesson', 'RoutineModsWelcome')) OR ([SectionCode] = 'Friday' AND [CriterionCode] IN ('FridayEvidenceMatters', 'FridayTeachersDiary', 'FridayLessonPlanning', 'FridayTeachingMaterial', 'FridayOtherPlanning')) OR ([SectionCode] = 'Oxygen' AND [CriterionCode] IN ('OxygenQuestionPaper', 'OxygenAnswerSheets', 'OxygenAwardList', 'OxygenBoardUse')) OR ([SectionCode] = 'Observation' AND [CriterionCode] IN ('ObservationReferenceMaterial', 'ObservationSosRelevance', 'ObservationStudentEngagement', 'ObservationDemonstration', 'ObservationDiscipline', 'ObservationBoardAvUse', 'ObservationQuestionsAnswers', 'ObservationHomeworkAsScheduled')) OR ([SectionCode] = 'DailyChecks' AND [CriterionCode] IN ('DailyUniform', 'DailyCampusCleanliness', 'DailyTeachersInClasses'))");
+
+                            t.HasCheckConstraint("CK_CoordProforma_CheckResponse_ResponseCode", "[ResponseCode] IN ('Done', 'NotDone', 'NotVerified', 'NotApplicable', 'Checked', 'NeedsAttention', 'NotChecked', 'Satisfactory')");
+
+                            t.HasCheckConstraint("CK_CoordProforma_CheckResponse_ResponseScope", "([SectionCode] = 'Routine' AND ([ResponseCode] IS NULL OR [ResponseCode] IN ('Done', 'NotDone', 'NotVerified', 'NotApplicable'))) OR ([SectionCode] = 'Friday' AND ([ResponseCode] IS NULL OR [ResponseCode] IN ('Checked', 'NeedsAttention', 'NotChecked', 'NotApplicable'))) OR ([SectionCode] = 'Oxygen' AND ([ResponseCode] IS NULL OR [ResponseCode] IN ('Satisfactory', 'NeedsAttention', 'NotChecked', 'NotApplicable'))) OR ([SectionCode] = 'Observation' AND ([ResponseCode] IS NULL OR [ResponseCode] IN ('Satisfactory', 'NeedsAttention', 'NotChecked', 'NotApplicable'))) OR ([SectionCode] = 'DailyChecks' AND ([ResponseCode] IS NULL OR [ResponseCode] IN ('Satisfactory', 'NeedsAttention', 'NotChecked', 'NotApplicable')))");
+
+                            t.HasCheckConstraint("CK_CoordProforma_CheckResponse_SectionCode", "[SectionCode] IN ('Morning', 'Dispatch', 'Activities', 'Priority', 'CriticalDiary', 'Parents', 'Routine', 'Friday', 'Tests', 'Oxygen', 'Kaizen', 'Diary', 'Notebooks', 'Observation', 'Teachers', 'Faculty', 'Closing', 'DailyChecks')");
+                        });
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaClassObservation", b =>
+                {
+                    b.Property<int>("EntryId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("GuidanceText")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ObservationRemarks")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ObservationTypeCode")
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("PeriodText")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("SectionCode")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.HasKey("EntryId");
+
+                    b.HasIndex("EntryId", "SectionCode")
+                        .IsUnique();
+
+                    b.ToTable("tblCoordinatorProformaClassObservation", "dbo", t =>
+                        {
+                            t.HasCheckConstraint("CK_CoordProforma_ClassObservation_ObservationTypeCode", "[ObservationTypeCode] IN ('Formal', 'Informal')");
+
+                            t.HasCheckConstraint("CK_CoordProforma_ClassObservation_Section", "[SectionCode] = 'Observation'");
+                        });
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaClosing", b =>
+                {
+                    b.Property<int>("EntryId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ClosingRemarks")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("CriticalMatterState")
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("CriticalMatterText")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<TimeOnly?>("DepartureTime")
+                        .HasColumnType("time(0)");
+
+                    b.Property<string>("MorningModsText")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("PendingSubmissionState")
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("PendingSubmissionText")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PeopleRemainingState")
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("PeopleRemainingText")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PlanReportCode")
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("SectionCode")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("SvhwResultsSentCode")
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.HasKey("EntryId");
+
+                    b.HasIndex("EntryId", "SectionCode")
+                        .IsUnique();
+
+                    b.ToTable("tblCoordinatorProformaClosing", "dbo", t =>
+                        {
+                            t.HasCheckConstraint("CK_CoordProforma_Closing_CriticalMatter", "([CriticalMatterState] IS NULL AND [CriticalMatterText] IS NULL) OR ([CriticalMatterState] IS NOT NULL AND ([CriticalMatterState] = 'Details' OR ([CriticalMatterState] = 'None' AND [CriticalMatterText] IS NULL)))");
+
+                            t.HasCheckConstraint("CK_CoordProforma_Closing_CriticalMatterState", "[CriticalMatterState] IN ('None', 'Details')");
+
+                            t.HasCheckConstraint("CK_CoordProforma_Closing_PendingSubmission", "([PendingSubmissionState] IS NULL AND [PendingSubmissionText] IS NULL) OR ([PendingSubmissionState] IS NOT NULL AND ([PendingSubmissionState] = 'Details' OR ([PendingSubmissionState] = 'None' AND [PendingSubmissionText] IS NULL)))");
+
+                            t.HasCheckConstraint("CK_CoordProforma_Closing_PendingSubmissionState", "[PendingSubmissionState] IN ('None', 'Details')");
+
+                            t.HasCheckConstraint("CK_CoordProforma_Closing_PeopleRemaining", "([PeopleRemainingState] IS NULL AND [PeopleRemainingText] IS NULL) OR ([PeopleRemainingState] IS NOT NULL AND ([PeopleRemainingState] = 'Details' OR ([PeopleRemainingState] = 'None' AND [PeopleRemainingText] IS NULL)))");
+
+                            t.HasCheckConstraint("CK_CoordProforma_Closing_PeopleRemainingState", "[PeopleRemainingState] IN ('None', 'Details')");
+
+                            t.HasCheckConstraint("CK_CoordProforma_Closing_PlanReportCode", "[PlanReportCode] IN ('Plan', 'Report')");
+
+                            t.HasCheckConstraint("CK_CoordProforma_Closing_Section", "[SectionCode] = 'Closing'");
+
+                            t.HasCheckConstraint("CK_CoordProforma_Closing_SvhwResultsSentCode", "[SvhwResultsSentCode] IN ('Yes', 'No', 'NotApplicable')");
+                        });
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaComment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ActorDisplayNameSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
+                    b.Property<int>("ActorId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<int>("ReportId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("RevisionId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActorId");
+
+                    b.HasIndex("ReportId", "CreatedAtUtc");
+
+                    b.HasIndex("RevisionId", "ReportId");
+
+                    b.ToTable("tblCoordinatorProformaComment", "dbo", t =>
+                        {
+                            t.HasCheckConstraint("CK_CoordProforma_Comment_Text", "LEN(LTRIM(RTRIM([Text]))) > 0");
+                        });
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaCriticalDiary", b =>
+                {
+                    b.Property<int>("EntryId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Concern")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Issue")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Response")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SectionCode")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.HasKey("EntryId");
+
+                    b.HasIndex("EntryId", "SectionCode")
+                        .IsUnique();
+
+                    b.ToTable("tblCoordinatorProformaCriticalDiary", "dbo", t =>
+                        {
+                            t.HasCheckConstraint("CK_CoordProforma_CriticalDiary_Section", "[SectionCode] = 'CriticalDiary'");
+                        });
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaDailyCheck", b =>
+                {
+                    b.Property<int>("EntryId")
+                        .HasColumnType("int");
+
+                    b.Property<TimeOnly?>("ArrivalTime")
+                        .HasColumnType("time(0)");
+
+                    b.Property<string>("AssemblyResponse")
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("DutyCode")
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("DutyOtherLabel")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("MoralLessonTopic")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("SectionCode")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.HasKey("EntryId");
+
+                    b.HasIndex("EntryId", "SectionCode")
+                        .IsUnique();
+
+                    b.ToTable("tblCoordinatorProformaDailyCheck", "dbo", t =>
+                        {
+                            t.HasCheckConstraint("CK_CoordProforma_DailyCheck_AssemblyResponse", "[AssemblyResponse] IN ('Yes', 'No', 'NotObserved')");
+
+                            t.HasCheckConstraint("CK_CoordProforma_DailyCheck_DutyCode", "[DutyCode] IN ('Welcome', 'Assembly', 'Break', 'OffTime', 'Other')");
+
+                            t.HasCheckConstraint("CK_CoordProforma_DailyCheck_Section", "[SectionCode] = 'DailyChecks'");
+                        });
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaDiaryCheck", b =>
+                {
+                    b.Property<int>("EntryId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("IssueCode")
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("IssueDetails")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SectionCode")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.HasKey("EntryId");
+
+                    b.HasIndex("EntryId", "SectionCode")
+                        .IsUnique();
+
+                    b.ToTable("tblCoordinatorProformaDiaryCheck", "dbo", t =>
+                        {
+                            t.HasCheckConstraint("CK_CoordProforma_DiaryCheck_IssueCode", "[IssueCode] IN ('Ok', 'Missing', 'Unsigned', 'Unclear', 'Uncorrected', 'AwardTitleMissing', 'Other')");
+
+                            t.HasCheckConstraint("CK_CoordProforma_DiaryCheck_Section", "[SectionCode] = 'Diary'");
+                        });
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaDispatch", b =>
+                {
+                    b.Property<int>("EntryId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Details")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("DispatchTypeCode")
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("SectionCode")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.HasKey("EntryId");
+
+                    b.HasIndex("EntryId", "SectionCode")
+                        .IsUnique();
+
+                    b.ToTable("tblCoordinatorProformaDispatch", "dbo", t =>
+                        {
+                            t.HasCheckConstraint("CK_CoordProforma_Dispatch_DispatchTypeCode", "[DispatchTypeCode] IN ('Notice', 'FeeChallan', 'Schedule', 'Syllabus', 'QuestionPapers', 'Other')");
+
+                            t.HasCheckConstraint("CK_CoordProforma_Dispatch_Section", "[SectionCode] = 'Dispatch'");
+                        });
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaEntry", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("ClassSectionId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<int>("CreatedByActorId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("DeletedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<int>("ReportId")
+                        .HasColumnType("int");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<string>("SectionCode")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("SubjectId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<int>("UpdatedByActorId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByActorId");
+
+                    b.HasIndex("SubjectId");
+
+                    b.HasIndex("UpdatedByActorId");
+
+                    b.HasIndex("ClassSectionId", "SubjectId");
+
+                    b.HasIndex("ReportId", "SectionCode")
+                        .IsUnique()
+                        .HasFilter("[SectionCode] = 'Closing' AND [DeletedAtUtc] IS NULL");
+
+                    b.HasIndex("ReportId", "SectionCode", "SortOrder");
+
+                    b.ToTable("tblCoordinatorProformaEntry", "dbo", t =>
+                        {
+                            t.HasCheckConstraint("CK_CoordProforma_Entry_SectionCode", "[SectionCode] IN ('Morning', 'Dispatch', 'Activities', 'Priority', 'CriticalDiary', 'Parents', 'Routine', 'Friday', 'Tests', 'Oxygen', 'Kaizen', 'Diary', 'Notebooks', 'Observation', 'Teachers', 'Faculty', 'Closing', 'DailyChecks')");
+
+                            t.HasCheckConstraint("CK_CoordProforma_Entry_SortOrder", "[SortOrder] >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaEntryEmployee", b =>
+                {
+                    b.Property<int>("EntryId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("EmployeeId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("RoleCode")
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.HasKey("EntryId", "EmployeeId", "RoleCode");
+
+                    b.HasIndex("EmployeeId");
+
+                    b.ToTable("tblCoordinatorProformaEntryEmployee", "dbo", t =>
+                        {
+                            t.HasCheckConstraint("CK_CoordProforma_EntryEmployee_RoleCode", "[RoleCode] IN ('SubjectTeacher', 'ClassTeacher', 'FollowupTeacher', 'CounselledStaff', 'MorningMod', 'DutyEmployee')");
+
+                            t.HasCheckConstraint("CK_CoordProforma_EntryEmployee_SortOrder", "[SortOrder] >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaEntryStudent", b =>
+                {
+                    b.Property<int>("EntryId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("StudentId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.HasKey("EntryId", "StudentId");
+
+                    b.HasIndex("StudentId");
+
+                    b.ToTable("tblCoordinatorProformaEntryStudent", "dbo", t =>
+                        {
+                            t.HasCheckConstraint("CK_CoordProforma_EntryStudent_SortOrder", "[SortOrder] >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaFacultyCounselling", b =>
+                {
+                    b.Property<int>("EntryId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("AgreedAction")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Concern")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SectionCode")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("TypeCode")
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.HasKey("EntryId");
+
+                    b.HasIndex("EntryId", "SectionCode")
+                        .IsUnique();
+
+                    b.ToTable("tblCoordinatorProformaFacultyCounselling", "dbo", t =>
+                        {
+                            t.HasCheckConstraint("CK_CoordProforma_FacultyCounselling_Section", "[SectionCode] = 'Faculty'");
+
+                            t.HasCheckConstraint("CK_CoordProforma_FacultyCounselling_TypeCode", "[TypeCode] IN ('Counselling', 'Warning')");
+                        });
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaMeeting", b =>
+                {
+                    b.Property<int>("EntryId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("MeetingPoints")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SectionCode")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.HasKey("EntryId");
+
+                    b.HasIndex("EntryId", "SectionCode")
+                        .IsUnique();
+
+                    b.ToTable("tblCoordinatorProformaMeeting", "dbo", t =>
+                        {
+                            t.HasCheckConstraint("CK_CoordProforma_Meeting_Section", "[SectionCode] = 'Morning'");
+                        });
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaNotebookCheck", b =>
+                {
+                    b.Property<int>("EntryId")
+                        .HasColumnType("int");
+
+                    b.Property<DateOnly?>("CorrectionDueDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("CorrectionStatusCode")
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("CorrectionTimeText")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Mistakes")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool?>("NeatnessSatisfactory")
+                        .HasColumnType("bit");
+
+                    b.Property<bool?>("PageNumberingPresent")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("SectionCode")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("TeacherInformedCode")
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<bool?>("TitlePresent")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("WritingQualityCode")
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.HasKey("EntryId");
+
+                    b.HasIndex("EntryId", "SectionCode")
+                        .IsUnique();
+
+                    b.ToTable("tblCoordinatorProformaNotebookCheck", "dbo", t =>
+                        {
+                            t.HasCheckConstraint("CK_CoordProforma_NotebookCheck_CorrectionStatusCode", "[CorrectionStatusCode] IN ('NotNeeded', 'NotCorrected', 'PartiallyCorrected', 'Completed')");
+
+                            t.HasCheckConstraint("CK_CoordProforma_NotebookCheck_Section", "[SectionCode] = 'Notebooks'");
+
+                            t.HasCheckConstraint("CK_CoordProforma_NotebookCheck_TeacherInformedCode", "[TeacherInformedCode] IN ('NotYet', 'InformedByCoordinator')");
+
+                            t.HasCheckConstraint("CK_CoordProforma_NotebookCheck_WritingQualityCode", "[WritingQualityCode] IN ('BelowAverage', 'Average', 'Good')");
+                        });
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaNotebookSchedule", b =>
+                {
+                    b.Property<int>("ReportId")
+                        .HasColumnType("int");
+
+                    b.Property<byte>("WeekdayNumber")
+                        .HasColumnType("tinyint");
+
+                    b.Property<string>("PlannedCoverage")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("ReportId", "WeekdayNumber");
+
+                    b.ToTable("tblCoordinatorProformaNotebookSchedule", "dbo", t =>
+                        {
+                            t.HasCheckConstraint("CK_CoordProforma_NotebookSchedule_Weekday", "[WeekdayNumber] BETWEEN 1 AND 5");
+                        });
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaOxygenPeriod", b =>
+                {
+                    b.Property<int>("EntryId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("InstructionalComments")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PeriodText")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("SectionCode")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.HasKey("EntryId");
+
+                    b.HasIndex("EntryId", "SectionCode")
+                        .IsUnique();
+
+                    b.ToTable("tblCoordinatorProformaOxygenPeriod", "dbo", t =>
+                        {
+                            t.HasCheckConstraint("CK_CoordProforma_OxygenPeriod_Section", "[SectionCode] = 'Oxygen'");
+                        });
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaParentContact", b =>
+                {
+                    b.Property<int>("EntryId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Concern")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ContactTypeCode")
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("DirectionCode")
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("Response")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SectionCode")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.HasKey("EntryId");
+
+                    b.HasIndex("EntryId", "SectionCode")
+                        .IsUnique();
+
+                    b.ToTable("tblCoordinatorProformaParentContact", "dbo", t =>
+                        {
+                            t.HasCheckConstraint("CK_CoordProforma_ParentContact_ContactTypeCode", "[ContactTypeCode] IN ('Complaint', 'Call', 'Visit', 'Inquiry')");
+
+                            t.HasCheckConstraint("CK_CoordProforma_ParentContact_DirectionCode", "[DirectionCode] IN ('Incoming', 'Outgoing')");
+
+                            t.HasCheckConstraint("CK_CoordProforma_ParentContact_Section", "[SectionCode] = 'Parents'");
+                        });
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaPriorityResponse", b =>
+                {
+                    b.Property<int>("EntryId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Concern")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Response")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SectionCode")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.HasKey("EntryId");
+
+                    b.HasIndex("EntryId", "SectionCode")
+                        .IsUnique();
+
+                    b.ToTable("tblCoordinatorProformaPriorityResponse", "dbo", t =>
+                        {
+                            t.HasCheckConstraint("CK_CoordProforma_PriorityResponse_Section", "[SectionCode] = 'Priority'");
+                        });
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaReport", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CoordinatorEmployeeId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<int>("CreatedByActorId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CurrentRevisionNumber")
+                        .HasColumnType("int");
+
+                    b.Property<string>("DraftWorkspaceJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateOnly>("ReportDate")
+                        .HasColumnType("date");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<short?>("SosWeek")
+                        .HasColumnType("smallint");
+
+                    b.Property<int>("TemplateVersion")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Theme")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<int>("UpdatedByActorId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("WingCode")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("WorkflowStatus")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByActorId");
+
+                    b.HasIndex("UpdatedByActorId");
+
+                    b.HasIndex("CoordinatorEmployeeId", "ReportDate")
+                        .IsUnique();
+
+                    b.HasIndex("ReportDate", "WorkflowStatus");
+
+                    b.ToTable("tblCoordinatorProformaReport", "dbo", t =>
+                        {
+                            t.HasCheckConstraint("CK_CoordProforma_Report_DraftJson", "[DraftWorkspaceJson] IS NULL OR ISJSON([DraftWorkspaceJson]) = 1");
+
+                            t.HasCheckConstraint("CK_CoordProforma_Report_SosWeek", "[SosWeek] > 0");
+
+                            t.HasCheckConstraint("CK_CoordProforma_Report_Versions", "[CurrentRevisionNumber] >= 0 AND [TemplateVersion] > 0");
+
+                            t.HasCheckConstraint("CK_CoordProforma_Report_WingCode", "[WingCode] IN ('Junior', 'Primary', 'High', 'HighBoys', 'HighGirls', 'PrimaryHigh', 'JuniorPrimary')");
+
+                            t.HasCheckConstraint("CK_CoordProforma_Report_WorkflowStatus", "[WorkflowStatus] IN ('Draft', 'Submitted', 'Returned')");
+                        });
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaReviewEvent", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ActorDisplayNameSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
+                    b.Property<int>("ActorId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("EventCode")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("Note")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("RevisionId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActorId");
+
+                    b.HasIndex("RevisionId", "CreatedAtUtc");
+
+                    b.ToTable("tblCoordinatorProformaReviewEvent", "dbo", t =>
+                        {
+                            t.HasCheckConstraint("CK_CoordProforma_ReviewEvent_EventCode", "[EventCode] IN ('Acknowledged', 'Approved', 'Returned')");
+
+                            t.HasCheckConstraint("CK_CoordProforma_ReviewEvent_ReturnReason", "[EventCode] <> 'Returned' OR ([Note] IS NOT NULL AND LEN(LTRIM(RTRIM([Note]))) > 0)");
+                        });
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaRevision", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ActorDisplayNameSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
+                    b.Property<int>("PrintTemplateVersion")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ReportId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RevisionNumber")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SnapshotJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("SnapshotSchemaVersion")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("SubmittedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<int>("SubmittedByActorId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TemplateVersion")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SubmittedByActorId");
+
+                    b.HasIndex("ReportId", "RevisionNumber")
+                        .IsUnique();
+
+                    b.ToTable("tblCoordinatorProformaRevision", "dbo", t =>
+                        {
+                            t.HasCheckConstraint("CK_CoordProforma_Revision_Json", "ISJSON([SnapshotJson]) = 1");
+
+                            t.HasCheckConstraint("CK_CoordProforma_Revision_Versions", "[RevisionNumber] > 0 AND [TemplateVersion] > 0 AND [SnapshotSchemaVersion] > 0 AND [PrintTemplateVersion] > 0");
+                        });
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaSection", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("DeclarationCode")
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("DeclarationNote")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("ReportId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SectionCode")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("tblCoordinatorProformaSection", "dbo", t =>
+                        {
+                            t.HasCheckConstraint("CK_CoordProforma_Section_DeclarationCode", "[DeclarationCode] IN ('NoneToReport', 'NotApplicable')");
+
+                            t.HasCheckConstraint("CK_CoordProforma_Section_SectionCode", "[SectionCode] IN ('Morning', 'Dispatch', 'Activities', 'Priority', 'CriticalDiary', 'Parents', 'Routine', 'Friday', 'Tests', 'Oxygen', 'Kaizen', 'Diary', 'Notebooks', 'Observation', 'Teachers', 'Faculty', 'Closing', 'DailyChecks')");
+                        });
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaStudentKaizen", b =>
+                {
+                    b.Property<int>("EntryId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("CategoryCode")
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("RemedialCounselling")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SectionCode")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.HasKey("EntryId");
+
+                    b.HasIndex("EntryId", "SectionCode")
+                        .IsUnique();
+
+                    b.ToTable("tblCoordinatorProformaStudentKaizen", "dbo", t =>
+                        {
+                            t.HasCheckConstraint("CK_CoordProforma_StudentKaizen_CategoryCode", "[CategoryCode] IN ('BelowAverage', 'Average', 'Good', 'AcademicSupport', 'Behaviour', 'Grooming', 'Motivation', 'Other')");
+
+                            t.HasCheckConstraint("CK_CoordProforma_StudentKaizen_Section", "[SectionCode] = 'Kaizen'");
+                        });
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaSummaryTick", b =>
+                {
+                    b.Property<int>("ReportId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ItemCode")
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<bool?>("IsTicked")
+                        .HasColumnType("bit");
+
+                    b.HasKey("ReportId", "ItemCode");
+
+                    b.ToTable("tblCoordinatorProformaSummaryTick", "dbo", t =>
+                        {
+                            t.HasCheckConstraint("CK_CoordProforma_SummaryTick_ItemCode", "[ItemCode] IN ('Notebooks', 'Diary', 'Kaizen', 'Observation', 'Teachers', 'Faculty')");
+                        });
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaTeacherFollowup", b =>
+                {
+                    b.Property<int>("EntryId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("AcknowledgedMeasures")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("AreaCode")
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("PointsOfConcern")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SectionCode")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.HasKey("EntryId");
+
+                    b.HasIndex("EntryId", "SectionCode")
+                        .IsUnique();
+
+                    b.ToTable("tblCoordinatorProformaTeacherFollowup", "dbo", t =>
+                        {
+                            t.HasCheckConstraint("CK_CoordProforma_TeacherFollowup_AreaCode", "[AreaCode] IN ('SchemeOfStudies', 'StudentDiary', 'TeacherDiary', 'Notebooks', 'ClassObservation', 'Test', 'ModDiscipline', 'Other')");
+
+                            t.HasCheckConstraint("CK_CoordProforma_TeacherFollowup_Section", "[SectionCode] = 'Teachers'");
+                        });
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaTestConfirmation", b =>
+                {
+                    b.Property<int>("EntryId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("AbsentCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("PeriodText")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("SectionCode")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<int?>("TestCopies")
+                        .HasColumnType("int");
+
+                    b.Property<DateOnly?>("TestDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("TestTypeCode")
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.HasKey("EntryId");
+
+                    b.HasIndex("EntryId", "SectionCode")
+                        .IsUnique();
+
+                    b.ToTable("tblCoordinatorProformaTestConfirmation", "dbo", t =>
+                        {
+                            t.HasCheckConstraint("CK_CoordProforma_TestConfirmation_Counts", "[TestCopies] >= 0 AND [AbsentCount] >= 0");
+
+                            t.HasCheckConstraint("CK_CoordProforma_TestConfirmation_Section", "[SectionCode] = 'Tests'");
+
+                            t.HasCheckConstraint("CK_CoordProforma_TestConfirmation_TestTypeCode", "[TestTypeCode] IN ('SosTest', 'Retest', 'MkrT')");
+                        });
+                });
+
             modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorWorkingReportLine", b =>
                 {
                     b.Property<int>("Id")
@@ -1574,6 +3041,11 @@ namespace School.Infrastructure.Data.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<bool>("IsAcademicHead")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
                     b.Property<bool?>("IsActive")
                         .HasColumnType("bit");
 
@@ -1627,6 +3099,11 @@ namespace School.Infrastructure.Data.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<string>("WingCode")
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
                     b.HasKey("ID");
 
                     b.HasIndex("DesignationID");
@@ -1637,7 +3114,10 @@ namespace School.Infrastructure.Data.Migrations
                         .IsUnique()
                         .HasFilter("[Thumb_ID] IS NOT NULL AND [Thumb_ID] <> ''");
 
-                    b.ToTable("tblEmployee", "dbo");
+                    b.ToTable("tblEmployee", "dbo", t =>
+                        {
+                            t.HasCheckConstraint("CK_Employee_WingCode", "[WingCode] IS NULL OR [WingCode] IN ('Junior', 'Primary', 'High', 'HighBoys', 'HighGirls', 'PrimaryHigh', 'JuniorPrimary')");
+                        });
                 });
 
             modelBuilder.Entity("School.Infrastructure.Entities.EmployeeAsset", b =>
@@ -1842,6 +3322,70 @@ namespace School.Infrastructure.Data.Migrations
                     b.HasIndex("EmpID");
 
                     b.ToTable("tblEmployeeQualification", "dbo");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.EmployeeRealtimeNotification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("EmployeeId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Link")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime>("OccurredAtPkt")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("Severity")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmployeeId", "OccurredAtPkt");
+
+                    b.HasIndex("EmployeeId", "Type");
+
+                    b.ToTable("tblEmployeeRealtimeNotification", "dbo");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.EmployeeRealtimeNotificationRead", b =>
+                {
+                    b.Property<Guid>("NotificationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("EmployeeId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("ReadAtPkt")
+                        .HasColumnType("datetime2(3)");
+
+                    b.HasKey("NotificationId", "EmployeeId");
+
+                    b.HasIndex("EmployeeId");
+
+                    b.ToTable("tblEmployeeRealtimeNotificationRead", "dbo");
                 });
 
             modelBuilder.Entity("School.Infrastructure.Entities.EmployeeSalary", b =>
@@ -5592,6 +7136,545 @@ namespace School.Infrastructure.Data.Migrations
                     b.Navigation("OnDutyEmployee");
                 });
 
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaAbsentFaculty", b =>
+                {
+                    b.HasOne("School.Infrastructure.Entities.Employee", "Employee")
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("School.Infrastructure.Entities.CoordinatorProformaReport", "Report")
+                        .WithMany()
+                        .HasForeignKey("ReportId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Employee");
+
+                    b.Navigation("Report");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaAction", b =>
+                {
+                    b.HasOne("School.Infrastructure.Entities.CoordinatorProformaActor", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByActorId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("School.Infrastructure.Entities.Employee", "Owner")
+                        .WithMany()
+                        .HasForeignKey("OwnerEmployeeId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.HasOne("School.Infrastructure.Entities.CoordinatorProformaReport", "Report")
+                        .WithMany()
+                        .HasForeignKey("ReportId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("School.Infrastructure.Entities.CoordinatorProformaActor", null)
+                        .WithMany()
+                        .HasForeignKey("UpdatedByActorId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("School.Infrastructure.Entities.CoordinatorProformaEntry", "SourceEntry")
+                        .WithMany()
+                        .HasForeignKey("SourceEntryId", "ReportId")
+                        .HasPrincipalKey("Id", "ReportId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("School.Infrastructure.Entities.CoordinatorProformaRevision", "SourceRevision")
+                        .WithMany()
+                        .HasForeignKey("SourceRevisionId", "ReportId")
+                        .HasPrincipalKey("Id", "ReportId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.Navigation("Owner");
+
+                    b.Navigation("Report");
+
+                    b.Navigation("SourceEntry");
+
+                    b.Navigation("SourceRevision");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaActionEvent", b =>
+                {
+                    b.HasOne("School.Infrastructure.Entities.CoordinatorProformaAction", "Action")
+                        .WithMany()
+                        .HasForeignKey("ActionId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("School.Infrastructure.Entities.CoordinatorProformaActor", null)
+                        .WithMany()
+                        .HasForeignKey("ActorId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Action");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaActivity", b =>
+                {
+                    b.HasOne("School.Infrastructure.Entities.CoordinatorProformaEntry", "Entry")
+                        .WithOne()
+                        .HasForeignKey("School.Infrastructure.Entities.CoordinatorProformaActivity", "EntryId", "SectionCode")
+                        .HasPrincipalKey("School.Infrastructure.Entities.CoordinatorProformaEntry", "Id", "SectionCode")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Entry");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaAttachment", b =>
+                {
+                    b.HasOne("School.Infrastructure.Entities.CoordinatorProformaEntry", "Entry")
+                        .WithMany()
+                        .HasForeignKey("EntryId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("School.Infrastructure.Entities.CoordinatorProformaActor", null)
+                        .WithMany()
+                        .HasForeignKey("UploadedByActorId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Entry");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaAttendanceSnapshot", b =>
+                {
+                    b.HasOne("School.Infrastructure.Entities.CoordinatorProformaReport", "Report")
+                        .WithOne()
+                        .HasForeignKey("School.Infrastructure.Entities.CoordinatorProformaAttendanceSnapshot", "ReportId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Report");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaAuditEvent", b =>
+                {
+                    b.HasOne("School.Infrastructure.Entities.CoordinatorProformaActor", null)
+                        .WithMany()
+                        .HasForeignKey("ActorId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("School.Infrastructure.Entities.CoordinatorProformaReport", "Report")
+                        .WithMany()
+                        .HasForeignKey("ReportId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("School.Infrastructure.Entities.CoordinatorProformaEntry", "Entry")
+                        .WithMany()
+                        .HasForeignKey("EntryId", "ReportId")
+                        .HasPrincipalKey("Id", "ReportId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.Navigation("Entry");
+
+                    b.Navigation("Report");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaCheckResponse", b =>
+                {
+                    b.HasOne("School.Infrastructure.Entities.CoordinatorProformaEntry", "Entry")
+                        .WithMany()
+                        .HasForeignKey("EntryId", "SectionCode")
+                        .HasPrincipalKey("Id", "SectionCode")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Entry");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaClassObservation", b =>
+                {
+                    b.HasOne("School.Infrastructure.Entities.CoordinatorProformaEntry", "Entry")
+                        .WithOne()
+                        .HasForeignKey("School.Infrastructure.Entities.CoordinatorProformaClassObservation", "EntryId", "SectionCode")
+                        .HasPrincipalKey("School.Infrastructure.Entities.CoordinatorProformaEntry", "Id", "SectionCode")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Entry");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaClosing", b =>
+                {
+                    b.HasOne("School.Infrastructure.Entities.CoordinatorProformaEntry", "Entry")
+                        .WithOne()
+                        .HasForeignKey("School.Infrastructure.Entities.CoordinatorProformaClosing", "EntryId", "SectionCode")
+                        .HasPrincipalKey("School.Infrastructure.Entities.CoordinatorProformaEntry", "Id", "SectionCode")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Entry");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaComment", b =>
+                {
+                    b.HasOne("School.Infrastructure.Entities.CoordinatorProformaActor", null)
+                        .WithMany()
+                        .HasForeignKey("ActorId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("School.Infrastructure.Entities.CoordinatorProformaReport", "Report")
+                        .WithMany()
+                        .HasForeignKey("ReportId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("School.Infrastructure.Entities.CoordinatorProformaRevision", "Revision")
+                        .WithMany()
+                        .HasForeignKey("RevisionId", "ReportId")
+                        .HasPrincipalKey("Id", "ReportId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.Navigation("Report");
+
+                    b.Navigation("Revision");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaCriticalDiary", b =>
+                {
+                    b.HasOne("School.Infrastructure.Entities.CoordinatorProformaEntry", "Entry")
+                        .WithOne()
+                        .HasForeignKey("School.Infrastructure.Entities.CoordinatorProformaCriticalDiary", "EntryId", "SectionCode")
+                        .HasPrincipalKey("School.Infrastructure.Entities.CoordinatorProformaEntry", "Id", "SectionCode")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Entry");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaDailyCheck", b =>
+                {
+                    b.HasOne("School.Infrastructure.Entities.CoordinatorProformaEntry", "Entry")
+                        .WithOne()
+                        .HasForeignKey("School.Infrastructure.Entities.CoordinatorProformaDailyCheck", "EntryId", "SectionCode")
+                        .HasPrincipalKey("School.Infrastructure.Entities.CoordinatorProformaEntry", "Id", "SectionCode")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Entry");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaDiaryCheck", b =>
+                {
+                    b.HasOne("School.Infrastructure.Entities.CoordinatorProformaEntry", "Entry")
+                        .WithOne()
+                        .HasForeignKey("School.Infrastructure.Entities.CoordinatorProformaDiaryCheck", "EntryId", "SectionCode")
+                        .HasPrincipalKey("School.Infrastructure.Entities.CoordinatorProformaEntry", "Id", "SectionCode")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Entry");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaDispatch", b =>
+                {
+                    b.HasOne("School.Infrastructure.Entities.CoordinatorProformaEntry", "Entry")
+                        .WithOne()
+                        .HasForeignKey("School.Infrastructure.Entities.CoordinatorProformaDispatch", "EntryId", "SectionCode")
+                        .HasPrincipalKey("School.Infrastructure.Entities.CoordinatorProformaEntry", "Id", "SectionCode")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Entry");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaEntry", b =>
+                {
+                    b.HasOne("School.Infrastructure.Entities.Section", "ClassSection")
+                        .WithMany()
+                        .HasForeignKey("ClassSectionId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.HasOne("School.Infrastructure.Entities.CoordinatorProformaActor", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByActorId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("School.Infrastructure.Entities.CoordinatorProformaReport", "Report")
+                        .WithMany("Entries")
+                        .HasForeignKey("ReportId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("School.Infrastructure.Entities.SubjectMaster", "Subject")
+                        .WithMany()
+                        .HasForeignKey("SubjectId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.HasOne("School.Infrastructure.Entities.CoordinatorProformaActor", null)
+                        .WithMany()
+                        .HasForeignKey("UpdatedByActorId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("School.Infrastructure.Entities.CoordinatorProformaSection", "Section")
+                        .WithMany()
+                        .HasForeignKey("ReportId", "SectionCode")
+                        .HasPrincipalKey("ReportId", "SectionCode")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("ClassSection");
+
+                    b.Navigation("Report");
+
+                    b.Navigation("Section");
+
+                    b.Navigation("Subject");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaEntryEmployee", b =>
+                {
+                    b.HasOne("School.Infrastructure.Entities.Employee", "Employee")
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("School.Infrastructure.Entities.CoordinatorProformaEntry", "Entry")
+                        .WithMany("Employees")
+                        .HasForeignKey("EntryId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Employee");
+
+                    b.Navigation("Entry");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaEntryStudent", b =>
+                {
+                    b.HasOne("School.Infrastructure.Entities.CoordinatorProformaEntry", "Entry")
+                        .WithMany("Students")
+                        .HasForeignKey("EntryId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("School.Infrastructure.Entities.Student", "Student")
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Entry");
+
+                    b.Navigation("Student");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaFacultyCounselling", b =>
+                {
+                    b.HasOne("School.Infrastructure.Entities.CoordinatorProformaEntry", "Entry")
+                        .WithOne()
+                        .HasForeignKey("School.Infrastructure.Entities.CoordinatorProformaFacultyCounselling", "EntryId", "SectionCode")
+                        .HasPrincipalKey("School.Infrastructure.Entities.CoordinatorProformaEntry", "Id", "SectionCode")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Entry");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaMeeting", b =>
+                {
+                    b.HasOne("School.Infrastructure.Entities.CoordinatorProformaEntry", "Entry")
+                        .WithOne()
+                        .HasForeignKey("School.Infrastructure.Entities.CoordinatorProformaMeeting", "EntryId", "SectionCode")
+                        .HasPrincipalKey("School.Infrastructure.Entities.CoordinatorProformaEntry", "Id", "SectionCode")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Entry");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaNotebookCheck", b =>
+                {
+                    b.HasOne("School.Infrastructure.Entities.CoordinatorProformaEntry", "Entry")
+                        .WithOne()
+                        .HasForeignKey("School.Infrastructure.Entities.CoordinatorProformaNotebookCheck", "EntryId", "SectionCode")
+                        .HasPrincipalKey("School.Infrastructure.Entities.CoordinatorProformaEntry", "Id", "SectionCode")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Entry");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaNotebookSchedule", b =>
+                {
+                    b.HasOne("School.Infrastructure.Entities.CoordinatorProformaReport", "Report")
+                        .WithMany()
+                        .HasForeignKey("ReportId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Report");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaOxygenPeriod", b =>
+                {
+                    b.HasOne("School.Infrastructure.Entities.CoordinatorProformaEntry", "Entry")
+                        .WithOne()
+                        .HasForeignKey("School.Infrastructure.Entities.CoordinatorProformaOxygenPeriod", "EntryId", "SectionCode")
+                        .HasPrincipalKey("School.Infrastructure.Entities.CoordinatorProformaEntry", "Id", "SectionCode")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Entry");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaParentContact", b =>
+                {
+                    b.HasOne("School.Infrastructure.Entities.CoordinatorProformaEntry", "Entry")
+                        .WithOne()
+                        .HasForeignKey("School.Infrastructure.Entities.CoordinatorProformaParentContact", "EntryId", "SectionCode")
+                        .HasPrincipalKey("School.Infrastructure.Entities.CoordinatorProformaEntry", "Id", "SectionCode")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Entry");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaPriorityResponse", b =>
+                {
+                    b.HasOne("School.Infrastructure.Entities.CoordinatorProformaEntry", "Entry")
+                        .WithOne()
+                        .HasForeignKey("School.Infrastructure.Entities.CoordinatorProformaPriorityResponse", "EntryId", "SectionCode")
+                        .HasPrincipalKey("School.Infrastructure.Entities.CoordinatorProformaEntry", "Id", "SectionCode")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Entry");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaReport", b =>
+                {
+                    b.HasOne("School.Infrastructure.Entities.Employee", "Coordinator")
+                        .WithMany()
+                        .HasForeignKey("CoordinatorEmployeeId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("School.Infrastructure.Entities.CoordinatorProformaActor", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByActorId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("School.Infrastructure.Entities.CoordinatorProformaActor", null)
+                        .WithMany()
+                        .HasForeignKey("UpdatedByActorId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Coordinator");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaReviewEvent", b =>
+                {
+                    b.HasOne("School.Infrastructure.Entities.CoordinatorProformaActor", null)
+                        .WithMany()
+                        .HasForeignKey("ActorId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("School.Infrastructure.Entities.CoordinatorProformaRevision", "Revision")
+                        .WithMany()
+                        .HasForeignKey("RevisionId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Revision");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaRevision", b =>
+                {
+                    b.HasOne("School.Infrastructure.Entities.CoordinatorProformaReport", "Report")
+                        .WithMany()
+                        .HasForeignKey("ReportId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("School.Infrastructure.Entities.CoordinatorProformaActor", null)
+                        .WithMany()
+                        .HasForeignKey("SubmittedByActorId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Report");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaSection", b =>
+                {
+                    b.HasOne("School.Infrastructure.Entities.CoordinatorProformaReport", "Report")
+                        .WithMany("Sections")
+                        .HasForeignKey("ReportId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Report");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaStudentKaizen", b =>
+                {
+                    b.HasOne("School.Infrastructure.Entities.CoordinatorProformaEntry", "Entry")
+                        .WithOne()
+                        .HasForeignKey("School.Infrastructure.Entities.CoordinatorProformaStudentKaizen", "EntryId", "SectionCode")
+                        .HasPrincipalKey("School.Infrastructure.Entities.CoordinatorProformaEntry", "Id", "SectionCode")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Entry");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaSummaryTick", b =>
+                {
+                    b.HasOne("School.Infrastructure.Entities.CoordinatorProformaReport", "Report")
+                        .WithMany()
+                        .HasForeignKey("ReportId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Report");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaTeacherFollowup", b =>
+                {
+                    b.HasOne("School.Infrastructure.Entities.CoordinatorProformaEntry", "Entry")
+                        .WithOne()
+                        .HasForeignKey("School.Infrastructure.Entities.CoordinatorProformaTeacherFollowup", "EntryId", "SectionCode")
+                        .HasPrincipalKey("School.Infrastructure.Entities.CoordinatorProformaEntry", "Id", "SectionCode")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Entry");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaTestConfirmation", b =>
+                {
+                    b.HasOne("School.Infrastructure.Entities.CoordinatorProformaEntry", "Entry")
+                        .WithOne()
+                        .HasForeignKey("School.Infrastructure.Entities.CoordinatorProformaTestConfirmation", "EntryId", "SectionCode")
+                        .HasPrincipalKey("School.Infrastructure.Entities.CoordinatorProformaEntry", "Id", "SectionCode")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Entry");
+                });
+
             modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorWorkingReportLine", b =>
                 {
                     b.HasOne("School.Infrastructure.Entities.CoordinatorDailyReport", "DailyReport")
@@ -5680,6 +7763,17 @@ namespace School.Infrastructure.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade);
 
                     b.Navigation("Employee");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.EmployeeRealtimeNotificationRead", b =>
+                {
+                    b.HasOne("School.Infrastructure.Entities.EmployeeRealtimeNotification", "Notification")
+                        .WithMany("Reads")
+                        .HasForeignKey("NotificationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Notification");
                 });
 
             modelBuilder.Entity("School.Infrastructure.Entities.Exam", b =>
@@ -5951,6 +8045,20 @@ namespace School.Infrastructure.Data.Migrations
                     b.Navigation("WorkingReportLines");
                 });
 
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaEntry", b =>
+                {
+                    b.Navigation("Employees");
+
+                    b.Navigation("Students");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.CoordinatorProformaReport", b =>
+                {
+                    b.Navigation("Entries");
+
+                    b.Navigation("Sections");
+                });
+
             modelBuilder.Entity("School.Infrastructure.Entities.Designation", b =>
                 {
                     b.Navigation("Employees");
@@ -5963,6 +8071,11 @@ namespace School.Infrastructure.Data.Migrations
                     b.Navigation("Experiences");
 
                     b.Navigation("Qualifications");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.EmployeeRealtimeNotification", b =>
+                {
+                    b.Navigation("Reads");
                 });
 
             modelBuilder.Entity("School.Infrastructure.Entities.ExamSubjectComponentHeader", b =>

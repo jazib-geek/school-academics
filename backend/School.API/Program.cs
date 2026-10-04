@@ -75,6 +75,8 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IEmployeeAuthRepository, EmployeeAuthRepository>();
 builder.Services.AddScoped<IEmployeeAuthService, EmployeeAuthService>();
 builder.Services.AddScoped<ICoordinatorAccessService, CoordinatorAccessService>();
+builder.Services.AddScoped<IAcademicHeadAccessService, AcademicHeadAccessService>();
+builder.Services.AddScoped<ICoordinatorProformaService, CoordinatorProformaService>();
 builder.Services.AddScoped<ICoordinatorDailyReportRepository, CoordinatorDailyReportRepository>();
 builder.Services.AddScoped<ICoordinatorDailyReportService, CoordinatorDailyReportService>();
 builder.Services.AddScoped<ICoordinatorStaffReadRepository, CoordinatorStaffReadRepository>();
@@ -122,6 +124,8 @@ builder.Services.AddScoped<IEmployeeAttendanceService, EmployeeAttendanceService
 builder.Services.AddScoped<IEmployeeAttendanceImportService, EmployeeAttendanceImportService>();
 builder.Services.AddSingleton<IEmployeeAttendanceLiveUpdateSink, EmployeeAttendanceLiveUpdateStream>();
 builder.Services.AddSingleton<ICampusNotificationSink, CampusNotificationStream>();
+builder.Services.AddSingleton<IEmployeeNotificationSink, EmployeeNotificationStream>();
+builder.Services.AddScoped<IEmployeeNotificationService, EmployeeNotificationService>();
 builder.Services.AddScoped<ICampusNotificationService, CampusNotificationService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IFeeReportService, FeeReportService>();
@@ -160,7 +164,8 @@ builder.Services.AddAuthentication(options =>
             var path = context.HttpContext.Request.Path;
             if (!string.IsNullOrEmpty(accessToken) &&
                 (path.StartsWithSegments("/api/employee-attendance/live/stream") ||
-                 path.StartsWithSegments("/api/notifications/stream")))
+                 path.StartsWithSegments("/api/notifications/stream") ||
+                 path.StartsWithSegments("/api/employee/notifications/stream")))
             {
                 context.Token = accessToken;
             }

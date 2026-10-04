@@ -17,6 +17,7 @@ public class StudentLedgerService : IStudentLedgerService
     public async Task<List<StudentLedgerDto>> GetStudentLedgerAsync(int studentId)
     {
         var entries = await _context.FeeAndFundCollections
+      .Where(x => (x.VoidAmount ?? 0) == 0)
       .Where(x => x.StudentID == studentId)
       .OrderBy(x => x.Date)
       .ThenBy(x => x.ID)

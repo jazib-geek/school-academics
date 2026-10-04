@@ -6,4 +6,6 @@ public class EmployeeSessionDto
     public string EmployeeName { get; set; } = string.Empty;
     public string? Gender { get; set; }
     public string? Designation { get; set; }
+    public string? WingCode { get; set; }
+    public bool IsAcademicHead { get; set; }
 }

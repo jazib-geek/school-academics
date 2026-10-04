@@ -90,6 +90,8 @@ public class EmployeeUpsertDto
     public bool CanViewStudentExamDetail { get; set; }
     public bool CanRecordStudentConduct { get; set; }
     public bool CanViewStudentConduct { get; set; }
+    public string? WingCode { get; set; }
+    public bool IsAcademicHead { get; set; }
 
     public List<EmployeeQualificationDto> Qualifications { get; set; } = [];
     public List<EmployeeExperienceDto> Experiences { get; set; } = [];

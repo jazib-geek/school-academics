@@ -299,6 +299,8 @@ public class EmployeeService : IEmployeeService
         t.CanViewStudentExamDetail = s.CanViewStudentExamDetail;
         t.CanRecordStudentConduct = s.CanRecordStudentConduct;
         t.CanViewStudentConduct = s.CanViewStudentConduct;
+        t.WingCode = ParseWingCode(s.WingCode);
+        t.IsAcademicHead = s.IsAcademicHead;
     }
 
     private static void ApplyChildren(EmployeeUpsertDto s, Employee employee)
@@ -349,6 +351,8 @@ public class EmployeeService : IEmployeeService
         CanViewStudentExamDetail = x.CanViewStudentExamDetail,
         CanRecordStudentConduct = x.CanRecordStudentConduct,
         CanViewStudentConduct = x.CanViewStudentConduct,
+        WingCode = x.WingCode?.ToString(),
+        IsAcademicHead = x.IsAcademicHead,
         Qualifications = x.Qualifications.OrderBy(y => y.ID).Select(y => new EmployeeQualificationDto
         {
             ID = y.ID, Degree = y.Degree, Board = y.Board, Grade = y.Grade,
@@ -377,4 +381,9 @@ public class EmployeeService : IEmployeeService
         !string.IsNullOrWhiteSpace(x.AssetName) || x.DateOfIssue.HasValue ||
         x.AssetWorth.HasValue || !string.IsNullOrWhiteSpace(x.Remarks);
     private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static ProformaWingCode? ParseWingCode(string? code) =>
+        string.IsNullOrWhiteSpace(code) || !Enum.TryParse<ProformaWingCode>(code, true, out var wing)
+            ? null
+            : wing;
 }

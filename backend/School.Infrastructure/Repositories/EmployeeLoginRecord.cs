@@ -1,3 +1,5 @@
+using School.Infrastructure.Entities;
+
 namespace School.Infrastructure.Repositories;
 
 public class EmployeeLoginRecord
@@ -23,4 +25,6 @@ public class EmployeeLoginRecord
     public bool CanViewStudentExamDetail { get; set; }
     public bool CanRecordStudentConduct { get; set; }
     public bool CanViewStudentConduct { get; set; }
+    public ProformaWingCode? WingCode { get; set; }
+    public bool IsAcademicHead { get; set; }
 }

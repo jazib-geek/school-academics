@@ -109,6 +109,7 @@ public class AccountSummaryService : IAccountSummaryService
         CancellationToken cancellationToken)
     {
         return await _context.FeeAndFundCollections
+            .Where(x => (x.VoidAmount ?? 0) == 0)
             .AsNoTracking()
             .Where(x =>
                 x.FundTypeID == fundTypeId &&

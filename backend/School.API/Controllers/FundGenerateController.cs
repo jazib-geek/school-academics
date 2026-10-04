@@ -46,7 +46,10 @@ public class FundGenerateController : ControllerBase
 
         try
         {
-            await _service.GenerateForStudentAsync(request, cancellationToken);
+            int? userId = int.TryParse(User.FindFirst("FamilyDbId")?.Value, out var parsedUserId)
+                ? parsedUserId
+                : null;
+            await _service.GenerateForStudentAsync(request, userId, cancellationToken);
             return Ok(ApiResponse<object>.SuccessResponse(new { }, "Funds generated for student."));
         }
         catch (KeyNotFoundException ex)
@@ -69,7 +72,10 @@ public class FundGenerateController : ControllerBase
 
         try
         {
-            await _service.GenerateBulkAsync(request, cancellationToken);
+            int? userId = int.TryParse(User.FindFirst("FamilyDbId")?.Value, out var parsedUserId)
+                ? parsedUserId
+                : null;
+            await _service.GenerateBulkAsync(request, userId, cancellationToken);
             return Ok(ApiResponse<object>.SuccessResponse(new { }, "Funds generated."));
         }
         catch (ArgumentException ex)

@@ -13,10 +13,12 @@ public class FundGenerateService : IFundGenerateService
     private static readonly int[] AnnualFundTypeIds = [2, 3, 4, 5];
 
     private readonly AppDbContext _context;
+    private readonly IActivityLogService _activityLogService;
 
-    public FundGenerateService(AppDbContext context)
+    public FundGenerateService(AppDbContext context, IActivityLogService activityLogService)
     {
         _context = context;
+        _activityLogService = activityLogService;
     }
 
     public async Task<StudentFundAmountsDto> GetStudentFundsAsync(
@@ -68,6 +70,7 @@ public class FundGenerateService : IFundGenerateService
 
     public async Task GenerateForStudentAsync(
         GenerateFundStudentRequestDto request,
+        int? userId = null,
         CancellationToken cancellationToken = default)
     {
         if (request.StudentId <= 0)
@@ -108,11 +111,36 @@ public class FundGenerateService : IFundGenerateService
                 cancellationToken);
         }
 
+        var fundLines = items.Select(x =>
+        {
+            typeNames.TryGetValue(x.FundTypeId, out var name);
+            return new
+            {
+                fundTypeId = x.FundTypeId,
+                name = name ?? $"Fund {x.FundTypeId}",
+                amount = x.Amount
+            };
+        }).ToList();
+
+        await _activityLogService.WriteAsync(
+            ActivityLogTypes.FundGenerateSingle,
+            ActivityLogEntityTypes.Student,
+            student.Reg_Id,
+            student.FullName,
+            userId,
+            new
+            {
+                source = "fund-generate-single",
+                year,
+                funds = fundLines
+            },
+            cancellationToken);
         await _context.SaveChangesAsync(cancellationToken);
     }
 
     public async Task GenerateBulkAsync(
         GenerateFundBulkRequestDto request,
+        int? userId = null,
         CancellationToken cancellationToken = default)
     {
         if (!AnnualFundTypeIds.Contains(request.FundTypeId))
@@ -164,6 +192,38 @@ public class FundGenerateService : IFundGenerateService
                 cancellationToken);
         }
 
+        string? classLabel = null;
+        if (request.ClassCompositeId is > 0)
+        {
+            classLabel = await _context.Sections
+                .AsNoTracking()
+                .Where(x => x.ID == request.ClassCompositeId.Value)
+                .Select(x => x.ClassName)
+                .FirstOrDefaultAsync(cancellationToken);
+        }
+
+        var scopeLabel = request.ClassCompositeId is > 0 && !string.IsNullOrWhiteSpace(classLabel)
+            ? classLabel
+            : "All active students";
+
+        await _activityLogService.WriteAsync(
+            ActivityLogTypes.FundGenerateBulk,
+            null,
+            null,
+            $"{typeName} · {scopeLabel}",
+            userId,
+            new
+            {
+                source = "fund-generate-bulk",
+                fundTypeId = request.FundTypeId,
+                fundTypeName = typeName,
+                amount = request.Amount,
+                year,
+                classCompositeId = request.ClassCompositeId,
+                className = classLabel,
+                studentCount = students.Count
+            },
+            cancellationToken);
         await _context.SaveChangesAsync(cancellationToken);
     }
 

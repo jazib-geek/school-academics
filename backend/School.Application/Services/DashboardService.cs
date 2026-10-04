@@ -82,6 +82,7 @@ namespace School.Application.Services
             // 3️⃣ Fee Balance (Running Calculation)
             // -------------------------
             var ledgerEntries = await _context.FeeAndFundCollections
+                .Where(x => (x.VoidAmount ?? 0) == 0)
                 .Where(x => x.StudentID == studentId)
                 .Select(x => new
                 {
@@ -253,6 +254,7 @@ namespace School.Application.Services
             {
                 await using var campusContext = CreateCampusContext(campusConfig.ConnectionString);
                 var amount = await campusContext.FeeAndFundCollections
+                    .Where(x => (x.VoidAmount ?? 0) == 0)
                     .Where(x => x.Student != null &&
                                 x.Student.IsActive == true &&
                                 x.Date.HasValue &&
@@ -304,6 +306,7 @@ namespace School.Application.Services
             {
                 await using var campusContext = CreateCampusContext(campusConfig.ConnectionString);
                 var amount = await campusContext.FeeAndFundCollections
+                    .Where(x => (x.VoidAmount ?? 0) == 0)
                     .Where(x => x.Student != null &&
                                 x.Student.IsActive == true &&
                                 x.FundTypeID == 1 &&
@@ -402,6 +405,7 @@ namespace School.Application.Services
             var outstandingByStudent = regIds.Count == 0
                 ? new Dictionary<int, decimal>()
                 : await campusContext.FeeAndFundCollections
+                    .Where(x => (x.VoidAmount ?? 0) == 0)
                     .AsNoTracking()
                     .Where(x => x.StudentID.HasValue && regIds.Contains(x.StudentID.Value))
                     .GroupBy(x => x.StudentID!.Value)
@@ -597,18 +601,22 @@ namespace School.Application.Services
                 .ToList();
 
             var feeCollectionToday = await campusContext.FeeAndFundCollections
+                .Where(x => (x.VoidAmount ?? 0) == 0)
                 .Where(x => x.Student != null && x.Student.IsActive == true && x.Date.HasValue && x.Date.Value.Date == today)
                 .SumAsync(x => x.Recieved ?? 0);
 
             var feeCollectionYesterday = await campusContext.FeeAndFundCollections
+                .Where(x => (x.VoidAmount ?? 0) == 0)
                 .Where(x => x.Student != null && x.Student.IsActive == true && x.Date.HasValue && x.Date.Value.Date == yesterday)
                 .SumAsync(x => x.Recieved ?? 0);
 
             var feeCollectionLast30Days = await campusContext.FeeAndFundCollections
+                .Where(x => (x.VoidAmount ?? 0) == 0)
                 .Where(x => x.Student != null && x.Student.IsActive == true && x.Date.HasValue && x.Date.Value.Date >= last30From && x.Date.Value.Date <= today)
                 .SumAsync(x => x.Recieved ?? 0);
 
             var feeBalanceRows = await campusContext.FeeAndFundCollections
+                .Where(x => (x.VoidAmount ?? 0) == 0)
                 .Where(x => x.StudentID.HasValue && x.Student != null && x.Student.IsActive == true)
                 .GroupBy(x => new { x.StudentID, FundTypeId = x.FundTypeID ?? 0 })
                 .Select(g => new
@@ -681,6 +689,7 @@ namespace School.Application.Services
             var attendanceSparkline = await BuildAttendanceRateSparklineAsync(campusContext, last7From, today, activeStudents);
 
             var feeActivityLast7 = await campusContext.FeeAndFundCollections
+                .Where(x => (x.VoidAmount ?? 0) == 0)
                 .Where(x => x.Student != null && x.Student.IsActive == true && x.Date.HasValue && x.Date.Value.Date >= last7From && x.Date.Value.Date <= today)
                 .GroupBy(_ => 1)
                 .Select(g => new
@@ -996,6 +1005,7 @@ namespace School.Application.Services
         {
             // Same basis as Fee Reports → Top Defaulters (all funds, overall ledger balance).
             return await context.FeeAndFundCollections
+                .Where(x => (x.VoidAmount ?? 0) == 0)
                 .AsNoTracking()
                 .Where(x =>
                     x.Student != null &&
@@ -1205,6 +1215,7 @@ namespace School.Application.Services
         private async Task<List<DashboardMoneyPointDto>> BuildFeeTrendAsync(AppDbContext context, DateTime from, DateTime to)
         {
             var rows = await context.FeeAndFundCollections
+                .Where(x => (x.VoidAmount ?? 0) == 0)
                 .Where(x => x.Student != null && x.Student.IsActive == true && x.Date.HasValue && x.Date.Value.Date >= from && x.Date.Value.Date <= to)
                 .GroupBy(x => x.Date!.Value.Date)
                 .Select(g => new { Date = g.Key, Amount = g.Sum(x => x.Recieved ?? 0) })
@@ -1283,6 +1294,7 @@ namespace School.Application.Services
         private async Task<List<DashboardCategoryAmountDto>> BuildFeeBreakdownAsync(AppDbContext context, DateTime from, DateTime to)
         {
             var rows = await context.FeeAndFundCollections
+                .Where(x => (x.VoidAmount ?? 0) == 0)
                 .Where(x => x.Student != null && x.Student.IsActive == true && x.Date.HasValue && x.Date.Value.Date >= from && x.Date.Value.Date <= to)
                 .GroupBy(x => x.FundTypeID ?? 0)
                 .Select(g => new
@@ -1312,6 +1324,7 @@ namespace School.Application.Services
             var to = from.AddMonths(1);
 
             var rows = await context.FeeAndFundCollections
+                .Where(x => (x.VoidAmount ?? 0) == 0)
                 .Where(x => x.Student != null &&
                             x.Student.IsActive == true &&
                             x.Date.HasValue &&

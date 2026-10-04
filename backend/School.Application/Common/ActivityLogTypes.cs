@@ -6,6 +6,10 @@ public static class ActivityLogTypes
     public const string StudentBulkEdit = "StudentBulkEdit";
     public const string StudentTransfer = "StudentTransfer";
     public const string StudentFeeUpdate = "StudentFeeUpdate";
+    public const string FeeGenerateAll = "FeeGenerateAll";
+    public const string FeeGenerateSingle = "FeeGenerateSingle";
+    public const string FundGenerateBulk = "FundGenerateBulk";
+    public const string FundGenerateSingle = "FundGenerateSingle";
     public const string StudentActivate = "StudentActivate";
     public const string StudentDeactivate = "StudentDeactivate";
     public const string EmployeeAttendanceEdit = "EmployeeAttendanceEdit";

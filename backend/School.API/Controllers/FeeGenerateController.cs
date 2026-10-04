@@ -28,7 +28,10 @@ public class FeeGenerateController : ControllerBase
 
         try
         {
-            await _service.GenerateForAllAsync(request, cancellationToken);
+            int? userId = int.TryParse(User.FindFirst("FamilyDbId")?.Value, out var parsedUserId)
+                ? parsedUserId
+                : null;
+            await _service.GenerateForAllAsync(request, userId, cancellationToken);
             return Ok(ApiResponse<object>.SuccessResponse(new { }, "Fee generated for all students."));
         }
         catch (ArgumentException ex)
@@ -47,7 +50,10 @@ public class FeeGenerateController : ControllerBase
 
         try
         {
-            await _service.GenerateForStudentAsync(request, cancellationToken);
+            int? userId = int.TryParse(User.FindFirst("FamilyDbId")?.Value, out var parsedUserId)
+                ? parsedUserId
+                : null;
+            await _service.GenerateForStudentAsync(request, userId, cancellationToken);
             return Ok(ApiResponse<object>.SuccessResponse(new { }, "Fee generated for student."));
         }
         catch (KeyNotFoundException ex)
