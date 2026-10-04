@@ -1,119 +1,231 @@
-// Prototype fixtures only. No campus records or API writes are used by this workspace.
-export const WINGS = ['Pre-primary', 'Primary', 'Middle', 'High', 'Primary + High']
-const CLASSES = ['Nursery Blue', 'Prep Blue', '3 Blue', '4 Blue', '5 Blue', '6 Blue', '7 Blue', '7 Red', '8 Blue']
-const SUBJECTS = ['English', 'Urdu', 'Mathematics', 'Science', 'Islamiat', 'T. Quran', 'Social studies', 'Computer science']
-const TEACHERS = ['Ms. Amina (sample)', 'Ms. Sara (sample)', 'Ms. Hina (sample)']
-const STUDENTS = ['Ali (sample)', 'Dua (sample)', 'Noor (sample)', 'Qasim (sample)']
+import { DEFAULT_MOCK_COORDINATOR_WING, proformaWingLabel, PROFORMA_WINGS } from '../../utils/proformaWings'
+import { getEmployeeWingCode } from '../../services/employeeAuthService'
+import { sortClassesByCustomOrder } from '../../services/classSort'
+
+export const WINGS = PROFORMA_WINGS
+
+export const EMPTY_PROFORMA_LOOKUPS = {
+  classes: [],
+  subjects: [],
+  teachers: [],
+  students: [],
+}
+
+/** Saved next to display text in entry values for future reporting. */
+export const PROFORMA_LOOKUP_ID_KEYS = {
+  class: 'classId',
+  subject: 'subjectId',
+  teacher: 'teacherId',
+  student: 'studentId',
+}
+
 const field = (key, label, type = 'text', options) => ({ key, label, type, options })
 const select = (key, label, options) => field(key, label, 'select', options)
 const notes = (key, label) => field(key, label, 'textarea')
-const classField = select('class', 'Class / section', CLASSES)
-const subjectField = select('subject', 'Subject', SUBJECTS)
-const teacherField = select('teacher', 'Teacher', TEACHERS)
-const studentField = select('student', 'Student', STUDENTS)
-const outcome = select('outcome', 'Outcome', ['Satisfactory', 'Needs attention', 'Not checked', 'Not applicable'])
-const checks = (labels) => labels.map((label, i) => select(`check${i}`, label, ['Satisfactory', 'Needs attention', 'Not checked', 'Not applicable']))
 
-export const SECTIONS = [
-  { id: 'morning', title: 'Morning & planning', short: 'Morning', group: 'Start the day', description: 'Meeting points, assembly, priorities and MOD duties.', fields: [
-    select('kind', 'Entry type', ['Morning meeting', 'Assembly / morning round', 'MOD duty', 'Priority for today']),
-    notes('details', 'Meeting points / instructions'), field('topic', 'Moral lesson topic'),
-    select('assembly', 'Assembly conducted per policy', ['Yes', 'No', 'Not observed']),
-    ...checks(['Uniform', 'Campus cleanliness', 'Teachers in classes']),
-    select('duty', 'MOD duty', ['Welcome', 'Assembly', 'Break', 'Off time', 'Other']), teacherField,
-    field('arrival', 'Arrival time', 'time'),
-  ] },
-  { id: 'dispatch', title: 'Dispatch & activities', short: 'Activities', group: 'Start the day', description: 'Notices, special periods, events and PTM preparation.', fields: [
-    select('kind', 'Type', ['Notice', 'Fee challan', 'Schedule', 'Syllabus', 'Question papers', 'Z-lesson / special period', 'Competition', 'Event', 'PTM', 'Other']),
-    field('title', 'Activity / dispatch'), classField, field('dueDate', 'Due date', 'date'),
-    select('outcome', 'Progress', ['Planned', 'In progress', 'Completed', 'Delayed']), notes('details', 'Preparation / delivery details'),
-  ] },
-  { id: 'parents', title: 'Parent concerns', short: 'Parents', group: 'Care & communication', description: 'Critical diary notes, calls, visits and responses.', fields: [
-    select('kind', 'Contact type', ['Critical diary note', 'Call', 'Visit', 'Inquiry']),
-    select('direction', 'Direction', ['Incoming', 'Outgoing']), classField, studentField, subjectField, teacherField,
-    notes('concern', 'Concern / inquiry'), notes('response', 'Response / remedy'),
-  ] },
-  { id: 'routine', title: 'Routine verification', short: 'Routine', group: 'Start the day', description: 'Moral lesson, absentee follow-up, homework and welcome.', fields: [
-    select('kind', 'Routine matter', ['Moral lesson delivery', 'Absentees follow-up', 'Homework delivery in first lesson', 'MOD welcome']),
-    classField, select('outcome', 'Verification', ['Completed', 'Partially completed', 'Not completed', 'Not verified', 'Not applicable']), notes('details', 'Evidence / exception / response'),
-  ] },
-  { id: 'friday', title: 'Friday matters', short: 'Friday', group: 'Academic checks', description: 'Evidence, teacher diaries, lesson plans and material.', fields: [
-    select('kind', 'Check', ['Evidence matters', 'Teacher diary', 'Lesson planning', 'Teaching material', 'Question papers / other planning']),
-    teacherField, classField, outcome, notes('details', 'Findings'),
-  ] },
-  { id: 'tests', title: 'Tests & retests', short: 'Tests', group: 'Academic checks', description: 'Test confirmation, copies, absences and retest plans.', fields: [
-    select('kind', 'Test type', ['SOS test', 'Retest', 'MKR-T']), classField, subjectField,
-    field('testDate', 'Test / retest date', 'date'), field('period', 'Period'),
-    select('outcome', 'Conducted', ['Yes', 'No', 'Planned']), field('copies', 'Test copies', 'number'),
-    field('absentCount', 'Absent in this test', 'number'), notes('students', 'Absent / retest students'), notes('details', 'Notes'),
-  ] },
-  { id: 'oxygen', title: 'Oxygen period', short: 'Oxygen', group: 'Academic checks', description: 'Test discussion, correction, appreciation and guidance.', fields: [
-    classField, subjectField, teacherField, field('period', 'Period'),
-    ...checks(['Question paper available', 'Answer sheets available', 'Award list with comments', 'Board use']),
-    notes('details', 'Instructional comments / guidance'),
-  ] },
-  { id: 'kaizen', title: 'Students’ Kaizen', short: 'Kaizen', group: 'Care & communication', description: 'Student growth, counselling and remedial support.', fields: [
-    classField, field('students', 'Student(s)'), select('category', 'Category', ['Academic support', 'Behaviour', 'Grooming', 'Motivation', 'Other']),
-    notes('concern', 'Concern / support needed'), notes('response', 'Remedial work / counselling'),
-  ] },
-  { id: 'diary', title: 'Student diary checking', short: 'Diaries', group: 'Academic checks', description: 'Record satisfactory checks and diary issues.', fields: [
-    classField, teacherField, field('sampleCount', 'Diaries checked', 'number'),
-    select('issue', 'Finding', ['All satisfactory', 'Missing', 'Unsigned', 'Unclear', 'Uncorrected', 'Award / title missing', 'Other']),
-    notes('students', 'Student(s), if relevant'), notes('details', 'Findings / action taken'),
-  ] },
-  { id: 'notebooks', title: 'Notebook rechecking', short: 'Notebooks', group: 'Academic checks', description: 'Individual copies, quality checks and correction deadlines.', fields: [
-    classField, subjectField, teacherField, studentField,
-    ...checks(['Title / cover', 'Page numbering', 'Neatness', 'Syllabus tag', 'Timely checking', 'Checking accuracy', 'Remarks', 'Work complete']),
-    select('writing', 'Writing quality', ['Below average', 'Average', 'Good']),
-    notes('details', 'Mistakes / findings'),
-    select('correction', 'Correction status', ['Not needed', 'Not corrected', 'Partially corrected', 'Completed']),
-    select('acknowledgement', 'Teacher informed', ['Not yet', 'Informed by coordinator']),
-  ] },
-  { id: 'observation', title: 'Class observation', short: 'Observation', group: 'Academic checks', description: 'Teaching practice, strengths and improvement points.', fields: [
-    classField, subjectField, teacherField, field('period', 'Period'),
-    select('kind', 'Observation type', ['Formal', 'Informal']),
-    ...checks(['Reference material', 'Scheme of studies relevance', 'Student engagement', 'Demonstration', 'Discipline', 'Board / audiovisual use', 'Questions & answers', 'Homework as scheduled']),
-    notes('strengths', 'Strengths'), notes('details', 'Improvement points / guidance'),
-  ] },
-  { id: 'teachers', title: 'Teacher follow-up', short: 'Teachers', group: 'Care & communication', description: 'Concerns, agreed measures and progress with teachers.', fields: [
-    teacherField, classField, subjectField,
-    select('kind', 'Area', ['Scheme of studies', 'Student diary', 'Teacher diary', 'Notebooks', 'Class observation', 'Test', 'MOD / discipline', 'Other']),
-    notes('concern', 'Points of concern'), notes('response', 'Agreed measures'),
-  ] },
-  { id: 'faculty', title: 'Faculty counselling', short: 'Faculty', group: 'Care & communication', description: 'Staff counselling, warnings and agreed action.', fields: [
-    teacherField, select('kind', 'Type', ['Counselling', 'Warning']), notes('concern', 'Reason / concern'), notes('response', 'Advice / agreed action'),
-  ] },
-  { id: 'closing', title: 'Closing the day', short: 'Closing', group: 'Close the day', description: 'Pending work, critical matters, departure and next morning.', fields: [
-    notes('pending', 'Pending proposal / report submissions'),
-    select('svhw', 'Summer vacation homework results sent', ['Yes', 'No', 'Not applicable']),
-    notes('critical', 'Critical matter of the day'), notes('remaining', 'Anyone waiting / present at closing'),
-    field('departure', 'Departure time', 'time'), field('mods', 'Next morning MODs'), notes('details', 'Plan / closing remarks'),
-  ] },
-]
+export function mapProformaLookupOptions(lookups) {
+  const toChoice = (item) => ({
+    value: item.id != null && item.id !== '' ? String(item.id) : (item.value ?? item.label),
+    label: item.label ?? item.value ?? '',
+    ...(item.description ? { description: item.description } : {}),
+    ...(item.sectionId != null && item.sectionId !== '' ? { sectionId: String(item.sectionId) } : {}),
+  })
+
+  const classes = sortClassesByCustomOrder(
+    (lookups?.classes || []).map((item) => ({
+      id: item.id,
+      className: item.label ?? item.value,
+    })),
+  ).map((item) => toChoice({ id: item.id, label: item.className }))
+
+  const subjects = (lookups?.subjects || []).map((item) => toChoice({
+    id: item.id,
+    label: item.label ?? item.value,
+  }))
+  const teachers = (lookups?.teachers || []).map((item) => toChoice({
+    id: item.id,
+    label: item.label ?? item.value,
+    description: item.description,
+  }))
+  const students = (lookups?.students || []).map((item) => toChoice({
+    id: item.id,
+    label: item.label ?? item.value,
+    description: item.description,
+    sectionId: item.sectionId,
+  }))
+
+  return { classes, subjects, teachers, students }
+}
+
+export function buildProformaSections(lookups = EMPTY_PROFORMA_LOOKUPS) {
+  const { classes, subjects, teachers, students } = mapProformaLookupOptions(lookups)
+
+  const classField = select('class', 'Class / section', classes)
+  const subjectField = select('subject', 'Subject', subjects)
+  const teacherField = select('teacher', 'Teacher', teachers)
+  const studentField = select('student', 'Student', students)
+
+  return [
+    { id: 'morning', title: 'Morning Meeting', short: 'Morning meeting', group: 'Page 1', description: 'Points discussed and instructions given in the morning meeting.', fields: [notes('details', 'Meeting points')] },
+    { id: 'dailyChecks', title: 'Additional daily checks', short: 'Daily checks', group: 'Additional checks', description: 'Existing arrival, assembly, uniform, cleanliness and MOD recording.', fields: [
+      field('topic', 'Moral lesson topic'),
+      select('assembly', 'Assembly conducted per policy', ['Yes', 'No', 'Not observed']),
+      ...checks(['Uniform', 'Campus cleanliness', 'Teachers in classes']),
+      select('duty', 'MOD duty', ['Welcome', 'Assembly', 'Break', 'Off time', 'Other']), teacherField,
+      field('arrival', 'Arrival time', 'time'),
+    ] },
+    { id: 'dispatch', title: 'Due Dispatch', short: 'Dispatch', group: 'Page 1', description: 'Notice / Fee Challan / Schedule / Syllabus / Papers etc.', fields: [
+      select('kind', 'Dispatch type', ['Notice', 'Fee challan', 'Schedule', 'Syllabus', 'Question papers', 'Other']),
+      notes('details', 'Dispatch details'),
+    ] },
+    { id: 'activities', title: 'Z-Lesson / Special Period / Competition / Event / PTM', short: 'Activity', group: 'Page 1', description: 'Activity / Preparation', fields: [select('kind', 'Activity', ['Z-Lesson', 'Special Period', 'Competition', 'Event', 'PTM', 'Other']), notes('details', 'Activity / Preparation')] },
+    { id: 'priority', title: 'Priority Response — Parents’ Concerns', short: 'Priority response', group: 'Page 1', description: 'Priority concern and response; detailed contacts are on Page 2.', fields: [notes('concern', 'Parents’ concern / priority'), notes('response', 'Priority response')] },
+    { id: 'criticalDiary', title: 'Critical Diary Note', short: 'Critical diary note', group: 'Page 2', description: 'Class · Subject / Teacher / Issue · Concern & Response', fields: [classField, subjectField, teacherField, field('issue', 'Issue'), notes('concern', 'Concern'), notes('response', 'Response')] },
+    { id: 'parents', title: 'Complaint / Call / Visit / Inquiry', short: 'Parent contact', group: 'Page 2', description: 'Incoming / Outgoing · Class · Student · Complaint / Inquiry · Remedy / Response', fields: [
+      select('kind', 'Contact type', ['Complaint', 'Call', 'Visit', 'Inquiry']), select('direction', 'Incoming / Outgoing', ['Incoming', 'Outgoing']), classField, studentField, notes('concern', 'Complaint / Inquiry'), notes('response', 'Remedy / Response'),
+    ] },
+    { id: 'routine', title: 'Trust but verify', short: 'Routine matters', group: 'Page 2', description: 'Remarks for Non Compliance in Routine Matters', fields: [
+      ...['Delivery of Moral Lesson', 'Absentees Follow-up', 'H/Work delivery in 1st Lesson', 'MODs Welcome'].flatMap((label, i) => [field('routine' + i, label, 'inline', ['Done', 'Not done', 'Not verified', 'Not applicable']), notes('routineNote' + i, label + ' — remarks')]),
+    ] },
+    { id: 'friday', title: 'Friday Matters', short: 'Friday matters', group: 'Page 2', description: 'Evidence Matters · Teachers’ Diary · Lesson Planning · Teaching Material · Other Planning / Question Papers', fields: [
+      ...['Evidence Matters', 'Teachers’ Diary', 'Lesson Planning', 'Teaching Material', 'Other Planning / Question Papers'].flatMap((label, i) => [field('friday' + i, label, 'inline', ['Checked', 'Needs attention', 'Not checked', 'Not applicable']), notes('fridayNote' + i, label + ' — remarks')]),
+    ] },
+    { id: 'tests', title: 'Test Confirmation', short: 'Test confirmation', group: 'Page 2', description: 'SOS-T / Re-T / MKR-T · one record per class and subject', fields: [
+      field('kind', 'Test type', 'inline', ['SOS test', 'Retest', 'MKR-T']), classField, subjectField,
+      field('copies', 'Test Copies', 'number'), field('absentCount', 'Absent', 'number'),
+      field('testDate', 'Dated', 'date'), field('period', 'Period'), notes('students', 'Students'),
+    ] },
+    { id: 'oxygen', title: 'Oxygen Period', short: 'Oxygen period', group: 'Page 3', description: 'Test Discussion — Appreciation, Correction, Motivation & Grooming', fields: [
+      classField, subjectField, field('period', 'Period'), notes('details', 'Instructional Comments'),
+      ...['Question Paper', 'Answer Sheets', 'Award List with instructional comments', 'Use of Board'].map((label, i) => field('check' + i, label, 'inline', ['Satisfactory', 'Needs attention', 'Not checked', 'Not applicable'])),
+    ] },
+    { id: 'kaizen', title: '1 · Students’ Kaizen', short: 'Kaizen', group: 'Page 3', description: 'Breaktime counselling and guidelines for students’ performance', fields: [
+      classField, field('students', 'Student(s)'), select('category', 'Category', ['Below average', 'Average', 'Good', 'Academic support', 'Behaviour', 'Grooming', 'Motivation', 'Other']), notes('response', 'Remedial Grooming / Counselling'),
+    ] },
+    { id: 'diary', title: '2 · Students’ Diary Checking', short: 'Diary checking', group: 'Page 3', description: 'Award or Title Missing / Unsigned / Unclear / Uncorrected Issue etc.', fields: [
+      classField, { ...teacherField, label: 'CT / Class teacher' }, field('issue', 'Issue', 'inline', ['OK', 'Missing', 'Unsigned', 'Unclear', 'Uncorrected', 'Award / title missing', 'Other']), notes('details', 'Issue details'),
+    ] },
+    { id: 'notebooks', title: '3 · Note Book Re-Checking', short: 'Notebooks', group: 'Page 4', description: 'Neat, timely checked, well checked, remarks compliant, complete etc.', fields: [
+      classField, subjectField, teacherField, studentField,
+      ...checks(['Title', 'Page numbering', 'Neatness']),
+      select('writing', 'Writing quality', ['Below average', 'Average', 'Good']),
+      notes('details', 'Mistakes'), field('correctionTime', 'Time given for correction (e.g. 2 days)'),
+      select('correction', 'Correction status', ['Not needed', 'Not corrected', 'Partially corrected', 'Completed']),
+      select('acknowledgement', 'Teacher informed', ['Not yet', 'Informed by coordinator']),
+    ] },
+    { id: 'observation', title: '4 · Class Observation', short: 'Observation', group: 'Page 4', description: 'Reference material, SOS relevance, engaging, demonstrating, disciplined, effective board / AV use, Q/A oriented, homework as per schedule.', fields: [
+      classField, subjectField, teacherField, field('period', 'Period'),
+      field('kind', 'Formal / Informal', 'inline', ['Formal', 'Informal']),
+      ...checks(['Reference material', 'Scheme of studies relevance', 'Student engagement', 'Demonstration', 'Discipline', 'Board / audiovisual use', 'Questions & answers', 'Homework as scheduled']),
+      notes('strengths', 'Observation remarks'), notes('details', 'Guidance / improvement points'),
+    ] },
+    { id: 'teachers', title: '5 · Follow-up with Teachers', short: 'Teachers', group: 'Page 5', description: 'Teacher(s) · Class · Points of Concern · Acknowledged Measures', fields: [
+      teacherField, classField, subjectField,
+      select('kind', 'Area', ['Scheme of studies', 'Student diary', 'Teacher diary', 'Notebooks', 'Class observation', 'Test', 'MOD / discipline', 'Other']),
+      notes('concern', 'Points of concern'), notes('response', 'Acknowledged Measures'),
+    ] },
+    { id: 'faculty', title: '6 · Counselling or Warning with Faculty/Staff', short: 'Faculty', group: 'Page 5', emptyLabel: 'No one', description: 'Record counselling or a warning, or mark No one.', fields: [
+      { ...teacherField, label: 'Faculty / Staff' }, field('kind', 'Counselling / Warning', 'inline', ['Counselling', 'Warning']), notes('concern', 'Reason / concern'), notes('response', 'Advice / agreed action'),
+    ] },
+    { id: 'closing', title: 'Closing', short: 'Closing', group: 'Page 5', single: true, description: 'Pending submissions / SVHW results / Critical matters / Departure / Morning MODs', fields: [
+      { ...notes('pending', 'Pending Proposal / Report Submission (if any)'), emptyResponse: 'None' },
+      field('svhw', 'SVHW results to head office (Summer vacation homework)', 'inline', ['Yes', 'No', 'Not applicable']),
+      { ...notes('critical', 'Any Critical Matter of the Day'), emptyResponse: 'None' },
+      { ...notes('remaining', 'Anyone Waiting / Present at Closing'), emptyResponse: 'No one' },
+      field('planReport', 'Plan / Report', 'inline', ['Plan', 'Report']),
+      field('departure', 'Departure at', 'time'), field('mods', 'Morning MODs'), notes('details', 'Closing remarks'),
+    ] },
+  ]
+}
+
+function checks(labels) {
+  return labels.map((label, i) => select(`check${i}`, label, ['Satisfactory', 'Needs attention', 'Not checked', 'Not applicable']))
+}
+
+/** Static section catalog (labels/structure) for print and monitoring views. */
+export const SECTIONS = buildProformaSections(EMPTY_PROFORMA_LOOKUPS)
+
+/** Sections that appear on the printed five-page proforma (excludes extra daily checks). */
+export const PAPER_SECTIONS = SECTIONS.filter((section) => section.group !== 'Additional checks')
 
 export const todayInPakistan = () => new Intl.DateTimeFormat('en-CA', {
   timeZone: 'Asia/Karachi', year: 'numeric', month: '2-digit', day: '2-digit',
 }).format(new Date())
 
-export function createReport(date, sample = false) {
+function defaultWingCode() {
+  return getEmployeeWingCode() || DEFAULT_MOCK_COORDINATOR_WING
+}
+
+export const NOTEBOOK_SCHEDULE_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+
+export function hasNotebookSchedule(report) {
+  const schedule = normalizeNotebookSchedule(report?.notebookSchedule)
+  return NOTEBOOK_SCHEDULE_DAYS.some((day) => String(schedule[day] || '').trim())
+}
+
+/** Canonical Mon–Fri keys for print and API (handles legacy casing). */
+export function normalizeNotebookSchedule(schedule) {
+  const normalized = {}
+  if (!schedule || typeof schedule !== 'object') return normalized
+  for (const day of NOTEBOOK_SCHEDULE_DAYS) {
+    const direct = schedule[day]
+    const lower = schedule[day.toLowerCase()]
+    const value = direct ?? lower ?? ''
+    if (String(value).trim()) normalized[day] = String(value).trim()
+  }
+  return normalized
+}
+
+/** Merge workspace fields for the five-page print layout. */
+export function prepareReportForPrint(report) {
+  if (!report) return report
+  const workspace = report.workspace && typeof report.workspace === 'object' ? report.workspace : {}
   return {
-    theme: sample ? 'Cleanliness & care' : '', sosWeek: sample ? '5' : '', status: 'Draft',
-    acknowledged: false, approved: false, sections: {},
-    entries: sample ? [
-      { id: 'sample-morning', section: 'morning', values: { kind: 'Morning meeting', details: 'Discussed notebook checking and lesson delivery. Planned the colour day activity.', topic: 'Respect for shared spaces' }, attachments: [] },
-      { id: 'sample-notebook', section: 'notebooks', values: { class: '6 Blue', subject: 'Mathematics', teacher: TEACHERS[0], student: STUDENTS[1], check0: 'Satisfactory', check1: 'Needs attention', check2: 'Satisfactory', check3: 'Satisfactory', check4: 'Satisfactory', check5: 'Needs attention', writing: 'Average', details: 'Two corrections were missed. Add page numbers and recheck the corrected work.', correction: 'Not corrected' }, attachments: [] },
-      { id: 'sample-observation', section: 'observation', values: { class: '4 Blue', subject: 'Urdu', teacher: TEACHERS[1], period: '3', kind: 'Formal', check2: 'Satisfactory', check4: 'Satisfactory', strengths: 'Students participated well; the board was prepared before the lesson.', details: 'Allow more time for independent reading.' }, attachments: [] },
-    ] : [],
-    actions: sample ? [{ id: 'sample-action', sourceId: 'sample-notebook', title: 'Recheck corrections and page numbering', owner: TEACHERS[0], due: date, status: 'Open', updates: [] }] : [],
-    history: [],
+    ...workspace,
+    ...report,
+    coordinator: report.coordinator || report.coordinatorName || '',
+    date: report.date || report.reportDate || '',
+    wing: report.wing || workspace.wing || '',
+    theme: report.theme ?? workspace.theme ?? '',
+    sosWeek: report.sosWeek ?? workspace.sosWeek ?? '',
+    status: report.status ?? workspace.status ?? 'Draft',
+    sections: { ...(workspace.sections || {}), ...(report.sections || {}) },
+    pageOneChecks: { ...(workspace.pageOneChecks || {}), ...(report.pageOneChecks || {}) },
+    attendanceSnapshot: report.attendanceSnapshot ?? workspace.attendanceSnapshot ?? null,
+    notebookSchedule: normalizeNotebookSchedule(report.notebookSchedule ?? workspace.notebookSchedule),
+    entries: report.entries ?? workspace.entries ?? [],
+    actions: report.actions ?? workspace.actions ?? [],
+    comments: report.comments ?? workspace.comments ?? [],
+    history: report.history ?? workspace.history ?? [],
   }
 }
 
-export const SAMPLE_ATTENDANCE = [
-  { class: '3 Blue', active: 32, present: 29, absent: 2, unmarked: 1 },
-  { class: '4 Blue', active: 30, present: 28, absent: 2, unmarked: 0 },
-  { class: '5 Blue', active: 31, present: 29, absent: 2, unmarked: 0 },
-  { class: '6 Blue', active: 34, present: 31, absent: 2, unmarked: 1 },
-  { class: '7 Blue', active: 35, present: 31, absent: 3, unmarked: 1 },
-  { class: '8 Blue', active: 33, present: 30, absent: 3, unmarked: 0 },
-]
+export function sectionProofreadStatus(sectionId, report, entries = []) {
+  const items = entries.filter((entry) => entry.section === sectionId)
+  if (items.length) return { tag: `${items.length} recorded`, items, showSchedule: false }
+  if (sectionId === 'notebooks') {
+    if (hasNotebookSchedule(report)) return { tag: 'Schedule recorded', items, showSchedule: true }
+    if (report?.pageOneChecks?.notebooks) return { tag: 'Marked on page 1', items, showSchedule: false }
+  }
+  const marker = report?.sections?.[sectionId]
+  if (marker) return { tag: marker, items, showSchedule: false }
+  return { tag: 'Not recorded', items, showSchedule: false }
+}
+
+export function createReport(date, _sample = false, wingCode = defaultWingCode()) {
+  return {
+    wingCode,
+    wing: proformaWingLabel(wingCode),
+    theme: '',
+    sosWeek: '',
+    status: 'Draft',
+    acknowledged: false,
+    approved: false,
+    sections: {},
+    pageOneChecks: {},
+    notebookSchedule: {},
+    entries: [],
+    actions: [],
+    history: [],
+  }
+}

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
+  Bell,
   BookMarked,
   BookOpen,
   CalendarClock,
@@ -17,14 +18,17 @@ import {
   NotebookPen,
   PenLine,
   Search,
+  ShieldCheck,
   Users,
   X,
 } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
+import { COORDINATOR_MONITORING_PATH } from '../../constants/employeeHeadPortal'
 import {
   changeEmployeePassword,
   employeeLogout,
+  isEmployeeAcademicHead,
 } from '../../services/employeeAuthService'
 import {
   getEmployeeAppAccess,
@@ -39,6 +43,8 @@ import {
 } from '../../utils/campusProfile'
 import EmployeeBottomNavSubmenu from './EmployeeBottomNavSubmenu'
 import { useEmployeeDismissKeyboard } from './EmployeeSelect'
+import CampusNotificationsDrawer from '../campus/CampusNotificationsDrawer'
+import { useEmployeeNotifications } from '../../hooks/useEmployeeNotifications'
 import './employeeTheme.css'
 
 const emptyPasswordForm = () => ({
@@ -153,11 +159,33 @@ function EmployeeLayout({
   }
 
   const isCoordinator = isEmployeeCoordinator()
+  const isAcademicHead = isEmployeeAcademicHead()
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
+  const showEmployeeNotifications = isCoordinator || isAcademicHead
+  const { notifications, unreadCount, markAllRead } = useEmployeeNotifications({ enabled: showEmployeeNotifications })
   const personalTeachingNav = usesPersonalTeachingNav()
   const access = useMemo(() => getEmployeeAppAccess(), [])
   const isHome = location.pathname === '/employee/dashboard'
 
   const bottomNavItems = useMemo(() => {
+    if (isAcademicHead) {
+      return [
+        { id: 'home', label: 'Home', icon: Home, path: '/employee/dashboard' },
+        {
+          id: 'monitoring',
+          label: 'Monitoring',
+          icon: ShieldCheck,
+          path: COORDINATOR_MONITORING_PATH,
+        },
+        {
+          id: 'attendance',
+          label: 'Attendance',
+          icon: Clock3,
+          path: '/employee/my-attendance',
+        },
+      ]
+    }
+
     const academicsSubmenu = []
     if (access.canViewSubjectAllocation || access.canEditSubjectAllocation) {
       academicsSubmenu.push({
@@ -393,9 +421,16 @@ function EmployeeLayout({
     if (examsItem) items.push(examsItem)
 
     return items
-  }, [access, isCoordinator, personalTeachingNav])
+  }, [access, isAcademicHead, isCoordinator, personalTeachingNav])
 
   const resolveActiveNav = () => {
+    if (
+      location.pathname === COORDINATOR_MONITORING_PATH ||
+      location.pathname === '/employee/academic-oversight' ||
+      location.pathname === '/heads/monitoring-preview'
+    ) {
+      return 'monitoring'
+    }
     if (
       location.pathname === '/employee/attendance' ||
       location.pathname === '/employee/attendance-report' ||
@@ -484,6 +519,24 @@ function EmployeeLayout({
               <span className="max-w-[9.5rem] truncate rounded-full bg-[var(--emp-primary-soft)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--emp-primary)] sm:max-w-none">
                 {appBarDateLabel}
               </span>
+            ) : null}
+            {showEmployeeNotifications ? (
+              <button
+                type="button"
+                className="relative grid h-10 w-10 place-items-center rounded-full border border-[var(--emp-border)] bg-[var(--emp-bg)] text-[var(--emp-text-muted)]"
+                aria-label={unreadCount ? `${unreadCount} unread notifications` : 'Notifications'}
+                onClick={() => {
+                  setIsNotificationsOpen(true)
+                  markAllRead()
+                }}
+              >
+                <Bell size={18} strokeWidth={2} />
+                {unreadCount > 0 ? (
+                  <span className="absolute -right-0.5 -top-0.5 min-w-[1.1rem] rounded-full bg-rose-500 px-1 text-center text-[10px] font-bold leading-4 text-white">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                ) : null}
+              </button>
             ) : null}
             <div className="relative" ref={profileMenuRef}>
               <button
@@ -661,6 +714,16 @@ function EmployeeLayout({
           })}
         </div>
       </nav>
+
+      <CampusNotificationsDrawer
+        open={isNotificationsOpen}
+        notifications={notifications}
+        onClose={() => setIsNotificationsOpen(false)}
+        onSelect={(item) => {
+          setIsNotificationsOpen(false)
+          if (item?.link) navigate(item.link)
+        }}
+      />
     </div>
   )
 }

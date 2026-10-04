@@ -6,9 +6,11 @@ import {
   CalendarDays,
   Check,
   ChevronRight,
+  ClipboardCheck,
   Clock3,
   FileText,
   HandCoins,
+  MessageSquare,
   UserPlus,
   X,
 } from 'lucide-react'
@@ -65,6 +67,18 @@ function iconForNotification(item) {
   }
   if (type === 'leave_application') {
     return { Icon: CalendarDays, wrap: 'bg-sky-100 text-sky-700' }
+  }
+  if (type === 'proforma_submitted') {
+    return { Icon: ClipboardCheck, wrap: 'bg-sky-100 text-sky-700' }
+  }
+  if (type === 'proforma_approved') {
+    return { Icon: Check, wrap: 'bg-emerald-100 text-emerald-600' }
+  }
+  if (type === 'proforma_returned') {
+    return { Icon: AlertTriangle, wrap: 'bg-amber-100 text-amber-600' }
+  }
+  if (type === 'proforma_head_comment') {
+    return { Icon: MessageSquare, wrap: 'bg-indigo-100 text-indigo-700' }
   }
   if (severity === 'warning') {
     return { Icon: Clock3, wrap: 'bg-amber-100 text-amber-600' }

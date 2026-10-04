@@ -1,8 +1,10 @@
 import EmployeeGenderAvatar from './EmployeeGenderAvatar'
 
-function EmployeeHomeWelcomeCard({ firstName, gender, designation, subtitle }) {
+function EmployeeHomeWelcomeCard({ firstName, gender, designation, subtitle, compact = false }) {
   return (
-    <section className="emp-home-welcome relative overflow-hidden rounded-[var(--emp-radius-lg)]">
+    <section
+      className={`emp-home-welcome relative overflow-hidden rounded-[var(--emp-radius-lg)]${compact ? ' emp-home-welcome--compact' : ''}`}
+    >
       <svg
         className="pointer-events-none absolute -right-6 -top-8 h-32 w-32 text-[var(--emp-primary)] opacity-[0.08]"
         viewBox="0 0 120 120"
@@ -28,16 +30,24 @@ function EmployeeHomeWelcomeCard({ firstName, gender, designation, subtitle }) {
         />
       </svg>
 
-      <div className="relative flex items-start gap-3.5 p-4">
-        <EmployeeGenderAvatar gender={gender} size="lg" />
-        <div className="min-w-0 flex-1 pt-0.5">
-          <p className="text-lg font-semibold leading-tight tracking-tight text-[var(--emp-text)]">
+      <div className={`relative flex items-center ${compact ? 'gap-3 p-3' : 'items-start gap-3.5 p-4'}`}>
+        <EmployeeGenderAvatar gender={gender} size={compact ? 'md' : 'lg'} />
+        <div className="min-w-0 flex-1">
+          <p
+            className={`font-semibold leading-tight tracking-tight text-[var(--emp-text)] ${compact ? 'text-base' : 'text-lg'}`}
+          >
             Hello, {firstName}
           </p>
           {designation ? (
-            <p className="mt-1 text-xs font-semibold text-[var(--emp-primary)]">{designation}</p>
+            <p className={`text-xs font-semibold text-[var(--emp-primary)] ${compact ? 'mt-0.5' : 'mt-1'}`}>
+              {designation}
+            </p>
           ) : null}
-          <p className="mt-2 text-[13px] leading-snug text-[var(--emp-text-muted)]">{subtitle}</p>
+          {subtitle ? (
+            <p className={`text-[13px] leading-snug text-[var(--emp-text-muted)] ${compact ? 'mt-1' : 'mt-2'}`}>
+              {subtitle}
+            </p>
+          ) : null}
         </div>
       </div>
     </section>

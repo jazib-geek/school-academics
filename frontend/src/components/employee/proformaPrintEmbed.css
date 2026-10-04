@@ -1,0 +1,59 @@
+/* Scoped copy of proforma print layout — must not leak 281mm width to the app shell */
+.cw-paper-preview {
+  box-sizing: border-box;
+  color: #000;
+  font-family: Arial, Helvetica, sans-serif;
+}
+.cw-paper-preview * { box-sizing: border-box; }
+.cw-paper-preview .paper,
+.cw-paper-preview .support { width: 281mm; background: white; margin: 12px auto; padding: 4mm 0; }
+.cw-paper-preview .paper { min-height: 193mm; position: relative; }
+.cw-paper-preview .paper-body { border: .45mm solid black; }
+.cw-paper-preview table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 11pt; }
+.cw-paper-preview td,
+.cw-paper-preview th { border: .3mm solid #000; padding: .65mm 1mm; height: 6.2mm; text-align: center; line-height: 1.12; overflow-wrap: anywhere; vertical-align: middle; }
+.cw-paper-preview table + table { margin-top: -.3mm; }
+.cw-paper-preview .blue { background: linear-gradient(100deg, #5784b8, #c0cad6, #5784b8); }
+.cw-paper-preview .cyan { background: #94cdda; }
+.cw-paper-preview .peach { background: #fac398; }
+.cw-paper-preview .red { color: #f00; }
+.cw-paper-preview .normal { font-weight: normal; }
+.cw-paper-preview .small { font-size: 8pt; }
+.cw-paper-preview .filled { font-family: Arial, sans-serif; font-size: 8.5pt; text-align: left; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.25; }
+.cw-paper-preview .coord-entry { background-color: #fdf6e0; box-shadow: inset 0 0 0 1px #e8d4a0; }
+.cw-paper-preview td.coord-entry,
+.cw-paper-preview th.coord-entry { background-color: #fdf6e0; }
+.cw-paper-preview .spirit { height: 23mm; padding: 3mm; font-size: 10.5pt; line-height: 1.25; }
+.cw-paper-preview .ruled { background: repeating-linear-gradient(to bottom, transparent 0, transparent 5.9mm, #000 5.9mm, #000 6.2mm); line-height: 6.2mm; padding: 0 2mm; }
+.cw-paper-preview .morning { height: 37.2mm; }
+.cw-paper-preview .priority { min-height: 7mm; padding: 1mm; }
+.cw-paper-preview .routine-cell { height: 14mm; }
+.cw-paper-preview .friday-cell { height: 13mm; }
+.cw-paper-preview .test-grid td,
+.cw-paper-preview .test-grid th { height: 7mm; font-size: 8.5pt; }
+.cw-paper-preview .vertical { writing-mode: vertical-rl; transform: rotate(180deg); }
+.cw-paper-preview .oxygen-record { height: 28mm; }
+.cw-paper-preview .oxygen-record td { vertical-align: top; }
+.cw-paper-preview .page-four { display: grid; grid-template-columns: 58.5% 41.5%; }
+.cw-paper-preview .page-four > div { min-width: 0; }
+.cw-paper-preview .page-four th { font-size: 10pt; }
+.cw-paper-preview .schedule { height: 19mm; }
+.cw-paper-preview .schedule-cell { min-height: 12mm; vertical-align: top; font-weight: 600; }
+.cw-paper-preview .rubric { height: 31.4mm; font-size: 11pt; padding: 2mm; }
+.cw-paper-preview .notebook-row { height: 12.1mm; }
+.cw-paper-preview .dotted { background: linear-gradient(to right, #555 40%, transparent 0) 0 80% / 1mm .2mm repeat-x; }
+.cw-paper-preview .obs-context { height: 9mm; }
+.cw-paper-preview .observation-notes { height: 33.2mm; border: .3mm solid #000; padding: 2mm; }
+.cw-paper-preview .spacer { height: 7mm; }
+.cw-paper-preview .closing { height: 37.2mm; }
+.cw-paper-preview .paper footer { position: absolute; bottom: 0; left: 0; right: 0; font: 7pt Arial, sans-serif; color: #444; display: flex; justify-content: space-between; }
+.cw-paper-preview .support h2 { text-align: center; font-size: 14pt; }
+.cw-paper-preview .support th { font-size: 8pt; }
+.cw-paper-preview .support td { font: 8pt Arial, sans-serif; white-space: pre-wrap; }
+.cw-paper-preview .support p { white-space: pre-wrap; }
+.cw-paper-preview .continuation { border-bottom: 1px solid #aaa; padding: 2mm 0; }
+.cw-paper-preview .continuation h3 { font-size: 11pt; }
+.cw-paper-preview .continuation p,
+.cw-paper-preview .continuation dl { font: 10pt Arial, sans-serif; line-height: 1.4; overflow-wrap: anywhere; }
+.cw-paper-preview .continuation dd { margin: 0 0 2mm; white-space: pre-wrap; }
+.cw-paper-preview .continuation dt { font-weight: bold; }

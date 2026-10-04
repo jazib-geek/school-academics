@@ -76,6 +76,7 @@ import AcademicExamTitlesPage from './pages/Academics/exams/AcademicExamTitlesPa
 import AcademicInstituteSettingsPage from './pages/Academics/settings/AcademicInstituteSettingsPage.jsx'
 import AcademicUsersPage from './pages/Academics/settings/AcademicUsersPage.jsx'
 import EmployeeProtectedRoute from './components/EmployeeProtectedRoute.jsx'
+import EmployeeAcademicHeadRoute from './components/EmployeeAcademicHeadRoute.jsx'
 import EmployeeCoordinatorRoute from './components/EmployeeCoordinatorRoute.jsx'
 import EmployeeAppAccessRoute from './components/EmployeeAppAccessRoute.jsx'
 import EmployeeExamsPage from './pages/Employee/EmployeeExamsPage.jsx'
@@ -95,6 +96,7 @@ import EmployeeBrowseDateSheetDetailPage from './pages/Employee/EmployeeBrowseDa
 import CoordinatorDailyReportPage from './pages/Employee/CoordinatorDailyReportPage.jsx'
 import CoordinatorWorkspacePage from './pages/Employee/CoordinatorWorkspacePage.jsx'
 import HeadMonitoringPage from './pages/Heads/HeadMonitoringPage.jsx'
+import EmployeeCoordinatorMonitoringPage from './pages/Employee/EmployeeCoordinatorMonitoringPage.jsx'
 import EmployeeSubjectAllocationPage from './pages/Employee/academics/EmployeeSubjectAllocationPage.jsx'
 import EmployeeDiaryPage from './pages/Employee/academics/EmployeeDiaryPage.jsx'
 import EmployeeDiaryUploadPage from './pages/Employee/academics/EmployeeDiaryUploadPage.jsx'
@@ -241,7 +243,23 @@ function App() {
       />
       <Route
         path="/heads/monitoring-preview"
-        element={<HeadMonitoringPage />}
+        element={
+          <EmployeeAcademicHeadRoute>
+            <HeadMonitoringPage />
+          </EmployeeAcademicHeadRoute>
+        }
+      />
+      <Route
+        path="/employee/coordinator-monitoring"
+        element={
+          <EmployeeAcademicHeadRoute>
+            <EmployeeCoordinatorMonitoringPage />
+          </EmployeeAcademicHeadRoute>
+        }
+      />
+      <Route
+        path="/employee/academic-oversight"
+        element={<Navigate to="/employee/coordinator-monitoring" replace />}
       />
       <Route
         path="/employee/coordinator-workspace"

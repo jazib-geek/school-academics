@@ -6,6 +6,7 @@ import './index.css'
 import App from './App.jsx'
 import { AcademicInstituteSettingsProvider } from './contexts/AcademicInstituteSettingsContext.jsx'
 import { CAMPUS_REALTIME_TOASTER_ID } from './hooks/useCampusNotifications.jsx'
+import { EMPLOYEE_REALTIME_TOASTER_ID } from './hooks/useEmployeeNotifications.jsx'
 import { applyTableHeaderTheme, loadSidebarTheme } from './utils/sidebarTheme'
 
 applyTableHeaderTheme(loadSidebarTheme())
@@ -46,6 +47,21 @@ createRoot(document.getElementById('root')).render(
           gap={10}
           toastOptions={{
             duration: 5000,
+            unstyled: true,
+            classNames: {
+              toast: 'campus-realtime-toast-host',
+            },
+          }}
+        />
+        <Toaster
+          id={EMPLOYEE_REALTIME_TOASTER_ID}
+          position="top-center"
+          richColors={false}
+          closeButton={false}
+          offset="0.85rem"
+          gap={10}
+          toastOptions={{
+            duration: 6000,
             unstyled: true,
             classNames: {
               toast: 'campus-realtime-toast-host',

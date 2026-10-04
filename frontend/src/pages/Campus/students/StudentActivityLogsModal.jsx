@@ -51,6 +51,8 @@ const ACTIVITY_LABELS = {
   StudentBulkEdit: 'Student bulk edit',
   StudentTransfer: 'Student transfer',
   StudentFeeUpdate: 'Fee update',
+  FeeGenerateSingle: 'Fee generate (one student)',
+  FundGenerateSingle: 'Fund generate (one student)',
   StudentActivate: 'Student activate',
   StudentDeactivate: 'Student deactivate',
   FeeReceiptVoid: 'Fee receipt void',

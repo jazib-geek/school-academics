@@ -1,5 +1,6 @@
 import api from './api'
 import { persistCampusProfile, clearCampusProfile } from '../utils/campusProfile'
+import { DEFAULT_MOCK_COORDINATOR_WING } from '../utils/proformaWings'
 import { normalizeAccess } from './employeeAppAccess'
 
 const EMPLOYEE_LOGIN_PATH = import.meta.env.VITE_EMPLOYEE_LOGIN_PATH || '/api/auth/employee-login'
@@ -13,7 +14,7 @@ const readEmployeeUser = () => {
   }
 }
 
-export const persistEmployeeProfile = ({ id, name, gender, designation, isCoordinator, appAccess } = {}) => {
+export const persistEmployeeProfile = ({ id, name, gender, designation, isCoordinator, wingCode, isAcademicHead, appAccess } = {}) => {
   const prev = readEmployeeUser()
   const next = {
     ...prev,
@@ -22,6 +23,8 @@ export const persistEmployeeProfile = ({ id, name, gender, designation, isCoordi
     ...(gender != null && gender !== '' ? { gender } : {}),
     ...(designation != null ? { designation } : {}),
     ...(isCoordinator != null ? { isCoordinator } : {}),
+    ...(wingCode != null && wingCode !== '' ? { wingCode } : {}),
+    ...(isAcademicHead != null ? { isAcademicHead } : {}),
     ...(appAccess != null ? { appAccess } : {}),
   }
 
@@ -37,6 +40,24 @@ export const getEmployeeGender = () =>
 export const getEmployeeDesignation = () =>
   localStorage.getItem('employeeDesignation') || readEmployeeUser().designation || ''
 
+/** Coordinator proforma default wing (API will supply after login). */
+export const getEmployeeWingCode = () =>
+  readEmployeeUser().wingCode || DEFAULT_MOCK_COORDINATOR_WING
+
+export const isEmployeeAcademicHead = () => Boolean(readEmployeeUser().isAcademicHead)
+
+export const ACADEMIC_HEAD_DESIGNATION_LABEL = 'Academic Head'
+
+/** User-facing designation; academic heads always show as Academic Head. */
+export const getEmployeeDisplayDesignation = () =>
+  isEmployeeAcademicHead() ? ACADEMIC_HEAD_DESIGNATION_LABEL : getEmployeeDesignation()
+
+const designationFromAuthPayload = (payload) => {
+  const isHead = Boolean(payload?.isAcademicHead ?? payload?.IsAcademicHead)
+  if (isHead) return ACADEMIC_HEAD_DESIGNATION_LABEL
+  return payload?.designation ?? payload?.Designation ?? ''
+}
+
 const mapEmployeeLoginResponse = (data) => {
   const payload = data?.data || data
 
@@ -46,9 +67,11 @@ const mapEmployeeLoginResponse = (data) => {
       id: payload?.id ?? payload?.ID,
       name: payload?.employeeName || '',
       gender: payload?.gender ?? payload?.Gender ?? '',
-      designation: payload?.designation || '',
+      designation: designationFromAuthPayload(payload),
       branchId: payload?.branchID ?? null,
       isCoordinator: Boolean(payload?.isCoordinator),
+      wingCode: payload?.wingCode || payload?.WingCode || '',
+      isAcademicHead: Boolean(payload?.isAcademicHead ?? payload?.IsAcademicHead),
       appAccess: normalizeAccess(payload?.appAccess),
     },
     campusProfile: payload?.campusProfile || payload?.CampusProfile || null,
@@ -77,6 +100,8 @@ export const employeeLoginWithCampus = async ({ campus, username, password }) =>
 
   persistEmployeeProfile({
     id: mapped.employee.id,
+    wingCode: mapped.employee.wingCode,
+    isAcademicHead: mapped.employee.isAcademicHead,
     name: mapped.employee.name,
     gender: mapped.employee.gender,
     designation: mapped.employee.designation,
@@ -108,7 +133,9 @@ export const ensureEmployeeProfile = async () => {
       id: payload.id ?? payload.ID,
       name: payload.employeeName,
       gender: payload.gender ?? payload.Gender ?? '',
-      designation: payload.designation ?? payload.Designation ?? '',
+      designation: designationFromAuthPayload(payload),
+      wingCode: payload.wingCode ?? payload.WingCode ?? '',
+      isAcademicHead: Boolean(payload.isAcademicHead ?? payload.IsAcademicHead),
     })
 
     return {

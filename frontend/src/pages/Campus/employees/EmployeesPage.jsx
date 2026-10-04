@@ -46,6 +46,7 @@ import {
   formatReportPrintDate,
   formatReportPrintMoney,
 } from '../../../utils/campusReportPrint'
+import { PROFORMA_WINGS } from '../../../utils/proformaWings'
 
 const inputClass =
   'w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100'
@@ -117,6 +118,8 @@ const makeEmptyForm = () => ({
   canViewStudentExamDetail: false,
   canRecordStudentConduct: false,
   canViewStudentConduct: false,
+  wingCode: '',
+  isAcademicHead: false,
   qualifications: [],
   experiences: [],
   assets: [],
@@ -206,6 +209,8 @@ function EmployeeForm({ employeeId, lookups, onClose, onSaved }) {
           canViewStudentExamDetail: Boolean(data.canViewStudentExamDetail),
           canRecordStudentConduct: Boolean(data.canRecordStudentConduct),
           canViewStudentConduct: Boolean(data.canViewStudentConduct),
+          wingCode: data.wingCode ?? data.WingCode ?? '',
+          isAcademicHead: Boolean(data.isAcademicHead ?? data.IsAcademicHead),
           qualifications: (data.qualifications || []).map((x) => ({ ...x, year: x.year ?? '' })),
           experiences: (data.experiences || []).map((x) => ({
             ...x,
@@ -274,6 +279,7 @@ function EmployeeForm({ employeeId, lookups, onClose, onSaved }) {
       doB: valueOrNull(form.doB),
       joining_Date: valueOrNull(form.joining_Date),
       leaving_Date: valueOrNull(form.leaving_Date),
+      wingCode: valueOrNull(form.wingCode),
       qualifications: form.qualifications.map((x) => ({ ...x, id: x.id || 0, year: numberOrNull(x.year) })),
       experiences: form.experiences.map((x) => ({
         ...x,
@@ -432,6 +438,12 @@ function EmployeeForm({ employeeId, lookups, onClose, onSaved }) {
               {lookups.designations.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
             </select>
           </Field>
+          <Field label="Coordinator wing">
+            <select className={inputClass} value={form.wingCode || ''} onChange={(e) => setValue('wingCode', e.target.value)}>
+              <option value="">Not assigned</option>
+              {PROFORMA_WINGS.map((wing) => <option key={wing.value} value={wing.value}>{wing.label}</option>)}
+            </select>
+          </Field>
           <Field label="Salary" required>
             <div className="relative">
               <BadgeDollarSign size={17} className="absolute left-3 top-3 text-slate-400" />
@@ -470,7 +482,7 @@ function EmployeeForm({ employeeId, lookups, onClose, onSaved }) {
             <input className={inputClass} value={form.approvedBy || ''} onChange={(e) => setValue('approvedBy', e.target.value)} />
           </Field>
           <div className="flex flex-wrap items-center gap-5 md:col-span-2 xl:col-span-3">
-            {[['isTrained', 'Professionally trained'], ['isActive', 'Active employee']].map(([name, label]) => (
+            {[['isTrained', 'Professionally trained'], ['isActive', 'Active employee'], ['isAcademicHead', 'Academic head (proforma oversight)']].map(([name, label]) => (
               <label key={name} className="flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700">
                 <input type="checkbox" checked={Boolean(form[name])} onChange={(e) => setValue(name, e.target.checked)} className="h-4 w-4 accent-indigo-600" />
                 {label}

@@ -1,0 +1,39 @@
+@page { size: A4 landscape; margin: 8mm; }
+* { box-sizing: border-box; }
+body { margin: 0; color: #000; background: #e7e9eb; font-family: Arial, Helvetica, sans-serif; }
+.print-controls { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; flex-wrap: wrap; gap: 10px 16px; padding: 12px; background: #fff; font: 13px Arial, sans-serif; border-bottom: 1px solid #e2e8e4; }
+.print-controls button { background: #28634f; color: white; border: 0; border-radius: 7px; padding: 12px 18px; cursor: pointer; flex-shrink: 0; }
+.print-controls .print-back { background: #f4f7f5; color: #2d5a47; border: 1px solid #c5d9ce; }
+.paper, .support { width: 281mm; background: white; margin: 12px auto; padding: 4mm 0; }
+.paper { min-height: 193mm; position: relative; break-after: page; }
+.paper-body { border: .45mm solid black; }
+table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 11pt; }
+td, th { border: .3mm solid #000; padding: .65mm 1mm; height: 6.2mm; text-align: center; line-height: 1.12; overflow-wrap: anywhere; vertical-align: middle; }
+table + table { margin-top: -.3mm; }
+.blue { background: linear-gradient(100deg, #5784b8, #c0cad6, #5784b8); }
+.cyan { background: #94cdda; }.peach { background: #fac398; }.red { color: #f00; }
+.normal { font-weight: normal; }.small { font-size: 8pt; }
+.filled { font-family: Arial, sans-serif; font-size: 8.5pt; text-align: left; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.25; }
+td.coord-entry, th.coord-entry, .support .continuation .coord-entry { background-color: #fdf6e0; box-shadow: inset 0 0 0 1px #e8d4a0; }
+.spirit { height: 23mm; padding: 3mm; font-size: 10.5pt; line-height: 1.25; }
+.ruled { background: repeating-linear-gradient(to bottom, transparent 0, transparent 5.9mm, #000 5.9mm, #000 6.2mm); line-height: 6.2mm; padding: 0 2mm; }
+.morning { height: 37.2mm; }.priority { min-height: 7mm; padding: 1mm; }
+.routine-cell { height: 14mm; }.friday-cell { height: 13mm; }
+.test-grid td, .test-grid th { height: 7mm; font-size: 8.5pt; }.vertical { writing-mode: vertical-rl; transform: rotate(180deg); }
+.oxygen-record { height: 28mm; }.oxygen-record td { vertical-align: top; }
+.page-four { display: grid; grid-template-columns: 58.5% 41.5%; }
+.page-four > div { min-width: 0; }.page-four th { font-size: 10pt; }
+.schedule { height: 19mm; }.schedule-cell { min-height: 12mm; vertical-align: top; font-weight: 600; }
+.schedule-support-table { margin-top: 3mm; }.schedule-support-table th { background: #e8eef4; font-size: 9pt; }
+.notebook-schedule-support .small { font-size: 8pt; color: #555; margin-top: 2mm; }
+.rubric { height: 31.4mm; font-size: 11pt; padding: 2mm; }
+.notebook-row { height: 12.1mm; }.dotted { background: linear-gradient(to right, #555 40%, transparent 0) 0 80% / 1mm .2mm repeat-x; }
+.obs-context { height: 9mm; }.observation-notes { height: 33.2mm; border: .3mm solid #000; padding: 2mm; }
+.spacer { height: 7mm; }.closing { height: 37.2mm; }
+.paper footer { position: absolute; bottom: 0; left: 0; right: 0; font: 7pt Arial, sans-serif; color: #444; display: flex; justify-content: space-between; }
+.support { break-before: page; }.support h2 { text-align: center; font-size: 14pt; }.support th { font-size: 8pt; }.support td { font: 8pt Arial, sans-serif; white-space: pre-wrap; }.support p { white-space: pre-wrap; }
+.support thead { display: table-header-group; }.support tr { break-inside: avoid; }
+.continuation { border-bottom: 1px solid #aaa; padding: 2mm 0; }.continuation h3 { font-size: 11pt; break-after: avoid; }.continuation p, .continuation dl { font: 10pt Arial, sans-serif; line-height: 1.4; overflow-wrap: anywhere; }.continuation dd { margin: 0 0 2mm; white-space: pre-wrap; }.continuation dt { font-weight: bold; }
+@media print { body { background: white; print-color-adjust: exact; -webkit-print-color-adjust: exact; }.print-controls { display: none; }.paper, .support { margin: 0; }.paper:last-child { break-after: auto; } }
+
+.print-controls button { font-family: inherit; }

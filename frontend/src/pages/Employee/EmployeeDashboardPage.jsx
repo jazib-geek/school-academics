@@ -9,16 +9,19 @@ import {
   NotebookPen,
   PenLine,
   RefreshCw,
-  ScrollText,
+  ShieldCheck,
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import EmployeeHomeWelcomeCard from '../../components/employee/EmployeeHomeWelcomeCard'
 import EmployeeLayout from '../../components/employee/EmployeeLayout'
 import { getEmployeeAttendanceStats } from '../../services/attendanceService'
+import { COORDINATOR_MONITORING_PATH } from '../../constants/employeeHeadPortal'
 import {
   ensureEmployeeProfile,
+  getEmployeeDisplayDesignation,
   getEmployeeDesignation,
   getEmployeeGender,
+  isEmployeeAcademicHead,
 } from '../../services/employeeAuthService'
 import { hasAnyEmployeeAppAccess, isEmployeeCoordinator } from '../../services/employeeAppAccess'
 
@@ -137,10 +140,16 @@ function HomeMenuRow({ icon: Icon, title, description, color, onClick, isFirst }
   )
 }
 
+const HEAD_HOME_TILE_IDS = ['my-attendance', 'my-salary-adjustments']
+
 function EmployeeDashboardPage() {
   const navigate = useNavigate()
   const isCoordinator = isEmployeeCoordinator()
+  const isAcademicHead = isEmployeeAcademicHead()
   const homeTiles = useMemo(() => {
+    if (isAcademicHead) {
+      return HOME_TILES.filter((tile) => HEAD_HOME_TILE_IDS.includes(tile.id))
+    }
     let tiles = [...HOME_TILES]
     if (!isCoordinator) {
       tiles = tiles.filter((tile) => tile.id !== 'my-attendance')
@@ -149,7 +158,7 @@ function EmployeeDashboardPage() {
       tiles.push(DIARY_HOME_TILE)
     }
     return tiles
-  }, [isCoordinator])
+  }, [isAcademicHead, isCoordinator])
   const todayIso = useMemo(() => getPakistanToday(), [])
   const dateLabel = useMemo(() => formatPakistanBarDate(todayIso), [todayIso])
 
@@ -182,8 +191,8 @@ function EmployeeDashboardPage() {
   }
 
   useEffect(() => {
-    if (isCoordinator) loadStats()
-  }, [isCoordinator])
+    if (isCoordinator && !isAcademicHead) loadStats()
+  }, [isAcademicHead, isCoordinator])
 
   useEffect(() => {
     let cancelled = false
@@ -214,15 +223,39 @@ function EmployeeDashboardPage() {
       <EmployeeHomeWelcomeCard
         firstName={firstName}
         gender={gender}
-        designation={designation}
+        designation={getEmployeeDisplayDesignation() || designation}
         subtitle={
-          isCoordinator
-            ? 'Here’s how campus attendance looks today.'
-            : 'Choose an option below to get started.'
+          isAcademicHead
+            ? 'Review coordinator reports and your personal records.'
+            : isCoordinator
+              ? undefined
+              : 'Choose an option below to get started.'
         }
+        compact={isCoordinator && !isAcademicHead}
       />
 
-      {isCoordinator ? (
+      {isAcademicHead ? (
+        <button
+          type="button"
+          className="emp-action-row"
+          onClick={() => navigate(COORDINATOR_MONITORING_PATH)}
+        >
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[0.65rem] bg-violet-50 text-violet-700">
+            <ShieldCheck size={20} strokeWidth={2.25} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[0.9375rem] font-semibold leading-tight text-[var(--emp-text)]">
+              Coordinator monitoring
+            </span>
+            <span className="mt-0.5 block text-xs leading-snug text-[var(--emp-text-muted)]">
+              Daily proformas across campuses
+            </span>
+          </span>
+          <ChevronRight size={18} className="shrink-0 text-[var(--emp-border-strong)]" aria-hidden />
+        </button>
+      ) : null}
+
+      {isCoordinator && !isAcademicHead ? (
         <section className="emp-surface overflow-hidden rounded-[var(--emp-radius-lg)]">
           <button
             type="button"
@@ -287,7 +320,7 @@ function EmployeeDashboardPage() {
             </p>
           ) : null}
         </section>
-      ) : (
+      ) : !isAcademicHead ? (
         <button
           type="button"
           className="emp-action-row"
@@ -306,7 +339,28 @@ function EmployeeDashboardPage() {
           </span>
           <ChevronRight size={18} className="shrink-0 text-[var(--emp-border-strong)]" aria-hidden />
         </button>
-      )}
+      ) : null}
+
+      {isCoordinator ? (
+        <button
+          type="button"
+          className="emp-action-row"
+          onClick={() => navigate('/employee/coordinator-workspace')}
+        >
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[0.65rem] bg-emerald-50 text-emerald-700">
+            <NotebookPen size={20} strokeWidth={2.25} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[0.9375rem] font-semibold leading-tight text-[var(--emp-text)]">
+              Coordinator workspace
+            </span>
+            <span className="mt-0.5 block text-xs leading-snug text-[var(--emp-text-muted)]">
+              Daily entries, academic checks & follow-ups
+            </span>
+          </span>
+          <ChevronRight size={18} className="shrink-0 text-[var(--emp-border-strong)]" aria-hidden />
+        </button>
+      ) : null}
 
       <section>
         <div className="emp-surface overflow-hidden rounded-[var(--emp-radius-lg)]">
@@ -323,46 +377,6 @@ function EmployeeDashboardPage() {
           ))}
         </div>
       </section>
-
-      {isCoordinator ? (
-        <section>
-          <h2 className="mb-1.5 px-0.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--emp-text-muted)]">
-            Campus
-          </h2>
-          <button
-            type="button"
-            className="emp-action-row mb-2"
-            onClick={() => navigate('/employee/coordinator-workspace')}
-          >
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[0.65rem] bg-emerald-50 text-emerald-700">
-              <NotebookPen size={20} strokeWidth={2.25} />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-[0.9375rem] font-semibold leading-tight text-[var(--emp-text)]">Coordinator workspace <span className="ml-1 text-[10px] font-medium text-emerald-700">PREVIEW</span></span>
-              <span className="mt-0.5 block text-xs leading-snug text-[var(--emp-text-muted)]">Daily entries, academic checks & follow-ups</span>
-            </span>
-            <ChevronRight size={18} className="shrink-0 text-[var(--emp-border-strong)]" aria-hidden />
-          </button>
-          <button
-            type="button"
-            className="emp-action-row"
-            onClick={() => navigate('/employee/coordinator-daily-report')}
-          >
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[0.65rem] bg-[#5f63681a] text-[#5f6368]">
-              <ScrollText size={20} strokeWidth={2.25} />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-[0.9375rem] font-semibold leading-tight text-[var(--emp-text)]">
-                Daily report
-              </span>
-              <span className="mt-0.5 block text-xs leading-snug text-[var(--emp-text-muted)]">
-                Head-office update for today
-              </span>
-            </span>
-            <ChevronRight size={18} className="shrink-0 text-[var(--emp-border-strong)]" aria-hidden />
-          </button>
-        </section>
-      ) : null}
     </EmployeeLayout>
   )
 }

@@ -5,9 +5,14 @@ export const getAbsentFollowupReasons = async () => {
   return response?.data?.data || []
 }
 
-export const getAbsentFollowupByDate = async (date) => {
+const campusHeaderName = import.meta.env.VITE_CAMPUS_HEADER || 'X-Campus'
+
+export const getAbsentFollowupByDate = async (date, campusKey) => {
   const response = await api.get('/api/absent-followup', {
     params: { date },
+    ...(campusKey
+      ? { headers: { [campusHeaderName]: campusKey } }
+      : {}),
   })
   return response?.data?.data || []
 }

@@ -3,6 +3,7 @@ import { CalendarDays, ChevronLeft, ChevronRight, List, Loader2, X } from 'lucid
 import EmployeeBackButton from '../../components/employee/EmployeeBackButton'
 import EmployeeLayout from '../../components/employee/EmployeeLayout'
 import { getMyEmployeeAttendance } from '../../services/employeeAttendanceService'
+import { getEmployeeDisplayDesignation, isEmployeeAcademicHead } from '../../services/employeeAuthService'
 
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
 
@@ -306,8 +307,11 @@ function EmployeeMyAttendancePage() {
             <div className="flex items-start justify-between gap-2">
               <p className="min-w-0 truncate text-sm font-semibold text-slate-900">
                 {data.employeeName || 'You'}
-                {data.designationName ? (
-                  <span className="font-normal text-slate-500"> · {data.designationName}</span>
+                {data.designationName || isEmployeeAcademicHead() ? (
+                  <span className="font-normal text-slate-500">
+                    {' '}
+                    · {getEmployeeDisplayDesignation() || data.designationName}
+                  </span>
                 ) : null}
               </p>
               <ViewToggle view={view} onChange={setView} />

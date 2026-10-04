@@ -1,12 +1,23 @@
 .employee-app {
-  --emp-bg: #f4f5f7;
+  --cw-navy: #1a4d8f;
+  --cw-navy-dark: #143d72;
+  --cw-navy-soft: #eaf0f8;
+  --cw-sky: #2a8fc4;
+  --cw-sky-soft: #e6f4fb;
+  --cw-gold: #b8922a;
+  --cw-gold-soft: #fdf6e6;
+  --cw-ink: #1e2d42;
+  --cw-muted: #5f6e7d;
+  --cw-line: #e2e7ee;
+  --cw-focus: #3d8ec4;
+  --emp-bg: #f3f5f9;
   --emp-surface: #ffffff;
   --emp-border: #e8eaed;
   --emp-border-strong: #dadce0;
   --emp-text: #1f1f1f;
   --emp-text-muted: #5f6368;
-  --emp-primary: #1a73e8;
-  --emp-primary-soft: #e8f0fe;
+  --emp-primary: #1a4d8f;
+  --emp-primary-soft: #e8f0f9;
   --emp-on-primary: #ffffff;
   --emp-success: #0d904f;
   --emp-success-soft: #e6f4ea;
@@ -282,6 +293,11 @@
   border: 1px solid #c6dafc;
   background: linear-gradient(145deg, #e8f0fe 0%, #f4f8ff 42%, #f3f0ff 100%);
   box-shadow: 0 1px 2px rgba(60, 64, 67, 0.06);
+}
+
+.employee-app .emp-home-welcome--compact .pointer-events-none {
+  opacity: 0.05;
+  transform: scale(0.85);
 }
 
 .employee-app .emp-diary-card-icon {
@@ -603,6 +619,37 @@
 
 .employee-app .emp-modal-backdrop {
   animation: emp-fade-in 0.2s ease-out;
+}
+
+.emp-sheet-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+
+.emp-sheet-heading-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.emp-sheet-brand-mark {
+  width: 26px;
+  height: 26px;
+  margin-top: 2px;
+  object-fit: contain;
+  flex-shrink: 0;
+  border-radius: 6px;
+}
+
+.cw-inline-editor .emp-sheet-heading {
+  align-items: center;
+}
+
+.cw-inline-editor .emp-sheet-brand-mark {
+  margin-top: 0;
+  width: 24px;
+  height: 24px;
 }
 
 .employee-app .emp-modal-card {

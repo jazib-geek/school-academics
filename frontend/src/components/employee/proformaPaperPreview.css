@@ -1,0 +1,35 @@
+.cw-paper-preview-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+.cw-paper-preview-panel h3 { margin: 0; font-size: 14px; font-weight: 600; color: #1a3d30; }
+.cw-paper-preview {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  background: #e7e9eb;
+  border-radius: 12px;
+  padding: 8px 4px 12px;
+  border: 1px solid #dce5e0;
+}
+.cw-paper-preview-scaled {
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+.cw-paper-preview-inner {
+  display: inline-block;
+  vertical-align: top;
+}
+.cw-paper-preview .paper,
+.cw-paper-preview .support {
+  margin: 10px auto;
+}
+.cw-paper-preview .paper:first-child { margin-top: 4px; }
+.cw-paper-preview .paper footer { font-size: 6.5pt; }
