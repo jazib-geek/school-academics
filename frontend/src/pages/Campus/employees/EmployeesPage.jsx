@@ -174,10 +174,21 @@ function Section({ icon: Icon, title, description, children, action }) {
   )
 }
 
+function daysElapsedInCurrentMonth() {
+  return new Date().getDate()
+}
+
+function roundSalaryAmount(value) {
+  return Math.round(Number(value || 0))
+}
+
 function EmployeeForm({ employeeId, lookups, onClose, onSaved }) {
   const [form, setForm] = useState(makeEmptyForm)
   const [isLoading, setIsLoading] = useState(Boolean(employeeId))
   const [isSaving, setIsSaving] = useState(false)
+  const [initialSalary, setInitialSalary] = useState(null)
+  const [salaryAdjustDialogOpen, setSalaryAdjustDialogOpen] = useState(false)
+  const [attendanceRecalcDays, setAttendanceRecalcDays] = useState(daysElapsedInCurrentMonth())
 
   useEffect(() => {
     if (!employeeId) return
@@ -185,6 +196,7 @@ function EmployeeForm({ employeeId, lookups, onClose, onSaved }) {
     getEmployee(employeeId)
       .then((data) => {
         if (!active) return
+        setInitialSalary(roundSalaryAmount(data.salary))
         setForm({
           ...makeEmptyForm(),
           ...data,
@@ -298,15 +310,29 @@ function EmployeeForm({ employeeId, lookups, onClose, onSaved }) {
     [form],
   )
 
-  const submit = async (event) => {
-    event.preventDefault()
+  const performSave = async (recalculateAttendancePastDays = null) => {
     setIsSaving(true)
     const toastId = 'employee-save'
     toast.loading(employeeId ? 'Updating employee...' : 'Creating employee...', { id: toastId })
     try {
-      if (employeeId) await updateEmployee(employeeId, payload)
-      else await createEmployee(payload)
-      toast.success(employeeId ? 'Employee updated.' : 'Employee created.', { id: toastId })
+      const savePayload =
+        recalculateAttendancePastDays != null && recalculateAttendancePastDays > 0
+          ? { ...payload, recalculateAttendancePastDays }
+          : payload
+      if (employeeId) await updateEmployee(employeeId, savePayload)
+      else await createEmployee(savePayload)
+      const withAttendance =
+        recalculateAttendancePastDays != null && recalculateAttendancePastDays > 0
+      toast.success(
+        employeeId
+          ? withAttendance
+            ? `Employee updated. Attendance pay refreshed for the last ${recalculateAttendancePastDays} day(s).`
+            : 'Employee updated.'
+          : 'Employee created.',
+        { id: toastId },
+      )
+      setInitialSalary(roundSalaryAmount(form.salary))
+      setSalaryAdjustDialogOpen(false)
       onSaved()
     } catch (error) {
       const validation = error?.response?.data?.errors
@@ -316,6 +342,22 @@ function EmployeeForm({ employeeId, lookups, onClose, onSaved }) {
       setIsSaving(false)
     }
   }
+
+  const submit = async (event) => {
+    event.preventDefault()
+    if (
+      employeeId &&
+      initialSalary != null &&
+      roundSalaryAmount(form.salary) !== roundSalaryAmount(initialSalary)
+    ) {
+      setAttendanceRecalcDays(daysElapsedInCurrentMonth())
+      setSalaryAdjustDialogOpen(true)
+      return
+    }
+    await performSave(null)
+  }
+
+  const maxAttendanceRecalcDays = daysElapsedInCurrentMonth()
 
   if (isLoading) {
     return (
@@ -330,6 +372,78 @@ function EmployeeForm({ employeeId, lookups, onClose, onSaved }) {
 
   return (
     <form onSubmit={submit} className="space-y-5">
+      {salaryAdjustDialogOpen ? (
+        <div className="fixed inset-0 z-[90] grid place-items-center bg-slate-950/45 p-4 backdrop-blur-sm">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="salary-attendance-recalc-title"
+            className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl"
+          >
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4">
+              <div className="grid h-11 w-11 place-items-center rounded-xl bg-indigo-100 text-indigo-700">
+                <BadgeDollarSign size={21} />
+              </div>
+              <button
+                type="button"
+                onClick={() => !isSaving && setSalaryAdjustDialogOpen(false)}
+                className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
+                aria-label="Close"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="space-y-4 px-5 py-5">
+              <h2 id="salary-attendance-recalc-title" className="text-lg font-bold text-slate-900">
+                Update attendance pay?
+              </h2>
+              <p className="text-sm leading-6 text-slate-600">
+                Salary changed. You can refresh daily pay on present and holiday attendance for recent days this
+                month so attendance matches the new salary.
+              </p>
+              <label className="block">
+                <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Days to update (including today)
+                </span>
+                <input
+                  type="number"
+                  min={1}
+                  max={maxAttendanceRecalcDays}
+                  className={inputClass}
+                  value={attendanceRecalcDays}
+                  onChange={(e) =>
+                    setAttendanceRecalcDays(
+                      Math.min(
+                        maxAttendanceRecalcDays,
+                        Math.max(1, Number(e.target.value) || 1),
+                      ),
+                    )
+                  }
+                />
+              </label>
+            </div>
+            <div className="flex flex-col gap-2 bg-slate-50 px-5 py-4 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                disabled={isSaving}
+                onClick={() => performSave(null)}
+                className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 disabled:opacity-60"
+              >
+                Save only
+              </button>
+              <button
+                type="button"
+                disabled={isSaving}
+                onClick={() => performSave(attendanceRecalcDays)}
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--campus-primary)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+              >
+                {isSaving ? <Loader2 size={16} className="animate-spin" /> : <BadgeDollarSign size={16} />}
+                Save and update attendance
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
       <div className="sticky top-16 z-30 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-indigo-100 bg-white/95 px-5 py-4 shadow-lg backdrop-blur">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-600">

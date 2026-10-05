@@ -171,6 +171,7 @@ export const CAMPUS_SHELL_NAV = [
       { label: 'Transaction History', to: '/campus/fee/transactions', permission: 'submit_fee' },
       { label: 'Void Receipt', to: '/campus/fee/void-receipt', permission: 'void_rcpt' },
       { label: 'Fee Reports', to: '/campus/fee/reports', permission: 'rpt_fee' },
+      { label: 'Fee Reminder Notice', to: '/campus/fee/reminder-notices', permission: 'rpt_fee' },
       { label: 'Balance Sheet', to: '/campus/fee/balance-sheet', permission: 'rpt_fee_balance_sheet' },
     ],
   },

@@ -16,6 +16,7 @@ import {
   normalizeChemistryNotation,
   normalizePastedChemistryText,
   normalizePastedScientificProseText,
+  normalizeLatexEscapes,
   stripLatexDelimitersForKatex,
 } from '../../../components/academics/academicQuestionLatexUtils'
 import {
@@ -116,10 +117,8 @@ const latexSymbolMap = new Map([
 
 const looksLikeLatex = (value) => /\\[a-zA-Z]+|(\^|_)\{?|\\frac|\\sqrt|\\theta|\\pi|\\ce\{/.test(value)
 
-const normalizeLatex = (value) => value.replaceAll('\\\\', '\\').trim()
-
 const fieldNeedsFormulaEditor = (value) => {
-  const normalized = stripLatexDelimitersForKatex(normalizeLatex(value || ''))
+  const normalized = stripLatexDelimitersForKatex(normalizeLatexEscapes(value || ''))
   return looksLikeLatex(normalized) || looksLikeChemistryText(normalized) || looksLikeScientificProseText(normalized)
 }
 
@@ -137,7 +136,7 @@ const convertTextToLatex = (value) => {
   let normalized = `${value || ''}`.normalize('NFKC').trim()
   // Already formula-editor TeX — do not re-wrap (chemistry false positives like HCF).
   if (/\\[a-zA-Z]+/.test(normalized)) {
-    return stripLatexDelimitersForKatex(normalizeLatex(normalized))
+    return stripLatexDelimitersForKatex(normalizeLatexEscapes(normalized))
   }
   if (looksLikeChemistryText(normalized)) {
     return normalizePastedChemistryText(normalized)
@@ -194,7 +193,7 @@ const convertTextToLatex = (value) => {
 
   // Normalize escaped slash sequences from storage.
   normalized = normalizeChemistryNotation(normalized)
-  normalized = normalizeLatex(normalized)
+  normalized = normalizeLatexEscapes(normalized)
   normalized = convertSimpleFractionsToLatex(normalized)
   return normalized
 }
@@ -204,7 +203,7 @@ const convertTextToLatex = (value) => {
  * re-running plain/chemistry converters mangled valid math (e.g. HCF + algebra).
  */
 const prepareFieldLatex = (value) => {
-  const stripped = stripLatexDelimitersForKatex(normalizeLatex(value || ''))
+  const stripped = stripLatexDelimitersForKatex(normalizeLatexEscapes(value || ''))
   if (!stripped) return ''
   if (/\\[a-zA-Z]+/.test(stripped)) return stripped
   return convertTextToLatex(stripped)
@@ -212,7 +211,7 @@ const prepareFieldLatex = (value) => {
 
 const validateLatexText = (value) => {
   if (!value || !value.trim()) return null
-  const normalized = stripLatexDelimitersForKatex(normalizeLatex(value || ''))
+  const normalized = stripLatexDelimitersForKatex(normalizeLatexEscapes(value || ''))
   if (!fieldNeedsFormulaEditor(normalized)) return null
   if (!hasBalancedBraces(normalized)) {
     return 'Check brackets and formula groups, then try again.'
@@ -335,7 +334,7 @@ function MathText({ value, className = '' }) {
   if (!value || !value.trim()) return <span className={className}>-</span>
 
   const stripped = stripLatexDelimitersForKatex(value)
-  const normalized = normalizeLatex(stripped)
+  const normalized = normalizeLatexEscapes(stripped)
   let latexCandidate = looksLikeLatex(normalized) ? normalized : convertTextToLatex(normalized)
 
   if (!looksLikeLatex(latexCandidate)) {
@@ -674,11 +673,11 @@ function AcademicQuestionCatalogPage() {
   const openEditModal = (item) => {
     setError('')
     setFormError('')
-    const descriptionText = stripLatexDelimitersForKatex(normalizeLatex(item.descriptionText || ''))
-    const mcqOpt1 = stripLatexDelimitersForKatex(normalizeLatex(item.mcqOpt1 || ''))
-    const mcqOpt2 = stripLatexDelimitersForKatex(normalizeLatex(item.mcqOpt2 || ''))
-    const mcqOpt3 = stripLatexDelimitersForKatex(normalizeLatex(item.mcqOpt3 || ''))
-    const mcqOpt4 = stripLatexDelimitersForKatex(normalizeLatex(item.mcqOpt4 || ''))
+    const descriptionText = stripLatexDelimitersForKatex(normalizeLatexEscapes(item.descriptionText || ''))
+    const mcqOpt1 = stripLatexDelimitersForKatex(normalizeLatexEscapes(item.mcqOpt1 || ''))
+    const mcqOpt2 = stripLatexDelimitersForKatex(normalizeLatexEscapes(item.mcqOpt2 || ''))
+    const mcqOpt3 = stripLatexDelimitersForKatex(normalizeLatexEscapes(item.mcqOpt3 || ''))
+    const mcqOpt4 = stripLatexDelimitersForKatex(normalizeLatexEscapes(item.mcqOpt4 || ''))
     setForm({
       id: String(item.id),
       type: item.type,

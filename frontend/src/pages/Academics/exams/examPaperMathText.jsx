@@ -1,10 +1,11 @@
 import katex from 'katex'
-import { stripLatexDelimitersForKatex } from '../../../components/academics/academicQuestionLatexUtils.js'
+import {
+  normalizeLatexEscapes,
+  stripLatexDelimitersForKatex,
+} from '../../../components/academics/academicQuestionLatexUtils.js'
 
 export const looksLikeLatex = (value) =>
   /\\[a-zA-Z]+|(\^|_)\{?|\\frac|\\sqrt|\\theta|\\pi|\\ce\{/.test(value)
-
-const normalizeLatex = (value) => `${value || ''}`.replaceAll('\\\\', '\\').trim()
 
 const escapeLatexText = (value) =>
   `${value || ''}`
@@ -143,7 +144,7 @@ export function tokenizeExamPaperMath(value) {
   const hasInlineDelimiters = /\$|\\\(|\\\[/.test(raw)
   if (!hasInlineDelimiters) {
     const stripped = stripLatexDelimitersForKatex(raw)
-    const normalized = normalizeLatex(stripped)
+    const normalized = normalizeLatexEscapes(stripped)
     if (!looksLikeLatex(normalized)) {
       return [{ type: 'prose', text: stripped || raw }]
     }
@@ -165,7 +166,7 @@ export function tokenizeExamPaperMath(value) {
       pushProse(i)
       const end = raw.indexOf('$$', i + 2)
       if (end === -1) break
-      segments.push({ type: 'math', text: normalizeLatex(raw.slice(i + 2, end)) })
+      segments.push({ type: 'math', text: normalizeLatexEscapes(raw.slice(i + 2, end)) })
       i = end + 2
       proseStart = i
       continue
@@ -177,7 +178,7 @@ export function tokenizeExamPaperMath(value) {
         i += 1
         continue
       }
-      segments.push({ type: 'math', text: normalizeLatex(raw.slice(i + 1, end)) })
+      segments.push({ type: 'math', text: normalizeLatexEscapes(raw.slice(i + 1, end)) })
       i = end + 1
       proseStart = i
       continue
@@ -186,7 +187,7 @@ export function tokenizeExamPaperMath(value) {
       pushProse(i)
       const end = raw.indexOf('\\)', i + 2)
       if (end === -1) break
-      segments.push({ type: 'math', text: normalizeLatex(raw.slice(i + 2, end)) })
+      segments.push({ type: 'math', text: normalizeLatexEscapes(raw.slice(i + 2, end)) })
       i = end + 2
       proseStart = i
       continue
@@ -195,7 +196,7 @@ export function tokenizeExamPaperMath(value) {
       pushProse(i)
       const end = raw.indexOf('\\]', i + 2)
       if (end === -1) break
-      segments.push({ type: 'math', text: normalizeLatex(raw.slice(i + 2, end)) })
+      segments.push({ type: 'math', text: normalizeLatexEscapes(raw.slice(i + 2, end)) })
       i = end + 2
       proseStart = i
       continue

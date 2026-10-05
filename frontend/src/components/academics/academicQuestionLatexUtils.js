@@ -64,6 +64,16 @@ export function stripLatexDelimitersForKatex(input) {
 }
 
 /**
+ * Undo doubled command backslashes from over-escaped storage (\\begin → \begin).
+ * Must not collapse LaTeX row breaks (\\ before space, &, or digits in matrices).
+ */
+export function normalizeLatexEscapes(input) {
+  return `${input ?? ''}`
+    .trim()
+    .replace(/\\\\([a-zA-Z@({[])/g, '\\$1')
+}
+
+/**
  * MathLive stores multi-line as `\displaylines{a \\ b}` (visual rows).
  * KaTeX / our catalog store `\newline` (renders as a real break in papers).
  */

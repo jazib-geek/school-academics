@@ -159,6 +159,7 @@ export const CAMPUS_ROUTE_PERMISSIONS = [
   { prefix: '/campus/fee/transactions', permission: 'submit_fee' },
   { prefix: '/campus/fee/void-receipt', permission: 'void_rcpt' },
   { prefix: '/campus/fee/reports', permission: 'rpt_fee' },
+  { prefix: '/campus/fee/reminder-notices', permission: 'rpt_fee' },
   { prefix: '/campus/fee/balance-sheet', permission: 'rpt_fee_balance_sheet' },
   { prefix: '/campus/reports/income', permission: 'view_profit_loss' },
   { prefix: '/campus/settings/classes', permission: 'param_class' },
