@@ -1,14 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ChevronLeft, ChevronRight, Loader2, Mail, Printer, Save } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Loader2, Mail, Printer } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import CampusShell from '../../../components/campus/CampusShell.jsx'
-import RichTextEditor from '../../../components/campus/RichTextEditor.jsx'
 import { getClasses } from '../../../services/classService'
 import { resolveClassLabel } from '../../../services/classSort'
 import {
   getFeeReminderClassBalances,
   getFeeReminderTemplates,
-  updateFeeReminderTemplate,
 } from '../../../services/feeReminderNoticeService'
 import {
   buildFeeReminderVoucherHtml,
@@ -20,7 +19,7 @@ import {
   richBodyPlainText,
 } from '../../../utils/feeReminderNoticePrint.js'
 
-const STEPS = ['Notice', 'Class', 'Select students', 'Print preview']
+const STEPS = ['Class & notice', 'Select students', 'Print preview']
 const PER_PAGE_KEY = 'feeReminderNoticesPerPage'
 
 const inputClass =
@@ -39,22 +38,10 @@ function noticeAmount(row, includeFunds) {
   return tf + (includeFunds ? funds : 0)
 }
 
-function emptyDraft() {
-  return {
-    title: '',
-    greeting: '',
-    bodyText: '',
-    closingText: '',
-    dayOfMonth: 10,
-  }
-}
-
 function FeeReminderNoticePage() {
   const [step, setStep] = useState(0)
   const [templates, setTemplates] = useState([])
   const [noticeCode, setNoticeCode] = useState('pre_due')
-  const [draft, setDraft] = useState(emptyDraft())
-  const [isSavingTemplate, setIsSavingTemplate] = useState(false)
 
   const [dueMonth, setDueMonth] = useState(() => new Date().getMonth())
   const [dueYear, setDueYear] = useState(() => new Date().getFullYear())
@@ -68,30 +55,21 @@ function FeeReminderNoticePage() {
 
   const [noticesPerPage, setNoticesPerPage] = useState(() => {
     const stored = Number(localStorage.getItem(PER_PAGE_KEY))
-    return stored >= 1 && stored <= 3 ? stored : 2
+    return stored >= 1 && stored <= 3 ? stored : 3
   })
 
   const issuanceDate = useMemo(() => formatIssuanceDate(new Date()), [])
 
-  const dueDateLabel = useMemo(() => {
-    if (noticeCode !== 'pre_due') return ''
-    return formatNoticeDueDate(draft.dayOfMonth, dueMonth, dueYear)
-  }, [noticeCode, draft.dayOfMonth, dueMonth, dueYear])
+  const activeTemplate = useMemo(
+    () => templates.find((t) => t.code === noticeCode) || null,
+    [templates, noticeCode],
+  )
 
-  const applyTemplateToDraft = useCallback((list, code) => {
-    const match = list.find((t) => t.code === code)
-    if (!match) {
-      setDraft(emptyDraft())
-      return
-    }
-    setDraft({
-      title: match.title || '',
-      greeting: match.greeting || '',
-      bodyText: match.bodyText || '',
-      closingText: match.closingText || '',
-      dayOfMonth: match.dayOfMonth ?? 10,
-    })
-  }, [])
+  const dueDateLabel = useMemo(() => {
+    if (noticeCode !== 'pre_due' || !activeTemplate) return ''
+    const day = activeTemplate.dayOfMonth ?? 10
+    return formatNoticeDueDate(day, dueMonth, dueYear)
+  }, [noticeCode, activeTemplate, dueMonth, dueYear])
 
   useEffect(() => {
     let cancelled = false
@@ -109,10 +87,6 @@ function FeeReminderNoticePage() {
       cancelled = true
     }
   }, [])
-
-  useEffect(() => {
-    applyTemplateToDraft(templates, noticeCode)
-  }, [noticeCode, templates, applyTemplateToDraft])
 
   const loadClassBalances = useCallback(async (name) => {
     const trimmed = String(name || '').trim()
@@ -169,54 +143,35 @@ function FeeReminderNoticePage() {
     })
   }
 
-  const handleSaveTemplate = async () => {
-    setIsSavingTemplate(true)
-    try {
-      const updated = await updateFeeReminderTemplate(noticeCode, {
-        title: draft.title,
-        greeting: draft.greeting,
-        bodyText: draft.bodyText,
-        closingText: draft.closingText,
-        dayOfMonth: noticeCode === 'pre_due' ? draft.dayOfMonth : null,
-      })
-      setTemplates((prev) => prev.map((t) => (t.code === noticeCode ? { ...t, ...updated } : t)))
-      toast.success('Notice wording saved.')
-    } catch (err) {
-      toast.error(err?.response?.data?.message || 'Could not save notice wording.')
-    } finally {
-      setIsSavingTemplate(false)
-    }
-  }
-
-  const noticePayloads = useMemo(
-    () =>
-      selectedRows.map((row) => ({
-        code: noticeCode,
-        title: draft.title,
-        greeting: draft.greeting,
-        bodyText: draft.bodyText,
-        closingText: draft.closingText,
-        studentId: row.studentId,
-        studentName: row.studentName,
-        className: row.className || className,
-        amount: noticeAmount(row, includeFunds),
-        dueDateLabel,
-        issuanceDate,
-      })),
-    [selectedRows, noticeCode, draft, includeFunds, dueDateLabel, issuanceDate, className],
+  const templateReady = Boolean(
+    activeTemplate?.title?.trim() && richBodyPlainText(activeTemplate?.bodyText),
   )
 
-  const canGoNextNotice =
-    Boolean(draft.title?.trim()) && Boolean(richBodyPlainText(draft.bodyText))
-  const canGoNextClass = Boolean(className?.trim())
+  const noticePayloads = useMemo(() => {
+    if (!activeTemplate) return []
+    return selectedRows.map((row) => ({
+      code: noticeCode,
+      title: activeTemplate.title,
+      greeting: activeTemplate.greeting,
+      bodyText: activeTemplate.bodyText,
+      closingText: activeTemplate.closingText,
+      studentId: row.studentId,
+      studentName: row.studentName,
+      className: row.className || className,
+      amount: noticeAmount(row, includeFunds),
+      dueDateLabel,
+      issuanceDate,
+    }))
+  }, [selectedRows, noticeCode, activeTemplate, includeFunds, dueDateLabel, issuanceDate, className])
+
+  const canGoNextClass = Boolean(className?.trim()) && templateReady
   const canGoNextStudents = selectedIds.size > 0 && !isLoadingClass && rows.length > 0
 
   const canGoNext = useMemo(() => {
-    if (step === 0) return canGoNextNotice
-    if (step === 1) return canGoNextClass
-    if (step === 2) return canGoNextStudents
+    if (step === 0) return canGoNextClass
+    if (step === 1) return canGoNextStudents
     return false
-  }, [step, canGoNextNotice, canGoNextClass, canGoNextStudents])
+  }, [step, canGoNextClass, canGoNextStudents])
 
   const goBack = () => {
     if (step > 0) setStep(step - 1)
@@ -234,6 +189,10 @@ function FeeReminderNoticePage() {
   }
 
   const handlePrint = () => {
+    if (!templateReady) {
+      toast.error('Notice wording is not set up yet. Ask an administrator to complete Institute Settings.')
+      return
+    }
     if (!noticePayloads.length) {
       toast.error('Select at least one student.')
       return
@@ -263,7 +222,11 @@ function FeeReminderNoticePage() {
               <div>
                 <h1 className="text-lg font-semibold text-slate-900">Fee Reminder Notice</h1>
                 <p className="mt-0.5 text-[13px] text-slate-500">
-                  Print fee reminder vouchers for selected students in a class.
+                  Print fee reminder vouchers for selected students in a class. Wording comes from{' '}
+                  <Link to="/campus/settings/profile" className="text-[#405189] hover:underline">
+                    Institute Settings
+                  </Link>
+                  .
                 </p>
               </div>
             </div>
@@ -344,35 +307,23 @@ function FeeReminderNoticePage() {
                   </label>
                 ))}
               </div>
+              {!templateReady && (
+                <p className="mt-3 text-[12px] text-amber-800">
+                  This notice type is not set up yet.{' '}
+                  <Link to="/campus/settings/profile" className="font-medium text-[#405189] hover:underline">
+                    Open Institute Settings
+                  </Link>{' '}
+                  to add the wording.
+                </p>
+              )}
             </section>
 
             <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-              <h2 className="text-sm font-semibold text-slate-800">Notice wording</h2>
-              <div className="mt-3 grid gap-3 md:grid-cols-2">
-                <div className="md:col-span-2">
-                  <label className="text-[12px] font-medium text-slate-600">Title</label>
-                  <input
-                    className={inputClass}
-                    value={draft.title}
-                    onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))}
-                  />
-                </div>
-                {noticeCode === 'pre_due' && (
-                  <div className="md:col-span-2 space-y-3">
-                    <div className="grid gap-3 sm:grid-cols-3">
-                      <div>
-                        <label className="text-[12px] font-medium text-slate-600">Day of month (on notice)</label>
-                        <input
-                          type="number"
-                          min={1}
-                          max={31}
-                          className={inputClass}
-                          value={draft.dayOfMonth ?? 10}
-                          onChange={(e) =>
-                            setDraft((d) => ({ ...d, dayOfMonth: Number(e.target.value) || 10 }))
-                          }
-                        />
-                      </div>
+              <div className="grid gap-5 md:grid-cols-2 md:items-start">
+                {noticeCode === 'pre_due' && templateReady ? (
+                  <div>
+                    <h2 className="text-sm font-semibold text-slate-800">Due date on this print run</h2>
+                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
                       <div>
                         <label className="text-[12px] font-medium text-slate-600">Due month</label>
                         <select
@@ -398,90 +349,38 @@ function FeeReminderNoticePage() {
                         </select>
                       </div>
                     </div>
-                    <p className="text-[12px] text-slate-600">
+                    <p className="mt-2 text-[12px] text-slate-600">
                       Due date on notice: <strong className="text-slate-800">{dueDateLabel}</strong>
                     </p>
                   </div>
-                )}
-                <div className="md:col-span-2">
-                  <label className="text-[12px] font-medium text-slate-600">Greeting</label>
-                  <input
-                    className={inputClass}
-                    value={draft.greeting}
-                    onChange={(e) => setDraft((d) => ({ ...d, greeting: e.target.value }))}
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="text-[12px] font-medium text-slate-600">
-                    Message body
-                    {noticeCode === 'pre_due' && (
-                      <span className="ml-1 font-normal text-slate-500">
-                        (type {'{dueDate}'} where the due date should appear)
-                      </span>
-                    )}
-                  </label>
-                  <RichTextEditor
-                    className="mt-1"
-                    value={draft.bodyText}
-                    onChange={(html) => setDraft((d) => ({ ...d, bodyText: html }))}
-                    placeholder="Write the notice message…"
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="text-[12px] font-medium text-slate-600">Closing</label>
-                  <input
-                    className={inputClass}
-                    value={draft.closingText}
-                    onChange={(e) => setDraft((d) => ({ ...d, closingText: e.target.value }))}
-                  />
+                ) : null}
+                <div className={noticeCode === 'pre_due' && templateReady ? '' : 'md:col-span-2'}>
+                  <h2 className="text-sm font-semibold text-slate-800">Choose class</h2>
+                  <div className="mt-3 max-w-md">
+                    <label className="text-[12px] font-medium text-slate-600">Class</label>
+                    <select
+                      className={inputClass}
+                      value={className}
+                      onChange={(e) => setClassName(e.target.value)}
+                    >
+                      <option value="">Select class</option>
+                      {classOptions.map((row) => {
+                        const label = resolveClassLabel(row)
+                        return (
+                          <option key={row.id ?? label} value={label}>
+                            {label}
+                          </option>
+                        )
+                      })}
+                    </select>
+                  </div>
                 </div>
               </div>
             </section>
-
-            <div className="flex justify-end">
-              <button
-                type="button"
-                onClick={handleSaveTemplate}
-                disabled={isSavingTemplate}
-                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-4 text-[13px] font-medium text-slate-700 disabled:opacity-60"
-              >
-                {isSavingTemplate ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                Save wording
-              </button>
-            </div>
           </div>
         )}
 
         {step === 1 && (
-          <div className="space-y-5">
-            <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-              <h2 className="text-sm font-semibold text-slate-800">Choose class</h2>
-              <p className="mt-1 text-[12px] text-slate-500">
-                Students with outstanding balances will load on the next step.
-              </p>
-              <div className="mt-4 max-w-md">
-                <label className="text-[12px] font-medium text-slate-600">Class</label>
-                <select
-                  className={inputClass}
-                  value={className}
-                  onChange={(e) => setClassName(e.target.value)}
-                >
-                  <option value="">Select class</option>
-                  {classOptions.map((row) => {
-                    const label = resolveClassLabel(row)
-                    return (
-                      <option key={row.id ?? label} value={label}>
-                        {label}
-                      </option>
-                    )
-                  })}
-                </select>
-              </div>
-            </section>
-          </div>
-        )}
-
-        {step === 2 && (
           <div className="space-y-5">
             <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-3">
@@ -566,7 +465,7 @@ function FeeReminderNoticePage() {
           </div>
         )}
 
-        {step === 3 && (
+        {step === 2 && (
           <div className="space-y-5">
             <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
               <div>

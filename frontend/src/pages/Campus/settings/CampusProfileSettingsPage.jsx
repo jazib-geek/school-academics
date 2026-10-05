@@ -1,7 +1,25 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Building2, Clock, Loader2, Save } from 'lucide-react'
+import {
+  Building2,
+  CalendarRange,
+  Fingerprint,
+  ImageIcon,
+  Loader2,
+  Mail,
+  Phone,
+  Receipt,
+  Save,
+  Upload,
+} from 'lucide-react'
 import { toast } from 'sonner'
 import CampusShell from '../../../components/campus/CampusShell.jsx'
+import FeeReminderNoticeTemplatesSection from '../../../components/campus/FeeReminderNoticeTemplatesSection.jsx'
+import {
+  SettingsCard,
+  SettingsField,
+  SettingsToggle,
+  settingsInputClass,
+} from '../../../components/campus/settings/SettingsUi.jsx'
 import { PermissionControl } from '../../../components/campus/CampusPermissionUi.jsx'
 import { hasCampusPermission } from '../../../services/authService'
 import { getCampusProfile, updateCampusProfile } from '../../../services/campusProfileService'
@@ -15,8 +33,16 @@ import {
   persistCampusProfile,
 } from '../../../utils/campusProfile'
 
-const inputClass =
-  'h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-[#405189] focus:ring-2 focus:ring-indigo-100'
+const inputClass = settingsInputClass
+
+const SETTINGS_SECTIONS = [
+  { id: 'general', label: 'School profile', icon: Building2 },
+  { id: 'contact', label: 'Contact & address', icon: Phone },
+  { id: 'session', label: 'Academic session', icon: CalendarRange },
+  { id: 'fees', label: 'Fees & receipts', icon: Receipt },
+  { id: 'notices', label: 'Fee reminder notices', icon: Mail },
+  { id: 'attendance', label: 'Attendance', icon: Fingerprint },
+]
 
 const emptyForm = () => {
   const year = new Date().getFullYear()
@@ -89,6 +115,8 @@ const mapDtoToForm = (dto) => {
 function CampusProfileSettingsPage() {
   const canManage = hasCampusPermission('manage_campus_profile')
   const [form, setForm] = useState(emptyForm)
+  const [savedForm, setSavedForm] = useState(emptyForm)
+  const [activeSection, setActiveSection] = useState('general')
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const isZkTeco = form.biometricAttendanceType === BIOMETRIC_ATTENDANCE_TYPES.ZkTeco
@@ -98,7 +126,9 @@ function CampusProfileSettingsPage() {
     setIsLoading(true)
     try {
       const data = await getCampusProfile()
-      setForm(mapDtoToForm(data))
+      const mapped = mapDtoToForm(data)
+      setForm(mapped)
+      setSavedForm(mapped)
       if (data) persistCampusProfile(data)
     } catch (error) {
       toast.error(error?.response?.data?.message || 'Could not load institute settings.')
@@ -244,7 +274,9 @@ function CampusProfileSettingsPage() {
         showCreditStudent: form.showCreditStudent,
       }
       const saved = await updateCampusProfile(payload)
-      setForm(mapDtoToForm(saved))
+      const mapped = mapDtoToForm(saved)
+      setForm(mapped)
+      setSavedForm(mapped)
       persistCampusProfile(saved)
       toast.success('Institute settings saved.')
     } catch (error) {
@@ -254,465 +286,311 @@ function CampusProfileSettingsPage() {
     }
   }
 
+  const isDirty = useMemo(() => JSON.stringify(form) !== JSON.stringify(savedForm), [form, savedForm])
+  const logoSrc = normalizeSchoolLogo(form.schoolLogo)
+
+  const renderSection = () => {
+    switch (activeSection) {
+      case 'general':
+        return (
+          <SettingsCard title="School profile" description="Name and logo shown on reports, receipts, and the app header.">
+            <div className="space-y-5">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <SettingsField label="School name">
+                  <input name="schoolName" className={inputClass} value={form.schoolName} disabled={!canManage} onChange={onChange} />
+                </SettingsField>
+                <SettingsField label="Campus label" hint="Short name shown next to the school name, such as a branch or area">
+                  <input name="campusLabel" className={inputClass} value={form.campusLabel} disabled={!canManage} onChange={onChange} />
+                </SettingsField>
+              </div>
+              <div>
+                <span className="text-[13px] font-medium text-slate-700">School logo</span>
+                <div className="mt-2 flex flex-wrap items-center gap-4">
+                  <div className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+                    {logoSrc ? (
+                      <img src={logoSrc} alt="" className="h-full w-full object-contain p-1" />
+                    ) : (
+                      <ImageIcon size={22} className="text-slate-400" />
+                    )}
+                  </div>
+                  <div className="space-y-1.5">
+                    {canManage ? (
+                      <div className="flex flex-wrap gap-2">
+                        <label className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 text-[13px] font-medium text-slate-700 hover:bg-slate-50">
+                          <Upload size={14} />
+                          {logoSrc ? 'Change logo' : 'Upload logo'}
+                          <input type="file" accept="image/*" onChange={onLogoFile} className="sr-only" />
+                        </label>
+                        {logoSrc ? (
+                          <button
+                            type="button"
+                            className="inline-flex h-8 items-center rounded-lg px-3 text-[13px] font-medium text-rose-600 hover:bg-rose-50"
+                            onClick={() => setForm((prev) => ({ ...prev, schoolLogo: '' }))}
+                          >
+                            Remove
+                          </button>
+                        ) : null}
+                      </div>
+                    ) : null}
+                    <p className="text-xs text-slate-500">PNG or JPG, square works best.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </SettingsCard>
+        )
+      case 'contact':
+        return (
+          <>
+            <SettingsCard title="Phone numbers" description="Contact numbers for parents and printed documents.">
+              <div className="grid gap-4 sm:grid-cols-3">
+                <SettingsField label="Phone 1">
+                  <input name="phone1" className={inputClass} value={form.phone1} disabled={!canManage} onChange={onChange} />
+                </SettingsField>
+                <SettingsField label="Phone 2">
+                  <input name="phone2" className={inputClass} value={form.phone2} disabled={!canManage} onChange={onChange} />
+                </SettingsField>
+                <SettingsField label="Landline">
+                  <input name="landline" className={inputClass} value={form.landline} disabled={!canManage} onChange={onChange} />
+                </SettingsField>
+              </div>
+            </SettingsCard>
+            <SettingsCard title="Address & email">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <SettingsField label="Street address">
+                  <input name="streetAddress" className={inputClass} value={form.streetAddress} disabled={!canManage} onChange={onChange} />
+                </SettingsField>
+                <SettingsField label="Address">
+                  <input name="address" className={inputClass} value={form.address} disabled={!canManage} onChange={onChange} />
+                </SettingsField>
+                <SettingsField label="Email" className="sm:col-span-2">
+                  <input name="email" type="email" className={inputClass} value={form.email} disabled={!canManage} onChange={onChange} />
+                </SettingsField>
+              </div>
+            </SettingsCard>
+          </>
+        )
+      case 'session':
+        return (
+          <SettingsCard
+            title="Academic session"
+            description="Saved as start year–end year (for example 2026-2027)."
+            aside={
+              sessionPreview.label ? (
+                <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-medium text-[#405189]">
+                  {sessionPreview.label}
+                  {sessionPreview.rangeText ? ` · ${sessionPreview.rangeText}` : ''}
+                </span>
+              ) : null
+            }
+          >
+            <div className="grid gap-4 sm:grid-cols-2">
+              {[
+                { label: 'Start', month: 'sessionStartMonth', year: 'sessionStartYear', placeholder: '2026' },
+                { label: 'End', month: 'sessionEndMonth', year: 'sessionEndYear', placeholder: '2027' },
+              ].map((row) => (
+                <div key={row.label} className="rounded-lg border border-slate-200 p-3">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">{row.label}</p>
+                  <div className="grid grid-cols-[minmax(0,1fr)_6.5rem] gap-2">
+                    <select name={row.month} className={inputClass} value={form[row.month]} disabled={!canManage} onChange={onChange}>
+                      {MONTH_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={String(opt.value)}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      name={row.year}
+                      inputMode="numeric"
+                      autoComplete="off"
+                      maxLength={4}
+                      placeholder={row.placeholder}
+                      className={inputClass}
+                      value={form[row.year]}
+                      disabled={!canManage}
+                      onChange={onChange}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </SettingsCard>
+        )
+      case 'fees':
+        return (
+          <>
+            <SettingsCard title="Fee years" description="Years available when generating fees (up to three).">
+              <div className="grid gap-4 sm:grid-cols-3">
+                {['feeYear1', 'feeYear2', 'feeYear3'].map((name, index) => (
+                  <SettingsField key={name} label={`Year ${index + 1}`}>
+                    <input name={name} type="number" min="2000" max="2100" className={inputClass} value={form[name]} disabled={!canManage} onChange={onChange} />
+                  </SettingsField>
+                ))}
+              </div>
+            </SettingsCard>
+            <SettingsCard title="Receipts & invoices" description="Choose what is printed on fee receipts and invoices.">
+              <SettingsField label="Receipt footer note">
+                <input name="receiptFooterNote" className={inputClass} value={form.receiptFooterNote} disabled={!canManage} onChange={onChange} />
+              </SettingsField>
+              <div className="mt-3 divide-y divide-slate-100 border-t border-slate-100">
+                <SettingsToggle name="showAddressOnReceipts" checked={form.showAddressOnReceipts} disabled={!canManage} onChange={onChange} label="Show address on receipts" />
+                <SettingsToggle name="showPhone1OnInvoice" checked={form.showPhone1OnInvoice} disabled={!canManage} onChange={onChange} label="Show phone 1 on invoice" />
+                <SettingsToggle name="showPhone2OnInvoice" checked={form.showPhone2OnInvoice} disabled={!canManage} onChange={onChange} label="Show phone 2 on invoice" />
+                <SettingsToggle name="showLandlineOnInvoice" checked={form.showLandlineOnInvoice} disabled={!canManage} onChange={onChange} label="Show landline on invoice" />
+              </div>
+            </SettingsCard>
+            <SettingsCard title="Students">
+              <div className="-my-3">
+                <SettingsToggle
+                  name="showCreditStudent"
+                  checked={form.showCreditStudent}
+                  disabled={!canManage}
+                  onChange={onChange}
+                  label="Credit students"
+                  description="Show the credit student option on admission and the student list."
+                />
+              </div>
+            </SettingsCard>
+          </>
+        )
+      case 'notices':
+        return <FeeReminderNoticeTemplatesSection disabled={!canManage} />
+      case 'attendance':
+        return (
+          <>
+            <SettingsCard title="Attendance device" description="How this campus records staff attendance.">
+              <div className="grid gap-3 sm:grid-cols-2">
+                {[
+                  { value: BIOMETRIC_ATTENDANCE_TYPES.Kiosk, title: 'KIOSK (Digital Persona/Secugen)', text: 'Real-time fingerprint attendance at the desk.' },
+                  { value: BIOMETRIC_ATTENDANCE_TYPES.ZkTeco, title: 'ZKTeco (wall-mounted device)', text: 'Import the monthly Excel sheet from the wall device.' },
+                ].map((opt) => (
+                  <label
+                    key={opt.value}
+                    className="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 p-3 text-sm transition hover:border-slate-300 has-[:checked]:border-[#405189] has-[:checked]:bg-indigo-50/60"
+                  >
+                    <input
+                      type="radio"
+                      name="biometricAttendanceType"
+                      value={opt.value}
+                      checked={form.biometricAttendanceType === opt.value}
+                      disabled={!canManage}
+                      onChange={onChange}
+                      className="mt-0.5 accent-[#405189]"
+                    />
+                    <span>
+                      <span className="block text-[13px] font-medium text-slate-800">{opt.title}</span>
+                      <span className="mt-0.5 block text-xs text-slate-500">{opt.text}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </SettingsCard>
+            <SettingsCard
+              title="Duty times"
+              description={isZkTeco ? 'Used when importing from the wall-mounted device.' : 'Available when the wall-mounted device is selected.'}
+            >
+              <div className="grid gap-4 sm:grid-cols-3">
+                <SettingsField label="Teacher check-in">
+                  <input type="time" name="teacherCheckInTime" className={inputClass} value={form.teacherCheckInTime} disabled={dutyDisabled} onChange={onChange} />
+                </SettingsField>
+                <SettingsField label="Teacher checkout">
+                  <input type="time" name="teacherCheckOutTime" className={inputClass} value={form.teacherCheckOutTime} disabled={dutyDisabled} onChange={onChange} />
+                </SettingsField>
+                <SettingsField label="Friday checkout">
+                  <input type="time" name="fridayCheckOutTime" className={inputClass} value={form.fridayCheckOutTime} disabled={dutyDisabled} onChange={onChange} />
+                </SettingsField>
+                <SettingsField label="Admin arrives earlier" hint="Minutes before teacher check-in">
+                  <input type="number" name="adminEarlyMinutes" min="0" max="1440" className={inputClass} value={form.adminEarlyMinutes} disabled={dutyDisabled} onChange={onChange} />
+                </SettingsField>
+                <SettingsField label="Co-ordinator arrives earlier" hint="Minutes before teacher check-in">
+                  <input type="number" name="coordinatorEarlyMinutes" min="0" max="1440" className={inputClass} value={form.coordinatorEarlyMinutes} disabled={dutyDisabled} onChange={onChange} />
+                </SettingsField>
+              </div>
+            </SettingsCard>
+          </>
+        )
+      default:
+        return null
+    }
+  }
+
+  const showSaveBar = activeSection !== 'notices' || isDirty
+
   return (
     <CampusShell headerContext="Institute Settings">
       <div className="min-h-screen bg-slate-100 p-4 pt-[4.25rem] md:p-6 md:pt-[4.5rem]">
-        <div className="mx-auto max-w-6xl">
-          <section className="space-y-5 rounded-2xl bg-white p-5 shadow-sm">
-            <div className="flex items-start gap-3">
-              <div className="grid h-10 w-10 place-items-center rounded-xl bg-[#405189] text-white">
-                <Building2 size={18} />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-slate-800">Institute Settings</h1>
-                <p className="text-sm text-slate-500">
-                  Campus name, contact details, session, fee years, and attendance device setup.
-                </p>
-              </div>
+        <div className="mx-auto max-w-6xl space-y-4">
+          <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-5 py-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#405189] text-white">
+              <Building2 size={18} />
             </div>
+            <div>
+              <h1 className="text-xl font-bold text-slate-800">Institute Settings</h1>
+              <p className="text-[13px] text-slate-500">Manage how this campus appears and works across the app.</p>
+            </div>
+          </div>
 
-            {isLoading ? (
-              <div className="flex items-center gap-2 py-8 text-slate-500">
-                <Loader2 className="animate-spin" size={16} />
-                Loading…
-              </div>
-            ) : (
-              <PermissionControl permission="manage_campus_profile">
-                <div className="space-y-5">
-                  <div className="grid items-start gap-5 lg:grid-cols-2">
-                    <div className="space-y-5">
-                      <div className="space-y-3 rounded-xl border border-slate-200 p-3.5">
-                        <p className="text-sm font-semibold text-slate-800">Campus</p>
-                        <div className="grid gap-3 sm:grid-cols-2">
-                          <label className="block text-sm font-medium text-slate-700">
-                            School name
-                            <input
-                              name="schoolName"
-                              className={`${inputClass} mt-1`}
-                              value={form.schoolName}
-                              disabled={!canManage}
-                              onChange={onChange}
-                            />
-                          </label>
-                          <label className="block text-sm font-medium text-slate-700">
-                            Campus label
-                            <input
-                              name="campusLabel"
-                              className={`${inputClass} mt-1`}
-                              value={form.campusLabel}
-                              disabled={!canManage}
-                              onChange={onChange}
-                            />
-                          </label>
-                        </div>
-                        <div className="space-y-2">
-                          <span className="block text-sm font-medium text-slate-700">School logo</span>
-                          {canManage ? (
-                            <input
-                              type="file"
-                              accept="image/*"
-                              onChange={onLogoFile}
-                              className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-md file:border-0 file:bg-indigo-50 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-indigo-800 hover:file:bg-indigo-100"
-                            />
-                          ) : null}
-                          {normalizeSchoolLogo(form.schoolLogo) ? (
-                            <div className="flex items-center gap-3">
-                              <img
-                                src={normalizeSchoolLogo(form.schoolLogo)}
-                                alt=""
-                                className="h-20 w-auto max-w-[200px] rounded border border-slate-200 bg-white object-contain p-1"
-                              />
-                              {canManage ? (
-                                <button
-                                  type="button"
-                                  className="text-sm text-rose-600 hover:underline"
-                                  onClick={() => setForm((prev) => ({ ...prev, schoolLogo: '' }))}
-                                >
-                                  Remove logo
-                                </button>
-                              ) : null}
-                            </div>
-                          ) : (
-                            <p className="text-xs text-slate-500">No logo set yet.</p>
-                          )}
-                        </div>
-                      </div>
+          {isLoading ? (
+            <div className="flex items-center gap-2 rounded-xl bg-white p-6 text-slate-500">
+              <Loader2 className="animate-spin" size={16} />
+              Loading…
+            </div>
+          ) : (
+            <PermissionControl permission="manage_campus_profile">
+              <div className="grid items-start gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
+                <nav
+                  aria-label="Settings sections"
+                  className="flex gap-1 overflow-x-auto rounded-xl border border-slate-200 bg-white p-1.5 lg:sticky lg:top-20 lg:flex-col lg:overflow-visible"
+                >
+                  {SETTINGS_SECTIONS.map(({ id, label, icon: Icon }) => {
+                    const active = activeSection === id
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => setActiveSection(id)}
+                        className={`inline-flex shrink-0 items-center gap-2.5 whitespace-nowrap rounded-lg px-3 py-2 text-left text-[13px] font-medium transition ${
+                          active ? 'bg-indigo-50 text-[#405189]' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-800'
+                        }`}
+                      >
+                        <Icon size={16} className={active ? 'text-[#405189]' : 'text-slate-400'} />
+                        {label}
+                      </button>
+                    )
+                  })}
+                </nav>
 
-                      <div className="space-y-3 rounded-xl border border-slate-200 p-3.5">
-                        <div className="flex flex-wrap items-baseline justify-between gap-2">
-                          <p className="text-sm font-semibold text-slate-800">Academic session</p>
-                          {sessionPreview.label ? (
-                            <p className="text-xs text-slate-500">
-                              Label:{' '}
-                              <span className="font-semibold text-slate-700">{sessionPreview.label}</span>
-                              {sessionPreview.rangeText ? (
-                                <>
-                                  {' · '}
-                                  {sessionPreview.rangeText}
-                                </>
-                              ) : null}
-                            </p>
-                          ) : null}
-                        </div>
-                        <div className="grid gap-3 sm:grid-cols-2">
-                          <label className="block text-sm font-medium text-slate-700">
-                            Start month
-                            <select
-                              name="sessionStartMonth"
-                              className={`${inputClass} mt-1`}
-                              value={form.sessionStartMonth}
-                              disabled={!canManage}
-                              onChange={onChange}
-                            >
-                              {MONTH_OPTIONS.map((opt) => (
-                                <option key={opt.value} value={String(opt.value)}>
-                                  {opt.label}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-                          <label className="block text-sm font-medium text-slate-700">
-                            Start year
-                            <input
-                              name="sessionStartYear"
-                              inputMode="numeric"
-                              autoComplete="off"
-                              maxLength={4}
-                              placeholder="2026"
-                              className={`${inputClass} mt-1`}
-                              value={form.sessionStartYear}
-                              disabled={!canManage}
-                              onChange={onChange}
-                            />
-                          </label>
-                          <label className="block text-sm font-medium text-slate-700">
-                            End month
-                            <select
-                              name="sessionEndMonth"
-                              className={`${inputClass} mt-1`}
-                              value={form.sessionEndMonth}
-                              disabled={!canManage}
-                              onChange={onChange}
-                            >
-                              {MONTH_OPTIONS.map((opt) => (
-                                <option key={opt.value} value={String(opt.value)}>
-                                  {opt.label}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-                          <label className="block text-sm font-medium text-slate-700">
-                            End year
-                            <input
-                              name="sessionEndYear"
-                              inputMode="numeric"
-                              autoComplete="off"
-                              maxLength={4}
-                              placeholder="2027"
-                              className={`${inputClass} mt-1`}
-                              value={form.sessionEndYear}
-                              disabled={!canManage}
-                              onChange={onChange}
-                            />
-                          </label>
-                        </div>
-                        <p className="text-xs text-slate-500">
-                          Session label is saved as start year–end year (for example 2026-2027).
-                        </p>
-                      </div>
+                <div className="min-w-0 space-y-4">
+                  {renderSection()}
 
-                      <div className="space-y-3 rounded-xl border border-slate-200 p-3.5">
-                        <p className="text-sm font-semibold text-slate-800">Address</p>
-                        <div className="grid gap-3 sm:grid-cols-2">
-                          <label className="block text-sm font-medium text-slate-700">
-                            Street address
-                            <input
-                              name="streetAddress"
-                              className={`${inputClass} mt-1`}
-                              value={form.streetAddress}
-                              disabled={!canManage}
-                              onChange={onChange}
-                            />
-                          </label>
-                          <label className="block text-sm font-medium text-slate-700">
-                            Address
-                            <input
-                              name="address"
-                              className={`${inputClass} mt-1`}
-                              value={form.address}
-                              disabled={!canManage}
-                              onChange={onChange}
-                            />
-                          </label>
-                          <label className="block text-sm font-medium text-slate-700 sm:col-span-2">
-                            Email
-                            <input
-                              name="email"
-                              type="email"
-                              className={`${inputClass} mt-1`}
-                              value={form.email}
-                              disabled={!canManage}
-                              onChange={onChange}
-                            />
-                          </label>
-                        </div>
-                      </div>
+                  {showSaveBar ? (
+                    <div className="sticky bottom-3 z-10 flex flex-wrap items-center justify-end gap-2 rounded-xl border border-slate-200 bg-white/95 px-4 py-3 shadow-lg backdrop-blur">
+                      <span className={`mr-auto text-xs font-medium ${isDirty ? 'text-amber-700' : 'text-slate-400'}`}>
+                        {isDirty ? 'You have unsaved changes' : 'All changes saved'}
+                      </span>
+                      <button
+                        type="button"
+                        disabled={!isDirty || isSaving}
+                        onClick={() => setForm(savedForm)}
+                        className="inline-flex h-9 items-center rounded-lg border border-slate-300 bg-white px-4 text-[13px] font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                      >
+                        Discard
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!canManage || !isDirty || isSaving}
+                        onClick={handleSave}
+                        className="inline-flex h-9 min-w-[120px] items-center justify-center gap-1.5 rounded-lg bg-[#405189] px-4 text-[13px] font-semibold text-white hover:bg-[#364574] disabled:opacity-50"
+                      >
+                        {isSaving ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
+                        Save changes
+                      </button>
                     </div>
-
-                    <div className="space-y-5">
-                      <div className="space-y-3 rounded-xl border border-slate-200 p-3.5">
-                        <p className="text-sm font-semibold text-slate-800">Phone numbers</p>
-                        <div className="grid gap-3 sm:grid-cols-3">
-                          <label className="block text-sm font-medium text-slate-700">
-                            Phone 1
-                            <input
-                              name="phone1"
-                              className={`${inputClass} mt-1`}
-                              value={form.phone1}
-                              disabled={!canManage}
-                              onChange={onChange}
-                            />
-                          </label>
-                          <label className="block text-sm font-medium text-slate-700">
-                            Phone 2
-                            <input
-                              name="phone2"
-                              className={`${inputClass} mt-1`}
-                              value={form.phone2}
-                              disabled={!canManage}
-                              onChange={onChange}
-                            />
-                          </label>
-                          <label className="block text-sm font-medium text-slate-700">
-                            Landline
-                            <input
-                              name="landline"
-                              className={`${inputClass} mt-1`}
-                              value={form.landline}
-                              disabled={!canManage}
-                              onChange={onChange}
-                            />
-                          </label>
-                        </div>
-                        <div className="flex flex-wrap gap-4 pt-1 text-sm text-slate-700">
-                          <label className="inline-flex items-center gap-2">
-                            <input
-                              type="checkbox"
-                              name="showPhone1OnInvoice"
-                              checked={form.showPhone1OnInvoice}
-                              disabled={!canManage}
-                              onChange={onChange}
-                            />
-                            Show phone 1 on invoice
-                          </label>
-                          <label className="inline-flex items-center gap-2">
-                            <input
-                              type="checkbox"
-                              name="showPhone2OnInvoice"
-                              checked={form.showPhone2OnInvoice}
-                              disabled={!canManage}
-                              onChange={onChange}
-                            />
-                            Show phone 2 on invoice
-                          </label>
-                          <label className="inline-flex items-center gap-2">
-                            <input
-                              type="checkbox"
-                              name="showLandlineOnInvoice"
-                              checked={form.showLandlineOnInvoice}
-                              disabled={!canManage}
-                              onChange={onChange}
-                            />
-                            Show landline on invoice
-                          </label>
-                        </div>
-                      </div>
-
-                      <div className="space-y-3 rounded-xl border border-slate-200 p-3.5">
-                        <p className="text-sm font-semibold text-slate-800">Generate fee years (max 3)</p>
-                        <div className="grid gap-3 sm:grid-cols-3">
-                          {['feeYear1', 'feeYear2', 'feeYear3'].map((name, index) => (
-                            <label key={name} className="block text-sm font-medium text-slate-700">
-                              Year {index + 1}
-                              <input
-                                name={name}
-                                type="number"
-                                min="2000"
-                                max="2100"
-                                className={`${inputClass} mt-1`}
-                                value={form[name]}
-                                disabled={!canManage}
-                                onChange={onChange}
-                              />
-                            </label>
-                          ))}
-                        </div>
-                        <label className="block text-sm font-medium text-slate-700">
-                          Receipt footer note
-                          <input
-                            name="receiptFooterNote"
-                            className={`${inputClass} mt-1`}
-                            value={form.receiptFooterNote}
-                            disabled={!canManage}
-                            onChange={onChange}
-                          />
-                        </label>
-                        <label className="inline-flex items-center gap-2 text-sm text-slate-700">
-                          <input
-                            type="checkbox"
-                            name="showAddressOnReceipts"
-                            checked={form.showAddressOnReceipts}
-                            disabled={!canManage}
-                            onChange={onChange}
-                          />
-                          Show address on fee receipts
-                        </label>
-                        <label className="inline-flex items-center gap-2 text-sm text-slate-700">
-                          <input
-                            type="checkbox"
-                            name="showCreditStudent"
-                            checked={form.showCreditStudent}
-                            disabled={!canManage}
-                            onChange={onChange}
-                          />
-                          Show credit student on admission and student list
-                        </label>
-                      </div>
-
-                      <div className="space-y-3 rounded-xl border border-slate-200 p-3.5">
-                        <div className="flex items-start gap-3">
-                          <div className="grid h-9 w-9 place-items-center rounded-lg bg-indigo-50 text-[#405189]">
-                            <Clock size={16} />
-                          </div>
-                          <div>
-                            <p className="text-sm font-semibold text-slate-800">Biometric attendance</p>
-                            <p className="text-xs text-slate-500">
-                              Choose how this campus records staff attendance. Duty times below are used when
-                              importing from the wall-mounted device.
-                            </p>
-                          </div>
-                        </div>
-
-                        <fieldset className="space-y-2">
-                          <legend className="text-xs font-semibold uppercase text-slate-500">
-                            Attendance type
-                          </legend>
-                          <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 has-[:checked]:border-[#405189] has-[:checked]:bg-indigo-50">
-                            <input
-                              type="radio"
-                              name="biometricAttendanceType"
-                              value={BIOMETRIC_ATTENDANCE_TYPES.Kiosk}
-                              checked={form.biometricAttendanceType === BIOMETRIC_ATTENDANCE_TYPES.Kiosk}
-                              disabled={!canManage}
-                              onChange={onChange}
-                              className="mt-0.5 accent-[#405189]"
-                            />
-                            <span>
-                              <span className="font-medium text-slate-800">KIOSK (Digital Persona/Secugen)</span>
-                              <span className="mt-0.5 block text-xs text-slate-500">
-                                Real-time fingerprint attendance at the desk.
-                              </span>
-                            </span>
-                          </label>
-                          <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 has-[:checked]:border-[#405189] has-[:checked]:bg-indigo-50">
-                            <input
-                              type="radio"
-                              name="biometricAttendanceType"
-                              value={BIOMETRIC_ATTENDANCE_TYPES.ZkTeco}
-                              checked={form.biometricAttendanceType === BIOMETRIC_ATTENDANCE_TYPES.ZkTeco}
-                              disabled={!canManage}
-                              onChange={onChange}
-                              className="mt-0.5 accent-[#405189]"
-                            />
-                            <span>
-                              <span className="font-medium text-slate-800">ZKTeco (wall-mounted device)</span>
-                              <span className="mt-0.5 block text-xs text-slate-500">
-                                Import the monthly Excel sheet from the wall device.
-                              </span>
-                            </span>
-                          </label>
-                        </fieldset>
-
-                        <div className="grid gap-3 sm:grid-cols-2">
-                          <label className="block text-sm font-medium text-slate-700">
-                            Teacher check-in
-                            <input
-                              type="time"
-                              name="teacherCheckInTime"
-                              className={`${inputClass} mt-1 disabled:bg-slate-50 disabled:text-slate-500`}
-                              value={form.teacherCheckInTime}
-                              disabled={dutyDisabled}
-                              onChange={onChange}
-                            />
-                          </label>
-                          <label className="block text-sm font-medium text-slate-700">
-                            Teacher checkout
-                            <input
-                              type="time"
-                              name="teacherCheckOutTime"
-                              className={`${inputClass} mt-1 disabled:bg-slate-50 disabled:text-slate-500`}
-                              value={form.teacherCheckOutTime}
-                              disabled={dutyDisabled}
-                              onChange={onChange}
-                            />
-                          </label>
-                          <label className="block text-sm font-medium text-slate-700">
-                            Friday checkout
-                            <input
-                              type="time"
-                              name="fridayCheckOutTime"
-                              className={`${inputClass} mt-1 disabled:bg-slate-50 disabled:text-slate-500`}
-                              value={form.fridayCheckOutTime}
-                              disabled={dutyDisabled}
-                              onChange={onChange}
-                            />
-                          </label>
-                          <label className="block text-sm font-medium text-slate-700">
-                            Admin earlier (minutes)
-                            <input
-                              type="number"
-                              name="adminEarlyMinutes"
-                              min="0"
-                              max="1440"
-                              className={`${inputClass} mt-1 disabled:bg-slate-50 disabled:text-slate-500`}
-                              value={form.adminEarlyMinutes}
-                              disabled={dutyDisabled}
-                              onChange={onChange}
-                            />
-                          </label>
-                          <label className="block text-sm font-medium text-slate-700">
-                            Co-ordinator earlier (minutes)
-                            <input
-                              type="number"
-                              name="coordinatorEarlyMinutes"
-                              min="0"
-                              max="1440"
-                              className={`${inputClass} mt-1 disabled:bg-slate-50 disabled:text-slate-500`}
-                              value={form.coordinatorEarlyMinutes}
-                              disabled={dutyDisabled}
-                              onChange={onChange}
-                            />
-                          </label>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end">
-                    <button
-                      type="button"
-                      disabled={!canManage || isSaving}
-                      onClick={handleSave}
-                      className="inline-flex h-12 min-w-[140px] items-center justify-center gap-2 rounded-lg bg-[#405189] px-6 text-base font-semibold text-white hover:bg-[#364574] disabled:opacity-60"
-                    >
-                      {isSaving ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />}
-                      Save
-                    </button>
-                  </div>
+                  ) : null}
                 </div>
-              </PermissionControl>
-            )}
-          </section>
+              </div>
+            </PermissionControl>
+          )}
         </div>
       </div>
     </CampusShell>

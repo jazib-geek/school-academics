@@ -45,10 +45,12 @@ function isHtmlContent(value) {
   return /<[a-z][\s\S]*>/i.test(String(value || ''))
 }
 
-function renderBodyHtml(bodyText, dueDateLabel, isPreDue) {
+export function renderBodyHtml(bodyText, dueDateLabel, isPreDue) {
   const raw = String(bodyText || '')
   const dueHtml =
-    isPreDue && dueDateLabel ? `<strong><u>${escapeHtml(dueDateLabel)}</u></strong>` : ''
+    isPreDue && dueDateLabel
+      ? `<span class="fee-reminder-voucher__due-date"><strong><u>${escapeHtml(dueDateLabel)}</u></strong></span>`
+      : ''
 
   if (isHtmlContent(raw)) {
     return dueHtml ? raw.replace(/\{dueDate\}/g, dueHtml) : raw
@@ -84,7 +86,6 @@ function buildVoucherHtml(notice) {
   return `
     <div class="fee-reminder-voucher">
       <div class="fee-reminder-voucher__title">${escapeHtml(title)}</div>
-      <hr class="fee-reminder-voucher__rule" />
       <div class="fee-reminder-voucher__body">
         <div class="fee-reminder-voucher__left">
           <div class="fee-reminder-voucher__fields">
@@ -133,8 +134,14 @@ export const FEE_REMINDER_VOUCHER_STYLES = `
     page-break-after: always;
     display: flex;
     flex-direction: column;
-    gap: 5mm;
+    gap: 10mm;
     padding: 0;
+  }
+  .fee-reminder-page--2 {
+    gap: 14mm;
+  }
+  .fee-reminder-page--3 {
+    gap: 12mm;
   }
   .fee-reminder-page:last-child {
     page-break-after: auto;
@@ -151,16 +158,11 @@ export const FEE_REMINDER_VOUCHER_STYLES = `
   .fee-reminder-voucher__title {
     text-align: center;
     font-weight: 700;
-    font-size: 15px;
+    font-size: 18px;
     text-decoration: underline;
-    margin: 2px 0 10px;
+    margin: 2px 0 14px;
     line-height: 1.2;
     padding: 0 8px;
-  }
-  .fee-reminder-voucher__rule {
-    border: none;
-    border-top: 1px solid #000;
-    margin: 0 4px 14px;
   }
   .fee-reminder-voucher__body {
     display: flex;
@@ -257,7 +259,7 @@ export const FEE_REMINDER_VOUCHER_STYLES = `
   .fee-reminder-voucher__message {
     width: 100%;
     text-align: center;
-    font-size: 12px;
+    font-size: 14px;
     line-height: 1.5;
     padding: 4px 6px;
   }
@@ -278,6 +280,9 @@ export const FEE_REMINDER_VOUCHER_STYLES = `
   }
   .fee-reminder-voucher__message strong {
     font-weight: 700;
+  }
+  .fee-reminder-voucher__due-date {
+    white-space: nowrap;
   }
 `
 
@@ -320,16 +325,18 @@ export function buildFeeReminderVoucherHtml(notice) {
   })
 }
 
-export function printFeeReminderNotices(notices, noticesPerPage = 2) {
+export function printFeeReminderNotices(notices, noticesPerPage = 3) {
   const rows = Array.isArray(notices) ? notices : []
   if (!rows.length) return
 
-  const perPage = Math.min(3, Math.max(1, Number(noticesPerPage) || 2))
+  const perPage = Math.min(3, Math.max(1, Number(noticesPerPage) || 3))
   const vouchers = rows.map((n) => buildFeeReminderVoucherHtml(n))
   const pages = []
   for (let i = 0; i < vouchers.length; i += perPage) {
     const slice = vouchers.slice(i, i + perPage)
-    pages.push(`<div class="fee-reminder-page">${slice.join('')}</div>`)
+    pages.push(
+      `<div class="fee-reminder-page fee-reminder-page--${perPage}">${slice.join('')}</div>`,
+    )
   }
 
   const printWindow = window.open('', '_blank', 'width=900,height=700')

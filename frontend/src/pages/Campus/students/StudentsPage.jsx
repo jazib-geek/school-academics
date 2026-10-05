@@ -1931,7 +1931,20 @@ function StudentsPage() {
                     value={filters.reg_Id}
                     onChange={(event) => {
                       const digits = event.target.value.replace(/\D/g, '')
-                      setFilters((previous) => ({ ...previous, reg_Id: digits }))
+                      setFilters((previous) => {
+                        if (!digits) {
+                          return { ...previous, reg_Id: digits }
+                        }
+                        return {
+                          ...previous,
+                          reg_Id: digits,
+                          name: '',
+                          class: '',
+                          gender: '',
+                          status: initialFilters.status,
+                          creditFilter: '',
+                        }
+                      })
                     }}
                     onKeyDown={(event) => {
                       if (event.key !== 'Enter') return
