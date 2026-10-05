@@ -1869,6 +1869,67 @@ public class EmployeeAttendanceService : IEmployeeAttendanceService
         };
     }
 
+    public async Task<RecalculateAttendanceSalaryResultDto> RecalculateSalaryFieldsForPastDaysAsync(
+        int employeeId,
+        int pastDays,
+        CancellationToken cancellationToken = default)
+    {
+        if (employeeId <= 0)
+            throw new ArgumentException("Employee is required.");
+        if (pastDays is < 1 or > 31)
+            throw new ArgumentException("Days must be between 1 and 31.");
+
+        var today = PakistanTime.Today;
+        var monthStart = new DateOnly(today.Year, today.Month, 1);
+        var rangeStart = today.AddDays(-(pastDays - 1));
+        if (rangeStart < monthStart)
+            rangeStart = monthStart;
+
+        var employee = await _context.Employees
+            .Include(e => e.Designation)
+            .FirstOrDefaultAsync(e => e.ID == employeeId, cancellationToken)
+            ?? throw new KeyNotFoundException("Employee was not found.");
+
+        if (employee.Salary is null or <= 0)
+            return new RecalculateAttendanceSalaryResultDto();
+
+        var rangeEnd = today.ToDateTime(TimeOnly.MaxValue);
+        var rangeStartDt = rangeStart.ToDateTime(TimeOnly.MinValue);
+
+        var rows = await _context.EmployeeAttendances
+            .Where(a =>
+                a.EmpID == employeeId &&
+                a.Date.HasValue &&
+                a.Date.Value >= rangeStartDt &&
+                a.Date.Value <= rangeEnd &&
+                (a.Status == "P" || a.Status == "H"))
+            .ToListAsync(cancellationToken);
+
+        foreach (var row in rows)
+        {
+            if (!row.Date.HasValue)
+                continue;
+
+            var date = row.Date.Value.Date;
+            if (string.Equals(row.Status, "H", StringComparison.OrdinalIgnoreCase))
+            {
+                var perDay = EmployeeAttendanceCalculator.CalculateSalaryPerDay(
+                    date,
+                    employee.Salary.Value);
+                ApplyHoliday(row, employee, perDay);
+            }
+            else if (string.Equals(row.Status, "P", StringComparison.OrdinalIgnoreCase))
+            {
+                RecalculateAndApply(row, employee, date);
+            }
+        }
+
+        if (rows.Count > 0)
+            await _context.SaveChangesAsync(cancellationToken);
+
+        return new RecalculateAttendanceSalaryResultDto { RowsUpdated = rows.Count };
+    }
+
     private sealed record AttendanceCalcResult(
         int LateMinutes,
         int EarlyMinutes,

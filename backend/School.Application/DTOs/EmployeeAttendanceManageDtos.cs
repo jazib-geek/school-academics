@@ -163,3 +163,8 @@ public class RecalculateDutyTimesResultDto
     public int RecalculatedCount { get; set; }
     public int SkippedCount { get; set; }
 }
+
+public class RecalculateAttendanceSalaryResultDto
+{
+    public int RowsUpdated { get; set; }
+}

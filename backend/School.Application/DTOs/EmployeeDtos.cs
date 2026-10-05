@@ -96,6 +96,12 @@ public class EmployeeUpsertDto
     public List<EmployeeQualificationDto> Qualifications { get; set; } = [];
     public List<EmployeeExperienceDto> Experiences { get; set; } = [];
     public List<EmployeeAssetDto> Assets { get; set; } = [];
+
+    /// <summary>
+    /// On employee update only: when salary changes, recalculate P/H attendance pay for this many days ending today (current month).
+    /// </summary>
+    [Range(0, 31)]
+    public int? RecalculateAttendancePastDays { get; set; }
 }
 
 public class EmployeeDetailDto : EmployeeUpsertDto

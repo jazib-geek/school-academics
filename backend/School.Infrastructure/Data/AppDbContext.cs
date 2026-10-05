@@ -157,6 +157,7 @@ public class AppDbContext : DbContext
     public DbSet<StudentConductParentAck> StudentConductParentAcks => Set<StudentConductParentAck>();
     public DbSet<AbsentStudentFollowup> AbsentStudentFollowups => Set<AbsentStudentFollowup>();
     public DbSet<AbsentFollowupReason> AbsentFollowupReasons => Set<AbsentFollowupReason>();
+    public DbSet<FeeReminderNoticeTemplate> FeeReminderNoticeTemplates => Set<FeeReminderNoticeTemplate>();
     public DbSet<StationeryItem> StationeryItems => Set<StationeryItem>();
     public DbSet<StationeryPurchase> StationeryPurchases => Set<StationeryPurchase>();
     public DbSet<StationeryPurchaseLine> StationeryPurchaseLines => Set<StationeryPurchaseLine>();
@@ -1133,6 +1134,7 @@ public class AppDbContext : DbContext
         modelBuilder.ApplyConfiguration(new StudentConductParentAckConfiguration());
         modelBuilder.ApplyConfiguration(new StudentLeaveApplicationConfiguration());
         modelBuilder.ApplyConfiguration(new AbsentFollowupReasonConfiguration());
+        modelBuilder.ApplyConfiguration(new FeeReminderNoticeTemplateConfiguration());
         modelBuilder.ApplyConfiguration(new AbsentStudentFollowupConfiguration());
         modelBuilder.ApplyConfiguration(new StationeryItemConfiguration());
         modelBuilder.ApplyConfiguration(new StationeryPurchaseConfiguration());

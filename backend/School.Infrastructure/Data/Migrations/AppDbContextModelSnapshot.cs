@@ -3740,6 +3740,84 @@ namespace School.Infrastructure.Data.Migrations
                     b.ToTable("tblFeeReceiptSequence", "dbo");
                 });
 
+            modelBuilder.Entity("School.Infrastructure.Entities.FeeReminderNoticeTemplate", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("BodyText")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("ClosingText")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<int?>("DayOfMonth")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Greeting")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique()
+                        .HasDatabaseName("UQ_FeeReminderNoticeTemplate_Code");
+
+                    b.ToTable("tblFeeReminderNoticeTemplate", "dbo");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            BodyText = "This is gentle reminder to clear your child's outstanding school dues on or before {dueDate}.",
+                            ClosingText = "Your prompt attention and cooperation will be highly appreciated.",
+                            Code = "pre_due",
+                            DayOfMonth = 10,
+                            Greeting = "Dear Parents,",
+                            IsActive = true,
+                            SortOrder = 10,
+                            Title = "Fee Reminder Voucher"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            BodyText = "The due date for your child's school dues has already passed. Kindly clear all outstanding dues immediately to avoid any interruption in your child's studies and school activities.",
+                            ClosingText = "Your prompt cooperation will be highly appreciated.",
+                            Code = "last_due",
+                            Greeting = "Dear Parents,",
+                            IsActive = true,
+                            SortOrder = 20,
+                            Title = "Last Fee Reminder"
+                        });
+                });
+
             modelBuilder.Entity("School.Infrastructure.Entities.FeeType", b =>
                 {
                     b.Property<int>("ID")

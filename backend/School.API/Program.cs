@@ -129,6 +129,7 @@ builder.Services.AddScoped<IEmployeeNotificationService, EmployeeNotificationSer
 builder.Services.AddScoped<ICampusNotificationService, CampusNotificationService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IFeeReportService, FeeReportService>();
+builder.Services.AddScoped<IFeeReminderNoticeService, FeeReminderNoticeService>();
 builder.Services.AddScoped<IFeeGenerateService, FeeGenerateService>();
 builder.Services.AddScoped<IFundGenerateService, FundGenerateService>();
 builder.Services.AddScoped<ISmartFeeReportService, SmartFeeReportService>();

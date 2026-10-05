@@ -64,6 +64,11 @@ public interface IEmployeeAttendanceService
         int? editedByUserId,
         CancellationToken cancellationToken = default);
 
+    Task<RecalculateAttendanceSalaryResultDto> RecalculateSalaryFieldsForPastDaysAsync(
+        int employeeId,
+        int pastDays,
+        CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<ActivityLogDto>> GetAttendanceActivityAsync(
         int attendanceId,
         CancellationToken cancellationToken = default);

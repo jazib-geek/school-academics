@@ -340,11 +340,12 @@ public class EmployeeSalaryService : IEmployeeSalaryService
         IReadOnlyList<AttendanceSlice> attendance)
     {
         var daysInMonth = DateTime.DaysInMonth(year, month);
-        var workingAndHolidaySalary = RoundMoney(
-            attendance
-                .Where(x => x.Status == "P" || x.Status == "H")
-                .Sum(x => x.TodaySalary ?? 0m)
-            + GetSundaySalary(month, year, basicSalary, sundaysToInclude));
+        var workingAndHolidaySalary = ComputeWorkingAndHolidaySalary(
+            basicSalary,
+            month,
+            year,
+            sundaysToInclude,
+            attendance);
 
         await UpsertComponentAsync(
             context,
@@ -454,7 +455,6 @@ public class EmployeeSalaryService : IEmployeeSalaryService
 
         var holidayCount = holidayDates.Count;
         var presentDays = attendance.Count(x => x.Status == "P");
-        var lateDeduction = attendance.Sum(x => x.LateDeduction ?? 0m);
         var lateComings = attendance.Sum(x => x.LateComings ?? 0);
         var paidNonWorkingDays = holidayCount + sundaysToInclude;
 
@@ -463,6 +463,8 @@ public class EmployeeSalaryService : IEmployeeSalaryService
         var basicSalary = RoundMoney(AmountOf(SalaryComponentTypes.BasicSalary));
         if (basicSalary == 0 && basicSalaryFallback.HasValue)
             basicSalary = RoundMoney(basicSalaryFallback.Value);
+
+        var lateDeduction = SumLateDeductionForDisplay(basicSalary, attendance);
 
         var workingDaysSalary = presentDays > 0
             ? RoundMoney(AmountOf(SalaryComponentTypes.WorkingDaySalary))
@@ -474,7 +476,8 @@ public class EmployeeSalaryService : IEmployeeSalaryService
         var advance = RoundMoney(AmountOf(SalaryComponentTypes.Advance));
         var bonus = RoundMoney(AmountOf(SalaryComponentTypes.Bonus));
         var teaAllowance = RoundMoney(AmountOf(SalaryComponentTypes.TeaAllowance));
-        var absentDeduction = RoundMoney(GetAbsentDeduction(basicSalary, presentDays, workingDaysInMonth));
+        var absentDeduction = RoundMoney(
+            GetAbsentDeduction(basicSalary, presentDays, workingDaysInMonth, daysInMonth));
 
         var netSalary = RoundMoney(
             workingDaysSalary + bonus + teaAllowance - loan - fine - advance - securityCharges);
@@ -560,12 +563,71 @@ public class EmployeeSalaryService : IEmployeeSalaryService
             .Where(x => x.EmpID == employeeId && x.Month == month && x.Year == year)
             .ToListAsync();
 
-    private static decimal GetAbsentDeduction(decimal? salary, int presentDays, int workingDaysInMonth)
+    private static decimal ComputeWorkingAndHolidaySalary(
+        decimal basicSalary,
+        int month,
+        int year,
+        int sundaysToInclude,
+        IReadOnlyList<AttendanceSlice> attendance)
     {
-        if (!salary.HasValue || workingDaysInMonth <= 0)
+        if (basicSalary <= 0)
             return 0;
 
-        var perDaySalary = salary.Value / workingDaysInMonth;
+        var presentDays = attendance.Count(x => x.Status == "P");
+        if (presentDays == 0)
+            return 0;
+
+        decimal total = 0;
+        foreach (var row in attendance)
+        {
+            if (row.Status == "P")
+            {
+                var date = row.Date ?? new DateTime(year, month, 1);
+                total += EmployeeAttendanceCalculator.CalculateEmpSalaryOnThisDay(
+                    date,
+                    basicSalary,
+                    row.LateComings ?? 0) ?? 0m;
+            }
+            else if (row.Status == "H")
+            {
+                var date = row.Date ?? new DateTime(year, month, 1);
+                total += EmployeeAttendanceCalculator.CalculateSalaryPerDay(date, basicSalary);
+            }
+        }
+
+        total += GetSundaySalary(month, year, basicSalary, sundaysToInclude);
+        return RoundMoney(total);
+    }
+
+    private static decimal SumLateDeductionForDisplay(
+        decimal basicSalary,
+        IReadOnlyList<AttendanceSlice> attendance)
+    {
+        if (basicSalary <= 0)
+            return 0;
+
+        decimal total = 0;
+        foreach (var row in attendance.Where(x => x.Status == "P" && x.Date.HasValue))
+        {
+            total += EmployeeAttendanceCalculator.CalculateLateDeductionOnThisDay(
+                row.Date!.Value,
+                basicSalary,
+                row.LateComings ?? 0) ?? 0m;
+        }
+
+        return RoundMoney(total);
+    }
+
+    private static decimal GetAbsentDeduction(
+        decimal basicSalary,
+        int presentDays,
+        int workingDaysInMonth,
+        int daysInMonth)
+    {
+        if (basicSalary <= 0 || workingDaysInMonth <= 0 || daysInMonth <= 0)
+            return 0;
+
+        var perDaySalary = basicSalary / daysInMonth;
         var absentDays = workingDaysInMonth - presentDays;
         if (presentDays == 0)
             absentDays = workingDaysInMonth;

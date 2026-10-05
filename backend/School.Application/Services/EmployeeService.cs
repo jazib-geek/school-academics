@@ -10,8 +10,18 @@ namespace School.Application.Services;
 public class EmployeeService : IEmployeeService
 {
     private readonly AppDbContext _context;
+    private readonly IEmployeeSalaryService _salaryService;
+    private readonly IEmployeeAttendanceService _attendanceService;
 
-    public EmployeeService(AppDbContext context) => _context = context;
+    public EmployeeService(
+        AppDbContext context,
+        IEmployeeSalaryService salaryService,
+        IEmployeeAttendanceService attendanceService)
+    {
+        _context = context;
+        _salaryService = salaryService;
+        _attendanceService = attendanceService;
+    }
 
     public async Task<PagedResultDto<EmployeeListItemDto>> GetEmployeesAsync(
         EmployeeListFilterDto filter,
@@ -119,6 +129,8 @@ public class EmployeeService : IEmployeeService
             ?? throw new KeyNotFoundException("Employee not found.");
         await ValidateRequestAsync(request, id, cancellationToken);
 
+        var previousSalary = employee.Salary;
+
         ApplyEmployee(request, employee);
         _context.EmployeeQualifications.RemoveRange(employee.Qualifications);
         _context.EmployeeExperiences.RemoveRange(employee.Experiences);
@@ -129,6 +141,27 @@ public class EmployeeService : IEmployeeService
         ApplyChildren(request, employee);
 
         await _context.SaveChangesAsync(cancellationToken);
+
+        var salaryChanged = !SalaryEquals(previousSalary, employee.Salary);
+
+        if (salaryChanged)
+        {
+            await SyncCurrentMonthBasicSalaryComponentIfExistsAsync(
+                id,
+                employee.Salary,
+                cancellationToken);
+
+            if (request.RecalculateAttendancePastDays is int pastDays && pastDays > 0)
+            {
+                await _attendanceService.RecalculateSalaryFieldsForPastDaysAsync(
+                    id,
+                    pastDays,
+                    cancellationToken);
+            }
+
+            await RecalculatePayrollForCurrentMonthIfGeneratedAsync(id, cancellationToken);
+        }
+
         return await GetEmployeeAsync(id, cancellationToken);
     }
 
@@ -213,6 +246,59 @@ public class EmployeeService : IEmployeeService
             EmployeeName = employee.EmployeeName ?? string.Empty,
             EnrolledAt = enrolledAt,
         };
+    }
+
+    private static bool SalaryEquals(decimal? left, decimal? right) =>
+        Math.Round(left ?? 0m, 0, MidpointRounding.AwayFromZero) ==
+        Math.Round(right ?? 0m, 0, MidpointRounding.AwayFromZero);
+
+    private async Task SyncCurrentMonthBasicSalaryComponentIfExistsAsync(
+        int employeeId,
+        decimal? newSalary,
+        CancellationToken cancellationToken)
+    {
+        if (newSalary is null)
+            return;
+
+        var newRounded = Math.Round(newSalary.Value, 0, MidpointRounding.AwayFromZero);
+        var (year, month) = SalaryPeriodHelper.CurrentPakistanYearMonth();
+
+        var basicComponent = await _context.EmployeeSalaryComponents
+            .Where(c =>
+                c.EmpID == employeeId &&
+                c.Month == month &&
+                c.Year == year &&
+                c.ComponentType == SalaryComponentTypes.BasicSalary)
+            .OrderByDescending(c => c.ID)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (basicComponent == null)
+            return;
+
+        basicComponent.Amount = newRounded;
+        await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task RecalculatePayrollForCurrentMonthIfGeneratedAsync(
+        int employeeId,
+        CancellationToken cancellationToken)
+    {
+        var (year, month) = SalaryPeriodHelper.CurrentPakistanYearMonth();
+
+        var payrollGenerated = await _context.EmployeeSalaries
+            .AsNoTracking()
+            .AnyAsync(
+                x => x.EmpID == employeeId && x.Month == month && x.Year == year,
+                cancellationToken);
+        if (!payrollGenerated)
+            return;
+
+        await _salaryService.RecalculateEmployeeAsync(
+            employeeId,
+            month,
+            year,
+            sundaysToInclude: null,
+            cancellationToken);
     }
 
     private IQueryable<Employee> AggregateQuery() => _context.Employees
