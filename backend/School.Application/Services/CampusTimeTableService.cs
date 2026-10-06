@@ -50,6 +50,24 @@ public class CampusTimeTableService : ICampusTimeTableService
         return await MapDetailAsync(entity, cancellationToken);
     }
 
+    public async Task<CampusTimeTableDetailDto?> GetLiveClassWiseAsync(CancellationToken cancellationToken = default)
+    {
+        var id = await _context.CampusTimeTables
+            .AsNoTracking()
+            .Where(x => x.IsActive && x.FormatType == (byte)CampusTimeTableFormat.ClassWise)
+            .Where(x => x.Periods.Any(p => p.StartTime != null && p.EndTime != null))
+            .OrderByDescending(x => x.IsDefault)
+            .ThenBy(x => x.Name)
+            .Select(x => (int?)x.ID)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (id is null)
+            return null;
+
+        var entity = await LoadTrackedHeaderAsync(id.Value, asNoTracking: true, cancellationToken);
+        return entity is null ? null : await MapDetailAsync(entity, cancellationToken);
+    }
+
     public async Task<EmployeeMyTimetableDto> GetMyTimetableAsync(
         int employeeId,
         CancellationToken cancellationToken = default)

@@ -40,6 +40,28 @@ public class FeeGenerateController : ControllerBase
         }
     }
 
+    [HttpGet("student/{studentId:int}/period")]
+    public async Task<IActionResult> GetStudentPeriod(
+        int studentId,
+        [FromQuery] int month,
+        [FromQuery] int year,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _service.GetStudentPeriodAsync(studentId, month, year, cancellationToken);
+            return Ok(ApiResponse<FeeGenerateStudentPeriodDto>.SuccessResponse(result));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiResponse<object>.FailureResponse(ex.Message));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ApiResponse<object>.FailureResponse(ex.Message));
+        }
+    }
+
     [HttpPost("student")]
     public async Task<IActionResult> GenerateForStudent(
         [FromBody] GenerateFeeStudentRequestDto? request,

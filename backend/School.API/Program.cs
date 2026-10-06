@@ -56,11 +56,17 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddScoped<TenantContext>();
 
+var dbCommandTimeoutSeconds = builder.Configuration.GetValue<int?>("Database:CommandTimeoutSeconds");
+
 builder.Services.AddDbContext<AppDbContext>((serviceProvider, options) =>
 {
     var tenantContext = serviceProvider.GetRequiredService<TenantContext>();
     options.UseSqlServer(tenantContext.ConnectionString, sql =>
-        sql.UseSchoolMigrationsHistory(typeof(AppDbContext).Assembly.FullName));
+    {
+        sql.UseSchoolMigrationsHistory(typeof(AppDbContext).Assembly.FullName);
+        if (dbCommandTimeoutSeconds is > 0)
+            sql.CommandTimeout(dbCommandTimeoutSeconds.Value);
+    });
 });
 
 builder.Services.AddDbContext<AcademicContext>(options =>
@@ -68,7 +74,11 @@ builder.Services.AddDbContext<AcademicContext>(options =>
     var connectionString = builder.Configuration.GetConnectionString("AcademicContext")
         ?? throw new InvalidOperationException("Connection string 'AcademicContext' was not found.");
     options.UseSqlServer(connectionString, sql =>
-        sql.UseSchoolMigrationsHistory(typeof(AcademicContext).Assembly.FullName));
+    {
+        sql.UseSchoolMigrationsHistory(typeof(AcademicContext).Assembly.FullName);
+        if (dbCommandTimeoutSeconds is > 0)
+            sql.CommandTimeout(dbCommandTimeoutSeconds.Value);
+    });
 });
 
 builder.Services.AddScoped<IAuthService, AuthService>();

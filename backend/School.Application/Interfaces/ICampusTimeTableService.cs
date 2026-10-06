@@ -7,6 +7,7 @@ public interface ICampusTimeTableService
     Task<IReadOnlyList<CampusTimeTableListItemDto>> GetListAsync(CancellationToken cancellationToken = default);
 
     Task<CampusTimeTableDetailDto> GetByIdAsync(int id, CancellationToken cancellationToken = default);
+    Task<CampusTimeTableDetailDto?> GetLiveClassWiseAsync(CancellationToken cancellationToken = default);
 
     Task<EmployeeMyTimetableDto> GetMyTimetableAsync(int employeeId, CancellationToken cancellationToken = default);
 

@@ -13,4 +13,10 @@ public interface IFeeGenerateService
         GenerateFeeStudentRequestDto request,
         int? userId = null,
         CancellationToken cancellationToken = default);
+
+    Task<FeeGenerateStudentPeriodDto> GetStudentPeriodAsync(
+        int studentId,
+        int month,
+        int year,
+        CancellationToken cancellationToken = default);
 }

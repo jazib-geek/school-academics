@@ -12,6 +12,7 @@ public class AbsentFollowupReasonDto
 public class AbsentFollowupRowDto
 {
     public int StudentId { get; set; }
+    public int? FamilyId { get; set; }
     public string FullName { get; set; } = string.Empty;
     public string? FatherName { get; set; }
     public string ClassName { get; set; } = "-";

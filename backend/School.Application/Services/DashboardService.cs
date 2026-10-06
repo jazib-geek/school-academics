@@ -687,6 +687,7 @@ namespace School.Application.Services
             var attendanceOverview = await BuildAttendanceOverviewAsync(campusContext, today, activeStudents);
             var attendanceYesterday = await BuildAttendanceOverviewAsync(campusContext, yesterday, activeStudents);
             var attendanceSparkline = await BuildAttendanceRateSparklineAsync(campusContext, last7From, today, activeStudents);
+            var classAttendanceSummaries = await BuildClassAttendanceSummariesAsync(today);
 
             var feeActivityLast7 = await campusContext.FeeAndFundCollections
                 .Where(x => (x.VoidAmount ?? 0) == 0)
@@ -779,6 +780,7 @@ namespace School.Application.Services
                     "from yesterday",
                     attendanceSparkline),
                 AttendanceOverview = attendanceOverview,
+                ClassAttendanceSummaries = classAttendanceSummaries,
                 BirthdaysToday = birthdays,
                 TeachersCheckedInLate = lateTeachers,
                 Alerts = alerts,
@@ -808,6 +810,25 @@ namespace School.Application.Services
                 ComparisonLabel = comparisonLabel,
                 Sparkline = sparkline.Count > 0 ? sparkline : [value]
             };
+        }
+
+        private async Task<List<CoordinatorClassAttendanceSummaryDto>> BuildClassAttendanceSummariesAsync(DateTime date)
+        {
+            var report = await _attendanceService.GetAttendanceReportAsync(date, date, null, null);
+
+            return report.Items
+                .GroupBy(i => i.ClassSectionCompositeId)
+                .Select(g => new CoordinatorClassAttendanceSummaryDto
+                {
+                    ClassSectionCompositeId = g.Key,
+                    ClassName = g.Select(x => x.ClassName).FirstOrDefault() ?? string.Empty,
+                    PresentCount = g.Count(x =>
+                        x.Status == StudentAttendanceStatuses.Present ||
+                        x.Status == StudentAttendanceStatuses.Late),
+                    TotalCount = g.Count()
+                })
+                .OrderBy(x => x.ClassName)
+                .ToList();
         }
 
         private static async Task<DashboardAttendanceOverviewDto> BuildAttendanceOverviewAsync(

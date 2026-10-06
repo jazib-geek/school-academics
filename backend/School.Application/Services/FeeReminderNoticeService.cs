@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using School.Application.Common;
 using School.Application.DTOs;
 using School.Application.Interfaces;
 using School.Infrastructure.Data;
@@ -111,6 +112,21 @@ public class FeeReminderNoticeService : IFeeReminderNoticeService
             .GroupBy(x => x.StudentId)
             .ToDictionary(g => g.Key, g => g.ToList());
 
+        var today = DateTime.Today;
+        var absentTodayIds = await _context.Attendances
+            .AsNoTracking()
+            .Where(a =>
+                a.StudentID != null &&
+                studentIds.Contains(a.StudentID.Value) &&
+                a.Date.HasValue &&
+                a.Date.Value.Date == today &&
+                a.Status != null &&
+                a.Status.ToUpper() == StudentAttendanceStatuses.Absent)
+            .Select(a => a.StudentID!.Value)
+            .Distinct()
+            .ToListAsync();
+        var absentTodaySet = absentTodayIds.ToHashSet();
+
         var items = students.Select(student =>
         {
             byStudent.TryGetValue(student.Reg_Id, out var funds);
@@ -133,6 +149,7 @@ public class FeeReminderNoticeService : IFeeReminderNoticeService
                 ClassName = student.ClassName,
                 TuitionBalance = tuition,
                 FundsBalance = fundsTotal,
+                IsAbsentToday = absentTodaySet.Contains(student.Reg_Id),
             };
         })
         .Where(x => x.TuitionBalance != 0 || x.FundsBalance != 0)

@@ -17,3 +17,14 @@ public class GenerateFeeStudentRequestDto
     /// </summary>
     public decimal Amount { get; set; }
 }
+
+public class FeeGenerateStudentPeriodDto
+{
+    public decimal Generated { get; set; }
+
+    public decimal Received { get; set; }
+
+    public bool HasReceipts => Received > 0;
+
+    public decimal MinimumCharge => Received;
+}

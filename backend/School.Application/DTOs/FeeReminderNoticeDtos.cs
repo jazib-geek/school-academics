@@ -28,6 +28,7 @@ public class FeeReminderClassBalanceItemDto
     public string? ClassName { get; set; }
     public decimal TuitionBalance { get; set; }
     public decimal FundsBalance { get; set; }
+    public bool IsAbsentToday { get; set; }
 }
 
 public class FeeReminderClassBalancesDto

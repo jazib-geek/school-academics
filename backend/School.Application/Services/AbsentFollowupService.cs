@@ -76,6 +76,7 @@ public class AbsentFollowupService : IAbsentFollowupService
             select new
             {
                 s.Reg_Id,
+                s.Family_Code,
                 s.FullName,
                 FatherName = s.Family != null ? s.Family.FatherName : null,
                 FatherMobile = s.Family != null ? s.Family.FatherMobileNo : null,
@@ -91,6 +92,7 @@ public class AbsentFollowupService : IAbsentFollowupService
                 return new AbsentFollowupRowDto
                 {
                     StudentId = s.Reg_Id,
+                    FamilyId = s.Family_Code,
                     FullName = string.IsNullOrWhiteSpace(s.FullName) ? "-" : s.FullName.Trim(),
                     FatherName = string.IsNullOrWhiteSpace(s.FatherName) ? null : s.FatherName.Trim(),
                     ClassName = FormatClassSectionDisplayName(s.SectionClassName, s.SectionSectionName),

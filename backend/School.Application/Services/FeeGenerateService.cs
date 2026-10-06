@@ -89,6 +89,18 @@ public class FeeGenerateService : IFeeGenerateService
         if (amount < 0)
             throw new ArgumentException("Fee amount cannot be negative.");
 
+        var periodTotals = await GetTuitionPeriodTotalsAsync(
+            student.Reg_Id,
+            request.Month,
+            request.Year,
+            cancellationToken);
+        if (amount < periodTotals.Received)
+        {
+            throw new ArgumentException(
+                $"Tuition for {FormatMonthYear(request.Month, request.Year)} already has payments recorded ({periodTotals.Received:N0}). " +
+                "The charge cannot be less than that. Void the receipt first if you need to lower it.");
+        }
+
         var typeName = await _context.FundTypes
             .AsNoTracking()
             .Where(x => x.ID == TuitionFundTypeId)
@@ -127,6 +139,58 @@ public class FeeGenerateService : IFeeGenerateService
             },
             cancellationToken);
         await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<FeeGenerateStudentPeriodDto> GetStudentPeriodAsync(
+        int studentId,
+        int month,
+        int year,
+        CancellationToken cancellationToken = default)
+    {
+        ValidateMonthYear(month, year);
+
+        if (studentId <= 0)
+            throw new ArgumentException("Student is required.");
+
+        var exists = await _context.Students
+            .AsNoTracking()
+            .AnyAsync(x => x.Reg_Id == studentId, cancellationToken);
+        if (!exists)
+            throw new KeyNotFoundException("Student not found.");
+
+        var totals = await GetTuitionPeriodTotalsAsync(studentId, month, year, cancellationToken);
+        return new FeeGenerateStudentPeriodDto
+        {
+            Generated = totals.Generated,
+            Received = totals.Received
+        };
+    }
+
+    private async Task<(decimal Generated, decimal Received)> GetTuitionPeriodTotalsAsync(
+        int studentId,
+        int month,
+        int year,
+        CancellationToken cancellationToken)
+    {
+        var aggregates = await _context.FeeAndFundCollections
+            .AsNoTracking()
+            .Where(x => (x.VoidAmount ?? 0) == 0)
+            .Where(x =>
+                x.StudentID == studentId
+                && x.FundTypeID == TuitionFundTypeId
+                && x.Month == month
+                && x.Year == year)
+            .GroupBy(_ => 1)
+            .Select(g => new
+            {
+                Generated = g.Sum(x => x.Payment ?? 0),
+                Received = g.Sum(x => x.Recieved ?? 0)
+            })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return aggregates is null
+            ? (0, 0)
+            : (aggregates.Generated, aggregates.Received);
     }
 
     private async Task UpsertTuitionAsync(

@@ -206,6 +206,7 @@ public class CampusDashboardDetailDto
     public DashboardKpiTrendDto OutstandingReceivableTrend { get; set; } = new();
     public DashboardKpiTrendDto AttendanceTodayTrend { get; set; } = new();
     public DashboardAttendanceOverviewDto AttendanceOverview { get; set; } = new();
+    public List<CoordinatorClassAttendanceSummaryDto> ClassAttendanceSummaries { get; set; } = [];
     public List<DashboardBirthdayPersonDto> BirthdaysToday { get; set; } = [];
     public List<DashboardLateCheckInDto> TeachersCheckedInLate { get; set; } = [];
     public List<DashboardAlertDto> Alerts { get; set; } = [];

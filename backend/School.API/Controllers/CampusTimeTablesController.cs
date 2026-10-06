@@ -27,6 +27,13 @@ public class CampusTimeTablesController : ControllerBase
         return Ok(ApiResponse<IReadOnlyList<CampusTimeTableListItemDto>>.SuccessResponse(result));
     }
 
+    [HttpGet("live")]
+    public async Task<IActionResult> GetLive(CancellationToken cancellationToken)
+    {
+        var result = await _service.GetLiveClassWiseAsync(cancellationToken);
+        return Ok(ApiResponse<CampusTimeTableDetailDto?>.SuccessResponse(result));
+    }
+
     [HttpGet("mine")]
     public async Task<IActionResult> GetMyTimetable(CancellationToken cancellationToken)
     {
