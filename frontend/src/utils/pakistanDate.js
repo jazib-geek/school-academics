@@ -34,6 +34,14 @@ export const getPakistanTodayIso = (now = new Date()) => {
   return `${shifted.getUTCFullYear()}-${pad2(shifted.getUTCMonth() + 1)}-${pad2(shifted.getUTCDate())}`
 }
 
+/** Time of day in Pakistan as fractional minutes since midnight, plus ISO weekday (1 = Mon … 7 = Sun). */
+export const getPakistanClock = (now = new Date()) => {
+  const shifted = new Date(now.getTime() + 5 * 60 * 60 * 1000)
+  const minutes = shifted.getUTCHours() * 60 + shifted.getUTCMinutes() + shifted.getUTCSeconds() / 60
+  const jsDay = shifted.getUTCDay()
+  return { minutes, isoWeekday: jsDay === 0 ? 7 : jsDay }
+}
+
 /** Keep YYYY-MM-DD; never allow a day after Pakistan today. */
 export const clampToPakistanToday = (value) => {
   const today = getPakistanTodayIso()

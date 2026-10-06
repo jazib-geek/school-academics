@@ -7,6 +7,11 @@ export const getTimetables = async () => {
   return response?.data?.data || []
 }
 
+export const getLiveTimetable = async () => {
+  const response = await api.get(`${BASE}/live`)
+  return response?.data?.data || null
+}
+
 export const getMyTimetable = async () => {
   const response = await api.get(`${BASE}/mine`)
   return response?.data?.data

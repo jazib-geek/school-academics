@@ -105,10 +105,15 @@ function FeeReminderNoticePage() {
           className: row.className ?? row.ClassName,
           tuitionBalance: row.tuitionBalance ?? row.TuitionBalance ?? 0,
           fundsBalance: row.fundsBalance ?? row.FundsBalance ?? 0,
+          isAbsentToday: Boolean(row.isAbsentToday ?? row.IsAbsentToday),
         }))
         .filter((row) => Number(row.tuitionBalance) !== 0 || Number(row.fundsBalance) !== 0)
       setRows(items)
-      setSelectedIds(new Set(items.map((r) => r.studentId).filter(Boolean)))
+      setSelectedIds(
+        new Set(
+          items.filter((r) => r.studentId && !r.isAbsentToday).map((r) => r.studentId),
+        ),
+      )
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Could not load students for this class.')
       setRows([])
@@ -127,11 +132,14 @@ function FeeReminderNoticePage() {
     [rows, selectedIds],
   )
 
-  const allSelected = rows.length > 0 && selectedIds.size === rows.length
+  const selectableRows = useMemo(() => rows.filter((r) => !r.isAbsentToday), [rows])
+
+  const allSelected =
+    selectableRows.length > 0 && selectableRows.every((r) => selectedIds.has(r.studentId))
 
   const toggleAll = () => {
     if (allSelected) setSelectedIds(new Set())
-    else setSelectedIds(new Set(rows.map((r) => r.studentId)))
+    else setSelectedIds(new Set(selectableRows.map((r) => r.studentId).filter(Boolean)))
   }
 
   const toggleRow = (id) => {
@@ -447,7 +455,18 @@ function FeeReminderNoticePage() {
                               />
                             </td>
                             <td className="px-3 py-1.5">{row.studentId}</td>
-                            <td className="px-3 py-1.5">{row.studentName}</td>
+                            <td className="px-3 py-1.5">
+                              <span className="inline-flex flex-wrap items-center gap-1.5">
+                                <span>{row.studentName}</span>
+                                {row.isAbsentToday ? (
+                                  <span
+                                    className="rounded bg-rose-100 px-1.5 py-0.5 text-[11px] font-medium text-rose-800"
+                                  >
+                                    Absent
+                                  </span>
+                                ) : null}
+                              </span>
+                            </td>
                             <td className="px-3 py-1.5">{row.className || className}</td>
                             <td className="px-3 py-1.5 text-right tabular-nums">{money(row.tuitionBalance)}</td>
                             <td className="px-3 py-1.5 text-right tabular-nums">{money(row.fundsBalance)}</td>

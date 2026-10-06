@@ -1,5 +1,12 @@
 import api from './api'
 
+export const getFeeGenerateStudentPeriod = async (studentId, month, year) => {
+  const response = await api.get(`/api/fee/generate/student/${studentId}/period`, {
+    params: { month, year },
+  })
+  return response?.data?.data
+}
+
 export const generateFeeForAll = async ({ month, year }) => {
   const response = await api.post(
     '/api/fee/generate/all',

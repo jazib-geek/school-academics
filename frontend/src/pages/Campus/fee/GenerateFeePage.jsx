@@ -9,6 +9,7 @@ import {
   X,
 } from 'lucide-react'
 import AsyncSelect from 'react-select/async'
+import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import CampusShell from '../../../components/campus/CampusShell.jsx'
 import ConfirmDialog from '../../../components/campus/ConfirmDialog.jsx'
@@ -17,7 +18,11 @@ import {
   mapStudentToSelectOption,
   searchStudents,
 } from '../../../services/studentService'
-import { generateFeeForAll, generateFeeForStudent } from '../../../services/feeGenerateService'
+import {
+  generateFeeForAll,
+  generateFeeForStudent,
+  getFeeGenerateStudentPeriod,
+} from '../../../services/feeGenerateService'
 import { hasCampusPermission } from '../../../services/authService'
 import { getCampusPrintMeta } from '../../../utils/campusProfile'
 
@@ -177,6 +182,8 @@ export default function GenerateFeePage() {
   const [selectedStudent, setSelectedStudent] = useState(null)
   const [detail, setDetail] = useState(null)
   const [isLoadingDetail, setIsLoadingDetail] = useState(false)
+  const [periodContext, setPeriodContext] = useState(null)
+  const [isLoadingPeriod, setIsLoadingPeriod] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [studentGeneratedOnce, setStudentGeneratedOnce] = useState(false)
@@ -206,6 +213,7 @@ export default function GenerateFeePage() {
   const resetStudentForm = useCallback(() => {
     setSelectedStudent(null)
     setDetail(null)
+    setPeriodContext(null)
     setAmountMode('tuition')
     setCustomAmount('')
   }, [])
@@ -248,22 +256,105 @@ export default function GenerateFeePage() {
     setSelectedStudent(option)
     const regId = Number(option?.value)
     if (regId) loadDetail(regId)
-    else setDetail(null)
+    else {
+      setDetail(null)
+      setPeriodContext(null)
+    }
   }
 
+  useEffect(() => {
+    const regId = detail?.regId
+    if (!regId || !month || !year) {
+      setPeriodContext(null)
+      return
+    }
+
+    let cancelled = false
+    setIsLoadingPeriod(true)
+    void (async () => {
+      try {
+        const data = await getFeeGenerateStudentPeriod(regId, Number(month), Number(year))
+        if (!cancelled) setPeriodContext(data ?? null)
+      } catch (error) {
+        if (!cancelled) {
+          setPeriodContext(null)
+          toast.error(error?.response?.data?.message || 'Could not load fee status for this month.')
+        }
+      } finally {
+        if (!cancelled) setIsLoadingPeriod(false)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [detail?.regId, month, year])
+
   const monthLabel = MONTHS.find((m) => m.value === Number(month))?.label || 'Selected month'
+
+  const proposedStudentAmount = useMemo(() => {
+    if (!detail) return null
+    if (amountMode === 'tuition') return Number(detail.tuitionFee || 0)
+    if (customAmount === '' || customAmount == null) return null
+    const amount = Number(customAmount)
+    return Number.isNaN(amount) ? null : amount
+  }, [amountMode, customAmount, detail])
+
+  const periodReceived = Number(periodContext?.received ?? 0)
+  const amountBelowReceived =
+    periodContext != null &&
+    proposedStudentAmount != null &&
+    proposedStudentAmount < periodReceived
 
   const canSubmitAll = canAll && mode === 'all' && !isGenerating && month && year
 
   const canSubmitStudent = useMemo(() => {
-    if (isGenerating || !canSingle || !detail || !month || !year) return false
-    if (amountMode === 'custom') {
-      if (customAmount === '' || customAmount == null) return false
-      const amount = Number(customAmount)
-      return !Number.isNaN(amount) && amount >= 0
-    }
-    return Number(detail.tuitionFee || 0) >= 0
-  }, [amountMode, canSingle, customAmount, detail, isGenerating, month, year])
+    if (isGenerating || isLoadingPeriod || !canSingle || !detail || !month || !year) return false
+    if (periodContext == null) return false
+    if (proposedStudentAmount == null || proposedStudentAmount < 0) return false
+    if (proposedStudentAmount < periodReceived) return false
+    return true
+  }, [
+    canSingle,
+    detail,
+    isGenerating,
+    isLoadingPeriod,
+    month,
+    periodContext,
+    periodReceived,
+    proposedStudentAmount,
+    year,
+  ])
+
+  const receiptWarningBlock = useMemo(() => {
+    if (!periodContext || periodReceived <= 0) return null
+    return (
+      <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] leading-relaxed text-amber-950">
+        <p className="font-semibold text-amber-900">Payments already recorded</p>
+        <p className="mt-1.5">
+          Tuition for <span className="font-semibold">{monthLabel} {year}</span> already has{' '}
+          <span className="font-semibold">{money(periodReceived)}</span> received
+          {Number(periodContext.generated) > 0 ? (
+            <>
+              {' '}
+              (current charge <span className="font-semibold">{money(periodContext.generated)}</span>)
+            </>
+          ) : null}
+          . The new charge cannot be less than the amount received.
+        </p>
+        <p className="mt-2">
+          To charge less,{' '}
+          <Link
+            to="/campus/fee/void-receipt"
+            className="font-semibold text-amber-900 underline underline-offset-2 hover:text-amber-950"
+          >
+            void the receipt
+          </Link>{' '}
+          first, then generate again.
+        </p>
+      </div>
+    )
+  }, [monthLabel, periodContext, periodReceived, year])
 
   const confirmAmountLabel = useMemo(() => {
     if (mode === 'all') return 'Student tuition'
@@ -317,9 +408,10 @@ export default function GenerateFeePage() {
           Generate fee for #{detail.regId} — {detail.fullName || 'student'}.
         </p>
         {summaryTable}
+        {receiptWarningBlock}
       </>
     )
-  }, [confirmAmountLabel, detail, mode, monthLabel, year])
+  }, [confirmAmountLabel, detail, mode, monthLabel, receiptWarningBlock, year])
 
   const openConfirmAll = (event) => {
     event.preventDefault()
@@ -604,6 +696,15 @@ export default function GenerateFeePage() {
                   </div>
                 ) : null}
 
+                {detail && isLoadingPeriod ? (
+                  <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-[13px] text-slate-500">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Checking this month&apos;s fee status…
+                  </div>
+                ) : null}
+
+                {detail && !isLoadingPeriod ? receiptWarningBlock : null}
+
                 {detail ? (
                   <div className="grid gap-2.5 sm:grid-cols-3">
                     <StatCard
@@ -674,6 +775,12 @@ export default function GenerateFeePage() {
                         disabled={isGenerating || !detail}
                       />
                     </label>
+                  ) : null}
+                  {amountBelowReceived ? (
+                    <p className="mt-2 text-[13px] text-amber-900">
+                      Charge must be at least {money(periodReceived)} because fees were already received for{' '}
+                      {monthLabel} {year}.
+                    </p>
                   ) : null}
                 </div>
               </div>

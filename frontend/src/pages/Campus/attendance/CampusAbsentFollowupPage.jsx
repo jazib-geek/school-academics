@@ -43,6 +43,45 @@ const formatPrintSubtitleDate = (isoDate) => {
   return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
+const absentFollowupFamilyKey = (row) => {
+  const familyId = row?.familyId ?? row?.FamilyId
+  if (familyId != null && familyId !== '' && Number(familyId) > 0) {
+    return `family-${familyId}`
+  }
+  return `student-${row.studentId}`
+}
+
+const groupAbsentFollowupRows = (rows) => {
+  const sorted = sortClassesByCustomOrder(rows)
+  const byKey = new Map()
+  for (const row of sorted) {
+    const key = absentFollowupFamilyKey(row)
+    if (!byKey.has(key)) byKey.set(key, [])
+    byKey.get(key).push(row)
+  }
+
+  const orderedKeys = []
+  const seen = new Set()
+  for (const row of sorted) {
+    const key = absentFollowupFamilyKey(row)
+    if (seen.has(key)) continue
+    seen.add(key)
+    orderedKeys.push(key)
+  }
+
+  return orderedKeys.map((key) => {
+    const members = sortClassesByCustomOrder(byKey.get(key) ?? [])
+    const head = members[0]
+    return {
+      key,
+      members,
+      fatherName: head?.fatherName,
+      fatherMobile: head?.fatherMobile,
+      motherPhone: head?.motherPhone,
+    }
+  })
+}
+
 export default function CampusAbsentFollowupPage() {
   const [date, setDate] = useState(getPakistanToday)
   const [reasons, setReasons] = useState([])
@@ -55,7 +94,7 @@ export default function CampusAbsentFollowupPage() {
   const [printIncludeContacts, setPrintIncludeContacts] = useState(false)
   const followupInputRefs = useRef({})
 
-  const sortedRows = useMemo(() => sortClassesByCustomOrder(rows), [rows])
+  const familyGroups = useMemo(() => groupAbsentFollowupRows(rows), [rows])
 
   const focusFollowup = (studentId) => {
     const el = followupInputRefs.current[studentId]
@@ -348,101 +387,128 @@ export default function CampusAbsentFollowupPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {sortedRows.map((row) => {
-                    const saving = savingStudentId === row.studentId
-                    const draft = drafts[row.studentId] ?? ''
-                    const dirty = draft !== (row.description ?? '')
-                    const needsOtherNote =
-                      isOtherReason(row.reasonId, reasons, row.reasonName) &&
-                      !draft.trim()
+                  {familyGroups.map((group) =>
+                    group.members.map((row, memberIndex) => {
+                      const saving = savingStudentId === row.studentId
+                      const draft = drafts[row.studentId] ?? ''
+                      const dirty = draft !== (row.description ?? '')
+                      const needsOtherNote =
+                        isOtherReason(row.reasonId, reasons, row.reasonName) &&
+                        !draft.trim()
+                      const isFirstInFamily = memberIndex === 0
+                      const rowSpan = group.members.length
+                      const familyBorder =
+                        isFirstInFamily && familyGroups.length > 1
+                          ? 'border-t-2 border-slate-200'
+                          : 'border-t border-slate-100'
 
-                    return (
-                      <tr key={row.studentId} className="border-t border-slate-100">
-                        <td className="px-3 py-1.5 font-medium text-slate-800">
-                          {row.fullName || '—'}
-                        </td>
-                        <td className="px-3 py-1.5 text-slate-700">{row.fatherName || '—'}</td>
-                        <td className="whitespace-nowrap px-3 py-1.5 text-slate-700">
-                          {row.className || '—'}
-                        </td>
-                        <td className="whitespace-nowrap px-3 py-1.5 text-slate-700">
-                          {row.fatherMobile || '—'}
-                        </td>
-                        <td className="whitespace-nowrap px-3 py-1.5 text-slate-700">
-                          {row.motherPhone || '—'}
-                        </td>
-                        <td className="px-3 py-1.5">
-                          <div className="flex items-center gap-1.5">
-                            <select
-                              value={row.reasonId ?? ''}
-                              disabled={saving}
-                              onChange={(e) => onReasonChange(row.studentId, e.target.value)}
-                              className={`h-8 min-w-[10.5rem] rounded-md border bg-white px-2 text-[13px] text-slate-800 outline-none focus:ring-1 disabled:cursor-not-allowed disabled:opacity-60 ${
-                                reasonUpdatedIds.has(row.studentId)
-                                  ? 'border-emerald-500 focus:border-emerald-500 focus:ring-emerald-500/40'
+                      return (
+                        <tr key={row.studentId} className={familyBorder}>
+                          <td className="px-3 py-1.5 font-medium text-slate-800">
+                            {row.fullName || '—'}
+                          </td>
+                          {isFirstInFamily ? (
+                            <td
+                              rowSpan={rowSpan}
+                              className="border-l border-slate-100 px-3 py-1.5 align-middle text-slate-700"
+                            >
+                              {group.fatherName || '—'}
+                            </td>
+                          ) : null}
+                          <td className="whitespace-nowrap px-3 py-1.5 text-slate-700">
+                            {row.className || '—'}
+                          </td>
+                          {isFirstInFamily ? (
+                            <>
+                              <td
+                                rowSpan={rowSpan}
+                                className="whitespace-nowrap border-l border-slate-100 px-3 py-1.5 align-middle text-slate-700"
+                              >
+                                {group.fatherMobile || '—'}
+                              </td>
+                              <td
+                                rowSpan={rowSpan}
+                                className="whitespace-nowrap px-3 py-1.5 align-middle text-slate-700"
+                              >
+                                {group.motherPhone || '—'}
+                              </td>
+                            </>
+                          ) : null}
+                          <td className="border-l border-slate-100 px-3 py-1.5">
+                            <div className="flex items-center gap-1.5">
+                              <select
+                                value={row.reasonId ?? ''}
+                                disabled={saving}
+                                onChange={(e) => onReasonChange(row.studentId, e.target.value)}
+                                className={`h-8 min-w-[10.5rem] rounded-md border bg-white px-2 text-[13px] text-slate-800 outline-none focus:ring-1 disabled:cursor-not-allowed disabled:opacity-60 ${
+                                  reasonUpdatedIds.has(row.studentId)
+                                    ? 'border-emerald-500 focus:border-emerald-500 focus:ring-emerald-500/40'
+                                    : 'border-slate-200 focus:border-[var(--campus-primary)] focus:ring-[#405189]/40'
+                                }`}
+                              >
+                                <option value="">Select reason</option>
+                                {reasons.map((reason) => (
+                                  <option key={reason.id} value={reason.id}>
+                                    {reason.name}
+                                  </option>
+                                ))}
+                              </select>
+                              {reasonUpdatedIds.has(row.studentId) ? (
+                                <span
+                                  title="Reason updated"
+                                  className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600"
+                                >
+                                  <Check size={12} strokeWidth={3} aria-hidden />
+                                </span>
+                              ) : null}
+                            </div>
+                          </td>
+                          <td className="px-3 py-1.5">
+                            <textarea
+                              ref={(el) => {
+                                if (el) followupInputRefs.current[row.studentId] = el
+                                else delete followupInputRefs.current[row.studentId]
+                              }}
+                              rows={2}
+                              value={draft}
+                              onChange={(e) =>
+                                setDrafts((prev) => ({
+                                  ...prev,
+                                  [row.studentId]: e.target.value,
+                                }))
+                              }
+                              maxLength={1000}
+                              placeholder={
+                                needsOtherNote
+                                  ? 'Required for Other — add follow-up notes…'
+                                  : 'Follow-up notes…'
+                              }
+                              className={`w-full min-w-[14rem] resize-y rounded-md border px-2 py-1.5 text-[13px] leading-snug text-slate-800 outline-none focus:ring-1 ${
+                                needsOtherNote
+                                  ? 'border-amber-400 focus:border-amber-500 focus:ring-amber-500/40'
                                   : 'border-slate-200 focus:border-[var(--campus-primary)] focus:ring-[#405189]/40'
                               }`}
+                            />
+                          </td>
+                          <td className="px-3 py-1.5 text-right">
+                            <button
+                              type="button"
+                              onClick={() => onSaveDescription(row.studentId)}
+                              disabled={saving || !dirty}
+                              className="inline-flex h-7 items-center gap-1.5 rounded-md bg-[var(--campus-primary)] px-2.5 text-[12px] font-medium text-white hover:bg-[#364574] disabled:cursor-not-allowed disabled:opacity-50"
                             >
-                              <option value="">Select reason</option>
-                              {reasons.map((reason) => (
-                                <option key={reason.id} value={reason.id}>
-                                  {reason.name}
-                                </option>
-                              ))}
-                            </select>
-                            {reasonUpdatedIds.has(row.studentId) ? (
-                              <span
-                                title="Reason updated"
-                                className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600"
-                              >
-                                <Check size={12} strokeWidth={3} aria-hidden />
-                              </span>
-                            ) : null}
-                          </div>
-                        </td>
-                        <td className="px-3 py-1.5">
-                          <textarea
-                            ref={(el) => {
-                              if (el) followupInputRefs.current[row.studentId] = el
-                              else delete followupInputRefs.current[row.studentId]
-                            }}
-                            rows={2}
-                            value={draft}
-                            onChange={(e) =>
-                              setDrafts((prev) => ({
-                                ...prev,
-                                [row.studentId]: e.target.value,
-                              }))
-                            }
-                            maxLength={1000}
-                            placeholder={
-                              needsOtherNote ? 'Required for Other — add follow-up notes…' : 'Follow-up notes…'
-                            }
-                            className={`w-full min-w-[14rem] resize-y rounded-md border px-2 py-1.5 text-[13px] leading-snug text-slate-800 outline-none focus:ring-1 ${
-                              needsOtherNote
-                                ? 'border-amber-400 focus:border-amber-500 focus:ring-amber-500/40'
-                                : 'border-slate-200 focus:border-[var(--campus-primary)] focus:ring-[#405189]/40'
-                            }`}
-                          />
-                        </td>
-                        <td className="px-3 py-1.5 text-right">
-                          <button
-                            type="button"
-                            onClick={() => onSaveDescription(row.studentId)}
-                            disabled={saving || !dirty}
-                            className="inline-flex h-7 items-center gap-1.5 rounded-md bg-[var(--campus-primary)] px-2.5 text-[12px] font-medium text-white hover:bg-[#364574] disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            {saving ? (
-                              <Loader2 size={13} className="animate-spin" />
-                            ) : (
-                              <Save size={13} />
-                            )}
-                            Save
-                          </button>
-                        </td>
-                      </tr>
-                    )
-                  })}
+                              {saving ? (
+                                <Loader2 size={13} className="animate-spin" />
+                              ) : (
+                                <Save size={13} />
+                              )}
+                              Save
+                            </button>
+                          </td>
+                        </tr>
+                      )
+                    }),
+                  )}
                 </tbody>
               </table>
             </div>
@@ -473,30 +539,44 @@ export default function CampusAbsentFollowupPage() {
                 </tr>
               </thead>
               <tbody>
-                {sortedRows.map((row) => {
-                  const followup =
-                    (drafts[row.studentId] ?? row.description ?? '').trim() || '—'
-                  const reasonLabel =
-                    row.reasonName ??
-                    reasons.find((r) => r.id === row.reasonId)?.name ??
-                    '—'
+                {familyGroups.map((group) =>
+                  group.members.map((row, memberIndex) => {
+                    const followup =
+                      (drafts[row.studentId] ?? row.description ?? '').trim() || '—'
+                    const reasonLabel =
+                      row.reasonName ??
+                      reasons.find((r) => r.id === row.reasonId)?.name ??
+                      '—'
+                    const isFirstInFamily = memberIndex === 0
+                    const rowSpan = group.members.length
 
-                  return (
-                    <tr key={row.studentId}>
-                      <td>{row.fullName || '—'}</td>
-                      <td>{row.fatherName || '—'}</td>
-                      <td>{row.className || '—'}</td>
-                      {printIncludeContacts ? (
-                        <>
-                          <td>{row.fatherMobile || '—'}</td>
-                          <td>{row.motherPhone || '—'}</td>
-                        </>
-                      ) : null}
-                      <td>{reasonLabel}</td>
-                      <td>{followup}</td>
-                    </tr>
-                  )
-                })}
+                    return (
+                      <tr key={row.studentId}>
+                        <td>{row.fullName || '—'}</td>
+                        {isFirstInFamily ? (
+                          <td rowSpan={rowSpan} className="align-middle">
+                            {group.fatherName || '—'}
+                          </td>
+                        ) : null}
+                        <td>{row.className || '—'}</td>
+                        {printIncludeContacts ? (
+                          isFirstInFamily ? (
+                            <>
+                              <td rowSpan={rowSpan} className="align-middle">
+                                {group.fatherMobile || '—'}
+                              </td>
+                              <td rowSpan={rowSpan} className="align-middle">
+                                {group.motherPhone || '—'}
+                              </td>
+                            </>
+                          ) : null
+                        ) : null}
+                        <td>{reasonLabel}</td>
+                        <td>{followup}</td>
+                      </tr>
+                    )
+                  }),
+                )}
               </tbody>
             </table>
           </div>

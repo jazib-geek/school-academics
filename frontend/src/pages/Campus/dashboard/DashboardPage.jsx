@@ -27,9 +27,15 @@ import {
 } from 'lucide-react'
 import CampusShell from '../../../components/campus/CampusShell.jsx'
 import { PermissionControl } from '../../../components/campus/CampusPermissionUi.jsx'
+import LiveTimetableTicker from '../../../components/campus/LiveTimetableTicker.jsx'
 import { getCampusPrintMeta } from '../../../utils/campusProfile'
 import { getPakistanTodayIso } from '../../../utils/pakistanDate'
 import { getCampusDashboard } from '../../../services/campusDashboardService'
+import {
+  ATTENDANCE_SNAPSHOT_BODY_CLASS,
+  AttendanceBarFilters,
+  ClassAttendanceBars,
+} from '../../../components/campus/AttendanceSnapshot.jsx'
 
 const LIST_LIMIT = 5
 const ADMISSIONS_LIMIT = 4
@@ -374,6 +380,7 @@ function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
   const [data, setData] = useState(null)
+  const [attendanceBarFilters, setAttendanceBarFilters] = useState(() => new Set())
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 30_000)
@@ -434,6 +441,23 @@ function DashboardPage() {
       onLeavePercent: Number(pick(raw, 'onLeavePercent', 'OnLeavePercent') ?? 0),
     }
   }, [data])
+
+  const classAttendanceSummaries = useMemo(() => {
+    const rows = pick(data, 'classAttendanceSummaries', 'ClassAttendanceSummaries') || []
+    return rows.map((row) => ({
+      classSectionCompositeId: pick(row, 'classSectionCompositeId', 'ClassSectionCompositeId'),
+      className: pick(row, 'className', 'ClassName') || '',
+      presentCount: Number(pick(row, 'presentCount', 'PresentCount') ?? 0),
+      totalCount: Number(pick(row, 'totalCount', 'TotalCount') ?? 0),
+    }))
+  }, [data])
+
+  const toggleAttendanceBarFilter = useCallback((id) => {
+    setAttendanceBarFilters((prev) => {
+      if (prev.has(id)) return new Set()
+      return new Set([id])
+    })
+  }, [])
 
   const feeTrendRows = useMemo(() => {
     const rows = pick(data, 'feeCollectionTrendLast30Days', 'FeeCollectionTrendLast30Days') || []
@@ -663,6 +687,8 @@ function DashboardPage() {
           </div>
         </section>
 
+        <LiveTimetableTicker />
+
         {error ? (
           <section className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
             {error}
@@ -736,64 +762,46 @@ function DashboardPage() {
               </Panel>
 
               <Panel title="Attendance Overview">
-                <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center">
-                  <div className="relative h-36 w-36 shrink-0">
-                    <ChartCanvas config={attendanceDonutConfig} className="h-36" />
-                    <div className="pointer-events-none absolute inset-0 grid place-items-center">
-                      <div className="text-center">
-                        <p className="text-lg font-bold text-slate-900">{attendance.presentPercent.toFixed(1)}%</p>
-                        <p className="text-[10px] font-medium text-slate-500">Present</p>
+                <div className="flex h-56 min-h-0 flex-col overflow-hidden">
+                  <AttendanceBarFilters
+                    activeIds={attendanceBarFilters}
+                    onToggle={toggleAttendanceBarFilter}
+                    className="mb-0 shrink-0"
+                    endAdornment={
+                      <>
+                        <button
+                          type="button"
+                          onClick={openAbsentListReport}
+                          className="font-semibold text-rose-700 underline-offset-2 hover:underline"
+                          title="Open absent list"
+                        >
+                          {attendance.absentCount.toLocaleString()} absent
+                        </button>
+                        {attendance.onLeaveCount > 0 ? (
+                          <>
+                            <span aria-hidden> · </span>
+                            <span>{attendance.onLeaveCount.toLocaleString()} on leave</span>
+                          </>
+                        ) : null}
+                      </>
+                    }
+                  />
+                  <div
+                    className={`${ATTENDANCE_SNAPSHOT_BODY_CLASS} flex min-h-0 flex-col gap-2 overflow-hidden sm:flex-row`}
+                  >
+                    <div className="relative mx-auto h-28 w-28 shrink-0 self-center sm:mx-0 sm:h-36 sm:w-36">
+                      <ChartCanvas config={attendanceDonutConfig} className="h-full min-h-28 sm:min-h-36" />
+                      <div className="pointer-events-none absolute inset-0 grid place-items-center">
+                        <div className="text-center">
+                          <p className="text-lg font-bold text-slate-900">{attendance.presentPercent.toFixed(1)}%</p>
+                          <p className="text-[10px] font-medium text-slate-500">Present</p>
+                        </div>
                       </div>
                     </div>
+                    <div className="min-h-0 min-w-0 flex-1 self-stretch overflow-y-auto overscroll-y-contain max-sm:max-h-[7.5rem] sm:max-h-none">
+                      <ClassAttendanceBars rows={classAttendanceSummaries} activeFilterIds={attendanceBarFilters} />
+                    </div>
                   </div>
-                  <ul className="w-full flex-1 space-y-2">
-                    {[
-                      { label: 'Present', color: 'bg-emerald-500', pct: attendance.presentPercent, count: attendance.presentCount },
-                      {
-                        label: 'Absent',
-                        color: 'bg-rose-500',
-                        pct: attendance.absentPercent,
-                        count: attendance.absentCount,
-                        onClick: openAbsentListReport,
-                      },
-                      { label: 'On Leave', color: 'bg-amber-500', pct: attendance.onLeavePercent, count: attendance.onLeaveCount },
-                    ].map((item) => (
-                      <li key={item.label}>
-                        {item.onClick ? (
-                          <button
-                            type="button"
-                            onClick={item.onClick}
-                            className="flex w-full items-center justify-between gap-2 rounded-md text-left text-xs transition hover:bg-rose-50"
-                            title="Open absent list"
-                          >
-                            <span className="inline-flex items-center gap-2 font-medium text-rose-700">
-                              <span className={`h-2 w-2 rounded-full ${item.color}`} />
-                              {item.label}
-                            </span>
-                            <span className="tabular-nums text-slate-800">
-                              <span className="font-semibold">{item.pct.toFixed(1)}%</span>
-                              <span className="ml-1.5 text-slate-400">{item.count.toLocaleString()}</span>
-                            </span>
-                          </button>
-                        ) : (
-                          <div className="flex items-center justify-between gap-2 text-xs">
-                            <span className="inline-flex items-center gap-2 text-slate-600">
-                              <span className={`h-2 w-2 rounded-full ${item.color}`} />
-                              {item.label}
-                            </span>
-                            <span className="tabular-nums text-slate-800">
-                              <span className="font-semibold">{item.pct.toFixed(1)}%</span>
-                              <span className="ml-1.5 text-slate-400">{item.count.toLocaleString()}</span>
-                            </span>
-                          </div>
-                        )}
-                      </li>
-                    ))}
-                    <li className="border-t border-slate-100 pt-2 text-xs text-slate-500">
-                      Total Students:{' '}
-                      <span className="font-semibold text-slate-800">{attendance.totalStudents.toLocaleString()}</span>
-                    </li>
-                  </ul>
                 </div>
               </Panel>
             </section>
