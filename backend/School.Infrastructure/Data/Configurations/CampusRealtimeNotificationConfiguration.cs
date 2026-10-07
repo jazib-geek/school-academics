@@ -19,6 +19,7 @@ public class CampusRealtimeNotificationConfiguration : IEntityTypeConfiguration<
         entity.Property(e => e.OccurredAtPkt).HasColumnType("datetime2(3)").IsRequired();
         entity.Property(e => e.ActorUserKey).HasMaxLength(200);
         entity.Property(e => e.ExcludeUserKeysJson).HasColumnType("nvarchar(max)");
+        entity.Property(e => e.AudienceJson).HasColumnType("nvarchar(max)");
 
         entity.HasIndex(e => e.OccurredAtPkt);
         entity.HasIndex(e => new { e.OccurredAtPkt, e.Type });

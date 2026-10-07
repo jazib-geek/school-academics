@@ -752,6 +752,9 @@ namespace School.Infrastructure.Data.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<string>("AudienceJson")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("ExcludeUserKeysJson")
                         .HasColumnType("nvarchar(max)");
 
@@ -3220,6 +3223,71 @@ namespace School.Infrastructure.Data.Migrations
                     b.ToTable("tblEmployeeAttendance", "dbo");
                 });
 
+            modelBuilder.Entity("School.Infrastructure.Entities.EmployeeAttendanceChangeRequest", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateOnly>("AttendanceDate")
+                        .HasColumnType("date");
+
+                    b.Property<int>("EmployeeAttendanceId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("EmployeeId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ProposedCheckInTime")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<string>("ProposedCheckOutTime")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("ReviewNote")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("ReviewedAtPkt")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("ReviewedByUserKey")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("SubmittedAtPkt")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("SubmittedByUserKey")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmployeeAttendanceId", "Status")
+                        .HasDatabaseName("IX_EmployeeAttendanceChangeRequest_Attendance_Status");
+
+                    b.HasIndex("Status", "AttendanceDate")
+                        .HasDatabaseName("IX_EmployeeAttendanceChangeRequest_Status_AttendanceDate");
+
+                    b.ToTable("tblEmployeeAttendanceChangeRequest", "dbo");
+                });
+
             modelBuilder.Entity("School.Infrastructure.Entities.EmployeeClass", b =>
                 {
                     b.Property<int>("ID")
@@ -5433,6 +5501,15 @@ namespace School.Infrastructure.Data.Migrations
                             ModuleHead = "Family Portal",
                             Name = "Manage Leave Applications",
                             SortOrder = 1430
+                        },
+                        new
+                        {
+                            Id = 144,
+                            Code = "request_emp_attendance_change",
+                            IsActive = true,
+                            ModuleHead = "Employee",
+                            Name = "Request Employee Attendance Change",
+                            SortOrder = 1440
                         });
                 });
 
@@ -7797,6 +7874,17 @@ namespace School.Infrastructure.Data.Migrations
                         .WithMany()
                         .HasForeignKey("EmpID")
                         .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.EmployeeAttendanceChangeRequest", b =>
+                {
+                    b.HasOne("School.Infrastructure.Entities.EmployeeAttendance", "EmployeeAttendance")
+                        .WithMany()
+                        .HasForeignKey("EmployeeAttendanceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("EmployeeAttendance");
                 });
 
             modelBuilder.Entity("School.Infrastructure.Entities.EmployeeClass", b =>

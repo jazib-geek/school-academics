@@ -16,6 +16,12 @@ public class CampusNotificationService : ICampusNotificationService
     /// <summary>Raw list size for the client (grouping collapses consecutive runs into fewer drawer slots).</summary>
     private const int ListFetchTake = 200;
 
+    private static readonly JsonSerializerOptions AudienceJsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        PropertyNameCaseInsensitive = true,
+    };
+
     private readonly AppDbContext _db;
     private readonly TenantContext _tenantContext;
     private readonly ICampusNotificationSink _sink;
@@ -50,6 +56,7 @@ public class CampusNotificationService : ICampusNotificationService
             .ToList();
 
         var type = Truncate(notification.Type, 64);
+        var audienceJson = SerializeAudience(notification.Audience);
 
         _db.CampusRealtimeNotifications.Add(new CampusRealtimeNotification
         {
@@ -68,6 +75,7 @@ public class CampusNotificationService : ICampusNotificationService
             ExcludeUserKeysJson = excludeKeys is { Count: > 0 }
                 ? JsonSerializer.Serialize(excludeKeys)
                 : null,
+            AudienceJson = audienceJson,
         });
 
         await _db.SaveChangesAsync(cancellationToken);
@@ -84,9 +92,9 @@ public class CampusNotificationService : ICampusNotificationService
         if (userId <= 0) return [];
 
         take = Math.Clamp(take, 1, ListFetchTake);
-        var username = await ResolveUsernameAsync(userId, cancellationToken);
+        var access = await LoadUserAccessAsync(userId, cancellationToken);
+        if (access is null) return [];
 
-        // Wider fetch so exclusions do not shrink the list too early.
         var recent = await _db.CampusRealtimeNotifications
             .AsNoTracking()
             .OrderByDescending(x => x.OccurredAtPkt)
@@ -94,7 +102,7 @@ public class CampusNotificationService : ICampusNotificationService
             .ToListAsync(cancellationToken);
 
         var visible = recent
-            .Where(x => !IsExcludedForUser(x, username))
+            .Where(x => IsVisibleToUser(x, access))
             .Take(take)
             .ToList();
 
@@ -115,7 +123,9 @@ public class CampusNotificationService : ICampusNotificationService
     {
         if (userId <= 0) return;
 
-        var username = await ResolveUsernameAsync(userId, cancellationToken);
+        var access = await LoadUserAccessAsync(userId, cancellationToken);
+        if (access is null) return;
+
         var recent = await _db.CampusRealtimeNotifications
             .AsNoTracking()
             .OrderByDescending(x => x.OccurredAtPkt)
@@ -123,7 +133,7 @@ public class CampusNotificationService : ICampusNotificationService
             .ToListAsync(cancellationToken);
 
         var visibleIds = recent
-            .Where(x => !IsExcludedForUser(x, username))
+            .Where(x => IsVisibleToUser(x, access))
             .Take(ListFetchTake)
             .Select(x => x.Id)
             .ToList();
@@ -150,6 +160,29 @@ public class CampusNotificationService : ICampusNotificationService
         await _db.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task<bool> IsVisibleToUserAsync(
+        int userId,
+        CampusNotificationDto notification,
+        CancellationToken cancellationToken = default)
+    {
+        if (userId <= 0 || notification is null) return false;
+
+        var access = await LoadUserAccessAsync(userId, cancellationToken);
+        if (access is null) return false;
+
+        var entity = new CampusRealtimeNotification
+        {
+            Type = notification.Type ?? string.Empty,
+            ActorUserKey = notification.ActorUserKey,
+            ExcludeUserKeysJson = notification.Audience?.ExcludeUserKeys is { Count: > 0 }
+                ? JsonSerializer.Serialize(notification.Audience.ExcludeUserKeys)
+                : null,
+            AudienceJson = SerializeAudience(notification.Audience),
+        };
+
+        return IsVisibleToUser(entity, access);
+    }
+
     private async Task PruneOldForTypeAsync(string type, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(type)) return;
@@ -168,15 +201,80 @@ public class CampusNotificationService : ICampusNotificationService
             .ExecuteDeleteAsync(cancellationToken);
     }
 
-    private async Task<string?> ResolveUsernameAsync(int userId, CancellationToken cancellationToken)
+    private sealed class UserNotificationAccess
     {
-        var username = await _db.Users
+        public string? Username { get; init; }
+        public bool IsSuperAdmin { get; init; }
+        public HashSet<string> PermissionCodes { get; init; } = new(StringComparer.OrdinalIgnoreCase);
+    }
+
+    private async Task<UserNotificationAccess?> LoadUserAccessAsync(int userId, CancellationToken cancellationToken)
+    {
+        var user = await _db.Users
             .AsNoTracking()
-            .Where(x => x.ID == userId)
-            .Select(x => x.Username)
+            .Where(x => x.ID == userId && x.IsActive == true)
+            .Select(x => new { x.Username, x.IsSuperAdmin })
             .FirstOrDefaultAsync(cancellationToken);
 
-        return string.IsNullOrWhiteSpace(username) ? null : username.Trim();
+        if (user is null || string.IsNullOrWhiteSpace(user.Username))
+            return null;
+
+        var username = user.Username.Trim();
+        var rights = await _db.UserRights
+            .AsNoTracking()
+            .Where(x => x.UserName == username && x.HasAccess == true && x.ModuleCode != null)
+            .Select(x => x.ModuleCode!)
+            .ToListAsync(cancellationToken);
+
+        var codes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var code in rights)
+        {
+            if (!string.IsNullOrWhiteSpace(code))
+                codes.Add(code.Trim());
+        }
+
+        return new UserNotificationAccess
+        {
+            Username = username,
+            IsSuperAdmin = user.IsSuperAdmin,
+            PermissionCodes = codes,
+        };
+    }
+
+    private bool IsVisibleToUser(CampusRealtimeNotification notification, UserNotificationAccess access)
+    {
+        if (IsExcludedForUser(notification, access.Username))
+            return false;
+
+        var audience = ParseAudience(notification.AudienceJson);
+        if (string.Equals(
+                audience.Mode,
+                CampusNotificationAudienceModes.Permission,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            if (access.IsSuperAdmin)
+                return true;
+
+            var required = audience.PermissionCodes?
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Select(x => x.Trim())
+                .ToList();
+
+            if (required is not { Count: > 0 })
+                return false;
+
+            return required.Any(code => access.PermissionCodes.Contains(code));
+        }
+
+        if (string.Equals(
+                notification.Type,
+                CampusNotificationTypes.EmployeeAttendanceChangeRequest,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return access.IsSuperAdmin || access.PermissionCodes.Contains("edit_emp_attendance");
+        }
+
+        return true;
     }
 
     private static bool IsExcludedForUser(CampusRealtimeNotification notification, string? username)
@@ -225,9 +323,60 @@ public class CampusNotificationService : ICampusNotificationService
         }
     }
 
+    private static CampusNotificationAudienceDto ParseAudience(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return new CampusNotificationAudienceDto
+            {
+                Mode = CampusNotificationAudienceModes.AllCampusUsers,
+            };
+        }
+
+        try
+        {
+            var parsed = JsonSerializer.Deserialize<CampusNotificationAudienceDto>(json, AudienceJsonOptions);
+            if (parsed is null)
+                return new CampusNotificationAudienceDto();
+
+            if (string.IsNullOrWhiteSpace(parsed.Mode))
+                parsed.Mode = CampusNotificationAudienceModes.AllCampusUsers;
+
+            return parsed;
+        }
+        catch
+        {
+            return new CampusNotificationAudienceDto
+            {
+                Mode = CampusNotificationAudienceModes.AllCampusUsers,
+            };
+        }
+    }
+
+    private static string? SerializeAudience(CampusNotificationAudienceDto? audience)
+    {
+        if (audience is null)
+            return null;
+
+        if (string.Equals(
+                audience.Mode,
+                CampusNotificationAudienceModes.AllCampusUsers,
+                StringComparison.OrdinalIgnoreCase)
+            && (audience.PermissionCodes is null || audience.PermissionCodes.Count == 0))
+        {
+            return null;
+        }
+
+        return JsonSerializer.Serialize(audience, AudienceJsonOptions);
+    }
+
     private static CampusNotificationDto ToDto(CampusRealtimeNotification entity, bool read)
     {
         var exclude = ParseExcludeKeys(entity.ExcludeUserKeysJson).ToList();
+        var audience = ParseAudience(entity.AudienceJson);
+        if (exclude.Count > 0)
+            audience.ExcludeUserKeys = exclude;
+
         return new CampusNotificationDto
         {
             Id = entity.Id,
@@ -239,11 +388,7 @@ public class CampusNotificationService : ICampusNotificationService
             OccurredAt = entity.OccurredAtPkt,
             ActorUserKey = entity.ActorUserKey,
             Read = read,
-            Audience = new CampusNotificationAudienceDto
-            {
-                Mode = CampusNotificationAudienceModes.AllCampusUsers,
-                ExcludeUserKeys = exclude.Count > 0 ? exclude : null,
-            },
+            Audience = audience,
         };
     }
 

@@ -19,6 +19,9 @@ public static class ActivityLogTypes
     public const string EmployeeAttendanceBackfill = "EmployeeAttendanceBackfill";
     public const string EmployeeAttendanceRecalculateDutyTimes = "EmployeeAttendanceRecalculateDutyTimes";
     public const string EmployeeAttendanceImport = "EmployeeAttendanceImport";
+    public const string EmployeeAttendanceChangeRequestSubmitted = "EmployeeAttendanceChangeRequestSubmitted";
+    public const string EmployeeAttendanceChangeRequestApproved = "EmployeeAttendanceChangeRequestApproved";
+    public const string EmployeeAttendanceChangeRequestRejected = "EmployeeAttendanceChangeRequestRejected";
     public const string FeeReceiptVoid = "FeeReceiptVoid";
     public const string FeeReceiptEdit = "FeeReceiptEdit";
     public const string StationeryPurchase = "StationeryPurchase";
@@ -33,6 +36,7 @@ public static class ActivityLogEntityTypes
 {
     public const string Student = "Student";
     public const string EmployeeAttendance = "EmployeeAttendance";
+    public const string EmployeeAttendanceChangeRequest = "EmployeeAttendanceChangeRequest";
     public const string FeeReceipt = "FeeReceipt";
     public const string StationeryPurchase = "StationeryPurchase";
     public const string StationeryHandover = "StationeryHandover";

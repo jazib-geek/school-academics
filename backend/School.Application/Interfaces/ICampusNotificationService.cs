@@ -15,4 +15,9 @@ public interface ICampusNotificationService
         CancellationToken cancellationToken = default);
 
     Task MarkAllReadAsync(int userId, CancellationToken cancellationToken = default);
+
+    Task<bool> IsVisibleToUserAsync(
+        int userId,
+        CampusNotificationDto notification,
+        CancellationToken cancellationToken = default);
 }

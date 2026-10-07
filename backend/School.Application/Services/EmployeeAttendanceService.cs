@@ -620,6 +620,22 @@ public class EmployeeAttendanceService : IEmployeeAttendanceService
             })
             .ToList();
 
+        var pendingChangeRequests = await _context.EmployeeAttendanceChangeRequests
+            .AsNoTracking()
+            .Where(x =>
+                x.AttendanceDate == DateOnly.FromDateTime(targetDate) &&
+                x.Status == EmployeeAttendanceChangeRequestStatuses.Pending)
+            .Select(x => new
+            {
+                x.Id,
+                x.EmployeeAttendanceId,
+                x.SubmittedByUserKey,
+            })
+            .ToListAsync(cancellationToken);
+
+        var pendingByAttendanceId = pendingChangeRequests
+            .ToDictionary(x => x.EmployeeAttendanceId, x => x);
+
         var entries = punched
             .Select(row =>
             {
@@ -634,6 +650,7 @@ public class EmployeeAttendanceService : IEmployeeAttendanceService
                 var lateComings = row.lateComings ?? 0;
                 var hasCheckIn = !string.IsNullOrWhiteSpace(row.checkInTime);
                 var rawStatus = row.status;
+                pendingByAttendanceId.TryGetValue(row.ID, out var pendingRequest);
 
                 return new EmployeeAttendanceManageRowDto
                 {
@@ -654,6 +671,8 @@ public class EmployeeAttendanceService : IEmployeeAttendanceService
                         lateComings),
                     UpdatedBy = row.updatedBy,
                     IsManuallyAdjusted = IsManuallyAdjusted(row.changeJson),
+                    PendingChangeRequestId = pendingRequest?.Id,
+                    PendingChangeRequestSubmittedBy = pendingRequest?.SubmittedByUserKey,
                     LateDeduction = row.lateDeduction,
                     TodaySalary = row.todaySalary,
                 };
@@ -664,6 +683,7 @@ public class EmployeeAttendanceService : IEmployeeAttendanceService
         {
             Date = targetDate,
             TotalEntries = entries.Count,
+            PendingChangeRequestCount = pendingChangeRequests.Count,
             HasDutyTimeAdjustment = punched.Any(x => IsDutyTimeOverride(x.changeJson)),
             Entries = entries,
             MissingEmployees = missing,

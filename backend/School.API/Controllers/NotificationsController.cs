@@ -62,6 +62,12 @@ public class NotificationsController : ControllerBase
 
         await foreach (var notification in reader.ReadAllAsync(cancellationToken))
         {
+            if (!TryGetCampusUserId(out var streamUserId))
+                break;
+
+            if (!await _notificationService.IsVisibleToUserAsync(streamUserId, notification, cancellationToken))
+                continue;
+
             var payload = JsonSerializer.Serialize(notification, JsonSerializerOptions.Web);
             await Response.WriteAsync("event: notification\n", cancellationToken);
             await Response.WriteAsync($"data: {payload}\n\n", cancellationToken);

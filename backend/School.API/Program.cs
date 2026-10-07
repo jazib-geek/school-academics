@@ -131,6 +131,7 @@ builder.Services.AddScoped<IParentConductService, ParentConductService>();
 builder.Services.AddScoped<IStudentLeaveApplicationService, StudentLeaveApplicationService>();
 builder.Services.AddScoped<IEmployeeAttendanceRepository, EmployeeAttendanceRepository>();
 builder.Services.AddScoped<IEmployeeAttendanceService, EmployeeAttendanceService>();
+builder.Services.AddScoped<IEmployeeAttendanceChangeRequestService, EmployeeAttendanceChangeRequestService>();
 builder.Services.AddScoped<IEmployeeAttendanceImportService, EmployeeAttendanceImportService>();
 builder.Services.AddSingleton<IEmployeeAttendanceLiveUpdateSink, EmployeeAttendanceLiveUpdateStream>();
 builder.Services.AddSingleton<ICampusNotificationSink, CampusNotificationStream>();

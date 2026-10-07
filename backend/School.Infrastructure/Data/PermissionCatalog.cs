@@ -189,6 +189,7 @@ public static class PermissionCatalog
         Add("manage_family_accounts", "Manage Family Portal Accounts", "Family Portal");
         Add("view_leave_applications", "View Leave Applications", "Family Portal");
         Add("manage_leave_applications", "Manage Leave Applications", "Family Portal");
+        Add("request_emp_attendance_change", "Request Employee Attendance Change", "Employee");
 
         return items
             .Select((item, index) => new Permission

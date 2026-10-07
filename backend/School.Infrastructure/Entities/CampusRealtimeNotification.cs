@@ -13,6 +13,8 @@ public class CampusRealtimeNotification
     public string? ActorUserKey { get; set; }
     /// <summary>JSON array of campus usernames that should not see this notification.</summary>
     public string? ExcludeUserKeysJson { get; set; }
+    /// <summary>JSON audience targeting (mode, permission codes).</summary>
+    public string? AudienceJson { get; set; }
 
     public ICollection<CampusRealtimeNotificationRead> Reads { get; set; } = new List<CampusRealtimeNotificationRead>();
 }

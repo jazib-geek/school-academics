@@ -12,6 +12,7 @@ public static class CampusNotificationTypes
     public const string DayClosed = "day_closed";
     public const string StudentConduct = "student_conduct";
     public const string LeaveApplication = "leave_application";
+    public const string EmployeeAttendanceChangeRequest = "employee_attendance_change_request";
 }
 
 public static class CampusNotificationSeverities
@@ -86,8 +87,9 @@ public static class CampusNotificationFactory
             ActorUserKey = actor,
             Audience = new CampusNotificationAudienceDto
             {
-                // Broadcast to everyone for now; PermissionCodes / ExcludeUserKeys reserved for targeting.
-                Mode = CampusNotificationAudienceModes.AllCampusUsers,
+                Mode = suggestedPermissionCodes is { Count: > 0 }
+                    ? CampusNotificationAudienceModes.Permission
+                    : CampusNotificationAudienceModes.AllCampusUsers,
                 PermissionCodes = suggestedPermissionCodes,
                 ExcludeUserKeys = actor is null ? null : [actor],
             },

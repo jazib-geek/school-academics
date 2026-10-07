@@ -4,6 +4,7 @@ public class EmployeeAttendanceManageDayDto
 {
     public DateTime Date { get; set; }
     public int TotalEntries { get; set; }
+    public int PendingChangeRequestCount { get; set; }
     public bool HasDutyTimeAdjustment { get; set; }
     public IReadOnlyList<EmployeeAttendanceManageRowDto> Entries { get; set; } =
         Array.Empty<EmployeeAttendanceManageRowDto>();
@@ -37,6 +38,8 @@ public class EmployeeAttendanceManageRowDto
     public bool IsLate { get; set; }
     public string? UpdatedBy { get; set; }
     public bool IsManuallyAdjusted { get; set; }
+    public int? PendingChangeRequestId { get; set; }
+    public string? PendingChangeRequestSubmittedBy { get; set; }
     public decimal? LateDeduction { get; set; }
     public decimal? TodaySalary { get; set; }
 }
