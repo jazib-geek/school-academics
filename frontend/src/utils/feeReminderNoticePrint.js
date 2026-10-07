@@ -151,10 +151,10 @@ export const FEE_REMINDER_VOUCHER_STYLES = `
   }
   .fee-reminder-voucher {
     border: 1px solid #000;
-    padding: 16px 18px 18px;
+    padding: 18px 32px 18px;
     page-break-inside: avoid;
     font-family: Arial, Helvetica, sans-serif !important;
-    font-size: 12px;
+    font-size: 13px;
     color: #000;
     background: #fff;
   }
@@ -172,7 +172,7 @@ export const FEE_REMINDER_VOUCHER_STYLES = `
     gap: 16px;
     align-items: stretch;
     min-height: 0;
-    padding: 0 4px 6px 2px;
+    padding: 0 10px 6px 2px;
   }
   .fee-reminder-voucher__left {
     flex: 0 0 50%;
@@ -180,7 +180,7 @@ export const FEE_REMINDER_VOUCHER_STYLES = `
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
-    font-size: 12px;
+    font-size: 14px;
     line-height: 1.35;
     padding: 2px 0 0 2px;
   }
@@ -216,6 +216,7 @@ export const FEE_REMINDER_VOUCHER_STYLES = `
     width: 155px;
     min-width: 155px;
     max-width: 155px;
+    font-weight: 700;
   }
   .fee-reminder-voucher__amount-row {
     margin-top: 18px;
@@ -231,7 +232,7 @@ export const FEE_REMINDER_VOUCHER_STYLES = `
     border: 1px solid #000;
     padding: 3px 12px;
     font-weight: 700;
-    font-size: 14px;
+    font-size: 16px;
     line-height: 1.3;
     text-align: center;
     display: inline-block;
@@ -263,16 +264,16 @@ export const FEE_REMINDER_VOUCHER_STYLES = `
     margin-bottom: 4px;
   }
   .fee-reminder-voucher__date {
-    font-size: 12px;
+    font-size: 14px;
     text-align: right;
   }
   .fee-reminder-voucher__right {
-    flex: 0 0 calc(50% - 10px);
-    max-width: calc(50% - 10px);
-    margin-right: 10px;
+    flex: 0 0 calc(50% - 12px);
+    max-width: calc(50% - 12px);
+    margin-right: 12px;
     align-self: stretch;
     border: 1px solid #000;
-    padding: 18px 20px;
+    padding: 12px 20px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -282,14 +283,14 @@ export const FEE_REMINDER_VOUCHER_STYLES = `
   .fee-reminder-voucher__message {
     width: 100%;
     text-align: center;
-    font-size: 16px !important;
+    font-size: 17px !important;
     line-height: 1.5;
-    padding: 8px 10px;
+    padding: 4px 10px;
   }
   .fee-reminder-voucher__message p,
   .fee-reminder-voucher__message .message,
   .fee-reminder-voucher__message .message p {
-    font-size: 16px !important;
+    font-size: 17px !important;
   }
   .fee-reminder-voucher__message p {
     margin: 0 0 8px;
@@ -319,7 +320,7 @@ const PRINT_WINDOW_CSS = `
   body {
     margin: 0;
     font-family: Arial, Helvetica, sans-serif !important;
-    font-size: 12px;
+    font-size: 13px;
     color: #000;
     background: #fff;
   }
@@ -340,7 +341,7 @@ const PRINT_WINDOW_CSS = `
       break-inside: avoid-page;
     }
     .fee-reminder-page--3 .fee-reminder-voucher {
-      padding: 10px 14px 12px;
+      padding: 18px 32px 18px;
     }
     .fee-reminder-page--3 .fee-reminder-voucher__title {
       margin-bottom: 8px;
@@ -356,7 +357,7 @@ const PRINT_WINDOW_CSS = `
       padding-top: 8px;
     }
     .fee-reminder-page--3 .fee-reminder-voucher__right {
-      padding: 14px 16px;
+      padding: 10px 16px;
     }
     .fee-reminder-page--3 .fee-reminder-voucher__body {
       padding-bottom: 4px;

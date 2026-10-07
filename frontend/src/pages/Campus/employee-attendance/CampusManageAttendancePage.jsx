@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import Select from 'react-select'
 import {
   CalendarDays,
@@ -12,9 +13,12 @@ import {
   Plus,
   RefreshCw,
   Search,
+  Send,
   Sun,
   Trash2,
   UserCheck,
+  Check,
+  XCircle,
   X,
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -29,9 +33,13 @@ import {
   deleteEmployeeAttendance,
   editEmployeeAttendance,
   getBackfillExistingAttendance,
+  approveEmployeeAttendanceChangeRequest,
   getEmployeeAttendanceActivity,
+  getEmployeeAttendanceChangeRequests,
   getEmployeeAttendanceManageDay,
   markEmployeeHoliday,
+  rejectEmployeeAttendanceChangeRequest,
+  submitEmployeeAttendanceChangeRequest,
   markEmployeePresent,
   recalculateEmployeeDutyTimes,
 } from '../../../services/employeeAttendanceService'
@@ -40,6 +48,7 @@ import { FILTER_INPUT_AUTOCOMPLETE_PROPS } from '../../../utils/filterInputProps
 
 const VIEW_MANAGE_ATTENDANCE_ANY_OF = [
   'edit_emp_attendance',
+  'request_emp_attendance_change',
   'view_live_emp_attendance',
   'view_emp_monthly_attendance',
 ]
@@ -211,8 +220,10 @@ const parseActivityComparison = (detailsJson) => {
 }
 
 function CampusManageAttendancePage() {
+  const [searchParams, setSearchParams] = useSearchParams()
   const canView = hasAnyCampusPermission(...VIEW_MANAGE_ATTENDANCE_ANY_OF)
   const canEdit = hasCampusPermission('edit_emp_attendance')
+  const canRequest = hasCampusPermission('request_emp_attendance_change')
   const [dateValue, setDateValue] = useState(getPakistanDateValue)
   const [entries, setEntries] = useState([])
   const [missingEmployees, setMissingEmployees] = useState([])
@@ -263,6 +274,24 @@ function CampusManageAttendancePage() {
   const [activityItems, setActivityItems] = useState([])
   const [isLoadingActivity, setIsLoadingActivity] = useState(false)
 
+  const [pendingChangeRequestCount, setPendingChangeRequestCount] = useState(0)
+  const [reviewOpen, setReviewOpen] = useState(false)
+  const [reviewRows, setReviewRows] = useState([])
+  const [isLoadingReview, setIsLoadingReview] = useState(false)
+  const [actingRequestId, setActingRequestId] = useState(null)
+  const [highlightRequestId, setHighlightRequestId] = useState(null)
+  const [rejectRequestRow, setRejectRequestRow] = useState(null)
+  const [rejectNote, setRejectNote] = useState('')
+  const [approveRequestRow, setApproveRequestRow] = useState(null)
+
+  const [requestRow, setRequestRow] = useState(null)
+  const [requestCheckIn, setRequestCheckIn] = useState('')
+  const [requestCheckOut, setRequestCheckOut] = useState('')
+  const [requestReason, setRequestReason] = useState('')
+  const [isSavingRequest, setIsSavingRequest] = useState(false)
+
+  const decisionInFlightRef = useRef(false)
+
   const loadDay = useCallback(async () => {
     setIsLoading(true)
     setError('')
@@ -272,20 +301,60 @@ function CampusManageAttendancePage() {
       setMissingEmployees(data?.missingEmployees || [])
       setDesignationTimes(data?.designationTimes || [])
       setHasDutyTimeAdjustment(Boolean(data?.hasDutyTimeAdjustment))
+      setPendingChangeRequestCount(data?.pendingChangeRequestCount ?? 0)
     } catch (err) {
       setError(err?.response?.data?.message || 'Unable to load attendance for this date.')
       setEntries([])
       setMissingEmployees([])
       setDesignationTimes([])
       setHasDutyTimeAdjustment(false)
+      setPendingChangeRequestCount(0)
     } finally {
       setIsLoading(false)
     }
   }, [dateValue])
 
+  const loadPendingChangeRequests = useCallback(async () => {
+    if (!canEdit && !canRequest) return []
+    setIsLoadingReview(true)
+    try {
+      const items = await getEmployeeAttendanceChangeRequests({
+        date: dateValue,
+        status: 'pending',
+      })
+      setReviewRows(items)
+      return items
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Could not load change requests.')
+      setReviewRows([])
+      return []
+    } finally {
+      setIsLoadingReview(false)
+    }
+  }, [canEdit, canRequest, dateValue])
+
   useEffect(() => {
     if (canView) void loadDay()
   }, [canView, loadDay])
+
+  useEffect(() => {
+    const requestIdRaw = Number.parseInt(searchParams.get('autoReviewRequestId') || '', 10)
+    const dateParam = searchParams.get('date')
+    if (!Number.isFinite(requestIdRaw) || requestIdRaw <= 0 || !canEdit) return
+
+    if (dateParam) setDateValue(dateParam)
+    setSearchParams({}, { replace: true })
+    setReviewOpen(true)
+
+    void (async () => {
+      const items = await loadPendingChangeRequests()
+      if (items.some((row) => row.id === requestIdRaw)) {
+        setHighlightRequestId(requestIdRaw)
+        window.setTimeout(() => setHighlightRequestId(null), 2500)
+      }
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once when notification deep link is present
+  }, [canEdit, searchParams.get('autoReviewRequestId')])
 
   const markGridEmployees = useMemo(() => {
     const keyword = markGridSearch.trim().toLowerCase()
@@ -348,6 +417,102 @@ function CampusManageAttendancePage() {
       toast.error(err?.response?.data?.message || 'Could not update attendance.')
     } finally {
       setIsSavingEdit(false)
+    }
+  }
+
+  const openRequest = (row) => {
+    if (!canRequest || row.pendingChangeRequestId) return
+    setRequestRow(row)
+    setRequestCheckIn(toTimeInputValue(row.checkInTime))
+    setRequestCheckOut(toTimeInputValue(row.checkOutTime))
+    setRequestReason('')
+  }
+
+  const closeRequest = () => {
+    if (isSavingRequest) return
+    setRequestRow(null)
+  }
+
+  const submitRequest = async (event) => {
+    event.preventDefault()
+    if (!canRequest || !requestRow) return
+    if (!requestCheckIn) {
+      toast.error('Check-in time is required.')
+      return
+    }
+    const reason = requestReason.trim()
+    if (!reason) {
+      toast.error('Please provide a reason for this change.')
+      return
+    }
+    setIsSavingRequest(true)
+    try {
+      await submitEmployeeAttendanceChangeRequest({
+        employeeAttendanceId: requestRow.attendanceId,
+        proposedCheckInTime: requestCheckIn,
+        proposedCheckOutTime: requestCheckOut || null,
+        reason,
+      })
+      toast.success('Change request submitted.')
+      setRequestRow(null)
+      await loadDay()
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Could not submit change request.')
+    } finally {
+      setIsSavingRequest(false)
+    }
+  }
+
+  const openReview = () => {
+    if (!canEdit) return
+    setReviewOpen(true)
+    void loadPendingChangeRequests()
+  }
+
+  const closeReview = () => {
+    if (actingRequestId) return
+    setReviewOpen(false)
+    setRejectRequestRow(null)
+    setApproveRequestRow(null)
+    setRejectNote('')
+  }
+
+  const runApproveRequest = async (row) => {
+    if (!canEdit || !row || decisionInFlightRef.current) return
+    decisionInFlightRef.current = true
+    setActingRequestId(row.id)
+    try {
+      await approveEmployeeAttendanceChangeRequest(row.id)
+      toast.success('Change request approved.')
+      setApproveRequestRow(null)
+      await loadDay()
+      await loadPendingChangeRequests()
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Could not approve request.')
+    } finally {
+      decisionInFlightRef.current = false
+      setActingRequestId(null)
+    }
+  }
+
+  const runRejectRequest = async () => {
+    if (!canEdit || !rejectRequestRow || decisionInFlightRef.current) return
+    decisionInFlightRef.current = true
+    setActingRequestId(rejectRequestRow.id)
+    try {
+      await rejectEmployeeAttendanceChangeRequest(rejectRequestRow.id, {
+        reviewNote: rejectNote.trim() || null,
+      })
+      toast.success('Change request rejected.')
+      setRejectRequestRow(null)
+      setRejectNote('')
+      await loadDay()
+      await loadPendingChangeRequests()
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Could not reject request.')
+    } finally {
+      decisionInFlightRef.current = false
+      setActingRequestId(null)
     }
   }
 
@@ -918,7 +1083,9 @@ function CampusManageAttendancePage() {
                 <div>
                   <h1 className="text-2xl font-bold text-slate-800">Manage Attendance</h1>
                   <p className="text-sm text-slate-500">
-                    Search by date to edit times, mark present, backfill dates, mark holiday, adjust duty times, or review changes.
+                    {canRequest && !canEdit
+                      ? 'Search by date to request check-in or check-out corrections. An approver will review before times are updated.'
+                      : 'Search by date to edit times, mark present, backfill dates, mark holiday, adjust duty times, or review changes.'}
                   </p>
                 </div>
               </div>
@@ -1007,7 +1174,7 @@ function CampusManageAttendancePage() {
               </button>
             </div>
 
-            <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <div className={`mt-4 grid grid-cols-2 gap-2 ${canEdit ? 'sm:grid-cols-4' : 'sm:grid-cols-3'}`}>
               <div className="rounded-lg bg-slate-50 px-3 py-2">
                 <p className="text-xs text-slate-500">Entries</p>
                 <p className="text-lg font-semibold text-slate-900">{entries.length}</p>
@@ -1018,6 +1185,16 @@ function CampusManageAttendancePage() {
                   {entries.filter((e) => e.isManuallyAdjusted).length}
                 </p>
               </div>
+              {canEdit ? (
+                <button
+                  type="button"
+                  onClick={openReview}
+                  className="rounded-lg bg-violet-50 px-3 py-2 text-left ring-1 ring-violet-100 transition hover:bg-violet-100"
+                >
+                  <p className="text-xs text-violet-700">Pending change requests</p>
+                  <p className="text-lg font-semibold text-violet-900">{pendingChangeRequestCount}</p>
+                </button>
+              ) : null}
               <div className="rounded-lg bg-slate-50 px-3 py-2 sm:col-span-1 col-span-2">
                 <p className="text-xs text-slate-500">Still missing check-in</p>
                 <p className="text-lg font-semibold text-slate-900">{missingEmployees.length}</p>
@@ -1056,7 +1233,12 @@ function CampusManageAttendancePage() {
                     {filteredEntries.map((entry) => (
                       <tr
                         key={entry.attendanceId}
-                        className="border-t border-slate-100 bg-white hover:bg-slate-50"
+                        className={`border-t border-slate-100 bg-white hover:bg-slate-50 ${
+                          entry.pendingChangeRequestId &&
+                          highlightRequestId === entry.pendingChangeRequestId
+                            ? 'bg-violet-50 ring-2 ring-inset ring-violet-300'
+                            : ''
+                        }`}
                       >
                         <td className="px-3 py-1.5">
                           <p className="font-semibold text-slate-900">{entry.employeeName || '—'}</p>
@@ -1093,6 +1275,10 @@ function CampusManageAttendancePage() {
                               <Sun size={12} strokeWidth={2.25} />
                               Holiday
                             </span>
+                          ) : entry.pendingChangeRequestId ? (
+                            <span className="inline-flex items-center rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-[11px] font-semibold text-violet-800">
+                              Change requested
+                            </span>
                           ) : entry.isManuallyAdjusted ? (
                             <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
                               Manual
@@ -1106,6 +1292,21 @@ function CampusManageAttendancePage() {
                         </td>
                         <td className="px-3 py-1.5">
                           <div className="flex items-center justify-end gap-1">
+                            <PermissionControl permission="request_emp_attendance_change">
+                              <button
+                                type="button"
+                                title={
+                                  entry.pendingChangeRequestId
+                                    ? 'Change request pending'
+                                    : 'Request change'
+                                }
+                                disabled={Boolean(entry.pendingChangeRequestId)}
+                                onClick={() => openRequest(entry)}
+                                className="btn-icon-soft disabled:opacity-40"
+                              >
+                                <Send size={14} />
+                              </button>
+                            </PermissionControl>
                             <PermissionControl permission="edit_emp_attendance">
                               <button
                                 type="button"
@@ -1227,6 +1428,306 @@ function CampusManageAttendancePage() {
               </button>
             </div>
           </form>
+        </div>
+      ) : null}
+
+      {requestRow ? (
+        <div className="fixed inset-0 z-[80] grid place-items-center bg-slate-950/45 p-4 backdrop-blur-sm">
+          <form
+            onSubmit={submitRequest}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="request-attendance-title"
+            className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl"
+          >
+            <div className="flex items-start justify-between border-b border-slate-100 px-5 py-4">
+              <div>
+                <h2 id="request-attendance-title" className="text-lg font-bold text-slate-900">
+                  Request attendance change
+                </h2>
+                <p className="mt-0.5 text-sm text-slate-500">{requestRow.employeeName}</p>
+              </div>
+              <button
+                type="button"
+                onClick={closeRequest}
+                className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
+                aria-label="Close"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="space-y-3 px-5 py-5">
+              <div className="grid grid-cols-2 gap-3 rounded-lg bg-slate-50 px-3 py-2 text-sm">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase text-slate-500">Current in</p>
+                  <p className="font-mono font-semibold text-slate-800">
+                    {formatTime12Hour(requestRow.checkInTime)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-semibold uppercase text-slate-500">Current out</p>
+                  <p className="font-mono font-semibold text-slate-800">
+                    {formatTime12Hour(requestRow.checkOutTime)}
+                  </p>
+                </div>
+              </div>
+              <label className="block text-xs font-semibold uppercase text-slate-500">
+                Proposed check-in
+                <input
+                  type="time"
+                  required
+                  className={`${inputClass} mt-1`}
+                  value={requestCheckIn}
+                  onChange={(e) => setRequestCheckIn(e.target.value)}
+                />
+              </label>
+              <label className="block text-xs font-semibold uppercase text-slate-500">
+                Proposed check-out
+                <input
+                  type="time"
+                  className={`${inputClass} mt-1`}
+                  value={requestCheckOut}
+                  onChange={(e) => setRequestCheckOut(e.target.value)}
+                />
+              </label>
+              <label className="block text-xs font-semibold uppercase text-slate-500">
+                Reason
+                <textarea
+                  required
+                  rows={3}
+                  maxLength={500}
+                  className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-[13px] text-slate-800 outline-none transition focus:border-[var(--campus-primary)] focus:ring-2 focus:ring-indigo-100"
+                  value={requestReason}
+                  onChange={(e) => setRequestReason(e.target.value)}
+                  placeholder="Brief explanation for this correction"
+                />
+              </label>
+              <p className="text-xs text-slate-500">
+                An approver will review before times are updated.
+              </p>
+            </div>
+            <div className="flex justify-end gap-2 bg-slate-50 px-5 py-4">
+              <button
+                type="button"
+                disabled={isSavingRequest}
+                onClick={closeRequest}
+                className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSavingRequest}
+                className="inline-flex items-center gap-2 rounded-lg bg-[var(--campus-primary)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+              >
+                {isSavingRequest ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                Submit request
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
+
+      {reviewOpen ? (
+        <div className="fixed inset-0 z-[80] grid place-items-center bg-slate-950/45 p-4 backdrop-blur-sm">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="review-change-requests-title"
+            className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+          >
+            <div className="flex items-start justify-between border-b border-slate-100 px-5 py-4">
+              <div>
+                <h2 id="review-change-requests-title" className="text-lg font-bold text-slate-900">
+                  Pending change requests
+                </h2>
+                <p className="mt-0.5 text-sm text-slate-500">{dateValue}</p>
+              </div>
+              <button
+                type="button"
+                onClick={closeReview}
+                className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
+                aria-label="Close"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto px-5 py-4">
+              {isLoadingReview ? (
+                <div className="flex items-center justify-center gap-2 py-12 text-sm text-slate-600">
+                  <Loader2 className="h-5 w-5 animate-spin text-[var(--campus-primary)]" />
+                  Loading requests...
+                </div>
+              ) : reviewRows.length === 0 ? (
+                <p className="py-12 text-center text-sm text-slate-500">No pending change requests for this date.</p>
+              ) : (
+                <table className="w-full min-w-[720px] text-left text-[13px] leading-snug">
+                  <thead className="text-xs uppercase text-slate-500">
+                    <tr>
+                      <th className="px-3 py-2 font-medium">Employee</th>
+                      <th className="px-3 py-2 font-medium">Current</th>
+                      <th className="px-3 py-2 font-medium">Proposed</th>
+                      <th className="px-3 py-2 font-medium">Reason</th>
+                      <th className="px-3 py-2 font-medium">Submitted</th>
+                      <th className="px-3 py-2 font-medium text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reviewRows.map((row) => (
+                      <tr
+                        key={row.id}
+                        className={`border-t border-slate-100 ${
+                          highlightRequestId === row.id ? 'bg-violet-50' : 'bg-white'
+                        }`}
+                      >
+                        <td className="px-3 py-1.5">
+                          <p className="font-semibold text-slate-900">{row.employeeName}</p>
+                          <p className="text-[11px] text-slate-500">#{row.employeeId}</p>
+                        </td>
+                        <td className="px-3 py-1.5 font-mono text-xs text-slate-700">
+                          <div>IN {formatTime12Hour(row.currentCheckInTime)}</div>
+                          <div>OUT {formatTime12Hour(row.currentCheckOutTime)}</div>
+                        </td>
+                        <td className="px-3 py-1.5 font-mono text-xs font-semibold text-slate-900">
+                          <div>IN {formatTime12Hour(row.proposedCheckInTime)}</div>
+                          <div>OUT {formatTime12Hour(row.proposedCheckOutTime)}</div>
+                        </td>
+                        <td className="max-w-[200px] px-3 py-1.5 text-slate-700">{row.reason}</td>
+                        <td className="px-3 py-1.5 text-slate-600">
+                          <p>{row.submittedByUserKey}</p>
+                          <p className="text-[11px] text-slate-500">{formatPktDateTime(row.submittedAtPkt)}</p>
+                        </td>
+                        <td className="px-3 py-1.5">
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              type="button"
+                              title="Approve"
+                              disabled={actingRequestId === row.id}
+                              onClick={() => setApproveRequestRow(row)}
+                              className="btn-icon-soft text-emerald-700"
+                            >
+                              <Check size={14} />
+                            </button>
+                            <button
+                              type="button"
+                              title="Reject"
+                              disabled={actingRequestId === row.id}
+                              onClick={() => {
+                                setRejectRequestRow(row)
+                                setRejectNote('')
+                              }}
+                              className="btn-icon-soft btn-icon-soft--danger"
+                            >
+                              <XCircle size={14} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {approveRequestRow ? (
+        <div className="fixed inset-0 z-[90] grid place-items-center bg-slate-950/45 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="border-b border-slate-100 px-5 py-4">
+              <h3 className="text-lg font-bold text-slate-900">Approve change request?</h3>
+              <p className="mt-1 text-sm text-slate-500">{approveRequestRow.employeeName}</p>
+            </div>
+            <div className="space-y-2 px-5 py-4 text-sm text-slate-700">
+              <p>
+                Check-in will be set to{' '}
+                <span className="font-semibold">{formatTime12Hour(approveRequestRow.proposedCheckInTime)}</span>
+                {approveRequestRow.proposedCheckOutTime ? (
+                  <>
+                    {' '}
+                    and check-out to{' '}
+                    <span className="font-semibold">
+                      {formatTime12Hour(approveRequestRow.proposedCheckOutTime)}
+                    </span>
+                  </>
+                ) : null}
+                .
+              </p>
+            </div>
+            <div className="flex justify-end gap-2 bg-slate-50 px-5 py-4">
+              <button
+                type="button"
+                disabled={actingRequestId === approveRequestRow.id}
+                onClick={() => setApproveRequestRow(null)}
+                className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={actingRequestId === approveRequestRow.id}
+                onClick={() => void runApproveRequest(approveRequestRow)}
+                className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+              >
+                {actingRequestId === approveRequestRow.id ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <Check size={16} />
+                )}
+                Approve
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {rejectRequestRow ? (
+        <div className="fixed inset-0 z-[90] grid place-items-center bg-slate-950/45 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="border-b border-slate-100 px-5 py-4">
+              <h3 className="text-lg font-bold text-slate-900">Reject change request?</h3>
+              <p className="mt-1 text-sm text-slate-500">{rejectRequestRow.employeeName}</p>
+            </div>
+            <div className="px-5 py-4">
+              <label className="block text-xs font-semibold uppercase text-slate-500">
+                Note (optional)
+                <textarea
+                  rows={2}
+                  maxLength={500}
+                  className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-[13px] text-slate-800 outline-none focus:border-[var(--campus-primary)] focus:ring-2 focus:ring-indigo-100"
+                  value={rejectNote}
+                  onChange={(e) => setRejectNote(e.target.value)}
+                />
+              </label>
+            </div>
+            <div className="flex justify-end gap-2 bg-slate-50 px-5 py-4">
+              <button
+                type="button"
+                disabled={actingRequestId === rejectRequestRow.id}
+                onClick={() => {
+                  setRejectRequestRow(null)
+                  setRejectNote('')
+                }}
+                className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={actingRequestId === rejectRequestRow.id}
+                onClick={() => void runRejectRequest()}
+                className="inline-flex items-center gap-2 rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+              >
+                {actingRequestId === rejectRequestRow.id ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <XCircle size={16} />
+                )}
+                Reject
+              </button>
+            </div>
+          </div>
         </div>
       ) : null}
 

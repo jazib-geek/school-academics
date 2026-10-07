@@ -90,6 +90,34 @@ export const getEmployeeAttendanceActivity = async (attendanceId) => {
   return response?.data?.data
 }
 
+export const getEmployeeAttendanceChangeRequests = async ({ date, status } = {}) => {
+  const response = await api.get('/api/employee-attendance/change-requests', {
+    params: {
+      ...(date ? { date } : {}),
+      ...(status ? { status } : {}),
+    },
+  })
+  return response?.data?.data?.items || []
+}
+
+export const submitEmployeeAttendanceChangeRequest = async (payload) => {
+  const response = await api.post('/api/employee-attendance/change-requests', payload)
+  return response?.data?.data
+}
+
+export const approveEmployeeAttendanceChangeRequest = async (requestId) => {
+  const response = await api.post(`/api/employee-attendance/change-requests/${requestId}/approve`)
+  return response?.data?.data
+}
+
+export const rejectEmployeeAttendanceChangeRequest = async (requestId, payload) => {
+  const response = await api.post(
+    `/api/employee-attendance/change-requests/${requestId}/reject`,
+    payload || {},
+  )
+  return response?.data?.data
+}
+
 export const previewEmployeeAttendanceImport = async (file) => {
   const form = new FormData()
   form.append('file', file)

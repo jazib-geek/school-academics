@@ -135,7 +135,12 @@ export const CAMPUS_ROUTE_PERMISSIONS = [
   { prefix: '/campus/employee-attendance/import', permission: 'edit_emp_attendance' },
   {
     prefix: '/campus/employee-attendance/manage',
-    anyOf: ['edit_emp_attendance', 'view_live_emp_attendance', 'view_emp_monthly_attendance'],
+    anyOf: [
+      'edit_emp_attendance',
+      'request_emp_attendance_change',
+      'view_live_emp_attendance',
+      'view_emp_monthly_attendance',
+    ],
   },
   { prefix: '/campus/employee-attendance', permission: 'view_emp_monthly_attendance' },
   { prefix: '/campus/attendance/mark', permission: 'mark_attnd' },

@@ -250,7 +250,12 @@ export const CAMPUS_SHELL_NAV = [
       {
         label: 'Manage Attendance',
         to: '/campus/employee-attendance/manage',
-        anyOf: ['edit_emp_attendance', 'view_live_emp_attendance', 'view_emp_monthly_attendance'],
+        anyOf: [
+          'edit_emp_attendance',
+          'request_emp_attendance_change',
+          'view_live_emp_attendance',
+          'view_emp_monthly_attendance',
+        ],
       },
       { label: 'Import Attendance', to: '/campus/employee-attendance/import', permission: 'edit_emp_attendance', attendanceType: BIOMETRIC_ATTENDANCE_TYPES.ZkTeco },
       { label: 'Monthly Attendance', to: '/campus/employee-attendance', permission: 'view_emp_monthly_attendance' },
