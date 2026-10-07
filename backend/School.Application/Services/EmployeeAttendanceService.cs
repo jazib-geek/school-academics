@@ -629,12 +629,29 @@ public class EmployeeAttendanceService : IEmployeeAttendanceService
             {
                 x.Id,
                 x.EmployeeAttendanceId,
+                x.EmployeeId,
+                x.RequestKind,
                 x.SubmittedByUserKey,
             })
             .ToListAsync(cancellationToken);
 
         var pendingByAttendanceId = pendingChangeRequests
-            .ToDictionary(x => x.EmployeeAttendanceId, x => x);
+            .Where(x => x.EmployeeAttendanceId.HasValue)
+            .ToDictionary(x => x.EmployeeAttendanceId!.Value, x => x);
+
+        var pendingMarkPresentByEmployee = pendingChangeRequests
+            .Where(x =>
+                x.RequestKind == EmployeeAttendanceChangeRequestKinds.MarkPresent)
+            .ToDictionary(x => x.EmployeeId, x => x);
+
+        foreach (var row in missing)
+        {
+            if (!pendingMarkPresentByEmployee.TryGetValue(row.EmployeeId, out var pending))
+                continue;
+
+            row.PendingMarkPresentRequestId = pending.Id;
+            row.PendingMarkPresentSubmittedBy = pending.SubmittedByUserKey;
+        }
 
         var entries = punched
             .Select(row =>

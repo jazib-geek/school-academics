@@ -3234,7 +3234,7 @@ namespace School.Infrastructure.Data.Migrations
                     b.Property<DateOnly>("AttendanceDate")
                         .HasColumnType("date");
 
-                    b.Property<int>("EmployeeAttendanceId")
+                    b.Property<int?>("EmployeeAttendanceId")
                         .HasColumnType("int");
 
                     b.Property<int>("EmployeeId")
@@ -3252,6 +3252,11 @@ namespace School.Infrastructure.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("RequestKind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<string>("ReviewNote")
                         .HasMaxLength(500)
@@ -7881,8 +7886,7 @@ namespace School.Infrastructure.Data.Migrations
                     b.HasOne("School.Infrastructure.Entities.EmployeeAttendance", "EmployeeAttendance")
                         .WithMany()
                         .HasForeignKey("EmployeeAttendanceId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("EmployeeAttendance");
                 });

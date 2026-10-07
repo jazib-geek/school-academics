@@ -14,6 +14,7 @@ public class EmployeeAttendanceChangeRequestConfiguration : IEntityTypeConfigura
         entity.Property(e => e.ProposedCheckInTime).HasMaxLength(10);
         entity.Property(e => e.ProposedCheckOutTime).HasMaxLength(10);
         entity.Property(e => e.Reason).HasMaxLength(500).IsRequired();
+        entity.Property(e => e.RequestKind).HasMaxLength(20).IsRequired();
         entity.Property(e => e.Status).HasMaxLength(20).IsRequired();
         entity.Property(e => e.SubmittedByUserKey).HasMaxLength(100).IsRequired();
         entity.Property(e => e.ReviewedByUserKey).HasMaxLength(100);
@@ -31,6 +32,7 @@ public class EmployeeAttendanceChangeRequestConfiguration : IEntityTypeConfigura
             .WithMany()
             .HasForeignKey(e => e.EmployeeAttendanceId)
             .HasPrincipalKey(a => a.ID)
+            .IsRequired(false)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }

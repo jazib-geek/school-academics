@@ -48,6 +48,8 @@ public class EmployeeAttendanceMissingEmployeeDto
 {
     public int EmployeeId { get; set; }
     public string EmployeeName { get; set; } = string.Empty;
+    public int? PendingMarkPresentRequestId { get; set; }
+    public string? PendingMarkPresentSubmittedBy { get; set; }
 }
 
 public class EditEmployeeAttendanceRequestDto

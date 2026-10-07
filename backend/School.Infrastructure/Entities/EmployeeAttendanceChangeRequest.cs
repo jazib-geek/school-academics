@@ -3,8 +3,9 @@ namespace School.Infrastructure.Entities;
 public class EmployeeAttendanceChangeRequest
 {
     public int Id { get; set; }
-    public int EmployeeAttendanceId { get; set; }
+    public int? EmployeeAttendanceId { get; set; }
     public int EmployeeId { get; set; }
+    public string RequestKind { get; set; } = string.Empty;
     public DateOnly AttendanceDate { get; set; }
     public string? ProposedCheckInTime { get; set; }
     public string? ProposedCheckOutTime { get; set; }
@@ -16,5 +17,5 @@ public class EmployeeAttendanceChangeRequest
     public string? ReviewedByUserKey { get; set; }
     public string? ReviewNote { get; set; }
 
-    public EmployeeAttendance EmployeeAttendance { get; set; } = null!;
+    public EmployeeAttendance? EmployeeAttendance { get; set; }
 }

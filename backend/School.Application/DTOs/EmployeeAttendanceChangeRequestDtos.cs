@@ -2,7 +2,10 @@ namespace School.Application.DTOs;
 
 public class SubmitEmployeeAttendanceChangeRequestDto
 {
+    public string? RequestKind { get; set; }
     public int EmployeeAttendanceId { get; set; }
+    public int EmployeeId { get; set; }
+    public DateOnly? AttendanceDate { get; set; }
     public string? ProposedCheckInTime { get; set; }
     public string? ProposedCheckOutTime { get; set; }
     public string Reason { get; set; } = string.Empty;
@@ -23,8 +26,10 @@ public class EmployeeAttendanceChangeRequestListDto
 public class EmployeeAttendanceChangeRequestListItemDto
 {
     public int Id { get; set; }
-    public int EmployeeAttendanceId { get; set; }
+    public int? EmployeeAttendanceId { get; set; }
     public int EmployeeId { get; set; }
+    public string RequestKind { get; set; } = string.Empty;
+    public string RequestKindLabel { get; set; } = string.Empty;
     public string EmployeeName { get; set; } = string.Empty;
     public DateOnly AttendanceDate { get; set; }
     public string? CurrentCheckInTime { get; set; }
