@@ -137,14 +137,14 @@ export const FEE_REMINDER_VOUCHER_STYLES = `
     page-break-after: always;
     display: flex;
     flex-direction: column;
-    gap: 22mm;
+    gap: 17.82mm;
     padding: 4mm 0 0;
   }
   .fee-reminder-page--2 {
-    gap: 31mm;
+    gap: 25.11mm;
   }
   .fee-reminder-page--3 {
-    gap: 1.1in;
+    gap: 0.891in;
   }
   .fee-reminder-page:last-child {
     page-break-after: auto;
@@ -336,7 +336,7 @@ const PRINT_WINDOW_CSS = `
       print-color-adjust: exact !important;
     }
     .fee-reminder-page--3 {
-      gap: 1.1in;
+      gap: 0.891in;
       page-break-inside: avoid;
       break-inside: avoid-page;
     }

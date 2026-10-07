@@ -38,6 +38,27 @@ function noticeAmount(row, includeFunds) {
   return tf + (includeFunds ? funds : 0)
 }
 
+function normalizeStudentId(value) {
+  const n = Number(value)
+  return Number.isFinite(n) && n > 0 ? n : null
+}
+
+function sortRowsByRegId(items) {
+  return [...items].sort((a, b) => {
+    const idA = normalizeStudentId(a.studentId) ?? 0
+    const idB = normalizeStudentId(b.studentId) ?? 0
+    return idA - idB
+  })
+}
+
+function defaultSelectedIds(items) {
+  return new Set(
+    items
+      .map((r) => normalizeStudentId(r.studentId))
+      .filter((id) => id != null),
+  )
+}
+
 function FeeReminderNoticePage() {
   const [step, setStep] = useState(0)
   const [templates, setTemplates] = useState([])
@@ -98,22 +119,21 @@ function FeeReminderNoticePage() {
     setIsLoadingClass(true)
     try {
       const data = await getFeeReminderClassBalances(trimmed)
-      const items = (Array.isArray(data?.items) ? data.items : [])
-        .map((row) => ({
-          studentId: row.studentId ?? row.StudentId,
-          studentName: row.studentName ?? row.StudentName ?? 'N/A',
-          className: row.className ?? row.ClassName,
-          tuitionBalance: row.tuitionBalance ?? row.TuitionBalance ?? 0,
-          fundsBalance: row.fundsBalance ?? row.FundsBalance ?? 0,
-          isAbsentToday: Boolean(row.isAbsentToday ?? row.IsAbsentToday),
-        }))
-        .filter((row) => Number(row.tuitionBalance) !== 0 || Number(row.fundsBalance) !== 0)
-      setRows(items)
-      setSelectedIds(
-        new Set(
-          items.filter((r) => r.studentId && !r.isAbsentToday).map((r) => r.studentId),
-        ),
+      const items = sortRowsByRegId(
+        (Array.isArray(data?.items) ? data.items : [])
+          .map((row) => ({
+            studentId: normalizeStudentId(row.studentId ?? row.StudentId),
+            studentName: row.studentName ?? row.StudentName ?? 'N/A',
+            className: row.className ?? row.ClassName,
+            tuitionBalance: row.tuitionBalance ?? row.TuitionBalance ?? 0,
+            fundsBalance: row.fundsBalance ?? row.FundsBalance ?? 0,
+            isAbsentToday: Boolean(row.isAbsentToday ?? row.IsAbsentToday),
+          }))
+          .filter((row) => row.studentId != null)
+          .filter((row) => Number(row.tuitionBalance) !== 0 || Number(row.fundsBalance) !== 0),
       )
+      setRows(items)
+      setSelectedIds(defaultSelectedIds(items))
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Could not load students for this class.')
       setRows([])
@@ -143,10 +163,12 @@ function FeeReminderNoticePage() {
   }
 
   const toggleRow = (id) => {
+    const key = normalizeStudentId(id)
+    if (key == null) return
     setSelectedIds((prev) => {
       const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
       return next
     })
   }
@@ -187,6 +209,9 @@ function FeeReminderNoticePage() {
 
   const goNext = () => {
     if (step >= STEPS.length - 1 || !canGoNext) return
+    if (step === 0 && rows.length > 0 && selectedIds.size === 0) {
+      setSelectedIds(defaultSelectedIds(rows))
+    }
     setStep(step + 1)
   }
 
