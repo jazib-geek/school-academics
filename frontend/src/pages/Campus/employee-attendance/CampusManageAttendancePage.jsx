@@ -99,6 +99,13 @@ const toTimeInputValue = (value) => {
   return /^\d{2}:\d{2}$/.test(short) ? short : ''
 }
 
+const MARK_PRESENT_REQUEST_KIND = 'MarkPresent'
+
+function isMarkPresentRequestKind(kind) {
+  const key = String(kind || '').toLowerCase().replace(/_/g, '')
+  return key === 'markpresent'
+}
+
 const formatTime12Hour = (value) => {
   if (!value || typeof value !== 'string') return '—'
   const short = value.length >= 5 ? value.slice(0, 5) : value
@@ -241,6 +248,8 @@ function CampusManageAttendancePage() {
   const [isDeleting, setIsDeleting] = useState(false)
 
   const [markOpen, setMarkOpen] = useState(false)
+  const [markRequestMode, setMarkRequestMode] = useState(false)
+  const [markRequestReason, setMarkRequestReason] = useState('')
   const [markSelectedIds, setMarkSelectedIds] = useState(() => new Set())
   const [markRowTimes, setMarkRowTimes] = useState({})
   const [markGridSearch, setMarkGridSearch] = useState('')
@@ -367,9 +376,19 @@ function CampusManageAttendancePage() {
     })
   }, [missingEmployees, markGridSearch])
 
-  const markVisibleIds = useMemo(
-    () => markGridEmployees.map((emp) => emp.employeeId),
+  const markSelectableEmployees = useMemo(
+    () => markGridEmployees.filter((emp) => !emp.pendingMarkPresentRequestId),
     [markGridEmployees],
+  )
+
+  const missingSelectableCount = useMemo(
+    () => missingEmployees.filter((emp) => !emp.pendingMarkPresentRequestId).length,
+    [missingEmployees],
+  )
+
+  const markVisibleIds = useMemo(
+    () => markSelectableEmployees.map((emp) => emp.employeeId),
+    [markSelectableEmployees],
   )
 
   const markAllVisibleSelected =
@@ -558,6 +577,20 @@ function CampusManageAttendancePage() {
 
   const openMarkPresent = () => {
     if (!canEdit) return
+    setMarkRequestMode(false)
+    setMarkRequestReason('')
+    setMarkSelectedIds(new Set())
+    setMarkRowTimes({})
+    setMarkGridSearch('')
+    setMarkCheckIn('07:00')
+    setMarkCheckOut('')
+    setMarkOpen(true)
+  }
+
+  const openRequestMarkPresent = () => {
+    if (!canRequest || canEdit) return
+    setMarkRequestMode(true)
+    setMarkRequestReason('')
     setMarkSelectedIds(new Set())
     setMarkRowTimes({})
     setMarkGridSearch('')
@@ -569,6 +602,8 @@ function CampusManageAttendancePage() {
   const closeMarkPresent = () => {
     if (isSavingMark) return
     setMarkOpen(false)
+    setMarkRequestMode(false)
+    setMarkRequestReason('')
   }
 
   const applyMarkTimesToIds = (ids, checkIn, checkOut) => {
@@ -625,6 +660,8 @@ function CampusManageAttendancePage() {
   }
 
   const toggleMarkEmployee = (employeeId) => {
+    const emp = missingEmployees.find((row) => row.employeeId === employeeId)
+    if (emp?.pendingMarkPresentRequestId) return
     const isSelected = markSelectedIds.has(employeeId)
     setMarkSelectedIds((current) => {
       const next = new Set(current)
@@ -674,8 +711,70 @@ function CampusManageAttendancePage() {
     }
   }
 
+  const submitMarkPresentRequest = async (event) => {
+    event.preventDefault()
+    if (!canRequest || canEdit) return
+    const reason = markRequestReason.trim()
+    if (!reason) {
+      toast.error('Please provide a reason for this request.')
+      return
+    }
+    const selectedIds = [...markSelectedIds]
+    if (selectedIds.length === 0) {
+      toast.error('Select at least one employee.')
+      return
+    }
+    const missingCheckIn = selectedIds.some((id) => !(markRowTimes[id]?.checkIn || '').trim())
+    if (missingCheckIn) {
+      toast.error('Enter a check-in time for each selected employee.')
+      return
+    }
+    setIsSavingMark(true)
+    try {
+      const results = await Promise.allSettled(
+        selectedIds.map((employeeId) => {
+          const times = markRowTimes[employeeId] || {}
+          return submitEmployeeAttendanceChangeRequest({
+            requestKind: MARK_PRESENT_REQUEST_KIND,
+            employeeId,
+            attendanceDate: dateValue,
+            proposedCheckInTime: times.checkIn,
+            proposedCheckOutTime: times.checkOut || null,
+            reason,
+          })
+        }),
+      )
+      const submittedCount = results.filter((result) => result.status === 'fulfilled').length
+      const failedCount = results.length - submittedCount
+      if (submittedCount === 0) {
+        const firstError = results.find((result) => result.status === 'rejected')?.reason
+        toast.error(firstError?.response?.data?.message || 'Could not submit request.')
+      } else if (failedCount > 0) {
+        toast.success(
+          `Submitted ${submittedCount} request${submittedCount === 1 ? '' : 's'}. ${failedCount} could not be sent.`,
+        )
+        setMarkOpen(false)
+        await loadDay()
+      } else {
+        toast.success(
+          submittedCount === 1
+            ? 'Change request submitted.'
+            : `Submitted ${submittedCount} change requests.`,
+        )
+        setMarkOpen(false)
+        await loadDay()
+      }
+    } finally {
+      setIsSavingMark(false)
+    }
+  }
+
   const submitMarkPresent = async (event) => {
     event.preventDefault()
+    if (markRequestMode) {
+      await submitMarkPresentRequest(event)
+      return
+    }
     if (!canEdit) return
     const selectedIds = [...markSelectedIds]
     if (selectedIds.length === 0) {
@@ -1099,7 +1198,7 @@ function CampusManageAttendancePage() {
                   <h1 className="text-2xl font-bold text-slate-800">Manage Attendance</h1>
                   <p className="text-sm text-slate-500">
                     {canRequest && !canEdit
-                      ? 'Search by date to request check-in or check-out corrections. An approver will review before times are updated.'
+                      ? 'Search by date to request check-in or check-out corrections, or to request marking present for staff who have not checked in. An approver will review before times are updated.'
                       : 'Search by date to edit times, mark present, backfill dates, mark holiday, adjust duty times, or review changes.'}
                   </p>
                 </div>
@@ -1149,6 +1248,24 @@ function CampusManageAttendancePage() {
                   </button>
                 </div>
               </PermissionControl>
+              {canRequest && !canEdit ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={openRequestMarkPresent}
+                    disabled={missingSelectableCount === 0 || isLoading}
+                    title={
+                      missingSelectableCount === 0
+                        ? 'Everyone already has a check-in or a pending request for this date.'
+                        : undefined
+                    }
+                    className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+                  >
+                    <UserCheck className="h-4 w-4" />
+                    Request mark present
+                  </button>
+                </div>
+              ) : null}
             </div>
 
             <div className="grid gap-3 lg:grid-cols-[220px_1fr_auto] lg:items-end">
@@ -1610,10 +1727,31 @@ function CampusManageAttendancePage() {
                         <td className="px-3 py-1.5">
                           <p className="font-semibold text-slate-900">{row.employeeName}</p>
                           <p className="text-[11px] text-slate-500">#{row.employeeId}</p>
+                          {isMarkPresentRequestKind(row.requestKind) ? (
+                            <span className="mt-1 inline-block rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-emerald-800">
+                              Mark present
+                            </span>
+                          ) : (
+                            <span className="mt-1 inline-block rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-slate-600">
+                              Time change
+                            </span>
+                          )}
                         </td>
                         <td className="px-3 py-1.5 font-mono text-xs text-slate-700">
-                          <div>IN {formatTime12Hour(row.currentCheckInTime)}</div>
-                          <div>OUT {formatTime12Hour(row.currentCheckOutTime)}</div>
+                          <div>
+                            IN{' '}
+                            {isMarkPresentRequestKind(row.requestKind) &&
+                            !row.currentCheckInTime
+                              ? '—'
+                              : formatTime12Hour(row.currentCheckInTime)}
+                          </div>
+                          <div>
+                            OUT{' '}
+                            {isMarkPresentRequestKind(row.requestKind) &&
+                            !row.currentCheckOutTime
+                              ? '—'
+                              : formatTime12Hour(row.currentCheckOutTime)}
+                          </div>
                         </td>
                         <td className="px-3 py-1.5 font-mono text-xs font-semibold text-slate-900">
                           <div>IN {formatTime12Hour(row.proposedCheckInTime)}</div>
@@ -1825,7 +1963,7 @@ function CampusManageAttendancePage() {
             <div className="flex items-start justify-between border-b border-slate-100 px-5 py-4">
               <div>
                 <h2 id="mark-present-title" className="text-lg font-bold text-slate-900">
-                  Mark present
+                  {markRequestMode ? 'Request mark present' : 'Mark present'}
                 </h2>
                 <p className="mt-0.5 text-sm text-slate-500">For {dateValue}</p>
               </div>
@@ -1865,6 +2003,20 @@ function CampusManageAttendancePage() {
                     ? 'Choose staff on the right.'
                     : `Applies to ${markSelectedIds.size} selected`}
                 </p>
+                {markRequestMode ? (
+                  <label className="block text-xs font-semibold uppercase text-slate-500">
+                    Reason
+                    <textarea
+                      className={`${inputClass} mt-1 min-h-[72px] resize-y`}
+                      value={markRequestReason}
+                      onChange={(e) => setMarkRequestReason(e.target.value)}
+                      disabled={isSavingMark}
+                      placeholder="Why should these times be recorded?"
+                      maxLength={500}
+                      required
+                    />
+                  </label>
+                ) : null}
               </div>
 
               <div className="flex min-h-0 flex-col px-5 py-5">
@@ -1914,23 +2066,31 @@ function CampusManageAttendancePage() {
                       </thead>
                       <tbody>
                         {markGridEmployees.map((emp) => {
+                          const pendingRequest = Boolean(emp.pendingMarkPresentRequestId)
                           const selected = markSelectedIds.has(emp.employeeId)
                           const times = markRowTimes[emp.employeeId]
                           return (
                             <tr
                               key={emp.employeeId}
                               className={`border-t border-slate-100 ${
-                                selected ? 'bg-emerald-50' : 'cursor-pointer bg-white hover:bg-slate-50'
+                                pendingRequest
+                                  ? 'bg-slate-50 opacity-70'
+                                  : selected
+                                    ? 'bg-emerald-50'
+                                    : 'cursor-pointer bg-white hover:bg-slate-50'
                               }`}
                               onClick={() =>
-                                !selected && !isSavingMark && toggleMarkEmployee(emp.employeeId)
+                                !pendingRequest &&
+                                !selected &&
+                                !isSavingMark &&
+                                toggleMarkEmployee(emp.employeeId)
                               }
                             >
                               <td className="px-3 py-1.5" onClick={(e) => e.stopPropagation()}>
                                 <input
                                   type="checkbox"
                                   checked={selected}
-                                  disabled={isSavingMark}
+                                  disabled={isSavingMark || pendingRequest}
                                   onChange={() => toggleMarkEmployee(emp.employeeId)}
                                   aria-label={`Select ${emp.employeeName || emp.employeeId}`}
                                   className="h-3.5 w-3.5 rounded border-slate-300"
@@ -1941,6 +2101,9 @@ function CampusManageAttendancePage() {
                                   {emp.employeeName || '—'}
                                 </p>
                                 <p className="text-[11px] text-slate-500">#{emp.employeeId}</p>
+                                {pendingRequest ? (
+                                  <p className="text-[11px] font-medium text-violet-700">Request pending</p>
+                                ) : null}
                               </td>
                               <td className="px-3 py-1.5" onClick={(e) => e.stopPropagation()}>
                                 {selected ? (
@@ -2001,13 +2164,21 @@ function CampusManageAttendancePage() {
               </button>
               <button
                 type="submit"
-                disabled={isSavingMark || markSelectedIds.size === 0}
+                disabled={
+                  isSavingMark ||
+                  markSelectedIds.size === 0 ||
+                  (markRequestMode && !markRequestReason.trim())
+                }
                 className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
               >
                 {isSavingMark ? <Loader2 size={16} className="animate-spin" /> : <UserCheck size={16} />}
-                {markSelectedIds.size > 1
-                  ? `Save (${markSelectedIds.size})`
-                  : 'Save'}
+                {markRequestMode
+                  ? markSelectedIds.size > 1
+                    ? `Submit request (${markSelectedIds.size})`
+                    : 'Submit request'
+                  : markSelectedIds.size > 1
+                    ? `Save (${markSelectedIds.size})`
+                    : 'Save'}
               </button>
             </div>
           </form>
