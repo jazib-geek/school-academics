@@ -4,6 +4,7 @@ import Select from 'react-select'
 import {
   CalendarDays,
   CalendarPlus,
+  ClipboardCheck,
   ClipboardList,
   Clock,
   Fingerprint,
@@ -467,6 +468,20 @@ function CampusManageAttendancePage() {
     if (!canEdit) return
     setReviewOpen(true)
     void loadPendingChangeRequests()
+  }
+
+  const openReviewForEntry = async (entry) => {
+    if (!canEdit || !entry?.pendingChangeRequestId) return
+    const requestId = entry.pendingChangeRequestId
+    setReviewOpen(true)
+    const items = await loadPendingChangeRequests()
+    const match = items.find((row) => row.id === requestId)
+    if (match) {
+      setHighlightRequestId(requestId)
+      window.setTimeout(() => setHighlightRequestId(null), 2500)
+      return
+    }
+    toast.error('Could not open this change request. Refresh and try again.')
   }
 
   const closeReview = () => {
@@ -1292,21 +1307,33 @@ function CampusManageAttendancePage() {
                         </td>
                         <td className="px-3 py-1.5">
                           <div className="flex items-center justify-end gap-1">
-                            <PermissionControl permission="request_emp_attendance_change">
+                            {canRequest && !canEdit ? (
+                              <PermissionControl permission="request_emp_attendance_change">
+                                <button
+                                  type="button"
+                                  title={
+                                    entry.pendingChangeRequestId
+                                      ? 'Change request pending'
+                                      : 'Request change'
+                                  }
+                                  disabled={Boolean(entry.pendingChangeRequestId)}
+                                  onClick={() => openRequest(entry)}
+                                  className="btn-icon-soft disabled:opacity-40"
+                                >
+                                  <Send size={14} />
+                                </button>
+                              </PermissionControl>
+                            ) : null}
+                            {canEdit && entry.pendingChangeRequestId ? (
                               <button
                                 type="button"
-                                title={
-                                  entry.pendingChangeRequestId
-                                    ? 'Change request pending'
-                                    : 'Request change'
-                                }
-                                disabled={Boolean(entry.pendingChangeRequestId)}
-                                onClick={() => openRequest(entry)}
-                                className="btn-icon-soft disabled:opacity-40"
+                                title="Review change request"
+                                onClick={() => void openReviewForEntry(entry)}
+                                className="btn-icon-soft text-violet-800 ring-1 ring-violet-200"
                               >
-                                <Send size={14} />
+                                <ClipboardCheck size={14} />
                               </button>
-                            </PermissionControl>
+                            ) : null}
                             <PermissionControl permission="edit_emp_attendance">
                               <button
                                 type="button"
