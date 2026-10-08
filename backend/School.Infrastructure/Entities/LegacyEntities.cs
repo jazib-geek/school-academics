@@ -28,6 +28,7 @@ public class Account
     public DateTime? CreationDate { get; set; }
     public decimal? OpeningBalance { get; set; }
     public string? EntryUser { get; set; }
+    public bool IsSystem { get; set; }
 }
 public class AssignmentMaster { public int ID { get; set; } }
 public class AssignmentSubmission { public int ID { get; set; } }

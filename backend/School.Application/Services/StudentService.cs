@@ -15,17 +15,20 @@ public class StudentService : IStudentService
     private readonly TenantContext _tenantContext;
     private readonly IActivityLogService _activityLogService;
     private readonly ICampusNotificationService _notificationService;
+    private readonly IStudentSecurityDepositService _securityDepositService;
 
     public StudentService(
         AppDbContext context,
         TenantContext tenantContext,
         IActivityLogService activityLogService,
-        ICampusNotificationService notificationService)
+        ICampusNotificationService notificationService,
+        IStudentSecurityDepositService securityDepositService)
     {
         _context = context;
         _tenantContext = tenantContext;
         _activityLogService = activityLogService;
         _notificationService = notificationService;
+        _securityDepositService = securityDepositService;
     }
 
     public async Task<PagedResultDto<StudentListItemDto>> GetStudentsAsync(StudentListFilterDto filter)
@@ -454,6 +457,7 @@ public class StudentService : IStudentService
 
         _context.FeeAndFundCollections.AddRange(insertedRows);
         await _context.SaveChangesAsync();
+        await _securityDepositService.RecordDepositsFromReceiveAsync(insertedRows, receivedBy);
         await transaction.CommitAsync();
 
         var response = new ReceiveStudentFeeResponseDto
@@ -669,7 +673,7 @@ public class StudentService : IStudentService
             .ToListAsync(cancellationToken);
 
         var fundTypes = await _context.FundTypes.AsNoTracking()
-            .Where(x => x.ID >= 2 && x.ID <= 5 && x.FundTypeName != null)
+            .Where(x => CampusFundTypes.AdmissionAnnualFundTypeIds.Contains(x.ID) && x.FundTypeName != null)
             .OrderBy(x => x.ID)
             .Select(x => new IdNameDto { Id = x.ID, Name = x.FundTypeName! })
             .ToListAsync(cancellationToken);
@@ -868,9 +872,10 @@ public class StudentService : IStudentService
 
         await _context.SaveChangesAsync(cancellationToken);
 
+        var fundTypeIds = new[] { 1, 2, 3, 4, 5, CampusFundTypes.SecurityDeposit };
         var fundTypes = await _context.FundTypes
             .AsNoTracking()
-            .Where(x => x.ID >= 1 && x.ID <= 5)
+            .Where(x => fundTypeIds.Contains(x.ID))
             .ToDictionaryAsync(x => x.ID, x => x.FundTypeName ?? $"Fund {x.ID}", cancellationToken);
 
         var fundsGenerated = false;
@@ -887,8 +892,8 @@ public class StudentService : IStudentService
                 nextRegId, section.ID, section.BranchID ?? 1, 4, 0, fundYear,
                 request.PrevBalance, fundTypes.GetValueOrDefault(4, "Prev Balance"), now, cancellationToken);
             await UpsertGeneratedFundAsync(
-                nextRegId, section.ID, section.BranchID ?? 1, 5, 0, fundYear,
-                request.TransportCharges, fundTypes.GetValueOrDefault(5, "Transport Charges"), now, cancellationToken);
+                nextRegId, section.ID, section.BranchID ?? 1, CampusFundTypes.SecurityDeposit, 0, fundYear,
+                request.SecurityDeposit, fundTypes.GetValueOrDefault(CampusFundTypes.SecurityDeposit, "Security Deposit"), now, cancellationToken);
             fundsGenerated = true;
         }
 
@@ -951,8 +956,8 @@ public class StudentService : IStudentService
             .AsNoTracking()
             .Where(x => x.StudentID == studentId
                         && x.FundTypeID != null
-                        && x.FundTypeID >= 2
-                        && x.FundTypeID <= 5
+                        && (CampusFundTypes.AdmissionAnnualFundTypeIds.Contains(x.FundTypeID!.Value)
+                             || x.FundTypeID == 5)
                         && x.Payment > 0)
             .Select(x => new { FundTypeId = x.FundTypeID!.Value, x.Year, x.Month, x.Payment })
             .ToListAsync(cancellationToken);
@@ -1053,7 +1058,7 @@ public class StudentService : IStudentService
             AdmissionFee = FundAmount(2),
             MiscCharges = FundAmount(3),
             PrevBalance = FundAmount(4),
-            TransportCharges = FundAmount(5)
+            SecurityDeposit = FundAmount(CampusFundTypes.SecurityDeposit)
         };
     }
 

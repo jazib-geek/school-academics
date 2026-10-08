@@ -13,11 +13,16 @@ public class StudentController : ControllerBase
 {
     private readonly IStudentLedgerService _ledgerService;
     private readonly IStudentService _studentService;
+    private readonly IStudentSecurityDepositService _securityDepositService;
 
-    public StudentController(IStudentLedgerService ledgerService, IStudentService studentService)
+    public StudentController(
+        IStudentLedgerService ledgerService,
+        IStudentService studentService,
+        IStudentSecurityDepositService securityDepositService)
     {
         _ledgerService = ledgerService;
         _studentService = studentService;
+        _securityDepositService = securityDepositService;
     }
 
     [HttpGet]
@@ -312,6 +317,51 @@ public class StudentController : ControllerBase
             return NotFound(ApiResponse<object>.FailureResponse(ex.Message));
         }
         catch (ArgumentException ex)
+        {
+            return BadRequest(ApiResponse<object>.FailureResponse(ex.Message));
+        }
+    }
+
+    [HttpGet("{studentId:int}/security-deposit")]
+    public async Task<IActionResult> GetSecurityDepositSummary(int studentId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _securityDepositService.GetSummaryAsync(studentId, cancellationToken);
+            return Ok(ApiResponse<StudentSecurityDepositSummaryDto>.SuccessResponse(result));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiResponse<object>.FailureResponse(ex.Message));
+        }
+    }
+
+    [HttpPost("{studentId:int}/security-deposit/refund")]
+    public async Task<IActionResult> RefundSecurityDeposit(
+        int studentId,
+        [FromBody] RefundStudentSecurityDepositRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            int? userId = int.TryParse(User.FindFirst("FamilyDbId")?.Value, out var parsedUserId)
+                ? parsedUserId
+                : null;
+
+            var result = await _securityDepositService.RefundAsync(
+                studentId,
+                request,
+                userId,
+                cancellationToken);
+            return Ok(ApiResponse<RefundStudentSecurityDepositResultDto>.SuccessResponse(
+                result,
+                "Security deposit refunded."));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiResponse<object>.FailureResponse(ex.Message));
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
         {
             return BadRequest(ApiResponse<object>.FailureResponse(ex.Message));
         }

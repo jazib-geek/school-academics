@@ -10,16 +10,22 @@ namespace School.Application.Services;
 
 public class FundGenerateService : IFundGenerateService
 {
-    private static readonly int[] AnnualFundTypeIds = [2, 3, 4, 5];
+    private static readonly int[] AnnualFundTypeIds = [2, 3, 4, 5, CampusFundTypes.SecurityDeposit];
 
     private readonly AppDbContext _context;
     private readonly IActivityLogService _activityLogService;
+    private readonly IStudentSecurityDepositService _securityDepositService;
 
-    public FundGenerateService(AppDbContext context, IActivityLogService activityLogService)
+    public FundGenerateService(
+        AppDbContext context,
+        IActivityLogService activityLogService,
+        IStudentSecurityDepositService securityDepositService)
     {
         _context = context;
         _activityLogService = activityLogService;
+        _securityDepositService = securityDepositService;
     }
+
 
     public async Task<StudentFundAmountsDto> GetStudentFundsAsync(
         int studentId,
@@ -95,6 +101,13 @@ public class FundGenerateService : IFundGenerateService
         {
             if (item.Amount < 0)
                 throw new ArgumentException("Fund amounts cannot be negative.");
+
+            if (item.FundTypeId == CampusFundTypes.SecurityDeposit && item.Amount > 0)
+            {
+                await _securityDepositService.EnsureCanGenerateSecurityChargeAsync(
+                    student.Reg_Id,
+                    cancellationToken);
+            }
 
             typeNames.TryGetValue(item.FundTypeId, out var typeName);
             typeName ??= $"Fund {item.FundTypeId}";

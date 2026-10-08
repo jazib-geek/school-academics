@@ -14,6 +14,8 @@ public interface ISystemAccountResolver
     Task<AccountLookupDto?> GetCashInHandAsync(CancellationToken cancellationToken = default);
 
     Task<AccountLookupDto?> GetOwnerDrawingsAsync(CancellationToken cancellationToken = default);
+
+    Task<string?> GetSecurityDepositRefundsAccountIdAsync(CancellationToken cancellationToken = default);
 }
 
 public interface IAccountChartService

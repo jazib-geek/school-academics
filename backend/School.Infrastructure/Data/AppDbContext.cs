@@ -160,6 +160,7 @@ public class AppDbContext : DbContext
     public DbSet<AbsentStudentFollowup> AbsentStudentFollowups => Set<AbsentStudentFollowup>();
     public DbSet<AbsentFollowupReason> AbsentFollowupReasons => Set<AbsentFollowupReason>();
     public DbSet<FeeReminderNoticeTemplate> FeeReminderNoticeTemplates => Set<FeeReminderNoticeTemplate>();
+    public DbSet<StudentSecurityDepositEvent> StudentSecurityDepositEvents => Set<StudentSecurityDepositEvent>();
     public DbSet<StationeryItem> StationeryItems => Set<StationeryItem>();
     public DbSet<StationeryPurchase> StationeryPurchases => Set<StationeryPurchase>();
     public DbSet<StationeryPurchaseLine> StationeryPurchaseLines => Set<StationeryPurchaseLine>();
@@ -587,6 +588,7 @@ public class AppDbContext : DbContext
             entity.Property(e => e.AccountTitle).HasColumnType("nvarchar(max)");
             entity.Property(e => e.OpeningBalance).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.EntryUser).HasMaxLength(50);
+            entity.Property(e => e.IsSystem).IsRequired().HasDefaultValue(false);
         });
         modelBuilder.Entity<AccountSubGroup>(entity =>
         {
@@ -1138,6 +1140,7 @@ public class AppDbContext : DbContext
         modelBuilder.ApplyConfiguration(new EmployeeAttendanceChangeRequestConfiguration());
         modelBuilder.ApplyConfiguration(new AbsentFollowupReasonConfiguration());
         modelBuilder.ApplyConfiguration(new FeeReminderNoticeTemplateConfiguration());
+        modelBuilder.ApplyConfiguration(new StudentSecurityDepositEventConfiguration());
         modelBuilder.ApplyConfiguration(new AbsentStudentFollowupConfiguration());
         modelBuilder.ApplyConfiguration(new StationeryItemConfiguration());
         modelBuilder.ApplyConfiguration(new StationeryPurchaseConfiguration());

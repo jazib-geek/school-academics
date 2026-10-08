@@ -130,7 +130,7 @@ public class StudentRegisterRequestDto
     public decimal AdmissionFee { get; set; }
     public decimal MiscCharges { get; set; }
     public decimal PrevBalance { get; set; }
-    public decimal TransportCharges { get; set; }
+    public decimal SecurityDeposit { get; set; }
 
     public bool GenerateTuitionFee { get; set; }
     public int? TuitionMonth { get; set; }
@@ -205,7 +205,7 @@ public class StudentAdmissionDetailDto
     public decimal AdmissionFee { get; set; }
     public decimal MiscCharges { get; set; }
     public decimal PrevBalance { get; set; }
-    public decimal TransportCharges { get; set; }
+    public decimal SecurityDeposit { get; set; }
 }
 
 /// <summary>

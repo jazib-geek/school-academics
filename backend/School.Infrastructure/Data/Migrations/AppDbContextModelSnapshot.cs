@@ -185,6 +185,11 @@ namespace School.Infrastructure.Data.Migrations
                         .IsUnicode(false)
                         .HasColumnType("varchar(50)");
 
+                    b.Property<bool>("IsSystem")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
                     b.Property<int?>("MasterID")
                         .HasColumnType("int");
 
@@ -6594,6 +6599,64 @@ namespace School.Infrastructure.Data.Migrations
                     b.HasKey("ID");
 
                     b.ToTable("tblStudentLog", "dbo");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.StudentSecurityDepositEvent", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18, 2)");
+
+                    b.Property<DateTime>("CreatedAtPkt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("EntryUser")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("EventDatePkt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<int?>("FeeLedgerRowId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int?>("ReceiptId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SessionYear")
+                        .HasColumnType("int");
+
+                    b.Property<int>("StudentId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("VoucherNo")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FeeLedgerRowId")
+                        .HasDatabaseName("IX_StudentSecurityDepositEvent_FeeLedgerRowId")
+                        .HasFilter("[FeeLedgerRowId] IS NOT NULL");
+
+                    b.HasIndex("StudentId")
+                        .HasDatabaseName("IX_StudentSecurityDepositEvent_StudentId");
+
+                    b.ToTable("tblStudentSecurityDepositEvent", "dbo");
                 });
 
             modelBuilder.Entity("School.Infrastructure.Entities.StudentType", b =>

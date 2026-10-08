@@ -7,12 +7,14 @@ public static class SystemAccountTitles
 {
     public const string CashInHand = "CASH IN HAND";
     public const string OwnerDrawings = "OWNER DRAWINGS";
+    public const string SecurityDepositRefunds = "SECURITY DEPOSIT REFUNDS";
 
     public static readonly IReadOnlySet<string> Reserved = new HashSet<string>(
         StringComparer.OrdinalIgnoreCase)
     {
         CashInHand,
-        OwnerDrawings
+        OwnerDrawings,
+        SecurityDepositRefunds
     };
 
     public static bool IsReserved(string? title) =>

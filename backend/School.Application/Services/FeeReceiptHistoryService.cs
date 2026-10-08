@@ -22,15 +22,18 @@ public class FeeReceiptHistoryService : IFeeReceiptHistoryService
     private readonly AppDbContext _context;
     private readonly TenantContext _tenantContext;
     private readonly IActivityLogService _activityLogService;
+    private readonly IStudentSecurityDepositService _securityDepositService;
 
     public FeeReceiptHistoryService(
         AppDbContext context,
         TenantContext tenantContext,
-        IActivityLogService activityLogService)
+        IActivityLogService activityLogService,
+        IStudentSecurityDepositService securityDepositService)
     {
         _context = context;
         _tenantContext = tenantContext;
         _activityLogService = activityLogService;
+        _securityDepositService = securityDepositService;
     }
 
     public async Task<IReadOnlyList<FeeReceiptHistoryItemDto>> SearchAsync(
@@ -236,10 +239,16 @@ public class FeeReceiptHistoryService : IFeeReceiptHistoryService
         // Snapshot before delete (tracked entities are fine for read of current values).
         var receipt = await BuildReceiptDtoAsync(receiptId, lines, cancellationToken);
         var deletedRowIds = lines.Select(x => x.ID).ToList();
+        var reason = string.IsNullOrWhiteSpace(request.Reason) ? null : request.Reason.Trim();
+
+        var entryUser = await ResolveEntryUserAsync(userId, cancellationToken);
+        await _securityDepositService.ReverseDepositsForRemovedLedgerRowsAsync(
+            lines,
+            entryUser,
+            reason,
+            cancellationToken);
 
         _context.FeeAndFundCollections.RemoveRange(lines);
-
-        var reason = string.IsNullOrWhiteSpace(request.Reason) ? null : request.Reason.Trim();
         await _activityLogService.WriteAsync(
             ActivityLogTypes.FeeReceiptVoid,
             ActivityLogEntityTypes.FeeReceipt,
@@ -370,6 +379,21 @@ public class FeeReceiptHistoryService : IFeeReceiptHistoryService
                     old = oldAmount,
                     @new = newAmount
                 });
+
+                if (line.FundTypeID == CampusFundTypes.SecurityDeposit)
+                {
+                    var entryUser = await ResolveEntryUserAsync(userId, cancellationToken);
+                    await _securityDepositService.AdjustDepositAfterReceiptEditAsync(
+                        line.ID,
+                        studentId,
+                        oldAmount,
+                        newAmount,
+                        line.Date ?? PakistanTime.Today.ToDateTime(TimeOnly.MinValue),
+                        line.Year ?? PakistanTime.Now.Year,
+                        line.RcptID,
+                        entryUser,
+                        cancellationToken);
+                }
             }
         }
 
@@ -686,6 +710,23 @@ public class FeeReceiptHistoryService : IFeeReceiptHistoryService
             .Distinct(StringComparer.OrdinalIgnoreCase);
         var name = string.Join("-", parts).Trim();
         return string.IsNullOrWhiteSpace(name) ? "-" : name;
+    }
+
+    private async Task<string?> ResolveEntryUserAsync(int? userId, CancellationToken cancellationToken)
+    {
+        if (userId.HasValue)
+        {
+            var username = await _context.Users
+                .AsNoTracking()
+                .Where(x => x.ID == userId.Value)
+                .Select(x => x.Username)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (!string.IsNullOrWhiteSpace(username))
+                return username.Trim();
+        }
+
+        return userId?.ToString(CultureInfo.InvariantCulture);
     }
 
     private static string FormatReceiptDescription(int fundTypeId, int month, int year, string fundTypeName)

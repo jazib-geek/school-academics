@@ -119,7 +119,7 @@ public class AccountChartService : IAccountChartService
             SubGroupName = x.SubGroupID != null && subGroups.TryGetValue(x.SubGroupID, out var sn) ? sn : null,
             AccountId = x.AccountID ?? string.Empty,
             AccountTitle = x.AccountTitle ?? string.Empty,
-            IsSystemAccount = SystemAccountTitles.IsReserved(x.AccountTitle)
+            IsSystemAccount = x.IsSystem || SystemAccountTitles.IsReserved(x.AccountTitle)
         }).ToList();
     }
 
@@ -148,7 +148,7 @@ public class AccountChartService : IAccountChartService
                 MasterId = x.MasterID,
                 GroupId = x.GroupID,
                 SubGroupId = x.SubGroupID,
-                IsSystemAccount = SystemAccountTitles.IsReserved(x.AccountTitle)
+                IsSystemAccount = x.IsSystem || SystemAccountTitles.IsReserved(x.AccountTitle)
             })
             .ToList();
     }
@@ -323,7 +323,7 @@ public class AccountChartService : IAccountChartService
         var entity = await _context.Accounts.FirstOrDefaultAsync(x => x.ID == id, cancellationToken)
             ?? throw new KeyNotFoundException("Account not found.");
 
-        if (SystemAccountTitles.IsReserved(entity.AccountTitle))
+        if (entity.IsSystem || SystemAccountTitles.IsReserved(entity.AccountTitle))
             throw new InvalidOperationException("System accounts cannot be renamed.");
 
         var title = NormalizeTitle(request.Title);

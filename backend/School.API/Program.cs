@@ -146,6 +146,7 @@ builder.Services.AddScoped<IFundGenerateService, FundGenerateService>();
 builder.Services.AddScoped<ISmartFeeReportService, SmartFeeReportService>();
 builder.Services.AddScoped<ISmartStudentReportService, SmartStudentReportService>();
 builder.Services.AddScoped<ISmartAttendanceReportService, SmartAttendanceReportService>();
+builder.Services.AddScoped<IStudentSecurityDepositService, StudentSecurityDepositService>();
 builder.Services.AddScoped<ISystemAccountResolver, SystemAccountResolver>();
 builder.Services.AddScoped<IAccountChartService, AccountChartService>();
 builder.Services.AddScoped<IAccountVoucherService, AccountVoucherService>();

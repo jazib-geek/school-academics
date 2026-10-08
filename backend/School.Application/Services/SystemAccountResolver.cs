@@ -9,14 +9,21 @@ namespace School.Application.Services;
 
 public class SystemAccountResolver : ISystemAccountResolver
 {
+    private const string MiscExpendituresSubGroupId = "3-01-012";
+
     private readonly AppDbContext _context;
 
     public SystemAccountResolver(AppDbContext context) => _context = context;
 
     public async Task EnsureSystemAccountsAsync(CancellationToken cancellationToken = default)
     {
-        await EnsureTitleAsync(SystemAccountTitles.CashInHand, preferCapital: false, cancellationToken);
-        await EnsureTitleAsync(SystemAccountTitles.OwnerDrawings, preferCapital: true, cancellationToken);
+        await EnsureTitleAsync(SystemAccountTitles.CashInHand, SystemAccountPlacement.Cash, cancellationToken);
+        await EnsureTitleAsync(SystemAccountTitles.OwnerDrawings, SystemAccountPlacement.Capital, cancellationToken);
+        await EnsureTitleAsync(
+            SystemAccountTitles.SecurityDepositRefunds,
+            SystemAccountPlacement.Expense,
+            cancellationToken);
+        await SyncReservedSystemFlagsAsync(cancellationToken);
     }
 
     public async Task<string?> GetCashInHandAccountIdAsync(CancellationToken cancellationToken = default)
@@ -28,6 +35,12 @@ public class SystemAccountResolver : ISystemAccountResolver
     public async Task<string?> GetOwnerDrawingsAccountIdAsync(CancellationToken cancellationToken = default)
     {
         var account = await FindByTitleAsync(SystemAccountTitles.OwnerDrawings, cancellationToken);
+        return account?.AccountID;
+    }
+
+    public async Task<string?> GetSecurityDepositRefundsAccountIdAsync(CancellationToken cancellationToken = default)
+    {
+        var account = await FindByTitleAsync(SystemAccountTitles.SecurityDepositRefunds, cancellationToken);
         return account?.AccountID;
     }
 
@@ -55,37 +68,15 @@ public class SystemAccountResolver : ISystemAccountResolver
             string.Equals(x.AccountTitle!.Trim(), normalized, StringComparison.OrdinalIgnoreCase));
     }
 
-    private async Task EnsureTitleAsync(string title, bool preferCapital, CancellationToken cancellationToken)
+    private async Task EnsureTitleAsync(
+        string title,
+        SystemAccountPlacement placement,
+        CancellationToken cancellationToken)
     {
         if (await FindByTitleAsync(title, cancellationToken) is not null)
             return;
 
-        AccountSubGroup? subGroup = null;
-
-        if (preferCapital)
-        {
-            subGroup = await _context.AccountSubGroups
-                .AsNoTracking()
-                .Where(x => x.MasterID == 5)
-                .OrderBy(x => x.SubGroupID)
-                .FirstOrDefaultAsync(cancellationToken);
-        }
-
-        if (subGroup is null && !preferCapital)
-        {
-            subGroup = await _context.AccountSubGroups
-                .AsNoTracking()
-                .Where(x => x.SubGroupID != null && x.SubGroupID.StartsWith("1-02"))
-                .OrderBy(x => x.SubGroupID)
-                .FirstOrDefaultAsync(cancellationToken);
-        }
-
-        subGroup ??= await _context.AccountSubGroups
-            .AsNoTracking()
-            .Where(x => x.SubGroupID != null)
-            .OrderBy(x => x.SubGroupID)
-            .FirstOrDefaultAsync(cancellationToken);
-
+        var subGroup = await ResolveSubGroupAsync(placement, cancellationToken);
         if (subGroup?.SubGroupID is null)
             throw new InvalidOperationException(
                 $"Cannot create system account '{title}' because no account subgroup exists.");
@@ -108,10 +99,76 @@ public class SystemAccountResolver : ISystemAccountResolver
             AccountTitle = title,
             EntryUser = "System",
             CreationDate = PakistanTime.Today.ToDateTime(TimeOnly.MinValue),
-            OpeningBalance = 0
+            OpeningBalance = 0,
+            IsSystem = true
         });
 
         await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task<AccountSubGroup?> ResolveSubGroupAsync(
+        SystemAccountPlacement placement,
+        CancellationToken cancellationToken)
+    {
+        switch (placement)
+        {
+            case SystemAccountPlacement.Capital:
+                return await _context.AccountSubGroups
+                    .AsNoTracking()
+                    .Where(x => x.MasterID == 5)
+                    .OrderBy(x => x.SubGroupID)
+                    .FirstOrDefaultAsync(cancellationToken);
+
+            case SystemAccountPlacement.Cash:
+                var cash = await _context.AccountSubGroups
+                    .AsNoTracking()
+                    .Where(x => x.SubGroupID != null && x.SubGroupID.StartsWith("1-02"))
+                    .OrderBy(x => x.SubGroupID)
+                    .FirstOrDefaultAsync(cancellationToken);
+                if (cash is not null)
+                    return cash;
+                break;
+
+            case SystemAccountPlacement.Expense:
+                var misc = await _context.AccountSubGroups
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(
+                        x => x.SubGroupID == MiscExpendituresSubGroupId,
+                        cancellationToken);
+                if (misc is not null)
+                    return misc;
+
+                return await _context.AccountSubGroups
+                    .AsNoTracking()
+                    .Where(x => x.MasterID == 3)
+                    .OrderBy(x => x.SubGroupID)
+                    .FirstOrDefaultAsync(cancellationToken);
+        }
+
+        return await _context.AccountSubGroups
+            .AsNoTracking()
+            .Where(x => x.SubGroupID != null)
+            .OrderBy(x => x.SubGroupID)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    private async Task SyncReservedSystemFlagsAsync(CancellationToken cancellationToken)
+    {
+        var reserved = SystemAccountTitles.Reserved.ToArray();
+        var accounts = await _context.Accounts
+            .Where(x => x.AccountTitle != null)
+            .ToListAsync(cancellationToken);
+
+        foreach (var account in accounts)
+        {
+            if (!SystemAccountTitles.IsReserved(account.AccountTitle) || account.IsSystem)
+                continue;
+
+            account.IsSystem = true;
+        }
+
+        if (_context.ChangeTracker.HasChanges())
+            await _context.SaveChangesAsync(cancellationToken);
     }
 
     private static AccountLookupDto Map(Account account) => new()
@@ -122,6 +179,13 @@ public class SystemAccountResolver : ISystemAccountResolver
         MasterId = account.MasterID,
         GroupId = account.GroupID,
         SubGroupId = account.SubGroupID,
-        IsSystemAccount = SystemAccountTitles.IsReserved(account.AccountTitle)
+        IsSystemAccount = account.IsSystem || SystemAccountTitles.IsReserved(account.AccountTitle)
     };
+
+    private enum SystemAccountPlacement
+    {
+        Cash,
+        Capital,
+        Expense
+    }
 }
