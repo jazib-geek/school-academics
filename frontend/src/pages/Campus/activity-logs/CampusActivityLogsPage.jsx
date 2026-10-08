@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import CampusShell from '../../../components/campus/CampusShell.jsx'
 import { getActivityLogLookups, getActivityLogs } from '../../../services/activityLogService'
 import { getCampusUsers } from '../../../services/campusUserService'
+import { INTEGER_INPUT_ATTRS, readIntegerInput } from '../../../utils/numericInput.js'
 
 const PAGE_SIZE = 25
 
@@ -71,6 +72,11 @@ const FIELD_LABELS = {
   dates: 'Dates',
   unknownEmployeeCodes: 'Unknown employee codes',
   source: 'Source',
+  fundTypeId: 'Fund type',
+  fundTypeName: 'Fund',
+  studentCount: 'Students',
+  period: 'Period',
+  usedStoredTuition: 'Used stored tuition',
   wasCreated: 'Created new',
   time: 'Check-in',
   checkOutTime: 'Check-out',
@@ -154,12 +160,44 @@ function humanizeKey(key) {
     .replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
-function displayValue(value) {
+function formatActivityMoney(value) {
+  const n = Number(value)
+  if (!Number.isFinite(n)) return displayValue(value)
+  return n.toLocaleString('en-PK', { maximumFractionDigits: 0 })
+}
+
+function isFundLinesArray(value) {
+  return (
+    Array.isArray(value) &&
+    value.length > 0 &&
+    value.every(
+      (item) =>
+        item != null &&
+        typeof item === 'object' &&
+        !Array.isArray(item) &&
+        'fundTypeId' in item &&
+        'amount' in item,
+    )
+  )
+}
+
+function isObjectRecordArray(value) {
+  return (
+    Array.isArray(value) &&
+    value.length > 0 &&
+    value.every((item) => item != null && typeof item === 'object' && !Array.isArray(item))
+  )
+}
+
+function displayValue(value, { key } = {}) {
   if (value == null || value === '') return '—'
   if (typeof value === 'boolean') return value ? 'Yes' : 'No'
   if (value === 'true') return 'Yes'
   if (value === 'false') return 'No'
   if (typeof value === 'number') {
+    if (key === 'year' || key === 'month' || (Number.isInteger(value) && value >= 1900 && value <= 2100)) {
+      return String(value)
+    }
     return Number.isInteger(value)
       ? value.toLocaleString()
       : value.toLocaleString(undefined, { maximumFractionDigits: 2 })
@@ -344,12 +382,140 @@ function FactsTable({ rows }) {
           {rows.map((row) => (
             <tr key={row.key}>
               <td className="px-3 py-1.5 font-medium text-slate-800">{row.label}</td>
-              <td className="px-3 py-1.5 text-slate-700">{displayValue(row.value)}</td>
+              <td className="px-3 py-1.5 text-slate-700">{displayValue(row.value, { key: row.key })}</td>
             </tr>
           ))}
         </tbody>
       </table>
     </div>
+  )
+}
+
+function FundLinesTable({ items }) {
+  const rows = Array.isArray(items) ? items : []
+  if (rows.length === 0) {
+    return <p className="text-[13px] text-slate-500">None</p>
+  }
+
+  return (
+    <div className="overflow-x-auto rounded-xl border border-slate-200">
+      <table className="min-w-full text-left text-[13px] leading-snug">
+        <thead className="bg-slate-50 text-slate-600">
+          <tr>
+            <th className="px-3 py-2 font-medium">Fund</th>
+            <th className="px-3 py-2 font-medium text-right">Amount (Rs)</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-100 bg-white">
+          {rows.map((row, index) => {
+            const name =
+              row.name ||
+              row.fundTypeName ||
+              (row.fundTypeId != null ? `Fund ${row.fundTypeId}` : `Line ${index + 1}`)
+            const amount = Number(row.amount) || 0
+            return (
+              <tr key={row.fundTypeId ?? index}>
+                <td className="px-3 py-1.5 font-medium text-slate-800">{name}</td>
+                <td
+                  className={`px-3 py-1.5 text-right tabular-nums ${
+                    amount > 0 ? 'font-semibold text-slate-900' : 'text-slate-500'
+                  }`}
+                >
+                  {formatActivityMoney(amount)}
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function ObjectRecordArrayTable({ items }) {
+  const rows = Array.isArray(items) ? items : []
+  if (rows.length === 0) {
+    return <p className="text-[13px] text-slate-500">None</p>
+  }
+
+  const columnOrder = [
+    'name',
+    'fundTypeName',
+    'description',
+    'amount',
+    'month',
+    'year',
+    'fundTypeId',
+    'className',
+    'voucherNo',
+  ]
+  const allKeys = [...new Set(rows.flatMap((row) => Object.keys(row)))]
+  const columns = [
+    ...columnOrder.filter((key) => allKeys.includes(key)),
+    ...allKeys.filter((key) => !columnOrder.includes(key)),
+  ]
+
+  return (
+    <div className="overflow-x-auto rounded-xl border border-slate-200">
+      <table className="min-w-full text-left text-[13px] leading-snug">
+        <thead className="bg-slate-50 text-slate-600">
+          <tr>
+            {columns.map((col) => (
+              <th key={col} className="px-3 py-2 font-medium">
+                {humanizeKey(col)}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-100 bg-white">
+          {rows.map((row, rowIndex) => (
+            <tr key={rowIndex}>
+              {columns.map((col) => (
+                <td key={col} className="px-3 py-1.5 text-slate-700">
+                  {col === 'amount' ? formatActivityMoney(row[col]) : displayValue(row[col], { key: col })}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function renderActivityListValue(list) {
+  const { key, value } = list
+  if (!Array.isArray(value) || value.length === 0) {
+    return <p className="text-[13px] text-slate-500">None</p>
+  }
+
+  if (value.every((item) => item == null || ['string', 'number', 'boolean'].includes(typeof item))) {
+    return (
+      <div className="flex flex-wrap gap-1.5">
+        {value.map((item, index) => (
+          <span
+            key={`${key}-${index}`}
+            className="inline-flex rounded-md bg-slate-100 px-2 py-0.5 text-[12px] font-medium text-slate-700 ring-1 ring-inset ring-slate-200"
+          >
+            {displayValue(item, { key })}
+          </span>
+        ))}
+      </div>
+    )
+  }
+
+  if (key === 'funds' || isFundLinesArray(value)) {
+    return <FundLinesTable items={value} />
+  }
+
+  if (isObjectRecordArray(value)) {
+    return <ObjectRecordArrayTable items={value} />
+  }
+
+  return (
+    <pre className="overflow-x-auto rounded-xl border border-slate-200 bg-slate-50 p-3 text-[12px] text-slate-700">
+      {JSON.stringify(value, null, 2)}
+    </pre>
   )
 }
 
@@ -439,26 +605,7 @@ function ActivityLogDetailsModal({ row, onClose }) {
           {details.lists.map((list) => (
             <div key={list.key} className="space-y-2">
               <h4 className="text-[12px] font-semibold uppercase tracking-wide text-slate-500">{list.label}</h4>
-              {Array.isArray(list.value) && list.value.length > 0 ? (
-                list.value.every((item) => item == null || ['string', 'number', 'boolean'].includes(typeof item)) ? (
-                  <div className="flex flex-wrap gap-1.5">
-                    {list.value.map((item, index) => (
-                      <span
-                        key={`${list.key}-${index}`}
-                        className="inline-flex rounded-md bg-slate-100 px-2 py-0.5 text-[12px] font-medium text-slate-700 ring-1 ring-inset ring-slate-200"
-                      >
-                        {displayValue(item)}
-                      </span>
-                    ))}
-                  </div>
-                ) : (
-                  <pre className="overflow-x-auto rounded-xl border border-slate-200 bg-slate-50 p-3 text-[12px] text-slate-700">
-                    {JSON.stringify(list.value, null, 2)}
-                  </pre>
-                )
-              ) : (
-                <p className="text-[13px] text-slate-500">None</p>
-              )}
+              {renderActivityListValue(list)}
             </div>
           ))}
 
@@ -647,11 +794,10 @@ function CampusActivityLogsPage() {
               <label className="block text-[12px] font-medium text-slate-600">
                 Record ID
                 <input
-                  type="number"
-                  min="1"
+                  {...INTEGER_INPUT_ATTRS}
                   className={`${inputClass} mt-1`}
                   value={filters.entityId}
-                  onChange={(e) => setFilters((prev) => ({ ...prev, entityId: e.target.value }))}
+                  onChange={(e) => setFilters((prev) => ({ ...prev, entityId: readIntegerInput(e) }))}
                   placeholder="ID"
                 />
               </label>

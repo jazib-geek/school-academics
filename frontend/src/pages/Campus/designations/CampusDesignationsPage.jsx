@@ -12,6 +12,7 @@ import {
   updateDesignation,
 } from '../../../services/designationService'
 import { getStoredCampusProfile, isZkTecoAttendance } from '../../../utils/campusProfile'
+import { INTEGER_INPUT_ATTRS, readIntegerInput } from '../../../utils/numericInput.js'
 
 const emptyForm = {
   name: '',
@@ -361,12 +362,10 @@ function CampusDesignationsPage() {
               <label className="block text-xs font-semibold uppercase text-slate-500">
                 Grace minutes
                 <input
-                  type="number"
-                  min="0"
-                  max="1440"
+                  {...INTEGER_INPUT_ATTRS}
                   className={`${inputClass} mt-1`}
                   value={form.mustCheckinMinutesDifference}
-                  onChange={(event) => setValue('mustCheckinMinutesDifference', event.target.value)}
+                  onChange={(event) => setValue('mustCheckinMinutesDifference', readIntegerInput(event))}
                   placeholder="Optional"
                 />
               </label>

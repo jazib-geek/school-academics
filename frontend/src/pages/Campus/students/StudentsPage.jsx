@@ -13,6 +13,7 @@ import {
   Printer,
   ReceiptText,
   RotateCcw,
+  Shield,
   School,
   UserCheck,
   UserX,
@@ -28,6 +29,7 @@ import {
   getStudentFamilyMembers,
   getStudentFeeBalance,
   getStudentLedger,
+  getStudentSecurityDepositSummary,
   getStudents,
   receiveStudentFee,
   activateStudent,
@@ -47,12 +49,15 @@ import {
 } from '../../../utils/campusProfile'
 import { printFeeReceipts } from '../../../utils/feeReceiptPrint'
 import { FILTER_INPUT_AUTOCOMPLETE_PROPS } from '../../../utils/filterInputProps'
+import { INTEGER_INPUT_ATTRS, readIntegerInput, sanitizeIntegerInput } from '../../../utils/numericInput.js'
 import { clampToPakistanToday, getPakistanTodayIso } from '../../../utils/pakistanDate.js'
+import { getSecurityDepositProfileInfo } from '../../../utils/studentSecurityDepositDisplay.js'
 import { hasCampusPermission } from '../../../services/authService'
 import StudentProfileModal from './StudentProfileModal.jsx'
 import StudentActivityLogsModal from './StudentActivityLogsModal.jsx'
 import StudentAttendanceModal from './StudentAttendanceModal.jsx'
 import StudentConductModal from './StudentConductModal.jsx'
+import SecurityDepositRefundModal from './SecurityDepositRefundModal.jsx'
 
 const initialFilters = {
   class: '',
@@ -682,6 +687,7 @@ const printStudentProfile = ({
   detail,
   ledgerItems,
   includeLedger,
+  securityDeposit,
 }) => {
   if (!detail) return
 
@@ -696,6 +702,7 @@ const printStudentProfile = ({
   const classFee = Number(detail.classFee || 0)
   const tuitionFee = Number(detail.tuitionFee || 0)
   const concession = Number(detail.feeConcession || 0)
+  const securityInfo = getSecurityDepositProfileInfo(securityDeposit, detail)
 
   const field = (label, value, opts = {}) => `
     <div class="field ${opts.wide ? 'wide' : ''}">
@@ -1140,10 +1147,28 @@ const printStudentProfile = ({
                 ${field('Tuition Fee', money(tuitionFee))}
                 ${field('Concession', money(concession))}
               </div>
+              <div class="office-col">
+                ${field('Security Charge', securityInfo.chargeAmount > 0 ? money(securityInfo.chargeAmount) : '—')}
+                ${field('Security Held', securityInfo.held > 0 ? money(securityInfo.held) : '—')}
+                ${field('Security Status', securityInfo.statusLabel)}
+              </div>
               <div class="status-box">
                 <div class="l">Status</div>
                 <div class="status-pill">${isActive ? 'Active' : 'Inactive'}</div>
               </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:10px">
+          <div class="card-title"><span class="ico">●</span> SECURITY DEPOSIT</div>
+          <div class="card-body">
+            <div class="fields">
+              ${field('Status', securityInfo.statusLabel, { wide: true })}
+              ${field('Details', securityInfo.statusDetail, { wide: true })}
+              ${field('Amount held', securityInfo.held > 0 ? money(securityInfo.held) : '—')}
+              ${field('Amount refunded', securityInfo.refunded > 0 ? money(securityInfo.refunded) : '—')}
+              ${field('Charge on file', securityInfo.chargeAmount > 0 ? money(securityInfo.chargeAmount) : '—')}
             </div>
           </div>
         </div>
@@ -1173,6 +1198,7 @@ function StudentsPage() {
   const canAddStudent = hasCampusPermission('add_std')
   const canEditStudent = hasCampusPermission('edit_std')
   const canReceiveFee = hasCampusPermission('submit_fee')
+  const canRefundSecurityDeposit = hasCampusPermission('refund_security_deposit')
   const canReceiveFeePrevDate = hasCampusPermission('submit_fee_prevdate')
   const canViewLedger = hasCampusPermission('trx')
   const canViewLogs = hasCampusPermission('view_activity_logs')
@@ -1215,6 +1241,7 @@ function StudentsPage() {
   const [classOptions, setClassOptions] = useState([])
   const [error, setError] = useState('')
   const [profileModal, setProfileModal] = useState(null)
+  const [securityRefundStudent, setSecurityRefundStudent] = useState(null)
   const [isProfileLoading, setIsProfileLoading] = useState(false)
   const [isProfileLedgerLoading, setIsProfileLedgerLoading] = useState(false)
   const [activationModal, setActivationModal] = useState(null)
@@ -1431,9 +1458,13 @@ function StudentsPage() {
     closeActionMenu()
     setIsProfileLoading(true)
     try {
-      const detail = await getStudentAdmissionDetail(student.reg_Id)
+      const [detail, securityDeposit] = await Promise.all([
+        getStudentAdmissionDetail(student.reg_Id),
+        getStudentSecurityDepositSummary(student.reg_Id).catch(() => null),
+      ])
       setProfileModal({
         detail,
+        securityDeposit,
         ledgerItems: [],
         includeLedger: false,
         ledgerLoaded: false,
@@ -1930,7 +1961,7 @@ function StudentsPage() {
                     pattern="[0-9]*"
                     value={filters.reg_Id}
                     onChange={(event) => {
-                      const digits = event.target.value.replace(/\D/g, '')
+                      const digits = sanitizeIntegerInput(event.target.value)
                       setFilters((previous) => {
                         if (!digits) {
                           return { ...previous, reg_Id: digits }
@@ -2323,6 +2354,7 @@ function StudentsPage() {
       {profileModal ? (
         <StudentProfileModal
           detail={profileModal.detail}
+          securityDeposit={profileModal.securityDeposit}
           ledgerItems={profileModal.ledgerItems}
           includeLedger={profileModal.includeLedger}
           isLedgerLoading={isProfileLedgerLoading}
@@ -2331,6 +2363,7 @@ function StudentsPage() {
           onPrint={() =>
             printStudentProfile({
               detail: profileModal.detail,
+              securityDeposit: profileModal.securityDeposit,
               ledgerItems: profileModal.ledgerItems,
               includeLedger: profileModal.includeLedger,
             })
@@ -2392,6 +2425,20 @@ function StudentsPage() {
               >
                 <ReceiptText size={16} className="shrink-0 text-amber-600" />
                 Receive Fee (Manual)
+              </button>
+            </PermissionControl>
+            <PermissionControl allowed={canRefundSecurityDeposit} className="block w-full">
+              <button
+                type="button"
+                role="menuitem"
+                className="flex w-full cursor-pointer items-center gap-2 whitespace-nowrap px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                onClick={() => {
+                  closeActionMenu()
+                  setSecurityRefundStudent(openActionStudent)
+                }}
+              >
+                <Shield size={16} className="shrink-0 text-violet-600" />
+                Security deposit
               </button>
             </PermissionControl>
             <PermissionControl allowed={canViewLedger} className="block w-full">
@@ -2499,6 +2546,13 @@ function StudentsPage() {
 
       {conductModal ? (
         <StudentConductModal student={conductModal} onClose={closeConduct} />
+      ) : null}
+
+      {securityRefundStudent ? (
+        <SecurityDepositRefundModal
+          student={securityRefundStudent}
+          onClose={() => setSecurityRefundStudent(null)}
+        />
       ) : null}
 
       {whatsAppModal ? (
@@ -2847,16 +2901,13 @@ function StudentsPage() {
                               <td className="px-2 py-1.5 text-right font-semibold text-rose-600">{formatAmount(row.due)}</td>
                               <td className="px-2 py-2">
                                 <input
-                                  type="number"
-                                  min="0"
-                                  max={Number(row.due || 0)}
-                                  step="1"
+                                  {...INTEGER_INPUT_ATTRS}
                                   value={receiveAmounts[key] ?? '0'}
                                   disabled={isFeeSubmitting}
                                   onChange={(event) =>
                                     setReceiveAmounts((previous) => ({
                                       ...previous,
-                                      [key]: validateReceiveAmount(event.target.value, row.due),
+                                      [key]: validateReceiveAmount(readIntegerInput(event), row.due),
                                     }))
                                   }
                                   className="mx-auto block w-full max-w-20 rounded-lg border border-slate-300 px-2 py-2 text-right font-semibold text-slate-800 focus:border-[var(--campus-primary)] focus:outline-none focus:ring-2 focus:ring-[#405189]/15"

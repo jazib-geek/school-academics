@@ -21,10 +21,12 @@ import {
   UserRound,
   Users,
   Wallet,
+  Shield,
   X,
 } from 'lucide-react'
 import { getCampusLabel } from '../../../constants/branding'
 import { getCampusPrintMeta } from '../../../utils/campusProfile'
+import { getSecurityDepositProfileInfo } from '../../../utils/studentSecurityDepositDisplay.js'
 
 const dash = (value) => {
   if (value == null || value === '') return '—'
@@ -205,6 +207,7 @@ function QuickAttr({ icon: Icon, label, value, className = '', compact = false, 
 
 export default function StudentProfileModal({
   detail,
+  securityDeposit = null,
   ledgerItems = [],
   includeLedger = false,
   isLedgerLoading = false,
@@ -213,6 +216,16 @@ export default function StudentProfileModal({
   onPrint,
 }) {
   if (!detail) return null
+
+  const securityInfo = getSecurityDepositProfileInfo(securityDeposit, detail)
+  const securityToneClass =
+    securityInfo.tone === 'held'
+      ? 'border-emerald-200 bg-emerald-50/80'
+      : securityInfo.tone === 'pending'
+        ? 'border-amber-200 bg-amber-50/80'
+        : securityInfo.tone === 'refunded'
+          ? 'border-slate-200 bg-slate-50'
+          : 'border-violet-100 bg-violet-50/40'
 
   const campusCode = localStorage.getItem('campus') || ''
   const printMeta = getCampusPrintMeta()
@@ -476,6 +489,29 @@ export default function StudentProfileModal({
                   >
                     {isActive ? 'Active' : 'Inactive'}
                   </span>
+                </div>
+              </div>
+              <div className={`mt-4 rounded-xl border px-3.5 py-3 ${securityToneClass}`}>
+                <div className="flex flex-wrap items-start gap-2">
+                  <Shield size={16} className="mt-0.5 shrink-0 text-violet-700" aria-hidden="true" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-violet-800">
+                      Security deposit
+                    </p>
+                    <p className="mt-0.5 text-sm font-bold text-slate-900">{securityInfo.statusLabel}</p>
+                    <p className="mt-1 text-[12px] leading-snug text-slate-600">{securityInfo.statusDetail}</p>
+                    <div className="mt-2 flex flex-wrap gap-3 text-[11px] font-semibold text-slate-700">
+                      {securityInfo.chargeAmount > 0 ? (
+                        <span>Charge: {formatAmount(securityInfo.chargeAmount)}</span>
+                      ) : null}
+                      {securityInfo.held > 0 ? (
+                        <span className="text-emerald-800">Held: {formatAmount(securityInfo.held)}</span>
+                      ) : null}
+                      {securityInfo.refunded > 0 ? (
+                        <span>Refunded: {formatAmount(securityInfo.refunded)}</span>
+                      ) : null}
+                    </div>
+                  </div>
                 </div>
               </div>
             </SectionCard>

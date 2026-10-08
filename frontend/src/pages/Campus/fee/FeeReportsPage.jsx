@@ -41,6 +41,7 @@ import Select from 'react-select'
 import Chart from 'chart.js/auto'
 import CampusShell from '../../../components/campus/CampusShell.jsx'
 import { FEE_REPORT_PERMISSIONS } from '../../../constants/campusPermissions.js'
+import { SECURITY_DEPOSIT_FUND_TYPE_ID } from '../../../constants/campusFundTypes.js'
 import { getCampusFundTypes, hasCampusPermission } from '../../../services/authService'
 import { getCampusPrintMeta } from '../../../utils/campusProfile'
 import { amountToWordsPk } from '../../../utils/amountToWordsPk'
@@ -192,7 +193,11 @@ const COLLECTION_SUMMARY_COLUMNS = [
   { label: 'Admission Fee', fundTypeIds: [], nameMatchers: ['admission'] },
   { label: 'Misc Charges', fundTypeIds: [], nameMatchers: ['misc'] },
   { label: 'Prev Balance', fundTypeIds: [], nameMatchers: ['prev', 'previous', 'balance'] },
-  { label: 'Transport Charges', fundTypeIds: [], nameMatchers: ['transport'] },
+  {
+    label: 'Security Deposit',
+    fundTypeIds: [SECURITY_DEPOSIT_FUND_TYPE_ID],
+    nameMatchers: ['security deposit', 'security'],
+  },
 ]
 
 const money = (value) =>
@@ -376,6 +381,46 @@ const printCellStyle = (key, format, columnCount) => {
     textAlign,
     ...(isPrintMoneyColumn(key, format) ? { fontWeight: 700 } : null),
     whiteSpace: width && parseFloat(width) <= 11 ? 'nowrap' : undefined,
+  }
+}
+
+/** Fee collection on date / interval — fixed layout so IDs and month names are not clipped. */
+const COLLECTION_PRINT_WIDTHS = {
+  rcptId: '5.5%',
+  manualRcptNo: '7%',
+  transactionId: '7.5%',
+  studentId: '6%',
+  studentName: '13%',
+  className: '11%',
+  fundTypeName: '14%',
+  month: '10.5%',
+  year: '5.5%',
+  received: '11.5%',
+}
+
+function collectionRowsHaveManualRcpt(rows) {
+  return (rows || []).some((row) => {
+    const raw = row.manualRcptNo ?? row.ManualRcptNo
+    if (raw == null || raw === '') return false
+    const text = String(raw).trim()
+    return text.length > 0 && text !== '-'
+  })
+}
+
+const printCollectionCellStyle = (key) => {
+  const width = COLLECTION_PRINT_WIDTHS[key] || '8%'
+  const isMoney = key === 'received'
+  const leftAlign = key === 'studentName' || key === 'className' || key === 'fundTypeName'
+  const wrap = key === 'studentName' || key === 'className'
+  return {
+    width,
+    maxWidth: width,
+    textAlign: leftAlign ? 'left' : 'center',
+    verticalAlign: 'middle',
+    fontWeight: isMoney ? 700 : undefined,
+    whiteSpace: wrap ? 'normal' : 'nowrap',
+    lineHeight: 1.25,
+    padding: '3px 4px',
   }
 }
 
@@ -979,6 +1024,13 @@ function FeeReportsPage() {
     }))
   }, [result])
 
+  const collectionShowManualRcpt = useMemo(
+    () => collectionRowsHaveManualRcpt(result?.rows),
+    [result?.rows],
+  )
+
+  const collectionPrintColumnCount = collectionShowManualRcpt ? 10 : 9
+
   const printTitle = useMemo(() => {
     if (isClassWisePrint && isReceivableReport) return 'Fee Receivables Class Wise'
     if (isCollectionPrint) return 'FEE Collection'
@@ -1084,6 +1136,23 @@ function FeeReportsPage() {
           }
           .legacy-print-summary th {
             background: #d9d9d9 !important;
+          }
+          .fee-collection-print-table th,
+          .fee-collection-print-table td {
+            overflow: visible !important;
+            text-overflow: clip !important;
+            font-size: 11px !important;
+            line-height: 1.25 !important;
+          }
+          .fee-collection-print-table thead th {
+            white-space: nowrap !important;
+            padding: 4px 3px !important;
+          }
+          .fee-collection-print-table .col-student-name,
+          .fee-collection-print-table .col-class-name {
+            white-space: normal !important;
+            word-wrap: break-word !important;
+            overflow: hidden !important;
           }
         }
         .print-only { display: none; }
@@ -2009,58 +2078,69 @@ function FeeReportsPage() {
                       </div>
                     ) : isCollectionPrint ? (
                       <>
-                        <table className="legacy-print-table">
+                        <table className="legacy-print-table fee-collection-print-table">
                           <thead>
                             <tr>
-                              <th style={printCellStyle('rcptId', 'number', 9)}>Rcpt ID</th>
-                              <th style={printCellStyle('manualRcptNo', 'text', 9)}>Manual Rcpt#</th>
-                              <th style={printCellStyle('transactionId', 'number', 9)}>Trx ID</th>
-                              <th style={printCellStyle('studentId', 'number', 9)}>Std ID</th>
-                              <th style={printCellStyle('studentName', 'text', 9)}>Name</th>
-                              <th style={printCellStyle('className', 'text', 9)}>Class/Section</th>
-                              <th style={printCellStyle('fundTypeName', 'text', 9)}>Type</th>
-                              <th style={printCellStyle('month', 'text', 10)}>Month</th>
-                              <th style={printCellStyle('year', 'text', 10)}>Year</th>
-                              <th style={printCellStyle('received', 'money', 10)}>Amount</th>
+                              <th style={printCollectionCellStyle('rcptId')}>Rcpt ID</th>
+                              {collectionShowManualRcpt ? (
+                                <th style={printCollectionCellStyle('manualRcptNo')}>Manual Rcpt#</th>
+                              ) : null}
+                              <th style={printCollectionCellStyle('transactionId')}>Trx ID</th>
+                              <th style={printCollectionCellStyle('studentId')}>Std ID</th>
+                              <th className="col-student-name" style={printCollectionCellStyle('studentName')}>Name</th>
+                              <th className="col-class-name" style={printCollectionCellStyle('className')}>Class/Section</th>
+                              <th style={printCollectionCellStyle('fundTypeName')}>Type</th>
+                              <th style={printCollectionCellStyle('month')}>Month</th>
+                              <th style={printCollectionCellStyle('year')}>Year</th>
+                              <th style={printCollectionCellStyle('received')}>Amount</th>
                             </tr>
                           </thead>
                           <tbody>
                             {(result.rows || []).map((row, index) => (
                               <tr key={`pc-${index}`}>
-                                <td style={printCellStyle('rcptId', 'number', 10)}>{dash(row.rcptId)}</td>
-                                <td style={printCellStyle('manualRcptNo', 'text', 10)}>{dash(row.manualRcptNo)}</td>
-                                <td style={printCellStyle('transactionId', 'number', 10)}>{dash(row.transactionId)}</td>
-                                <td style={printCellStyle('studentId', 'number', 10)}>{dash(row.studentId)}</td>
-                                <td style={printCellStyle('studentName', 'text', 10)}>{dash(row.studentName)}</td>
-                                <td style={printCellStyle('className', 'text', 10)}>{dash(row.className)}</td>
-                                <td style={printCellStyle('fundTypeName', 'text', 10)}>{dash(row.fundTypeName)}</td>
-                                <td style={printCellStyle('month', 'text', 10)}>
+                                <td style={printCollectionCellStyle('rcptId')}>{dash(row.rcptId)}</td>
+                                {collectionShowManualRcpt ? (
+                                  <td style={printCollectionCellStyle('manualRcptNo')}>{dash(row.manualRcptNo)}</td>
+                                ) : null}
+                                <td style={printCollectionCellStyle('transactionId')}>{dash(row.transactionId)}</td>
+                                <td style={printCollectionCellStyle('studentId')}>{dash(row.studentId)}</td>
+                                <td className="col-student-name" style={printCollectionCellStyle('studentName')}>
+                                  {dash(row.studentName)}
+                                </td>
+                                <td className="col-class-name" style={printCollectionCellStyle('className')}>
+                                  {dash(row.className)}
+                                </td>
+                                <td style={printCollectionCellStyle('fundTypeName')}>{dash(row.fundTypeName)}</td>
+                                <td style={printCollectionCellStyle('month')}>
                                   {dash(
                                     typeof row.month === 'string' && /[a-zA-Z]/.test(row.month)
                                       ? row.month
                                       : formatMonthName(row.month),
                                   )}
                                 </td>
-                                <td style={printCellStyle('year', 'text', 10)}>
+                                <td style={printCollectionCellStyle('year')}>
                                   {dash(row.year != null && row.year !== '' ? String(row.year).replace(/,/g, '') : '')}
                                 </td>
-                                <td style={printCellStyle('received', 'money', 9)}>
+                                <td style={printCollectionCellStyle('received')}>
                                   {printAmount(row.received)}
                                 </td>
                               </tr>
                             ))}
                             {(result.rows || []).length === 0 ? (
                               <tr>
-                                <td colSpan={10} style={{ textAlign: 'center' }}>
+                                <td colSpan={collectionPrintColumnCount} style={{ textAlign: 'center' }}>
                                   No report rows found.
                                 </td>
                               </tr>
                             ) : (
                               <tr className="total-row">
-                                <td colSpan={9} style={{ fontWeight: 700, textAlign: 'right' }}>
+                                <td
+                                  colSpan={collectionPrintColumnCount - 1}
+                                  style={{ fontWeight: 700, textAlign: 'right' }}
+                                >
                                   Total
                                 </td>
-                                <td style={{ ...printCellStyle('received', 'money', 10), fontWeight: 700 }}>
+                                <td style={{ ...printCollectionCellStyle('received'), fontWeight: 700 }}>
                                   {printAmount(result.totalAmount)}
                                 </td>
                               </tr>

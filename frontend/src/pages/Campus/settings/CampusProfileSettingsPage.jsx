@@ -32,6 +32,11 @@ import {
   normalizeCampusProfile,
   persistCampusProfile,
 } from '../../../utils/campusProfile'
+import {
+  INTEGER_INPUT_ATTRS,
+  sanitizeIntegerInput,
+  withIntegerInputValue,
+} from '../../../utils/numericInput.js'
 
 const inputClass = settingsInputClass
 
@@ -179,15 +184,22 @@ function CampusProfileSettingsPage() {
 
   const onChange = (event) => {
     const { name, value, type, checked } = event.target
+    const normalized =
+      type === 'checkbox'
+        ? event
+        : ['feeYear1', 'feeYear2', 'feeYear3', 'adminEarlyMinutes', 'coordinatorEarlyMinutes'].includes(name)
+          ? withIntegerInputValue(event)
+          : event
+    const fieldValue = type === 'checkbox' ? checked : normalized.target.value
     setForm((previous) => {
       const next = {
         ...previous,
-        [name]: type === 'checkbox' ? checked : value,
+        [name]: fieldValue,
       }
 
       // When start year becomes a full 4-digit year, keep end year one ahead if it was empty or still the old auto value.
       if (name === 'sessionStartYear') {
-        const digits = String(value || '').replace(/\D/g, '').slice(0, 4)
+        const digits = sanitizeIntegerInput(value).slice(0, 4)
         next.sessionStartYear = digits
         if (digits.length === 4) {
           const start = Number(digits)
@@ -202,7 +214,7 @@ function CampusProfileSettingsPage() {
       }
 
       if (name === 'sessionEndYear') {
-        next.sessionEndYear = String(value || '').replace(/\D/g, '').slice(0, 4)
+        next.sessionEndYear = sanitizeIntegerInput(value).slice(0, 4)
       }
 
       return next
@@ -423,7 +435,7 @@ function CampusProfileSettingsPage() {
               <div className="grid gap-4 sm:grid-cols-3">
                 {['feeYear1', 'feeYear2', 'feeYear3'].map((name, index) => (
                   <SettingsField key={name} label={`Year ${index + 1}`}>
-                    <input name={name} type="number" min="2000" max="2100" className={inputClass} value={form[name]} disabled={!canManage} onChange={onChange} />
+                    <input name={name} {...INTEGER_INPUT_ATTRS} maxLength={4} className={inputClass} value={form[name]} disabled={!canManage} onChange={onChange} />
                   </SettingsField>
                 ))}
               </div>
@@ -500,10 +512,10 @@ function CampusProfileSettingsPage() {
                   <input type="time" name="fridayCheckOutTime" className={inputClass} value={form.fridayCheckOutTime} disabled={dutyDisabled} onChange={onChange} />
                 </SettingsField>
                 <SettingsField label="Admin arrives earlier" hint="Minutes before teacher check-in">
-                  <input type="number" name="adminEarlyMinutes" min="0" max="1440" className={inputClass} value={form.adminEarlyMinutes} disabled={dutyDisabled} onChange={onChange} />
+                  <input {...INTEGER_INPUT_ATTRS} name="adminEarlyMinutes" className={inputClass} value={form.adminEarlyMinutes} disabled={dutyDisabled} onChange={onChange} />
                 </SettingsField>
                 <SettingsField label="Co-ordinator arrives earlier" hint="Minutes before teacher check-in">
-                  <input type="number" name="coordinatorEarlyMinutes" min="0" max="1440" className={inputClass} value={form.coordinatorEarlyMinutes} disabled={dutyDisabled} onChange={onChange} />
+                  <input {...INTEGER_INPUT_ATTRS} name="coordinatorEarlyMinutes" className={inputClass} value={form.coordinatorEarlyMinutes} disabled={dutyDisabled} onChange={onChange} />
                 </SettingsField>
               </div>
             </SettingsCard>

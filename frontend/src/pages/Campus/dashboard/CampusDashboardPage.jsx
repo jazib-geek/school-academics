@@ -25,6 +25,7 @@ import Chart from 'chart.js/auto'
 import CampusShell from '../../../components/campus/CampusShell.jsx'
 import { getAppCampusOptions, getCampusLabel, isCampusAllowedInApp, showAllCampusesDashboard, sortCampusItems } from '../../../constants/branding'
 import { getCampusPrintMeta } from '../../../utils/campusProfile'
+import { INTEGER_INPUT_ATTRS, readIntegerInput } from '../../../utils/numericInput.js'
 import { sortClassesByCustomOrder } from '../../../services/classSort'
 import {
   getAllCampusesAdmissionsByMonth,
@@ -2227,11 +2228,9 @@ function CampusDetailView({
               </select>
               {admissionTrendMode === 'custom' ? (
                 <input
-                  type="number"
-                  min="1"
-                  max="300"
+                  {...INTEGER_INPUT_ATTRS}
                   value={customTrendDays}
-                  onChange={(event) => onCustomTrendDaysChange(event.target.value)}
+                  onChange={(event) => onCustomTrendDaysChange(readIntegerInput(event))}
                   className="min-h-9 w-24 rounded-lg border border-slate-300 bg-white px-2 text-xs font-semibold text-slate-700 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                 />
               ) : null}

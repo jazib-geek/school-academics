@@ -40,6 +40,7 @@ import {
 import { openTimetablePrint } from './timetablePrint'
 import TimetablePopupLoader from './TimetablePopupLoader'
 import { useTimetableUiFeedback } from './timetableUiFeedback'
+import { INTEGER_INPUT_ATTRS, readIntegerInput } from '../../../utils/numericInput.js'
 
 const inputClass =
   'h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-[var(--campus-primary)] focus:ring-2 focus:ring-indigo-100'
@@ -339,16 +340,13 @@ function CreateTimetableModal({ open, onClose, onCreated, classes, employees }) 
                     <label className="block text-xs text-slate-600">
                       <span className="mb-1 block font-medium">Duration (minutes)</span>
                       <input
-                        type="number"
-                        min={5}
-                        max={180}
-                        step={5}
+                        {...INTEGER_INPUT_ATTRS}
                         className="h-9 w-24 rounded-md border border-slate-200 bg-white px-2"
                         value={form.breakMinutes}
                         onChange={(e) =>
                           setForm((c) => ({
                             ...c,
-                            breakMinutes: Math.max(5, Number(e.target.value) || 30),
+                            breakMinutes: Math.max(5, Number(readIntegerInput(e)) || 30),
                           }))
                         }
                       />

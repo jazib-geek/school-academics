@@ -16,6 +16,7 @@ import {
 import { replaceTimetableMembers, replaceTimetablePeriods } from '../../../services/campusTimeTableService'
 import TimetablePopupLoader from './TimetablePopupLoader'
 import { useTimetableUiFeedback } from './timetableUiFeedback'
+import { INTEGER_INPUT_ATTRS, readIntegerInput } from '../../../utils/numericInput.js'
 
 const timeToMinutes = (value) => {
   if (!value || !String(value).includes(':')) return null
@@ -483,13 +484,10 @@ export default function ManageStructureModal({
                     <label className="block text-xs text-slate-600">
                       <span className="mb-1 block font-medium">Duration (minutes)</span>
                       <input
-                        type="number"
-                        min={5}
-                        max={180}
-                        step={5}
+                        {...INTEGER_INPUT_ATTRS}
                         className="h-9 w-24 rounded-md border border-slate-200 bg-white px-2"
                         value={breakMinutes}
-                        onChange={(e) => setBreakMinutes(Math.max(5, Number(e.target.value) || 30))}
+                        onChange={(e) => setBreakMinutes(Math.max(5, Number(readIntegerInput(e)) || 30))}
                       />
                     </label>
                     <p className="pb-1 text-xs text-slate-500">

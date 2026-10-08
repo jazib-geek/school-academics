@@ -9,6 +9,7 @@ import {
   getAcademicSubjects,
   upsertAcademicChapter,
 } from '../../../services/academicCatalogService'
+import { INTEGER_INPUT_ATTRS, readIntegerInput } from '../../../utils/numericInput.js'
 
 const emptyForm = {
   id: '',
@@ -314,11 +315,10 @@ function AcademicChaptersPage() {
               required
             />
             <input
+              {...INTEGER_INPUT_ATTRS}
               value={form.chapterNo}
-              onChange={(event) => setForm((p) => ({ ...p, chapterNo: event.target.value }))}
+              onChange={(event) => setForm((p) => ({ ...p, chapterNo: readIntegerInput(event) }))}
               placeholder="Chapter number"
-              type="number"
-              min={1}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-[#405189] focus:ring-2 focus:ring-indigo-100"
               required
             />

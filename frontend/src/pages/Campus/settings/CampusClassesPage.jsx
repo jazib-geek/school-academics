@@ -6,6 +6,7 @@ import {
   setSettingClassStatus,
   updateSettingClass,
 } from '../../../services/campusSettingsService'
+import { INTEGER_INPUT_ATTRS, readIntegerInput } from '../../../utils/numericInput.js'
 
 export default function CampusClassesPage() {
   return (
@@ -40,7 +41,7 @@ export default function CampusClassesPage() {
         <>
           <label className="block text-xs font-semibold uppercase text-slate-500">
             Sort order
-            <input type="number" className={`${inputClass} mt-1`} value={form.sortBy} onChange={(e) => setForm((c) => ({ ...c, sortBy: e.target.value }))} />
+            <input {...INTEGER_INPUT_ATTRS} className={`${inputClass} mt-1`} value={form.sortBy} onChange={(e) => setForm((c) => ({ ...c, sortBy: readIntegerInput(e) }))} />
           </label>
           <label className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700">
             <input type="checkbox" checked={Boolean(form.isHifz)} onChange={(e) => setForm((c) => ({ ...c, isHifz: e.target.checked }))} className="h-4 w-4 accent-[var(--campus-primary)]" />

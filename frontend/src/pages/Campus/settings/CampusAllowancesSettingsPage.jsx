@@ -5,6 +5,7 @@ import CampusShell from '../../../components/campus/CampusShell.jsx'
 import { PermissionControl } from '../../../components/campus/CampusPermissionUi.jsx'
 import { hasCampusPermission } from '../../../services/authService'
 import { getPayrollSettings, updatePayrollSettings } from '../../../services/payrollSettingsService'
+import { DECIMAL_INPUT_ATTRS, readDecimalInput } from '../../../utils/numericInput.js'
 
 const inputClass =
   'h-10 w-full max-w-xs rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-[var(--campus-primary)] focus:ring-2 focus:ring-indigo-100'
@@ -77,13 +78,11 @@ function CampusAllowancesSettingsPage() {
                 <div className="space-y-3">
                   <label className="block text-sm font-medium text-slate-700">Tea allowance</label>
                   <input
-                    type="number"
-                    min="0"
-                    step="0.01"
+                    {...DECIMAL_INPUT_ATTRS}
                     className={inputClass}
                     value={teaAllowance}
                     disabled={!canManage}
-                    onChange={(e) => setTeaAllowance(e.target.value)}
+                    onChange={(e) => setTeaAllowance(readDecimalInput(e, 2))}
                   />
                   <button
                     type="button"

@@ -13,6 +13,7 @@ import {
   updateFeeReminderTemplate,
 } from '../../services/feeReminderNoticeService'
 import { formatNoticeDueDate, renderBodyHtml } from '../../utils/feeReminderNoticePrint'
+import { INTEGER_INPUT_ATTRS, readIntegerInput } from '../../utils/numericInput.js'
 
 const NOTICE_TYPES = [
   { value: 'pre_due', label: 'Before due date' },
@@ -169,13 +170,14 @@ export default function FeeReminderNoticeTemplatesSection({ disabled = false }) 
               {isPreDue ? (
                 <SettingsField label="Due day of month">
                   <input
-                    type="number"
-                    min={1}
-                    max={31}
+                    {...INTEGER_INPUT_ATTRS}
                     className={settingsInputClass}
                     value={draft.dayOfMonth ?? 10}
                     disabled={disabled}
-                    onChange={(e) => setField('dayOfMonth', Number(e.target.value) || 10)}
+                    onChange={(e) => {
+                      const raw = readIntegerInput(e)
+                      setField('dayOfMonth', raw === '' ? 10 : Number(raw) || 10)
+                    }}
                   />
                 </SettingsField>
               ) : null}

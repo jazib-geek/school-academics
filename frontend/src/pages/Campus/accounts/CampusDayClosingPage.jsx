@@ -24,6 +24,7 @@ import { toast } from 'sonner'
 import CampusShell from '../../../components/campus/CampusShell.jsx'
 import { closeDay, getDayClosingPreview } from '../../../services/accountService'
 import { formatReportPrintMoney } from '../../../utils/campusReportPrint'
+import { INTEGER_INPUT_ATTRS, readIntegerInput } from '../../../utils/numericInput.js'
 
 const inputClass =
   'h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-[var(--campus-primary)] focus:ring-2 focus:ring-indigo-100'
@@ -244,12 +245,10 @@ export default function CampusDayClosingPage() {
                           className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
                         />
                         <input
-                          type="number"
-                          min="0"
-                          step="1"
+                          {...INTEGER_INPUT_ATTRS}
                           className={`${inputClass} pl-9`}
                           value={remainingCash}
-                          onChange={(e) => setRemainingCash(e.target.value)}
+                          onChange={(e) => setRemainingCash(readIntegerInput(e))}
                           disabled={readOnly}
                           required
                         />

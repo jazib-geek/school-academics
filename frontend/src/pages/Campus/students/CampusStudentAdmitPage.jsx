@@ -28,6 +28,8 @@ import {
   getStoredCampusProfile,
   normalizeCampusProfile,
 } from '../../../utils/campusProfile'
+import { SECURITY_DEPOSIT_FUND_TYPE_ID } from '../../../constants/campusFundTypes.js'
+import { INTEGER_INPUT_ATTRS, readIntegerInput } from '../../../utils/numericInput.js'
 
 const inputClass =
   'h-10 w-full rounded-lg border bg-white px-3 text-sm text-slate-800 outline-none transition focus:ring-2'
@@ -105,7 +107,7 @@ const emptyForm = () => {
     admissionFee: '0',
     miscCharges: '0',
     prevBalance: '0',
-    transportCharges: '0',
+    securityDeposit: '0',
     branchLabel: '',
   }
 }
@@ -124,7 +126,7 @@ const ERROR_FIELD_ORDER = [
   'admissionFee',
   'miscCharges',
   'prevBalance',
-  'transportCharges',
+  'securityDeposit',
 ]
 
 function toDateInput(value) {
@@ -177,7 +179,7 @@ function mapDetailToForm(detail) {
     admissionFee: String(detail.admissionFee ?? 0),
     miscCharges: String(detail.miscCharges ?? 0),
     prevBalance: String(detail.prevBalance ?? 0),
-    transportCharges: String(detail.transportCharges ?? 0),
+    securityDeposit: String(detail.securityDeposit ?? detail.SecurityDeposit ?? 0),
     branchLabel: detail.branchLabel || '',
   }
 }
@@ -226,6 +228,7 @@ function CampusStudentAdmitPage() {
   const [generateOpen, setGenerateOpen] = useState(false)
   const [generateTf, setGenerateTf] = useState(true)
   const [generateFunds, setGenerateFunds] = useState(true)
+  const [generateSecurityDeposit, setGenerateSecurityDeposit] = useState(true)
   const [tfMonth, setTfMonth] = useState(new Date().getMonth() + 1)
   const [tfYear, setTfYear] = useState(() => new Date().getFullYear())
   const [tfAmount, setTfAmount] = useState('')
@@ -247,7 +250,8 @@ function CampusStudentAdmitPage() {
       2: byId[2] || 'Admission Fee',
       3: byId[3] || 'Misc Charges',
       4: byId[4] || 'Prev Balance',
-      5: byId[5] || 'Transport Charges',
+      [SECURITY_DEPOSIT_FUND_TYPE_ID]:
+        byId[SECURITY_DEPOSIT_FUND_TYPE_ID] || 'Security Deposit',
     }
   }, [lookups.fundTypes])
 
@@ -256,16 +260,30 @@ function CampusStudentAdmitPage() {
       { key: 'admissionFee', label: fundLabels[2], amount: toNum(form.admissionFee) },
       { key: 'miscCharges', label: fundLabels[3], amount: toNum(form.miscCharges) },
       { key: 'prevBalance', label: fundLabels[4], amount: toNum(form.prevBalance) },
-      { key: 'transportCharges', label: fundLabels[5], amount: toNum(form.transportCharges) },
+      {
+        key: 'securityDeposit',
+        label: fundLabels[SECURITY_DEPOSIT_FUND_TYPE_ID],
+        amount: toNum(form.securityDeposit),
+      },
     ]
     return rows.filter((row) => row.amount > 0)
-  }, [form.admissionFee, form.miscCharges, form.prevBalance, form.transportCharges, fundLabels])
+  }, [form.admissionFee, form.miscCharges, form.prevBalance, form.securityDeposit, fundLabels])
 
-  const fundsSummaryLabel = useMemo(() => {
-    if (filledFunds.length === 0) return ''
-    const parts = filledFunds.map((row) => `${row.amount} (${row.label})`)
-    return `Generate funds ${parts.join(', ')}`
-  }, [filledFunds])
+  const otherFilledFunds = useMemo(
+    () => filledFunds.filter((row) => row.key !== 'securityDeposit'),
+    [filledFunds],
+  )
+
+  const securityFilledFund = useMemo(
+    () => filledFunds.find((row) => row.key === 'securityDeposit'),
+    [filledFunds],
+  )
+
+  const otherFundsSummaryLabel = useMemo(() => {
+    if (otherFilledFunds.length === 0) return ''
+    const parts = otherFilledFunds.map((row) => `${row.amount} (${row.label})`)
+    return `Charge admission & other funds: ${parts.join(', ')}`
+  }, [otherFilledFunds])
 
   const tuitionPeriodLabel = `Generate Tuition Fee for ${monthShort(tfMonth)} ${tfYear}`
 
@@ -276,7 +294,7 @@ function CampusStudentAdmitPage() {
     if (!isEdit) {
       if (!String(current.familyCode || '').trim()) next.familyCode = true
       if (!String(current.classCompositeId || '').trim()) next.classCompositeId = true
-      ;['admissionFee', 'miscCharges', 'prevBalance', 'transportCharges'].forEach((key) => {
+      ;['admissionFee', 'miscCharges', 'prevBalance', 'securityDeposit'].forEach((key) => {
         if (current[key] === '' || current[key] == null) next[key] = true
       })
     }
@@ -482,13 +500,14 @@ function CampusStudentAdmitPage() {
     setTfMonth(new Date().getMonth() + 1)
     setTfYear(new Date().getFullYear())
     setGenerateTf(true)
-    const hasFunds = [
+    const hasOtherFunds = [
       toNum(form.admissionFee),
       toNum(form.miscCharges),
       toNum(form.prevBalance),
-      toNum(form.transportCharges),
     ].some((n) => n > 0)
-    setGenerateFunds(hasFunds)
+    const hasSecurity = toNum(form.securityDeposit) > 0
+    setGenerateFunds(hasOtherFunds)
+    setGenerateSecurityDeposit(hasSecurity)
     setGenerateOpen(true)
   }
 
@@ -505,16 +524,22 @@ function CampusStudentAdmitPage() {
         tuitionFee,
         classFee,
         feeConcession: concession,
-        admissionFee: toNum(form.admissionFee),
-        miscCharges: toNum(form.miscCharges),
-        prevBalance: toNum(form.prevBalance),
-        transportCharges: toNum(form.transportCharges),
+        admissionFee: generateFunds ? toNum(form.admissionFee) : 0,
+        miscCharges: generateFunds ? toNum(form.miscCharges) : 0,
+        prevBalance: generateFunds ? toNum(form.prevBalance) : 0,
+        securityDeposit: generateSecurityDeposit ? toNum(form.securityDeposit) : 0,
         generateTuitionFee: generateTf,
         tuitionMonth: generateTf ? Number(tfMonth) : null,
         tuitionYear: generateTf ? Number(tfYear) : null,
         tuitionGenerateAmount: generateTf ? toNum(tfAmount) : null,
-        generateFunds: generateFunds && filledFunds.length > 0,
-        fundYear: generateFunds && filledFunds.length > 0 ? Number(tfYear) : null,
+        generateFunds:
+          (generateFunds && otherFilledFunds.length > 0)
+          || (generateSecurityDeposit && Boolean(securityFilledFund)),
+        fundYear:
+          (generateFunds && otherFilledFunds.length > 0)
+          || (generateSecurityDeposit && Boolean(securityFilledFund))
+            ? Number(tfYear)
+            : null,
       }
 
       const result = await registerStudent(payload)
@@ -832,12 +857,11 @@ function CampusStudentAdmitPage() {
               </label>
               <label className={labelClass}>Tuition fee
                 <input
-                  type="number"
-                  min="0"
+                  {...INTEGER_INPUT_ATTRS}
                   className={`${fieldClass(false, officeLocked)} mt-1`}
                   value={form.tuitionFee}
                   disabled={officeLocked}
-                  onChange={(e) => setValue('tuitionFee', e.target.value)}
+                  onChange={(e) => setValue('tuitionFee', readIntegerInput(e))}
                 />
               </label>
               <label className={labelClass}>Concession
@@ -848,54 +872,50 @@ function CampusStudentAdmitPage() {
               <label className={labelClass}>{fundLabels[2]}
                 <input
                   data-field="admissionFee"
-                  type="number"
-                  min="0"
+                  {...INTEGER_INPUT_ATTRS}
                   required={!officeLocked}
                   className={`${fieldClass(errors.admissionFee, officeLocked)} mt-1`}
                   value={form.admissionFee}
                   disabled={officeLocked}
-                  onChange={(e) => setValue('admissionFee', e.target.value)}
+                  onChange={(e) => setValue('admissionFee', readIntegerInput(e))}
                 />
                 {!officeLocked && errors.admissionFee ? <span className="mt-1 block text-xs text-rose-600">Required</span> : null}
               </label>
               <label className={labelClass}>{fundLabels[3]}
                 <input
                   data-field="miscCharges"
-                  type="number"
-                  min="0"
+                  {...INTEGER_INPUT_ATTRS}
                   required={!officeLocked}
                   className={`${fieldClass(errors.miscCharges, officeLocked)} mt-1`}
                   value={form.miscCharges}
                   disabled={officeLocked}
-                  onChange={(e) => setValue('miscCharges', e.target.value)}
+                  onChange={(e) => setValue('miscCharges', readIntegerInput(e))}
                 />
                 {!officeLocked && errors.miscCharges ? <span className="mt-1 block text-xs text-rose-600">Required</span> : null}
               </label>
               <label className={labelClass}>{fundLabels[4]}
                 <input
                   data-field="prevBalance"
-                  type="number"
-                  min="0"
+                  {...INTEGER_INPUT_ATTRS}
                   required={!officeLocked}
                   className={`${fieldClass(errors.prevBalance, officeLocked)} mt-1`}
                   value={form.prevBalance}
                   disabled={officeLocked}
-                  onChange={(e) => setValue('prevBalance', e.target.value)}
+                  onChange={(e) => setValue('prevBalance', readIntegerInput(e))}
                 />
                 {!officeLocked && errors.prevBalance ? <span className="mt-1 block text-xs text-rose-600">Required</span> : null}
               </label>
-              <label className={labelClass}>{fundLabels[5]}
+              <label className={labelClass}>{fundLabels[SECURITY_DEPOSIT_FUND_TYPE_ID]}
                 <input
-                  data-field="transportCharges"
-                  type="number"
-                  min="0"
+                  data-field="securityDeposit"
+                  {...INTEGER_INPUT_ATTRS}
                   required={!officeLocked}
-                  className={`${fieldClass(errors.transportCharges, officeLocked)} mt-1`}
-                  value={form.transportCharges}
+                  className={`${fieldClass(errors.securityDeposit, officeLocked)} mt-1`}
+                  value={form.securityDeposit}
                   disabled={officeLocked}
-                  onChange={(e) => setValue('transportCharges', e.target.value)}
+                  onChange={(e) => setValue('securityDeposit', readIntegerInput(e))}
                 />
-                {!officeLocked && errors.transportCharges ? <span className="mt-1 block text-xs text-rose-600">Required</span> : null}
+                {!officeLocked && errors.securityDeposit ? <span className="mt-1 block text-xs text-rose-600">Required</span> : null}
               </label>
             </div>
           </section>
@@ -975,7 +995,7 @@ function CampusStudentAdmitPage() {
               {generateTf ? (
                 <div className="grid grid-cols-3 gap-2 pl-6">
                   <label className={labelClass}>Amount
-                    <input type="number" min="0" disabled={isSaving} className={`${inputClass} mt-1`} value={tfAmount} onChange={(e) => setTfAmount(e.target.value)} />
+                    <input {...INTEGER_INPUT_ATTRS} disabled={isSaving} className={`${inputClass} mt-1`} value={tfAmount} onChange={(e) => setTfAmount(readIntegerInput(e))} />
                   </label>
                   <label className={labelClass}>Month
                     <select disabled={isSaving} className={`${inputClass} mt-1`} value={Number(tfMonth)} onChange={(e) => setTfMonth(Number(e.target.value))}>
@@ -998,11 +1018,32 @@ function CampusStudentAdmitPage() {
                   </label>
                 </div>
               ) : null}
-              {filledFunds.length > 0 ? (
+              {otherFilledFunds.length > 0 ? (
                 <label className="flex items-start gap-2 text-sm font-medium text-slate-800">
                   <input type="checkbox" checked={generateFunds} onChange={(e) => setGenerateFunds(e.target.checked)} disabled={isSaving} className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--campus-primary)]" />
-                  <span>{fundsSummaryLabel}</span>
+                  <span>{otherFundsSummaryLabel}</span>
                 </label>
+              ) : null}
+              {securityFilledFund ? (
+                <div className="rounded-xl border border-violet-200 bg-violet-50/60 px-3 py-3">
+                  <label className="flex items-start gap-2 text-sm font-semibold text-violet-950">
+                    <input
+                      type="checkbox"
+                      checked={generateSecurityDeposit}
+                      onChange={(e) => setGenerateSecurityDeposit(e.target.checked)}
+                      disabled={isSaving}
+                      className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--campus-primary)]"
+                    />
+                    <span>
+                      Charge security deposit: Rs {securityFilledFund.amount.toLocaleString()} (
+                      {securityFilledFund.label})
+                    </span>
+                  </label>
+                  <p className="mt-2 pl-6 text-[12px] leading-snug text-violet-900/80">
+                    This creates a fee line you can collect from Receive Fee. The amount is held until
+                    you refund it when the student leaves.
+                  </p>
+                </div>
               ) : null}
             </div>
             <div className="flex justify-end gap-2 bg-slate-50 px-5 py-4">

@@ -17,6 +17,7 @@ import {
   saveCashPaymentVoucher,
   saveCashReceiptVoucher,
 } from '../../../services/accountService'
+import { INTEGER_INPUT_ATTRS, readIntegerInput } from '../../../utils/numericInput.js'
 
 const inputClass =
   'h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-[var(--campus-primary)] focus:ring-2 focus:ring-indigo-100'
@@ -242,12 +243,10 @@ export default function CampusVoucherPage({ mode }) {
               <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500 md:col-span-3">
                 Amount (Rs)
                 <input
-                  type="number"
-                  min="0"
-                  step="1"
+                  {...INTEGER_INPUT_ATTRS}
                   className={`${inputClass} mt-1`}
                   value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
+                  onChange={(e) => setAmount(readIntegerInput(e))}
                   placeholder="0"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {

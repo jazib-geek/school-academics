@@ -22,6 +22,7 @@ import {
   normalizeCampusProfile,
   persistCampusProfile,
 } from '../../../utils/campusProfile'
+import { INTEGER_INPUT_ATTRS, readIntegerInput } from '../../../utils/numericInput.js'
 
 const inputClass =
   'h-9 w-full rounded-lg border border-slate-300 bg-white px-2.5 text-[13px] text-slate-800 outline-none transition focus:border-[var(--campus-primary)] focus:ring-2 focus:ring-indigo-100'
@@ -337,23 +338,19 @@ export default function CampusImportAttendancePage() {
                 <label className="text-xs font-semibold uppercase text-slate-500">
                   Admin earlier (minutes)
                   <input
-                    type="number"
-                    min="0"
-                    max="1440"
+                    {...INTEGER_INPUT_ATTRS}
                     className={`${inputClass} mt-1`}
                     value={adminMinutesBefore}
-                    onChange={(event) => setAdminMinutesBefore(event.target.value)}
+                    onChange={(event) => setAdminMinutesBefore(readIntegerInput(event))}
                   />
                 </label>
                 <label className="text-xs font-semibold uppercase text-slate-500">
                   Co-ordinator earlier (minutes)
                   <input
-                    type="number"
-                    min="0"
-                    max="1440"
+                    {...INTEGER_INPUT_ATTRS}
                     className={`${inputClass} mt-1`}
                     value={coordinatorMinutesBefore}
-                    onChange={(event) => setCoordinatorMinutesBefore(event.target.value)}
+                    onChange={(event) => setCoordinatorMinutesBefore(readIntegerInput(event))}
                   />
                 </label>
                 <div className="flex items-end">

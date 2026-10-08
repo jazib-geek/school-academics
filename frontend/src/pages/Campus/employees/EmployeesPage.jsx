@@ -30,6 +30,7 @@ import {
   PermissionControl,
 } from '../../../components/campus/CampusPermissionUi.jsx'
 import { FILTER_INPUT_AUTOCOMPLETE_PROPS } from '../../../utils/filterInputProps'
+import { INTEGER_INPUT_ATTRS, readIntegerInput } from '../../../utils/numericInput.js'
 import fingerprintIcon from '../../../assets/fingerprint-1.svg'
 import { hasCampusPermission } from '../../../services/authService'
 import {
@@ -406,16 +407,14 @@ function EmployeeForm({ employeeId, lookups, onClose, onSaved }) {
                   Days to update (including today)
                 </span>
                 <input
-                  type="number"
-                  min={1}
-                  max={maxAttendanceRecalcDays}
+                  {...INTEGER_INPUT_ATTRS}
                   className={inputClass}
                   value={attendanceRecalcDays}
                   onChange={(e) =>
                     setAttendanceRecalcDays(
                       Math.min(
                         maxAttendanceRecalcDays,
-                        Math.max(1, Number(e.target.value) || 1),
+                        Math.max(1, Number(readIntegerInput(e)) || 1),
                       ),
                     )
                   }
@@ -561,7 +560,7 @@ function EmployeeForm({ employeeId, lookups, onClose, onSaved }) {
           <Field label="Salary" required>
             <div className="relative">
               <BadgeDollarSign size={17} className="absolute left-3 top-3 text-slate-400" />
-              <input type="number" min="0" className={`${inputClass} pl-9`} value={form.salary} onChange={(e) => setValue('salary', e.target.value)} required />
+              <input {...INTEGER_INPUT_ATTRS} className={`${inputClass} pl-9`} value={form.salary} onChange={(e) => setValue('salary', readIntegerInput(e))} required />
             </div>
           </Field>
           <Field label="Joining date">
@@ -725,7 +724,7 @@ function EmployeeForm({ employeeId, lookups, onClose, onSaved }) {
               <input className={inputClass} placeholder="Board / university" value={row.board || ''} onChange={(e) => updateRow('qualifications', index, 'board', e.target.value)} />
               <input className={inputClass} placeholder="Grade" value={row.grade || ''} onChange={(e) => updateRow('qualifications', index, 'grade', e.target.value)} />
               <input className={inputClass} placeholder="Marks" value={row.marks || ''} onChange={(e) => updateRow('qualifications', index, 'marks', e.target.value)} />
-              <input type="number" className={inputClass} placeholder="Year" value={row.year ?? ''} onChange={(e) => updateRow('qualifications', index, 'year', e.target.value)} />
+              <input {...INTEGER_INPUT_ATTRS} className={inputClass} placeholder="Year" value={row.year ?? ''} onChange={(e) => updateRow('qualifications', index, 'year', readIntegerInput(e))} />
               <input className={inputClass} placeholder="Remarks" value={row.remarks || ''} onChange={(e) => updateRow('qualifications', index, 'remarks', e.target.value)} />
             </RepeatRow>
           ))}</div>
@@ -745,7 +744,7 @@ function EmployeeForm({ employeeId, lookups, onClose, onSaved }) {
               <input className={inputClass} placeholder="Designation" value={row.designation || ''} onChange={(e) => updateRow('experiences', index, 'designation', e.target.value)} />
               <input type="date" className={inputClass} title="From date" value={row.fromDate || ''} onChange={(e) => updateRow('experiences', index, 'fromDate', e.target.value)} />
               <input type="date" className={inputClass} title="To date" value={row.toDate || ''} onChange={(e) => updateRow('experiences', index, 'toDate', e.target.value)} />
-              <input type="number" min="0" className={inputClass} placeholder="Duration years" value={row.durationYears ?? ''} onChange={(e) => updateRow('experiences', index, 'durationYears', e.target.value)} />
+              <input {...INTEGER_INPUT_ATTRS} className={inputClass} placeholder="Duration years" value={row.durationYears ?? ''} onChange={(e) => updateRow('experiences', index, 'durationYears', readIntegerInput(e))} />
             </RepeatRow>
           ))}</div>
         )}
@@ -762,7 +761,7 @@ function EmployeeForm({ employeeId, lookups, onClose, onSaved }) {
             <RepeatRow key={row.id || index} index={index} onRemove={() => removeRow('assets', index)}>
               <input className={inputClass} placeholder="Asset name" value={row.assetName || ''} onChange={(e) => updateRow('assets', index, 'assetName', e.target.value)} />
               <input type="date" className={inputClass} title="Date of issue" value={row.dateOfIssue || ''} onChange={(e) => updateRow('assets', index, 'dateOfIssue', e.target.value)} />
-              <input type="number" min="0" className={inputClass} placeholder="Asset worth" value={row.assetWorth ?? ''} onChange={(e) => updateRow('assets', index, 'assetWorth', e.target.value)} />
+              <input {...INTEGER_INPUT_ATTRS} className={inputClass} placeholder="Asset worth" value={row.assetWorth ?? ''} onChange={(e) => updateRow('assets', index, 'assetWorth', readIntegerInput(e))} />
               <input className={inputClass} placeholder="Remarks" value={row.remarks || ''} onChange={(e) => updateRow('assets', index, 'remarks', e.target.value)} />
             </RepeatRow>
           ))}</div>

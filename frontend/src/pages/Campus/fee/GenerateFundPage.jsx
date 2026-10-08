@@ -23,8 +23,12 @@ import {
 } from '../../../services/fundGenerateService'
 import { getCampusFundTypes, hasCampusPermission } from '../../../services/authService'
 import { getClasses } from '../../../services/classService'
+import { SECURITY_DEPOSIT_FUND_TYPE_ID } from '../../../constants/campusFundTypes.js'
+import { INTEGER_INPUT_ATTRS, readIntegerInput } from '../../../utils/numericInput.js'
+import { getStudentSecurityDepositSummary } from '../../../services/studentService'
 
-const ANNUAL_FUND_TYPE_IDS = [2, 3, 4, 5]
+const ANNUAL_FUND_TYPE_IDS = [2, 3, 4, SECURITY_DEPOSIT_FUND_TYPE_ID]
+const BULK_FUND_GENERATE_ENABLED = false
 
 const embeddedSelectStyles = {
   control: (base) => ({
@@ -163,7 +167,7 @@ export default function GenerateFundPage() {
   const canSingle = hasCampusPermission('generate_fund_single')
   const fundTypes = useMemo(() => resolveAnnualFundTypes(), [])
 
-  const [mode, setMode] = useState(canSingle ? 'student' : 'bulk')
+  const [mode, setMode] = useState('student')
   const [selectedStudent, setSelectedStudent] = useState(null)
   const [detail, setDetail] = useState(null)
   const [amounts, setAmounts] = useState(() =>
@@ -176,18 +180,19 @@ export default function GenerateFundPage() {
   const [bulkClassId, setBulkClassId] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [securityMeta, setSecurityMeta] = useState(null)
 
   const loadStudentOptions = useRef(
     debouncePromise(async (inputValue) => {
       const term = inputValue?.trim()
-      if (!term || term.length < 2) return []
-      const items = await searchStudents(term, 20)
+      if (!term || (term.length < 2 && !/^\d+$/.test(term))) return []
+      const items = await searchStudents(term, 20, { exactNumericRegId: true })
       return items.map(mapStudentToSelectOption)
     }, 300),
   ).current
 
   useEffect(() => {
-    if (!canAll) return
+    if (!canAll || !BULK_FUND_GENERATE_ENABLED) return
     getClasses()
       .then((rows) => setClasses(rows || []))
       .catch(() => setClasses([]))
@@ -197,21 +202,33 @@ export default function GenerateFundPage() {
     async (regId) => {
       if (!regId) {
         setDetail(null)
+        setSecurityMeta(null)
         setAmounts(Object.fromEntries(fundTypes.map((t) => [t.id, ''])))
         return
       }
       setIsLoadingDetail(true)
       try {
-        const [admission, funds] = await Promise.all([
+        const [admission, funds, securitySummary] = await Promise.all([
           getStudentAdmissionDetail(regId),
           getStudentFunds(regId),
+          getStudentSecurityDepositSummary(regId).catch(() => null),
         ])
         setDetail(admission)
+        setSecurityMeta(securitySummary)
         const next = Object.fromEntries(fundTypes.map((t) => [t.id, '']))
         for (const item of funds?.amounts || []) {
           if (item?.fundTypeId != null) {
             next[item.fundTypeId] = item.amount != null ? String(item.amount) : ''
           }
+        }
+        const admissionSecurity =
+          admission?.securityDeposit ?? admission?.SecurityDeposit
+        if (
+          (next[SECURITY_DEPOSIT_FUND_TYPE_ID] === '' || next[SECURITY_DEPOSIT_FUND_TYPE_ID] == null)
+          && admissionSecurity != null
+          && Number(admissionSecurity) > 0
+        ) {
+          next[SECURITY_DEPOSIT_FUND_TYPE_ID] = String(admissionSecurity)
         }
         setAmounts(next)
       } catch (error) {
@@ -233,6 +250,11 @@ export default function GenerateFundPage() {
     if (isGenerating) return false
     if (mode === 'student') {
       if (!canSingle || !detail) return false
+      const securityBlocked =
+        securityMeta?.hasRefundHistory || securityMeta?.HasRefundHistory
+      const securityRaw = amounts[SECURITY_DEPOSIT_FUND_TYPE_ID]
+      const securityAmount = securityRaw === '' || securityRaw == null ? 0 : Number(securityRaw)
+      if (securityBlocked && !Number.isNaN(securityAmount) && securityAmount > 0) return false
       return fundTypes.some((t) => {
         const raw = amounts[t.id]
         if (raw === '' || raw == null) return false
@@ -240,10 +262,10 @@ export default function GenerateFundPage() {
         return !Number.isNaN(n) && n >= 0
       })
     }
-    if (!canAll) return false
+    if (!canAll || !BULK_FUND_GENERATE_ENABLED) return false
     const amount = Number(bulkAmount)
     return !Number.isNaN(amount) && amount >= 0 && Boolean(bulkFundTypeId)
-  }, [amounts, bulkAmount, bulkFundTypeId, canAll, canSingle, detail, fundTypes, isGenerating, mode])
+  }, [amounts, bulkAmount, bulkFundTypeId, canAll, canSingle, detail, fundTypes, isGenerating, mode, securityMeta])
 
   const confirmDescription = useMemo(() => {
     if (mode === 'student' && detail) {
@@ -268,6 +290,16 @@ export default function GenerateFundPage() {
   const openConfirm = (event) => {
     event.preventDefault()
     if (!canSubmit) return
+    const securityBlocked =
+      securityMeta?.hasRefundHistory || securityMeta?.HasRefundHistory
+    const securityRaw = amounts[SECURITY_DEPOSIT_FUND_TYPE_ID]
+    const securityAmount = securityRaw === '' || securityRaw == null ? 0 : Number(securityRaw)
+    if (securityBlocked && securityAmount > 0) {
+      toast.error(
+        'Security deposit cannot be generated because a refund was already recorded for this student.',
+      )
+      return
+    }
     setConfirmOpen(true)
   }
 
@@ -340,7 +372,7 @@ export default function GenerateFundPage() {
               <div>
                 <h1 className="text-lg font-semibold text-slate-900">Generate Fund</h1>
                 <p className="mt-0.5 text-[13px] text-slate-500">
-                  Create admission and other annual fund charges for a student, a class, or everyone.
+                  Create admission and other annual fund charges for one student.
                 </p>
               </div>
             </div>
@@ -362,7 +394,7 @@ export default function GenerateFundPage() {
                     disabled={isGenerating}
                   />
                 ) : null}
-                {canAll ? (
+                {canAll && BULK_FUND_GENERATE_ENABLED ? (
                   <RadioCard
                     name="fund-mode"
                     checked={mode === 'bulk'}
@@ -371,9 +403,20 @@ export default function GenerateFundPage() {
                     description="Apply one fund type and amount across a class or everyone."
                     icon={Users}
                     iconClass="bg-sky-50 text-sky-700"
-                    disabled={isGenerating}
+                    disabled={true}
                   />
-                ) : null}
+                ) : (
+                  <RadioCard
+                    name="fund-mode"
+                    checked={false}
+                    onChange={() => {}}
+                    title="Class / all students"
+                    description="Not available in this version."
+                    icon={Users}
+                    iconClass="bg-slate-100 text-slate-400"
+                    disabled={true}
+                  />
+                )}
               </div>
             </div>
 
@@ -431,29 +474,39 @@ export default function GenerateFundPage() {
                 <div>
                   <p className="mb-2 text-[13px] font-medium text-slate-700">Fund amounts</p>
                   <div className="grid gap-3 sm:grid-cols-2">
-                    {fundTypes.map((t) => (
-                      <label
-                        key={t.id}
-                        className="block rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-[13px] font-medium text-slate-700 shadow-sm"
-                      >
-                        {t.name}
-                        <input
-                          type="number"
-                          min="0"
-                          step="1"
-                          className={inputClass}
-                          value={amounts[t.id] ?? ''}
-                          onChange={(e) =>
-                            setAmounts((prev) => ({
-                              ...prev,
-                              [t.id]: e.target.value,
-                            }))
-                          }
-                          placeholder="0"
-                          disabled={isGenerating || !detail}
-                        />
-                      </label>
-                    ))}
+                    {fundTypes.map((t) => {
+                      const isSecurity = t.id === SECURITY_DEPOSIT_FUND_TYPE_ID
+                      const securityBlocked =
+                        isSecurity
+                        && (securityMeta?.hasRefundHistory || securityMeta?.HasRefundHistory)
+                      return (
+                        <label
+                          key={t.id}
+                          className="block rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-[13px] font-medium text-slate-700 shadow-sm"
+                        >
+                          {t.name}
+                          <input
+                            {...INTEGER_INPUT_ATTRS}
+                            className={inputClass}
+                            value={amounts[t.id] ?? ''}
+                            onChange={(e) =>
+                              setAmounts((prev) => ({
+                                ...prev,
+                                [t.id]: readIntegerInput(e),
+                              }))
+                            }
+                            placeholder="0"
+                            disabled={isGenerating || !detail || securityBlocked}
+                          />
+                          {securityBlocked ? (
+                            <p className="mt-1.5 text-[11px] font-normal leading-snug text-amber-700">
+                              A security deposit refund was already recorded for this student. New
+                              charges cannot be generated.
+                            </p>
+                          ) : null}
+                        </label>
+                      )
+                    })}
                   </div>
                 </div>
               </div>
@@ -477,12 +530,10 @@ export default function GenerateFundPage() {
                 <label className="block text-[13px] font-medium text-slate-700">
                   Amount
                   <input
-                    type="number"
-                    min="0"
-                    step="1"
+                    {...INTEGER_INPUT_ATTRS}
                     className={inputClass}
                     value={bulkAmount}
-                    onChange={(e) => setBulkAmount(e.target.value)}
+                    onChange={(e) => setBulkAmount(readIntegerInput(e))}
                     placeholder="Enter amount"
                     disabled={isGenerating}
                   />

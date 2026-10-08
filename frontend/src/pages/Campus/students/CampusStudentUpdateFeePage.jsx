@@ -3,6 +3,7 @@ import { ArrowRight, Banknote, Loader2, RefreshCw, UserRound, X } from 'lucide-r
 import AsyncSelect from 'react-select/async'
 import { toast } from 'sonner'
 import CampusShell from '../../../components/campus/CampusShell.jsx'
+import { DECIMAL_INPUT_ATTRS, readDecimalInput } from '../../../utils/numericInput.js'
 import {
   getStudentAdmissionDetail,
   mapStudentToSelectOption,
@@ -294,12 +295,10 @@ function CampusStudentUpdateFeePage() {
                   <label className="block text-[12px] font-medium text-slate-600">
                     New tuition fee
                     <input
-                      type="number"
-                      min="0"
-                      step="1"
+                      {...DECIMAL_INPUT_ATTRS}
                       className={inputClass}
                       value={tuitionInput}
-                      onChange={(e) => setTuitionInput(e.target.value.replace(/[^\d.]/g, ''))}
+                      onChange={(e) => setTuitionInput(readDecimalInput(e))}
                       placeholder="Enter amount"
                     />
                   </label>

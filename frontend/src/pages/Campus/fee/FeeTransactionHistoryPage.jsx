@@ -13,6 +13,7 @@ import {
 } from '../../../services/feeReceiptHistoryService'
 import { buildVoidReceiptPreviewHtml, printFeeReceipts } from '../../../utils/feeReceiptPrint'
 import { FILTER_INPUT_AUTOCOMPLETE_PROPS } from '../../../utils/filterInputProps'
+import { INTEGER_INPUT_ATTRS, readIntegerInput } from '../../../utils/numericInput.js'
 
 const inputClass =
   'h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-[13px] text-slate-800 outline-none transition focus:border-[var(--campus-primary)] focus:ring-2 focus:ring-indigo-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400'
@@ -519,13 +520,11 @@ export default function FeeTransactionHistoryPage() {
                   <label key={line.id} className="block text-[13px] text-slate-600">
                     {line.description}
                     <input
-                      type="number"
-                      min="1"
-                      step="1"
+                      {...INTEGER_INPUT_ATTRS}
                       className={`${inputClass} mt-1`}
                       value={line.amount}
                       onChange={(e) => {
-                        const value = e.target.value
+                        const value = readIntegerInput(e)
                         setEditState((current) => ({
                           ...current,
                           lines: current.lines.map((item, i) =>

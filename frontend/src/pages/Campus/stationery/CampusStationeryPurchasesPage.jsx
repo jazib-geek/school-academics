@@ -11,6 +11,7 @@ import {
   getStationeryItems,
   getStationeryPurchases,
 } from '../../../services/stationeryService'
+import { DECIMAL_INPUT_ATTRS, readDecimalInput } from '../../../utils/numericInput.js'
 
 const inputClass =
   'h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-[var(--campus-primary)] focus:ring-2 focus:ring-indigo-100'
@@ -288,22 +289,18 @@ function CampusStationeryPurchasesPage() {
                       menuPosition="fixed"
                     />
                     <input
-                      type="number"
-                      min="0.01"
-                      step="any"
+                      {...DECIMAL_INPUT_ATTRS}
                       className={inputClass}
                       placeholder="Qty"
                       value={line.quantity}
-                      onChange={(e) => updateLine(index, { quantity: e.target.value })}
+                      onChange={(e) => updateLine(index, { quantity: readDecimalInput(e) })}
                     />
                     <input
-                      type="number"
-                      min="0.01"
-                      step="any"
+                      {...DECIMAL_INPUT_ATTRS}
                       className={inputClass}
                       placeholder="Unit price"
                       value={line.unitPrice}
-                      onChange={(e) => updateLine(index, { unitPrice: e.target.value })}
+                      onChange={(e) => updateLine(index, { unitPrice: readDecimalInput(e) })}
                     />
                     <button
                       type="button"

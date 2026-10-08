@@ -4,6 +4,7 @@ import AsyncSelect from 'react-select/async'
 import Select from 'react-select'
 import { toast } from 'sonner'
 import CampusShell from '../../../components/campus/CampusShell.jsx'
+import { DECIMAL_INPUT_ATTRS, readDecimalInput } from '../../../utils/numericInput.js'
 import { getClasses } from '../../../services/classService'
 import {
   getStudentAdmissionDetail,
@@ -411,12 +412,10 @@ function CampusStudentTransferPage() {
                       <label className="block text-[12px] font-medium text-slate-600">
                         Tuition fee
                         <input
-                          type="number"
-                          min="0"
-                          step="1"
+                          {...DECIMAL_INPUT_ATTRS}
                           className={`${inputClass} h-10`}
                           value={tuitionInput}
-                          onChange={(e) => setTuitionInput(e.target.value.replace(/[^\d.]/g, ''))}
+                          onChange={(e) => setTuitionInput(readDecimalInput(e))}
                         />
                       </label>
                       <div className="rounded-lg bg-white px-3 py-2">

@@ -5,6 +5,7 @@ import CampusShell from '../../../components/campus/CampusShell.jsx'
 import ConfirmDialog from '../../../components/campus/ConfirmDialog.jsx'
 import { getClasses } from '../../../services/classService'
 import { getFeeIncrementStudents, previewFeeIncrement, applyFeeIncrement } from '../../../services/studentService'
+import { INTEGER_INPUT_ATTRS, readIntegerInput } from '../../../utils/numericInput.js'
 
 const field = 'h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm disabled:bg-slate-100'
 const button = 'rounded-lg bg-[var(--campus-primary)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50'
@@ -212,11 +213,11 @@ export default function CampusStudentIncrementFeePage() {
                     {classes.map((item) => <option key={item.id} value={item.id}>{item.className}</option>)}
                   </select></label>}
                 <label className="space-y-1 text-sm font-medium">New Total Fee (fixed)
-                  <input required type="number" min="0" max="2147483647" step="1" className={field} value={newTotal}
-                    onChange={(e) => { invalidate(); setNewTotal(e.target.value) }} placeholder="e.g. 6000" /></label>
+                  <input required {...INTEGER_INPUT_ATTRS} className={field} value={newTotal}
+                    onChange={(e) => { invalidate(); setNewTotal(readIntegerInput(e)) }} placeholder="e.g. 6000" /></label>
                 <label className="space-y-1 text-sm font-medium">Increase Tuition Fee by
-                  <input required type="number" min="0" max="2147483647" step="1" className={field} value={tuition}
-                    onChange={(e) => { invalidate(); setTuition(e.target.value) }} placeholder="e.g. 300" /></label>
+                  <input required {...INTEGER_INPUT_ATTRS} className={field} value={tuition}
+                    onChange={(e) => { invalidate(); setTuition(readIntegerInput(e)) }} placeholder="e.g. 300" /></label>
                 <button className={`${button} h-10 whitespace-nowrap`} disabled={busy || loading || rows.length === 0 || (registrationDateMode !== 'all' && !registrationDate) || (scope === 'class' && (!classId || selected.size === 0))}>
                   {busy ? 'Please wait…' : 'Preview Changes'}
                 </button>

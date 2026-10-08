@@ -11,6 +11,7 @@ import {
 } from '../../../services/feeReceiptHistoryService'
 import { buildVoidReceiptPreviewHtml } from '../../../utils/feeReceiptPrint'
 import { FILTER_INPUT_AUTOCOMPLETE_PROPS } from '../../../utils/filterInputProps'
+import { INTEGER_INPUT_ATTRS, readIntegerInput } from '../../../utils/numericInput.js'
 
 const PAGE_SIZE = 25
 
@@ -197,11 +198,11 @@ export default function VoidReceiptsPage() {
                 <label className="block min-w-[8rem] text-[13px] font-medium text-slate-700">
                   Receipt #
                   <input
-                    type="number"
+                    {...INTEGER_INPUT_ATTRS}
                     className={`${inputClass} mt-1`}
                     placeholder="Optional"
                     value={receiptId}
-                    onChange={(e) => setReceiptId(e.target.value)}
+                    onChange={(e) => setReceiptId(readIntegerInput(e))}
                   />
                 </label>
                 <button

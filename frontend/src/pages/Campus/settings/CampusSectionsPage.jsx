@@ -12,6 +12,7 @@ import {
   setSettingSectionStatus,
   updateSettingSection,
 } from '../../../services/campusSettingsService'
+import { INTEGER_INPUT_ATTRS, readIntegerInput } from '../../../utils/numericInput.js'
 
 const BRANCHES = ['Junior', 'Primary', 'High Girls', 'High Boys']
 const GENDERS = ['Male', 'Female', 'Mix']
@@ -273,7 +274,7 @@ export default function CampusSectionsPage() {
               </label>
               <label className="block text-xs font-semibold uppercase text-slate-500">
                 Fee
-                <input type="number" min="0" className={`${inputClass} mt-1`} value={form.fee} onChange={(e) => setForm((c) => ({ ...c, fee: e.target.value }))} required />
+                <input {...INTEGER_INPUT_ATTRS} className={`${inputClass} mt-1`} value={form.fee} onChange={(e) => setForm((c) => ({ ...c, fee: readIntegerInput(e) }))} required />
               </label>
               <label className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700">
                 <input type="checkbox" checked={Boolean(form.isHifz)} onChange={(e) => setForm((c) => ({ ...c, isHifz: e.target.checked }))} className="h-4 w-4 accent-[var(--campus-primary)]" />

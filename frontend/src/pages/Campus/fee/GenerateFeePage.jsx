@@ -25,6 +25,7 @@ import {
 } from '../../../services/feeGenerateService'
 import { hasCampusPermission } from '../../../services/authService'
 import { getCampusPrintMeta } from '../../../utils/campusProfile'
+import { INTEGER_INPUT_ATTRS, readIntegerInput } from '../../../utils/numericInput.js'
 
 const MONTHS = [
   { value: 1, label: 'January' },
@@ -765,12 +766,10 @@ export default function GenerateFeePage() {
                       Amount
                       <input
                         ref={customAmountRef}
-                        type="number"
-                        min="0"
-                        step="1"
+                        {...INTEGER_INPUT_ATTRS}
                         className={inputClass}
                         value={customAmount}
-                        onChange={(e) => setCustomAmount(e.target.value)}
+                        onChange={(e) => setCustomAmount(readIntegerInput(e))}
                         placeholder="Enter amount"
                         disabled={isGenerating || !detail}
                       />

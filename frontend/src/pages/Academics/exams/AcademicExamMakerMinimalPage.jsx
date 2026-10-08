@@ -66,6 +66,7 @@ import {
   printAdjustmentsFromApi,
   printAdjustmentsToApi,
 } from './examPaperPrintAdjustments.js'
+import { INTEGER_INPUT_ATTRS, readIntegerInput } from '../../../utils/numericInput.js'
 import { useExamMakerAutoSave } from '../../../hooks/useExamMakerAutoSave'
 import { useExamMakerUnsavedGuard } from '../../../hooks/useExamMakerUnsavedGuard'
 import {
@@ -2921,11 +2922,9 @@ function AcademicExamMakerMinimalPage() {
               <label className="mt-2 block">
                 <span className="mb-0.5 block text-[10px] uppercase text-slate-500">Questions to attempt</span>
                 <input
-                  type="number"
-                  min={1}
-                  max={Math.max(1, sectionPreviewRows.length - 1)}
+                  {...INTEGER_INPUT_ATTRS}
                   value={section.optionalQuestionsAttemptCount ?? ''}
-                  onChange={(e) => setSectionOptionalAttemptCount(section.sectionKey, e.target.value)}
+                  onChange={(e) => setSectionOptionalAttemptCount(section.sectionKey, readIntegerInput(e))}
                   className="w-full max-w-[8rem] rounded border border-slate-200 bg-white px-2 py-1"
                 />
                 <span className="mt-1 block text-[10px] text-slate-500">
@@ -3170,14 +3169,12 @@ function AcademicExamMakerMinimalPage() {
                     <label className="text-[11px]">
                       <span className="block text-slate-500">Order</span>
                       <input
-                        type="number"
-                        min={1}
-                        max={selectedWithDetails.length}
+                        {...INTEGER_INPUT_ATTRS}
                         value={item.questionOrder}
                         onChange={(e) =>
-                          updateSelectedQuestion(item.questionId, 'questionOrder', e.target.value)
+                          updateSelectedQuestion(item.questionId, 'questionOrder', readIntegerInput(e))
                         }
-                        onBlur={(e) => commitQuestionOrder(item.questionId, e.target.value)}
+                        onBlur={(e) => commitQuestionOrder(item.questionId, readIntegerInput(e))}
                         className="w-14 rounded border border-slate-200 px-1 py-0.5 text-xs"
                       />
                     </label>
@@ -3198,16 +3195,14 @@ function AcademicExamMakerMinimalPage() {
                     <label className="text-[11px]">
                       <span className="block text-slate-500">Marks *</span>
                       <input
-                        type="number"
-                        min={1}
-                        max={100}
+                        {...INTEGER_INPUT_ATTRS}
                         required
                         value={item.marks}
                         onChange={(e) =>
                           updateSelectedQuestion(
                             item.questionId,
                             'marks',
-                            Math.max(1, Math.min(100, Number(e.target.value) || 1)),
+                            Math.max(1, Math.min(100, Number(readIntegerInput(e)) || 1)),
                           )
                         }
                         className="w-16 rounded border border-slate-200 px-1 py-0.5 text-xs"
@@ -3331,10 +3326,9 @@ function AcademicExamMakerMinimalPage() {
               <label className="block text-xs">
                 <span className="mb-1 block text-slate-600">Duration (minutes)</span>
                 <input
-                  type="number"
-                  min={1}
+                  {...INTEGER_INPUT_ATTRS}
                   value={form.durationMinutes}
-                  onChange={(e) => setForm((p) => ({ ...p, durationMinutes: e.target.value }))}
+                  onChange={(e) => setForm((p) => ({ ...p, durationMinutes: readIntegerInput(e) }))}
                   className="w-full rounded border border-slate-200 px-2 py-2 text-sm"
                 />
               </label>
@@ -3762,11 +3756,9 @@ function AcademicExamMakerMinimalPage() {
                               </span>
                             </span>
                             <input
-                              type="number"
-                              min={0}
-                              max={Number(available.mcqCount || 0)}
+                              {...INTEGER_INPUT_ATTRS}
                               value={plan.mcqCount ?? ''}
-                              onChange={(e) => updateAutoChapterCount(chapter.id, 'mcqCount', e.target.value)}
+                              onChange={(e) => updateAutoChapterCount(chapter.id, 'mcqCount', readIntegerInput(e))}
                               placeholder="0"
                               disabled={isAutoAvailabilityLoading || isRandomizingPaper || hasNoAvailableQuestions}
                               className="w-full rounded border border-slate-200 bg-white px-2 py-2 text-sm disabled:bg-slate-100"
@@ -3782,11 +3774,9 @@ function AcademicExamMakerMinimalPage() {
                               </span>
                             </span>
                             <input
-                              type="number"
-                              min={0}
-                              max={Number(available.saqCount || 0)}
+                              {...INTEGER_INPUT_ATTRS}
                               value={plan.saqCount ?? ''}
-                              onChange={(e) => updateAutoChapterCount(chapter.id, 'saqCount', e.target.value)}
+                              onChange={(e) => updateAutoChapterCount(chapter.id, 'saqCount', readIntegerInput(e))}
                               placeholder="0"
                               disabled={isAutoAvailabilityLoading || isRandomizingPaper || hasNoAvailableQuestions}
                               className="w-full rounded border border-slate-200 bg-white px-2 py-2 text-sm disabled:bg-slate-100"
@@ -3802,11 +3792,9 @@ function AcademicExamMakerMinimalPage() {
                               </span>
                             </span>
                             <input
-                              type="number"
-                              min={0}
-                              max={Number(available.laqCount || 0)}
+                              {...INTEGER_INPUT_ATTRS}
                               value={plan.laqCount ?? ''}
-                              onChange={(e) => updateAutoChapterCount(chapter.id, 'laqCount', e.target.value)}
+                              onChange={(e) => updateAutoChapterCount(chapter.id, 'laqCount', readIntegerInput(e))}
                               placeholder="0"
                               disabled={isAutoAvailabilityLoading || isRandomizingPaper || hasNoAvailableQuestions}
                               className="w-full rounded border border-slate-200 bg-white px-2 py-2 text-sm disabled:bg-slate-100"

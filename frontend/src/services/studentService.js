@@ -142,3 +142,13 @@ export const deactivateStudent = async (studentId, payload) => {
   const response = await api.post(`/api/student/${studentId}/deactivate`, payload)
   return response?.data?.data
 }
+
+export const getStudentSecurityDepositSummary = async (studentId) => {
+  const response = await api.get(`/api/student/${studentId}/security-deposit`)
+  return response?.data?.data
+}
+
+export const refundStudentSecurityDeposit = async (studentId, payload) => {
+  const response = await api.post(`/api/student/${studentId}/security-deposit/refund`, payload)
+  return response?.data?.data
+}

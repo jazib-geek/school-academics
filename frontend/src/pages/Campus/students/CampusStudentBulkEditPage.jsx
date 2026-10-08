@@ -15,6 +15,7 @@ import CampusShell from '../../../components/campus/CampusShell.jsx'
 import { getClasses } from '../../../services/classService'
 import { hasCampusPermission } from '../../../services/authService'
 import { getBulkEditStudents, bulkUpdateStudent } from '../../../services/studentService'
+import { INTEGER_INPUT_ATTRS, sanitizeIntegerInput } from '../../../utils/numericInput.js'
 
 const inputClass =
   'h-8 w-full rounded-md border border-slate-300 bg-white px-2 text-[13px] text-slate-800 outline-none transition focus:border-[var(--campus-primary)] focus:ring-1 focus:ring-indigo-100'
@@ -459,16 +460,14 @@ function CampusStudentBulkEditPage() {
                             }
                           >
                             <input
-                              type="number"
-                              min="0"
-                              max="9999"
-                              inputMode="numeric"
+                              {...INTEGER_INPUT_ATTRS}
+                              maxLength={4}
                               className={`${inputClass} ${fieldClass} w-20 text-right disabled:cursor-not-allowed disabled:bg-slate-100 disabled:opacity-70`}
                               value={row.tuitionFee}
                               disabled={!canUpdateFee}
                               onChange={(e) => {
                                 if (!canUpdateFee) return
-                                const digits = e.target.value.replace(/[^\d]/g, '').slice(0, 4)
+                                const digits = sanitizeIntegerInput(e.target.value).slice(0, 4)
                                 updateRow(row.regId, { tuitionFee: digits })
                               }}
                             />

@@ -44,6 +44,12 @@ import {
   SALARY_COMPONENT_TYPE_LABELS,
 } from '../../../constants/salaryComponents'
 import { FILTER_INPUT_AUTOCOMPLETE_PROPS } from '../../../utils/filterInputProps'
+import {
+  DECIMAL_INPUT_ATTRS,
+  INTEGER_INPUT_ATTRS,
+  readDecimalInput,
+  readIntegerInput,
+} from '../../../utils/numericInput.js'
 
 const inputClass =
   'h-9 w-full rounded-lg border border-slate-300 bg-white px-2.5 text-[13px] text-slate-800 outline-none transition focus:border-[var(--campus-primary)] focus:ring-2 focus:ring-indigo-100 disabled:bg-slate-50 disabled:text-slate-500'
@@ -967,12 +973,10 @@ function EmployeeLoansPage() {
                           <div className="flex gap-2">
                             <input
                               className={inputClass}
-                              type="number"
-                              min="0"
-                              step="1"
+                              {...INTEGER_INPUT_ATTRS}
                               value={basicSalaryInput}
                               disabled={!basicUnlocked || isSavingBasic}
-                              onChange={(e) => setBasicSalaryInput(e.target.value)}
+                              onChange={(e) => setBasicSalaryInput(readIntegerInput(e))}
                             />
                             <button
                               type="button"
@@ -1084,12 +1088,10 @@ function EmployeeLoansPage() {
                                 ? 'border-[var(--campus-primary)] ring-2 ring-[var(--campus-primary)] animate-[pulse_0.5s_ease-in-out_3]'
                                 : ''
                             }`}
-                            type="number"
-                            min="0"
-                            step="0.01"
+                            {...DECIMAL_INPUT_ATTRS}
                             placeholder="0"
                             value={form.amount}
-                            onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
+                            onChange={(e) => setForm((f) => ({ ...f, amount: readDecimalInput(e, 2) }))}
                           />
                         </label>
 
