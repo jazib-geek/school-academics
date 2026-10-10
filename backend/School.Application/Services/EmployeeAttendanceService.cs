@@ -401,6 +401,9 @@ public class EmployeeAttendanceService : IEmployeeAttendanceService
         if (hasCheckIn && hasCheckOut)
             throw new InvalidOperationException("Attendance already completed for today.");
 
+        if (hasCheckIn && IsRepeatScan(punchAt, row!))
+            throw new InvalidOperationException("Check-in already punched. Wait a minute before scanning again.");
+
         string punchType;
         int lateMinutes;
         int earlyMinutes;
@@ -1393,6 +1396,49 @@ public class EmployeeAttendanceService : IEmployeeAttendanceService
             return $"Checked out on time. You were {DesignationTimeHelper.FormatDuration(lateMinutes)} late at check-in.";
 
         return "You are on time.";
+    }
+
+    private static bool IsRepeatScan(DateTime punchAt, EmployeeAttendance row)
+    {
+        const int windowSeconds = 60;
+
+        if (TryReadStoredPunch(row.ChangeJson, out var previousPunch))
+            return punchAt >= previousPunch && (punchAt - previousPunch).TotalSeconds <= windowSeconds;
+
+        if (string.IsNullOrWhiteSpace(row.Time))
+            return false;
+
+        if (!TimeSpan.TryParse(row.Time, CultureInfo.InvariantCulture, out var checkInTime))
+            return false;
+
+        var checkInAt = punchAt.Date.Add(checkInTime);
+        var elapsed = punchAt - checkInAt;
+        return elapsed >= TimeSpan.Zero && elapsed.TotalSeconds <= windowSeconds;
+    }
+
+    private static bool TryReadStoredPunch(string? changeJson, out DateTime punchAt)
+    {
+        punchAt = default;
+        if (string.IsNullOrWhiteSpace(changeJson))
+            return false;
+
+        try
+        {
+            using var document = JsonDocument.Parse(changeJson);
+            if (!document.RootElement.TryGetProperty("PunchAt", out var punchAtValue) &&
+                !document.RootElement.TryGetProperty("punchAt", out punchAtValue))
+                return false;
+
+            return DateTime.TryParse(
+                punchAtValue.GetString(),
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.RoundtripKind,
+                out punchAt);
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
     }
 
     private static string BuildChangeJson(
