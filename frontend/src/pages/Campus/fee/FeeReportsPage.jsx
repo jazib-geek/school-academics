@@ -53,6 +53,7 @@ import {
   getSmartFeeCatalog,
   runSmartFeeReport,
 } from '../../../services/feeReportService'
+import { getAttendanceReport } from '../../../services/attendanceService'
 
 const FREQUENT_REPORT_IDS = [
   'collection-by-date',
@@ -284,6 +285,107 @@ const normalizeCollectionResult = (data) => {
   return { ...data, columns: nextColumns, rows: nextRows }
 }
 
+const ATTENDANCE_REPORT_IDS = new Set(['tuition-defaulters', 'fund-defaulters'])
+
+const ATTENDANCE_CHIP_STYLE = {
+  P: { background: '#d1fae5', color: '#047857' },
+  A: { background: '#ffe4e6', color: '#be123c' },
+  Lt: { background: '#dbeafe', color: '#1d4ed8' },
+}
+
+const ATTENDANCE_STATUS_LABEL = {
+  P: 'Present',
+  A: 'Absent',
+  Lt: 'Late',
+  Lv: 'Leave',
+  H: 'Holiday',
+}
+
+const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+const buildLast7Days = () => {
+  const today = new Date()
+  today.setHours(12, 0, 0, 0)
+  const days = []
+  for (let offset = 6; offset >= 0; offset -= 1) {
+    const date = new Date(today)
+    date.setDate(today.getDate() - offset)
+    const iso = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+    if (date.getDay() === 0) continue
+    days.push({
+      iso,
+      label: `${WEEKDAY_SHORT[date.getDay()]} ${date.getDate()}`,
+    })
+  }
+  return days
+}
+
+const indexAttendanceItems = (items) => {
+  const next = {}
+  for (const item of items || []) {
+    const id = String(item?.studentId ?? '')
+    const dateKey = String(item?.date || '').slice(0, 10)
+    if (!id || !dateKey) continue
+    if (!next[id]) next[id] = {}
+    next[id][dateKey] = item.status || ''
+  }
+  return next
+}
+
+const formatAttendancePrint = (days, marks) => {
+  const parts = (days || [])
+    .map((day) => marks?.[day.iso])
+    .filter((status) => status && status !== 'H')
+  return parts.join('.') || '—'
+}
+
+const screenColumnClass = (col) => {
+  const numeric = col.format === 'money' || col.format === 'number' || col.format === 'percent'
+  if (col.key === 'recentAttendance') return 'w-[168px] whitespace-nowrap px-2 py-2'
+  if (col.key === 'studentId') return 'w-[4.5rem] whitespace-nowrap px-3 py-2'
+  if (col.key === 'year') return 'w-16 whitespace-nowrap px-3 py-2'
+  if (col.key === 'month') return 'w-24 whitespace-nowrap px-3 py-2'
+  if (col.key === 'className' || col.key === 'fundTypeName') return 'w-36 whitespace-nowrap px-3 py-2'
+  if (numeric) return 'w-28 whitespace-nowrap px-3 py-2 text-right tabular-nums'
+  return 'px-3 py-2'
+}
+
+function AttendanceMarks({ days, marks, loading }) {
+  if (loading) return <span className="text-[11px] text-slate-400">…</span>
+  return (
+    <span className="inline-flex items-center gap-0.5">
+      {(days || [])
+        .filter((day) => marks?.[day.iso] !== 'H')
+        .map((day) => {
+        const status = marks?.[day.iso]
+        const style = ATTENDANCE_CHIP_STYLE[status] || { background: '#f1f5f9', color: '#64748b' }
+        const label = ATTENDANCE_STATUS_LABEL[status] || (status ? status : 'Not marked')
+        return (
+          <span
+            key={day.iso}
+            title={`${day.label}: ${label}`}
+            style={{
+              ...style,
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minWidth: 22,
+              height: 18,
+              padding: '0 3px',
+              borderRadius: 4,
+              fontSize: 10,
+              fontWeight: 700,
+              lineHeight: 1,
+            }}
+          >
+            {status || '–'}
+          </span>
+        )
+      })}
+    </span>
+  )
+}
+
 const formatCell = (value, format, key) => {
   if (value == null || value === '') return '—'
   const keyNorm = String(key || '')
@@ -348,12 +450,16 @@ const isPrintNarrowColumn = (key, format) => {
 const getPrintColumnWidth = (key, format, columnCount = 5) => {
   const k = String(key || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase()
 
+  if (k === 'month') return '12%'
+  if (k === 'recentattendance') return '16%'
+
   if (PRINT_WIDE_KEYS.test(k) || (format === 'text' && (k === 'students' || k.endsWith('name')))) {
+    if (columnCount >= 6) return '24%'
     return columnCount <= 4 ? '42%' : '36%'
   }
 
   if (isPrintMoneyColumn(key, format)) {
-    return '11%'
+    return columnCount >= 6 ? '13%' : '11%'
   }
 
   if (isPrintNarrowColumn(key, format)) {
@@ -369,6 +475,8 @@ const getPrintColumnWidth = (key, format, columnCount = 5) => {
 
 /** Narrow ID/count cols + money cols → center; text names stay left. */
 const getPrintColumnAlign = (key, format) => {
+  const k = String(key || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase()
+  if (k === 'recentattendance') return 'center'
   if (isPrintMoneyColumn(key, format) || isPrintNarrowColumn(key, format)) return 'center'
   return 'left'
 }
@@ -376,11 +484,14 @@ const getPrintColumnAlign = (key, format) => {
 const printCellStyle = (key, format, columnCount) => {
   const width = getPrintColumnWidth(key, format, columnCount)
   const textAlign = getPrintColumnAlign(key, format)
+  const k = String(key || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase()
+  const isName = PRINT_WIDE_KEYS.test(k) || k.endsWith('name')
   return {
     ...(width ? { width } : null),
     textAlign,
     ...(isPrintMoneyColumn(key, format) ? { fontWeight: 700 } : null),
-    whiteSpace: width && parseFloat(width) <= 11 ? 'nowrap' : undefined,
+    whiteSpace: isName ? 'normal' : k === 'recentattendance' || (width && parseFloat(width) <= 11) ? 'nowrap' : undefined,
+    ...(isName ? { overflowWrap: 'break-word', wordBreak: 'break-word' } : null),
   }
 }
 
@@ -556,6 +667,11 @@ function FeeReportsPage() {
   const [error, setError] = useState('')
   const [runError, setRunError] = useState('')
   const [printLayoutMode, setPrintLayoutMode] = useState('default')
+  const [attendanceDays, setAttendanceDays] = useState([])
+  const [attendanceByStudent, setAttendanceByStudent] = useState({})
+  const [attendanceLoading, setAttendanceLoading] = useState(false)
+  const [includeAttendanceOnPrint, setIncludeAttendanceOnPrint] = useState(false)
+  const attendanceRequestRef = useRef(0)
 
   const selectedReport = useMemo(
     () => catalog.find((item) => item.id === reportId) || null,
@@ -739,7 +855,12 @@ function FeeReportsPage() {
                 cleaned[key] = value
               }
               const data = await runSmartFeeReport(initial.id, cleaned)
-              if (!cancelled) setResult(normalizeCollectionResult(data))
+              if (!cancelled) {
+                const normalized = normalizeCollectionResult(data)
+                setIncludeAttendanceOnPrint(false)
+                setResult(normalized)
+                loadRecentAttendance(normalized)
+              }
             } catch (requestError) {
               if (!cancelled) {
                 setRunError(requestError?.response?.data?.message || 'Unable to run report.')
@@ -786,6 +907,8 @@ function FeeReportsPage() {
     setReportId(report.id)
     setParams(nextParams)
     setResult(null)
+    setIncludeAttendanceOnPrint(false)
+    attendanceRequestRef.current += 1
     setRunError('')
     setIsResultOpen(false)
     setSearchParams(report.isPreset ? { preset: report.id } : {})
@@ -802,6 +925,11 @@ function FeeReportsPage() {
     setIsLoading(true)
     setRunError('')
     setResult(null)
+    setIncludeAttendanceOnPrint(false)
+    const requestId = attendanceRequestRef.current + 1
+    attendanceRequestRef.current = requestId
+    setAttendanceByStudent({})
+    setAttendanceDays([])
     try {
       const cleaned = {}
       for (const [key, value] of Object.entries(params)) {
@@ -809,12 +937,16 @@ function FeeReportsPage() {
         cleaned[key] = value
       }
       const data = await runSmartFeeReport(reportId, cleaned)
-      setResult(normalizeCollectionResult(data))
+      if (requestId !== attendanceRequestRef.current) return
+      const normalized = normalizeCollectionResult(data)
+      setResult(normalized)
+      loadRecentAttendance(normalized)
     } catch (requestError) {
+      if (requestId !== attendanceRequestRef.current) return
       setRunError(requestError?.response?.data?.message || 'Unable to run report.')
       setResult(null)
     } finally {
-      setIsLoading(false)
+      if (requestId === attendanceRequestRef.current) setIsLoading(false)
     }
   }
 
@@ -832,14 +964,17 @@ function FeeReportsPage() {
   }, [isResultOpen])
 
   const downloadCsv = () => {
-    if (!result?.columns?.length || !result?.rows?.length) return
-    const headers = result.columns.map((c) => c.label)
+    if (!printColumns.length || !result?.rows?.length) return
+    const headers = printColumns.map((c) => c.label)
     const lines = [
       headers.join(','),
       ...result.rows.map((row) =>
-        result.columns
+        printColumns
           .map((col) => {
-            const raw = row[col.key] ?? ''
+            const raw =
+              col.key === 'recentAttendance'
+                ? formatAttendancePrint(attendanceDays, attendanceByStudent[String(row.studentId)])
+                : (row[col.key] ?? '')
             const text = String(raw).replaceAll('"', '""')
             return `"${text}"`
           })
@@ -1037,11 +1172,62 @@ function FeeReportsPage() {
     return result?.title || selectedReport?.title || 'Fee Report'
   }, [isClassWisePrint, isReceivableReport, isCollectionPrint, result, selectedReport])
 
-  const amountColumnKey = useMemo(() => {
-    if (!result?.columns?.length) return null
-    const moneyCol = [...result.columns].reverse().find((col) => col.format === 'money')
-    return moneyCol?.key || result.columns[result.columns.length - 1]?.key
+  const showsRecentAttendance = ATTENDANCE_REPORT_IDS.has(result?.reportId)
+
+  const screenColumns = useMemo(() => {
+    const source = result?.columns || []
+    const cols =
+      result?.reportId === 'fund-defaulters'
+        ? source.filter((col) => col.key !== 'month' && col.key !== 'year')
+        : source
+    if (!ATTENDANCE_REPORT_IDS.has(result?.reportId)) return cols
+    const attendanceCol = { key: 'recentAttendance', label: 'Attendance', format: 'attendance' }
+    const moneyIndex = cols.findIndex((col) => col.format === 'money')
+    if (moneyIndex < 0) return [...cols, attendanceCol]
+    return [...cols.slice(0, moneyIndex), attendanceCol, ...cols.slice(moneyIndex)]
   }, [result])
+
+  const printColumns = useMemo(
+    () =>
+      includeAttendanceOnPrint
+        ? screenColumns
+        : screenColumns.filter((col) => col.key !== 'recentAttendance'),
+    [screenColumns, includeAttendanceOnPrint],
+  )
+
+  const amountColumnKey = useMemo(() => {
+    if (!printColumns.length) return null
+    const moneyCol = [...printColumns].reverse().find((col) => col.format === 'money')
+    return moneyCol?.key || printColumns[printColumns.length - 1]?.key
+  }, [printColumns])
+
+  const loadRecentAttendance = async (report) => {
+    const requestId = attendanceRequestRef.current
+    if (!ATTENDANCE_REPORT_IDS.has(report?.reportId)) {
+      setAttendanceDays([])
+      setAttendanceByStudent({})
+      setAttendanceLoading(false)
+      return
+    }
+
+    const days = buildLast7Days()
+    setAttendanceDays(days)
+    setAttendanceByStudent({})
+    setAttendanceLoading(true)
+    try {
+      const data = await getAttendanceReport({
+        dateFrom: days[0].iso,
+        dateTo: days[days.length - 1].iso,
+      })
+      if (requestId !== attendanceRequestRef.current) return
+      setAttendanceByStudent(indexAttendanceItems(data?.items))
+    } catch {
+      if (requestId !== attendanceRequestRef.current) return
+      setAttendanceByStudent({})
+    } finally {
+      if (requestId === attendanceRequestRef.current) setAttendanceLoading(false)
+    }
+  }
 
   return (
     <div className="print-page-root min-h-screen bg-slate-100 text-slate-700">
@@ -1385,6 +1571,28 @@ function FeeReportsPage() {
                       <div className="flex shrink-0 items-center gap-2">
                         {!isLoading && result ? (
                           <>
+                            {showsRecentAttendance ? (
+                              <button
+                                type="button"
+                                role="switch"
+                                aria-checked={includeAttendanceOnPrint}
+                                onClick={() => setIncludeAttendanceOnPrint((value) => !value)}
+                                className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                              >
+                                <span>Show attendance</span>
+                                <span
+                                  className={`relative h-5 w-9 shrink-0 rounded-full transition ${
+                                    includeAttendanceOnPrint ? 'bg-[var(--campus-primary)]' : 'bg-slate-300'
+                                  }`}
+                                >
+                                  <span
+                                    className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition ${
+                                      includeAttendanceOnPrint ? 'left-4' : 'left-0.5'
+                                    }`}
+                                  />
+                                </span>
+                              </button>
+                            ) : null}
                             <button
                               type="button"
                               onClick={() =>
@@ -1554,18 +1762,27 @@ function FeeReportsPage() {
                             </div>
                           ) : (
                             <div className="overflow-x-auto">
-                              <table className="min-w-full border-collapse text-[13px] leading-snug">
+                              <table
+                                className={`border-collapse text-[13px] leading-snug ${
+                                  showsRecentAttendance ? 'w-full table-fixed' : 'min-w-full'
+                                }`}
+                              >
                                 <thead>
                                   <tr className="border-b border-slate-200 bg-[var(--campus-primary)] text-left text-xs uppercase tracking-wide text-white">
-                                    {(result.columns || []).map((col) => (
+                                    {screenColumns.map((col) => (
                                       <th
                                         key={col.key}
-                                        className={`px-3 py-2.5 font-semibold ${
-                                          col.format === 'money' ||
-                                          col.format === 'number' ||
-                                          col.format === 'percent'
-                                            ? 'text-right'
-                                            : ''
+                                        title={col.key === 'recentAttendance' ? 'Last 7 days' : undefined}
+                                        className={`py-2.5 font-semibold ${
+                                          showsRecentAttendance
+                                            ? screenColumnClass(col)
+                                            : `px-3 ${
+                                                col.format === 'money' ||
+                                                col.format === 'number' ||
+                                                col.format === 'percent'
+                                                  ? 'text-right'
+                                                  : ''
+                                              }`
                                         }`}
                                       >
                                         {col.label}
@@ -1577,7 +1794,7 @@ function FeeReportsPage() {
                                   {displayRows.length === 0 ? (
                                     <tr>
                                       <td
-                                        colSpan={Math.max(result.columns?.length || 1, 1)}
+                                        colSpan={Math.max(screenColumns.length, 1)}
                                         className="px-3 py-8 text-center text-slate-500"
                                       >
                                         No rows for this report.
@@ -1588,7 +1805,7 @@ function FeeReportsPage() {
                                       row.__type === 'group' ? (
                                         <tr key={`g-${index}`} className="bg-slate-100">
                                           <td
-                                            colSpan={result.columns?.length || 1}
+                                            colSpan={screenColumns.length || 1}
                                             className="px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-600"
                                           >
                                             {row.label}
@@ -1599,18 +1816,30 @@ function FeeReportsPage() {
                                           key={`r-${index}`}
                                           className="border-b border-slate-100 hover:bg-slate-50"
                                         >
-                                          {(result.columns || []).map((col) => (
+                                          {screenColumns.map((col) => (
                                             <td
                                               key={col.key}
-                                              className={`px-3 py-2 ${
-                                                col.format === 'money' ||
-                                                col.format === 'number' ||
-                                                col.format === 'percent'
-                                                  ? 'text-right tabular-nums'
-                                                  : ''
-                                              }`}
+                                              className={
+                                                showsRecentAttendance
+                                                  ? screenColumnClass(col)
+                                                  : `px-3 py-2 ${
+                                                      col.format === 'money' ||
+                                                      col.format === 'number' ||
+                                                      col.format === 'percent'
+                                                        ? 'text-right tabular-nums'
+                                                        : ''
+                                                    }`
+                                              }
                                             >
-                                              {formatCell(row[col.key], col.format, col.key)}
+                                              {col.key === 'recentAttendance' ? (
+                                                <AttendanceMarks
+                                                  days={attendanceDays}
+                                                  marks={attendanceByStudent[String(row.studentId)]}
+                                                  loading={attendanceLoading}
+                                                />
+                                              ) : (
+                                                formatCell(row[col.key], col.format, col.key)
+                                              )}
                                             </td>
                                           ))}
                                         </tr>
@@ -2169,12 +2398,12 @@ function FeeReportsPage() {
                       <table className="legacy-print-table">
                         <thead>
                           <tr>
-                            {(result.columns || []).map((col) => (
+                            {printColumns.map((col) => (
                               <th
                                 key={col.key}
-                                style={printCellStyle(col.key, col.format, result.columns.length)}
+                                style={printCellStyle(col.key, col.format, printColumns.length)}
                               >
-                                {col.label}
+                                {col.key === 'recentAttendance' ? 'Attendance' : col.label}
                               </th>
                             ))}
                           </tr>
@@ -2183,7 +2412,7 @@ function FeeReportsPage() {
                           {(result.rows || []).length === 0 ? (
                             <tr>
                               <td
-                                colSpan={Math.max(result.columns?.length || 1, 1)}
+                                colSpan={Math.max(printColumns.length, 1)}
                                 style={{ textAlign: 'center' }}
                               >
                                 No report rows found.
@@ -2193,30 +2422,37 @@ function FeeReportsPage() {
                             <>
                               {(result.rows || []).map((row, index) => (
                                 <tr key={`pg-${index}`}>
-                                  {(result.columns || []).map((col) => (
+                                  {printColumns.map((col) => (
                                     <td
                                       key={col.key}
-                                      style={printCellStyle(col.key, col.format, result.columns.length)}
+                                      style={printCellStyle(col.key, col.format, printColumns.length)}
                                     >
-                                      {col.format === 'money'
-                                        ? printAmount(row[col.key])
-                                        : dash(row[col.key])}
+                                      {col.key === 'recentAttendance' ? (
+                                        formatAttendancePrint(
+                                          attendanceDays,
+                                          attendanceByStudent[String(row.studentId)],
+                                        )
+                                      ) : col.format === 'money' ? (
+                                        printAmount(row[col.key])
+                                      ) : (
+                                        dash(row[col.key])
+                                      )}
                                     </td>
                                   ))}
                                 </tr>
                               ))}
                               {amountColumnKey ? (
                                 <tr>
-                                  {(result.columns || []).map((col, colIndex) => {
+                                  {printColumns.map((col, colIndex) => {
                                     const isLast = col.key === amountColumnKey
                                     const isLabel =
                                       colIndex ===
-                                      (result.columns || []).findIndex((c) => c.key === amountColumnKey) - 1
+                                      printColumns.findIndex((c) => c.key === amountColumnKey) - 1
                                     if (isLast) {
                                       return (
                                         <td
                                           key={col.key}
-                                          style={printCellStyle(col.key, 'money', result.columns.length)}
+                                          style={printCellStyle(col.key, 'money', printColumns.length)}
                                         >
                                           {printAmount(result.totalAmount)}
                                         </td>
@@ -2227,7 +2463,7 @@ function FeeReportsPage() {
                                         <td
                                           key={col.key}
                                           style={{
-                                            ...printCellStyle(col.key, col.format, result.columns.length),
+                                            ...printCellStyle(col.key, col.format, printColumns.length),
                                             fontWeight: 700,
                                             textAlign: 'center',
                                           }}
@@ -2239,7 +2475,7 @@ function FeeReportsPage() {
                                     return (
                                       <td
                                         key={col.key}
-                                        style={printCellStyle(col.key, col.format, result.columns.length)}
+                                        style={printCellStyle(col.key, col.format, printColumns.length)}
                                       />
                                     )
                                   })}
