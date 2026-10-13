@@ -3753,6 +3753,10 @@ namespace School.Infrastructure.Data.Migrations
                     b.Property<decimal?>("Payment")
                         .HasColumnType("decimal(18,0)");
 
+                    b.Property<string>("PaymentMode")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
                     b.Property<int?>("RcptID")
                         .HasColumnType("int");
 

@@ -79,6 +79,7 @@ public class B2ObjectStorageService : IObjectStorageService
         Stream content,
         string fileName,
         string? contentType,
+        string campusKey,
         string className,
         DateOnly diaryDate,
         int pageIndex,
@@ -90,7 +91,7 @@ public class B2ObjectStorageService : IObjectStorageService
             return null;
         }
 
-        var key = BuildClassDiaryObjectKey(className, diaryDate, pageIndex, totalPages, contentType, fileName);
+        var key = BuildClassDiaryObjectKey(campusKey, className, diaryDate, pageIndex, totalPages, contentType, fileName);
 
         using var client = CreateS3Client();
 
@@ -443,6 +444,7 @@ public class B2ObjectStorageService : IObjectStorageService
     }
 
     private static string BuildClassDiaryObjectKey(
+        string campusKey,
         string className,
         DateOnly diaryDate,
         int pageIndex,
@@ -450,6 +452,12 @@ public class B2ObjectStorageService : IObjectStorageService
         string? contentType,
         string fileName)
     {
+        var safeCampus = SanitizePathSegment(campusKey).ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(safeCampus))
+        {
+            throw new ArgumentException("Campus is required for diary storage.");
+        }
+
         var safeClass = SanitizePathSegment(className);
         if (string.IsNullOrWhiteSpace(safeClass))
         {
@@ -462,7 +470,7 @@ public class B2ObjectStorageService : IObjectStorageService
             ? $"{safeClass}_{datePart}_{pageIndex}"
             : $"{safeClass}_{datePart}";
 
-        return $"class-diary/{safeClass}/{fileBase}{ext}";
+        return $"class-diary/{safeCampus}/{safeClass}/{fileBase}{ext}";
     }
 
     private static string SanitizePathSegment(string value)

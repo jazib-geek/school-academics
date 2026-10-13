@@ -368,6 +368,9 @@ public class AppDbContext : DbContext
             entity.Property(e => e.ManualRcptNo)
                 .HasMaxLength(100);
 
+            entity.Property(e => e.PaymentMode)
+                .HasMaxLength(20);
+
             entity.Property(e => e.Payment)
                 .HasColumnType("decimal(18,0)");
 

@@ -20,6 +20,7 @@ public class ClassDiaryService : IClassDiaryService
     private readonly ICampusNotificationService _notificationService;
     private readonly IActivityLogService _activityLogService;
     private readonly AppDbContext _context;
+    private readonly TenantContext _tenantContext;
     private readonly ILogger<ClassDiaryService> _logger;
 
     public ClassDiaryService(
@@ -28,6 +29,7 @@ public class ClassDiaryService : IClassDiaryService
         ICampusNotificationService notificationService,
         IActivityLogService activityLogService,
         AppDbContext context,
+        TenantContext tenantContext,
         ILogger<ClassDiaryService> logger)
     {
         _repository = repository;
@@ -35,6 +37,7 @@ public class ClassDiaryService : IClassDiaryService
         _notificationService = notificationService;
         _activityLogService = activityLogService;
         _context = context;
+        _tenantContext = tenantContext;
         _logger = logger;
     }
 
@@ -137,6 +140,7 @@ public class ClassDiaryService : IClassDiaryService
                 file.Content,
                 file.FileName,
                 file.ContentType,
+                _tenantContext.Campus,
                 className,
                 date,
                 pageIndex,

@@ -42,6 +42,8 @@ public class FeeAndFundCollection
 
     public string? ManualRcptNo { get; set; }
 
+    public string? PaymentMode { get; set; }
+
     public decimal? AugustGen { get; set; }
 
     public string? Type { get; set; }

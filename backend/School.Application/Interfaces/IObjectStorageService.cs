@@ -14,6 +14,7 @@ public interface IObjectStorageService
         Stream content,
         string fileName,
         string? contentType,
+        string campusKey,
         string className,
         DateOnly diaryDate,
         int pageIndex,

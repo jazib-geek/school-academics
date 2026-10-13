@@ -44,7 +44,8 @@ public class FeeReportService : IFeeReportService
                 FundTypeName = x.FundType != null ? (x.FundType.FundTypeName ?? "N/A") : "N/A",
                 Month = x.Month,
                 Year = x.Year,
-                Received = x.Recieved ?? 0
+                Received = x.Recieved ?? 0,
+                PaymentMode = x.PaymentMode == "Online" ? "Online" : "Cash"
             })
             .ToListAsync();
 
@@ -85,7 +86,8 @@ public class FeeReportService : IFeeReportService
                 FundTypeName = x.FundType != null ? (x.FundType.FundTypeName ?? "N/A") : "N/A",
                 Month = x.Month,
                 Year = x.Year,
-                Received = x.Recieved ?? 0
+                Received = x.Recieved ?? 0,
+                PaymentMode = x.PaymentMode == "Online" ? "Online" : "Cash"
             })
             .ToListAsync();
 

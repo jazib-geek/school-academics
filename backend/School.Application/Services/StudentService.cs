@@ -163,7 +163,7 @@ public class StudentService : IStudentService
             .AsNoTracking()
             .Include(x => x.Section)
             .Include(x => x.Family)
-            .Where(x => x.Family != null && x.Family.FamilyID == familyId)
+            .Where(x => x.Family != null && x.Family.FamilyID == familyId && x.IsActive != false)
             .OrderBy(x => x.Reg_Id)
             .Select(x => new
             {
@@ -223,7 +223,7 @@ public class StudentService : IStudentService
             .Include(x => x.Section)
             .Where(x => (singleStudent || !selectedStudent.Family_Code.HasValue)
                 ? x.Reg_Id == studentId
-                : x.Family_Code == selectedStudent.Family_Code)
+                : x.Family_Code == selectedStudent.Family_Code && x.IsActive != false)
             .Select(x => new
             {
                 x.Reg_Id,
@@ -327,6 +327,7 @@ public class StudentService : IStudentService
         var manualRcptNo = string.IsNullOrWhiteSpace(request.ManualRcptNo)
             ? null
             : request.ManualRcptNo.Trim();
+        var paymentMode = NormalizeReceivePaymentMode(request.PaymentMode);
 
         var duplicate = submittedItems
             .GroupBy(x => new { x.StudentId, x.FundTypeId, x.Month, x.Year })
@@ -449,6 +450,7 @@ public class StudentService : IStudentService
                 Time = time,
                 RcptID = receiptIdByStudent[item.StudentId],
                 ManualRcptNo = manualRcptNo,
+                PaymentMode = paymentMode,
                 VoidAmount = 0,
                 Discount = 0,
                 SessionYear = null
@@ -595,6 +597,15 @@ public class StudentService : IStudentService
                 receiptLookup.TryGetValue(g.Key, out var paidNow);
                 return Math.Max(0, before - paidNow);
             });
+    }
+
+    private static string NormalizeReceivePaymentMode(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value) || value.Trim().Equals("Cash", StringComparison.OrdinalIgnoreCase))
+            return "Cash";
+        if (value.Trim().Equals("Online", StringComparison.OrdinalIgnoreCase))
+            return "Online";
+        throw new InvalidOperationException("Payment mode must be Cash or Online.");
     }
 
     private async Task<string> ResolveReceivedByAsync(int? userId)

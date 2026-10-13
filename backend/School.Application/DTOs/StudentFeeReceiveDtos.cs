@@ -4,6 +4,7 @@ public class ReceiveStudentFeeRequestDto
 {
     public DateTime Date { get; set; }
     public string? ManualRcptNo { get; set; }
+    public string? PaymentMode { get; set; }
     public List<ReceiveStudentFeeItemDto> Items { get; set; } = [];
 }
 

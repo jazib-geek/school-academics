@@ -970,6 +970,7 @@ public class SmartFeeReportService : ISmartFeeReportService
             ("fundTypeName", x.FundTypeName),
             ("month", monthName),
             ("year", yearText),
+            ("paymentMode", string.Equals(x.PaymentMode, "Online", StringComparison.OrdinalIgnoreCase) ? "Online" : "Cash"),
             ("received", x.Received));
     }
 
@@ -983,6 +984,7 @@ public class SmartFeeReportService : ISmartFeeReportService
         ("fundTypeName", "Type", "text"),
         ("month", "Month", "text"),
         ("year", "Year", "text"),
+        ("paymentMode", "Pay mode", "text"),
         ("received", "Amount", "money"));
 
     private async Task<SmartFeeReportResultDto> CollectionByFundAsync(SmartFeeReportCatalogItemDto cat, Dictionary<string, object?> p)
