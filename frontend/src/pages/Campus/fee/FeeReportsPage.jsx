@@ -506,6 +506,7 @@ const COLLECTION_PRINT_WIDTHS = {
   fundTypeName: '14%',
   month: '10.5%',
   year: '5.5%',
+  paymentMode: '8%',
   received: '11.5%',
 }
 
@@ -516,6 +517,15 @@ function collectionRowsHaveManualRcpt(rows) {
     const text = String(raw).trim()
     return text.length > 0 && text !== '-'
   })
+}
+
+function rowIsOnlinePayment(row) {
+  const raw = row?.paymentMode ?? row?.PaymentMode
+  return String(raw || '').trim().toLowerCase() === 'online'
+}
+
+function collectionRowsHaveOnline(rows) {
+  return (rows || []).some(rowIsOnlinePayment)
 }
 
 const printCollectionCellStyle = (key) => {
@@ -1164,7 +1174,25 @@ function FeeReportsPage() {
     [result?.rows],
   )
 
-  const collectionPrintColumnCount = collectionShowManualRcpt ? 10 : 9
+  const collectionShowPaymentMode = useMemo(
+    () => isCollectionPrint && collectionRowsHaveOnline(result?.rows),
+    [isCollectionPrint, result?.rows],
+  )
+
+  const collectionPaymentTotals = useMemo(() => {
+    let cash = 0
+    let online = 0
+    for (const row of result?.rows || []) {
+      const amount = Number(row.received || 0)
+      if (!amount) continue
+      if (rowIsOnlinePayment(row)) online += amount
+      else cash += amount
+    }
+    return { cash, online }
+  }, [result?.rows])
+
+  const collectionPrintColumnCount =
+    9 + (collectionShowManualRcpt ? 1 : 0) + (collectionShowPaymentMode ? 1 : 0)
 
   const printTitle = useMemo(() => {
     if (isClassWisePrint && isReceivableReport) return 'Fee Receivables Class Wise'
@@ -1176,10 +1204,13 @@ function FeeReportsPage() {
 
   const screenColumns = useMemo(() => {
     const source = result?.columns || []
-    const cols =
+    let cols =
       result?.reportId === 'fund-defaulters'
         ? source.filter((col) => col.key !== 'month' && col.key !== 'year')
         : source
+    if (COLLECTION_REPORT_IDS.has(result?.reportId) && !collectionRowsHaveOnline(result?.rows)) {
+      cols = cols.filter((col) => col.key !== 'paymentMode')
+    }
     if (!ATTENDANCE_REPORT_IDS.has(result?.reportId)) return cols
     const attendanceCol = { key: 'recentAttendance', label: 'Attendance', format: 'attendance' }
     const moneyIndex = cols.findIndex((col) => col.format === 'money')
@@ -1270,7 +1301,9 @@ function FeeReportsPage() {
           }
           .print-sheet {
             display: block !important;
+            box-sizing: border-box !important;
             width: 100% !important;
+            padding-right: 2mm !important;
             font-size: 12px !important;
           }
           .print-sheet .print-school-name,
@@ -1310,7 +1343,10 @@ function FeeReportsPage() {
           .legacy-print-summary {
             margin-top: 14px !important;
             width: 100% !important;
+            max-width: 100% !important;
             border-collapse: collapse !important;
+            table-layout: fixed !important;
+            box-sizing: border-box !important;
             font-size: 12px !important;
           }
           .legacy-print-summary th,
@@ -1322,6 +1358,42 @@ function FeeReportsPage() {
           }
           .legacy-print-summary th {
             background: #d9d9d9 !important;
+          }
+          .payment-mode-summary {
+            width: 280px !important;
+            max-width: 100% !important;
+            margin-top: 12px !important;
+            margin-left: auto !important;
+            border-collapse: collapse !important;
+            table-layout: fixed !important;
+            box-sizing: border-box !important;
+            font-size: 12px !important;
+          }
+          .payment-mode-summary th,
+          .payment-mode-summary td {
+            border: 1px solid #000 !important;
+            padding: 5px 10px !important;
+          }
+          .payment-mode-summary thead th {
+            background: #d9d9d9 !important;
+            font-weight: 700 !important;
+          }
+          .payment-mode-summary thead th:first-child,
+          .payment-mode-summary tbody td:first-child {
+            text-align: left !important;
+          }
+          .payment-mode-summary thead th:last-child {
+            text-align: center !important;
+            width: 110px !important;
+          }
+          .payment-mode-summary tbody td:last-child {
+            text-align: right !important;
+            font-weight: 700 !important;
+          }
+          .payment-mode-summary tr.total-row td {
+            background: #e8e8e8 !important;
+            font-size: 14px !important;
+            font-weight: 800 !important;
           }
           .fee-collection-print-table th,
           .fee-collection-print-table td {
@@ -1655,6 +1727,16 @@ function FeeReportsPage() {
                             <span className="rounded-lg bg-indigo-50 px-3 py-1.5 text-sm text-indigo-900">
                               Total: <strong>{money(result.totalAmount)}</strong>
                             </span>
+                            {collectionShowPaymentMode ? (
+                              <>
+                                <span className="rounded-lg bg-slate-100 px-3 py-1.5 text-sm">
+                                  Cash: <strong>{money(collectionPaymentTotals.cash)}</strong>
+                                </span>
+                                <span className="rounded-lg bg-emerald-50 px-3 py-1.5 text-sm text-emerald-900">
+                                  Online: <strong>{money(collectionPaymentTotals.online)}</strong>
+                                </span>
+                              </>
+                            ) : null}
                             {(result.extraKpis || []).map((kpi) => (
                               <span key={kpi.key} className="rounded-lg bg-slate-100 px-3 py-1.5 text-sm">
                                 {kpi.label}:{' '}
@@ -2321,6 +2403,9 @@ function FeeReportsPage() {
                               <th style={printCollectionCellStyle('fundTypeName')}>Type</th>
                               <th style={printCollectionCellStyle('month')}>Month</th>
                               <th style={printCollectionCellStyle('year')}>Year</th>
+                              {collectionShowPaymentMode ? (
+                                <th style={printCollectionCellStyle('paymentMode')}>Pay mode</th>
+                              ) : null}
                               <th style={printCollectionCellStyle('received')}>Amount</th>
                             </tr>
                           </thead>
@@ -2350,6 +2435,11 @@ function FeeReportsPage() {
                                 <td style={printCollectionCellStyle('year')}>
                                   {dash(row.year != null && row.year !== '' ? String(row.year).replace(/,/g, '') : '')}
                                 </td>
+                                {collectionShowPaymentMode ? (
+                                  <td style={printCollectionCellStyle('paymentMode')}>
+                                    {rowIsOnlinePayment(row) ? 'Online' : 'Cash'}
+                                  </td>
+                                ) : null}
                                 <td style={printCollectionCellStyle('received')}>
                                   {printAmount(row.received)}
                                 </td>
@@ -2393,6 +2483,30 @@ function FeeReportsPage() {
                             </tr>
                           </tbody>
                         </table>
+                        {collectionShowPaymentMode ? (
+                          <table className="payment-mode-summary">
+                            <thead>
+                              <tr>
+                                <th>Payment Mode</th>
+                                <th>Amount</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <tr>
+                                <td>Cash</td>
+                                <td>{printAmount(collectionPaymentTotals.cash)}</td>
+                              </tr>
+                              <tr>
+                                <td>Online</td>
+                                <td>{printAmount(collectionPaymentTotals.online)}</td>
+                              </tr>
+                              <tr className="total-row">
+                                <td>Total</td>
+                                <td>{printAmount(result.totalAmount)}</td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        ) : null}
                       </>
                     ) : (
                       <table className="legacy-print-table">

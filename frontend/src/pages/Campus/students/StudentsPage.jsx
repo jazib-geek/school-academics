@@ -1231,6 +1231,7 @@ function StudentsPage() {
   const [receiveFeeModal, setReceiveFeeModal] = useState(null)
   const [receiveFeeMode, setReceiveFeeMode] = useState('family')
   const [manualRcptNo, setManualRcptNo] = useState('')
+  const [paymentMode, setPaymentMode] = useState('Cash')
   const [feeBalance, setFeeBalance] = useState(null)
   const [receiveAmounts, setReceiveAmounts] = useState({})
   const [receiveDate, setReceiveDate] = useState(() => getTodayIso())
@@ -1534,6 +1535,7 @@ function StudentsPage() {
     closeActionMenu()
     setReceiveFeeModal(student)
     setReceiveFeeMode(mode)
+    setPaymentMode('Cash')
     setManualRcptNo('')
     setFeeBalance(null)
     setReceiveAmounts({})
@@ -1563,6 +1565,7 @@ function StudentsPage() {
     setReceiveFeeModal(null)
     setReceiveFeeMode('family')
     setManualRcptNo('')
+    setPaymentMode('Cash')
     setFeeBalance(null)
     setReceiveAmounts({})
     setIsReceiveConfirmOpen(false)
@@ -1821,6 +1824,7 @@ function StudentsPage() {
       setReceiveDate(effectiveDate)
       const payload = {
         date: effectiveDate,
+        paymentMode,
         items: receivableItems.map(({ row, amount }) => ({
           studentId: row.studentId,
           fundTypeId: row.fundTypeId,
@@ -2943,10 +2947,39 @@ function StudentsPage() {
                                       setReceiveDate(clampToPakistanToday(event.target.value))
                                     }}
                                     disabled={isFeeSubmitting || !canReceiveFeePrevDate}
-                                    className="rounded-lg border border-slate-300 px-3 py-2 font-normal disabled:cursor-not-allowed disabled:bg-slate-100 disabled:opacity-70"
+                                    className="h-10 rounded-lg border border-slate-300 px-3 font-normal disabled:cursor-not-allowed disabled:bg-slate-100 disabled:opacity-70"
                                   />
                                 </span>
                               </label>
+                              <div className="flex items-center gap-2 text-sm font-semibold">
+                                <span className="whitespace-nowrap">Payment Mode</span>
+                                <div
+                                  role="radiogroup"
+                                  aria-label="Payment Mode"
+                                  className="inline-flex h-10 items-center gap-1 rounded-lg border border-slate-300 bg-white p-1 font-normal"
+                                >
+                                  {['Cash', 'Online'].map((mode) => {
+                                    const selected = (paymentMode === 'Online' ? 'Online' : 'Cash') === mode
+                                    return (
+                                      <button
+                                        key={mode}
+                                        type="button"
+                                        role="radio"
+                                        aria-checked={selected}
+                                        disabled={isFeeSubmitting}
+                                        onClick={() => setPaymentMode(mode)}
+                                        className={`h-full rounded-md px-3 text-sm leading-none disabled:cursor-not-allowed disabled:opacity-60 ${
+                                          selected
+                                            ? 'bg-blue-100 font-semibold text-[#405189]'
+                                            : 'text-slate-600 hover:bg-slate-50'
+                                        }`}
+                                      >
+                                        {mode}
+                                      </button>
+                                    )
+                                  })}
+                                </div>
+                              </div>
                               {receiveFeeMode === 'manual' ? (
                                 <label className="flex min-w-[14rem] flex-1 items-center gap-2 text-sm font-semibold">
                                   Manual receipt no.
@@ -3012,6 +3045,8 @@ function StudentsPage() {
 
                   <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
                     Date: <span className="font-semibold text-slate-900">{formatPakistanDateDisplay(clampToPakistanToday(receiveDate))}</span>
+                    <span className="mx-2 text-slate-300">|</span>
+                    Payment Mode: <span className="font-semibold text-slate-900">{paymentMode === 'Online' ? 'Online' : 'Cash'}</span>
                   </div>
 
                   <div className="mt-5 flex justify-end gap-2">
