@@ -18,6 +18,7 @@ import {
   saveCashReceiptVoucher,
 } from '../../../services/accountService'
 import { INTEGER_INPUT_ATTRS, readIntegerInput } from '../../../utils/numericInput.js'
+import { getPakistanTodayIso } from '../../../utils/pakistanDate.js'
 
 const inputClass =
   'h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-[var(--campus-primary)] focus:ring-2 focus:ring-indigo-100'
@@ -33,8 +34,7 @@ const selectStyles = {
 }
 
 function todayInputValue() {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  return getPakistanTodayIso()
 }
 
 function formatMoney(value) {

@@ -7,6 +7,7 @@ import {
   CalendarX,
   ClipboardList,
   Clock,
+  Timer,
   Download,
   FileBarChart2,
   LayoutList,
@@ -92,6 +93,7 @@ const statusLabel = (value) => {
   if (raw === 'A' || raw === 'ABSENT') return 'Absent'
   if (raw === 'LT' || raw === 'LATE') return 'Late'
   if (raw === 'LV' || raw === 'LEAVE') return 'Leave'
+  if (raw === 'SL' || raw === 'SHORT LEAVE' || raw === 'SHORTLEAVE') return 'Short Leave'
   if (raw === 'H' || raw === 'HOLIDAY') return 'Holiday'
   if (value == null || value === '') return '—'
   return String(value)
@@ -147,6 +149,7 @@ function SnapshotCard({ label, value, hint, icon: Icon, accent }) {
     sky: { border: 'border-sky-500', icon: 'text-sky-600' },
     amber: { border: 'border-amber-500', icon: 'text-amber-600' },
     indigo: { border: 'border-indigo-500', icon: 'text-indigo-600' },
+    teal: { border: 'border-teal-500', icon: 'text-teal-600' },
   }
   const tone = accentMap[accent] || accentMap.indigo
 
@@ -682,6 +685,12 @@ export default function CampusAttendanceReportsPage() {
                     value={snapshot ? money(snapshot.leaveCount) : '—'}
                     icon={LogOut}
                     accent="violet"
+                  />
+                  <SnapshotCard
+                    label="Short leave today"
+                    value={snapshot ? money(snapshot.shortLeaveCount) : '—'}
+                    icon={Timer}
+                    accent="teal"
                   />
                   <SnapshotCard
                     label="Present %"

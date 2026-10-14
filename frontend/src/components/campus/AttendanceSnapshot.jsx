@@ -178,7 +178,14 @@ export function ClassAttendanceBars({ rows, activeFilterIds }) {
         return (
           <div key={row.classSectionCompositeId ?? row.className} className="rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2">
             <div className="mb-1 flex items-center justify-between gap-2 text-xs">
-              <span className="truncate font-medium text-slate-800">{resolveClassLabel(row) || 'Class'}</span>
+              <span className="min-w-0 truncate font-medium text-slate-800">
+                {resolveClassLabel(row) || 'Class'}
+                {(row.shortLeaveCount ?? 0) > 0 ? (
+                  <span className="ml-1.5 font-semibold text-teal-700">
+                    {row.shortLeaveCount} short leave
+                  </span>
+                ) : null}
+              </span>
               <span className={`shrink-0 tabular-nums font-medium ${tier.pctLabelClass}`}>
                 {present}/{total} ({pct}%)
               </span>

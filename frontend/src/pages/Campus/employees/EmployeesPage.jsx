@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { getPakistanDateParts } from '../../../utils/pakistanDate.js'
 import {
   BadgeDollarSign,
   BriefcaseBusiness,
@@ -132,11 +133,15 @@ const numberOrNull = (value) => (value === '' || value == null ? null : Number(v
 
 function formatEmploymentDuration(joiningDate) {
   if (!joiningDate) return '—'
-  const start = new Date(joiningDate)
-  if (Number.isNaN(start.getTime())) return '—'
-  const now = new Date()
-  let months = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth())
-  if (now.getDate() < start.getDate()) months -= 1
+  const raw = String(joiningDate).slice(0, 10)
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(raw)
+  if (!match) return '—'
+  const startYear = Number(match[1])
+  const startMonth = Number(match[2])
+  const startDay = Number(match[3])
+  const now = getPakistanDateParts()
+  let months = (now.year - startYear) * 12 + (now.month - startMonth)
+  if (now.day < startDay) months -= 1
   if (months < 0) months = 0
   const years = Math.floor(months / 12)
   const remainingMonths = months % 12
@@ -176,7 +181,7 @@ function Section({ icon: Icon, title, description, children, action }) {
 }
 
 function daysElapsedInCurrentMonth() {
-  return new Date().getDate()
+  return getPakistanDateParts().day
 }
 
 function roundSalaryAmount(value) {

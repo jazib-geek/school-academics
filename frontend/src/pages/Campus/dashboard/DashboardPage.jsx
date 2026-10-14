@@ -29,7 +29,7 @@ import CampusShell from '../../../components/campus/CampusShell.jsx'
 import { PermissionControl } from '../../../components/campus/CampusPermissionUi.jsx'
 import LiveTimetableTicker from '../../../components/campus/LiveTimetableTicker.jsx'
 import { getCampusPrintMeta } from '../../../utils/campusProfile'
-import { getPakistanTodayIso } from '../../../utils/pakistanDate'
+import { getPakistanClock, getPakistanTodayIso } from '../../../utils/pakistanDate'
 import { getCampusDashboard } from '../../../services/campusDashboardService'
 import {
   ATTENDANCE_SNAPSHOT_BODY_CLASS,
@@ -56,6 +56,7 @@ const EMPTY_ATTENDANCE = {
   presentCount: 0,
   absentCount: 0,
   onLeaveCount: 0,
+  shortLeaveCount: 0,
   markedCount: 0,
   presentPercent: 0,
   absentPercent: 0,
@@ -87,7 +88,7 @@ const ALERT_ICON = {
 }
 
 function getGreeting(date = new Date()) {
-  const hour = date.getHours()
+  const hour = Math.floor(getPakistanClock(date).minutes / 60)
   if (hour < 12) return 'Good morning'
   if (hour < 17) return 'Good afternoon'
   return 'Good evening'
@@ -435,6 +436,7 @@ function DashboardPage() {
       presentCount: Number(pick(raw, 'presentCount', 'PresentCount') ?? 0),
       absentCount: Number(pick(raw, 'absentCount', 'AbsentCount') ?? 0),
       onLeaveCount: Number(pick(raw, 'onLeaveCount', 'OnLeaveCount') ?? 0),
+      shortLeaveCount: Number(pick(raw, 'shortLeaveCount', 'ShortLeaveCount') ?? 0),
       markedCount: Number(pick(raw, 'markedCount', 'MarkedCount') ?? 0),
       presentPercent: Number(pick(raw, 'presentPercent', 'PresentPercent') ?? 0),
       absentPercent: Number(pick(raw, 'absentPercent', 'AbsentPercent') ?? 0),
@@ -448,6 +450,7 @@ function DashboardPage() {
       classSectionCompositeId: pick(row, 'classSectionCompositeId', 'ClassSectionCompositeId'),
       className: pick(row, 'className', 'ClassName') || '',
       presentCount: Number(pick(row, 'presentCount', 'PresentCount') ?? 0),
+      shortLeaveCount: Number(pick(row, 'shortLeaveCount', 'ShortLeaveCount') ?? 0),
       totalCount: Number(pick(row, 'totalCount', 'TotalCount') ?? 0),
     }))
   }, [data])
@@ -609,6 +612,7 @@ function DashboardPage() {
       { label: 'Present', value: attendance.presentCount, color: '#10b981' },
       { label: 'Absent', value: attendance.absentCount, color: '#ef4444' },
       { label: 'On Leave', value: attendance.onLeaveCount, color: '#f59e0b' },
+      { label: 'Short Leave', value: attendance.shortLeaveCount, color: '#0d9488' },
     ]
     const hasData = slices.some((s) => s.value > 0)
 
@@ -719,11 +723,7 @@ function DashboardPage() {
                   formatValue={(v) => `Rs ${formatAmount(v)}`}
                   accent={{ iconBg: 'bg-emerald-50', iconText: 'text-emerald-600', spark: '#10b981' }}
                   onClick={() => {
-                    const today = new Date()
-                    const yyyy = today.getFullYear()
-                    const mm = String(today.getMonth() + 1).padStart(2, '0')
-                    const dd = String(today.getDate()).padStart(2, '0')
-                    navigate(`/campus/fee/reports?preset=collection-by-date&date=${yyyy}-${mm}-${dd}&run=1`)
+                    navigate(`/campus/fee/reports?preset=collection-by-date&date=${getPakistanTodayIso()}&run=1`)
                   }}
                 />
                 <KpiCard
@@ -781,6 +781,14 @@ function DashboardPage() {
                           <>
                             <span aria-hidden> · </span>
                             <span>{attendance.onLeaveCount.toLocaleString()} on leave</span>
+                          </>
+                        ) : null}
+                        {attendance.shortLeaveCount > 0 ? (
+                          <>
+                            <span aria-hidden> · </span>
+                            <span className="font-semibold text-teal-700">
+                              {attendance.shortLeaveCount.toLocaleString()} short leave
+                            </span>
                           </>
                         ) : null}
                       </>

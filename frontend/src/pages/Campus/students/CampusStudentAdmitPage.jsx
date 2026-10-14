@@ -15,6 +15,7 @@ import { toast } from 'sonner'
 import CampusShell from '../../../components/campus/CampusShell.jsx'
 import { getClasses } from '../../../services/classService'
 import { FILTER_INPUT_AUTOCOMPLETE_PROPS } from '../../../utils/filterInputProps'
+import { getPakistanDateParts, getPakistanTodayIso } from '../../../utils/pakistanDate.js'
 import {
   getAdmissionLookups,
   getNextFamilyCode,
@@ -67,7 +68,7 @@ function fieldClass(hasError, disabled = false) {
 }
 
 const emptyForm = () => {
-  const now = new Date()
+  const now = getPakistanDateParts()
   return {
     fullName: '',
     nameInUrdu: '',
@@ -100,8 +101,8 @@ const emptyForm = () => {
     familyCode: '',
     familyFromExisting: false,
     classCompositeId: '',
-    sessionSpan: String(now.getFullYear()),
-    regDate: now.toISOString().slice(0, 10),
+    sessionSpan: String(now.year),
+    regDate: now.iso,
     classFee: 0,
     tuitionFee: '',
     admissionFee: '0',
@@ -135,7 +136,7 @@ function toDateInput(value) {
   if (/^\d{4}-\d{2}-\d{2}/.test(raw)) return raw.slice(0, 10)
   const d = new Date(raw)
   if (Number.isNaN(d.getTime())) return ''
-  return d.toISOString().slice(0, 10)
+  return getPakistanTodayIso(d)
 }
 
 function mapDetailToForm(detail) {
@@ -229,14 +230,14 @@ function CampusStudentAdmitPage() {
   const [generateTf, setGenerateTf] = useState(true)
   const [generateFunds, setGenerateFunds] = useState(true)
   const [generateSecurityDeposit, setGenerateSecurityDeposit] = useState(true)
-  const [tfMonth, setTfMonth] = useState(new Date().getMonth() + 1)
-  const [tfYear, setTfYear] = useState(() => new Date().getFullYear())
+  const [tfMonth, setTfMonth] = useState(() => getPakistanDateParts().month)
+  const [tfYear, setTfYear] = useState(() => getPakistanDateParts().year)
   const [tfAmount, setTfAmount] = useState('')
   const [errors, setErrors] = useState({})
   const [showErrors, setShowErrors] = useState(false)
 
   const yearOptions = useMemo(() => {
-    const current = new Date().getFullYear()
+    const current = getPakistanDateParts().year
     return [current - 1, current, current + 1]
   }, [])
 
@@ -497,8 +498,8 @@ function CampusStudentAdmitPage() {
     }
 
     setTfAmount(String(tuitionFee || classFee || 0))
-    setTfMonth(new Date().getMonth() + 1)
-    setTfYear(new Date().getFullYear())
+    setTfMonth(getPakistanDateParts().month)
+    setTfYear(getPakistanDateParts().year)
     setGenerateTf(true)
     const hasOtherFunds = [
       toNum(form.admissionFee),

@@ -232,6 +232,7 @@ export const CAMPUS_SHELL_NAV = [
     iconClass: 'text-fuchsia-300',
     children: [
       { label: 'Mark Attendance', to: '/campus/attendance/mark', permission: 'mark_attnd' },
+      { label: 'Allow Short Leave', to: '/campus/attendance/short-leave', permission: 'allow_short_leave' },
       { label: 'Absent Followup', to: '/campus/attendance/absent-followup', permission: 'mark_attnd' },
       { label: 'Attendance Reports', to: '/campus/reports/attendance', permission: 'rpt_attnd' },
     ],

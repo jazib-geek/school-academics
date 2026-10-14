@@ -12,7 +12,7 @@ import {
 } from '../../../services/attendanceService'
 import { FILTER_INPUT_AUTOCOMPLETE_PROPS } from '../../../utils/filterInputProps'
 
-const ROW_STATUS_OPTIONS = ['P', 'A', 'Lt', 'Lv', 'H']
+const ROW_STATUS_OPTIONS = ['P', 'A', 'Lt', 'Lv', 'SL', 'H']
 const BULK_STATUS_OPTIONS = ['P', 'A', 'H']
 
 const getPakistanToday = () => {
@@ -39,6 +39,7 @@ const statusButtonClass = (status, isActive) => {
   if (status === 'A') return `${base} border border-rose-600 bg-rose-600 text-white`
   if (status === 'Lt') return `${base} border border-sky-600 bg-sky-600 text-white`
   if (status === 'Lv') return `${base} border border-violet-600 bg-violet-600 text-white`
+  if (status === 'SL') return `${base} border border-teal-600 bg-teal-600 text-white`
   return `${base} border border-amber-500 bg-amber-500 text-white`
 }
 
@@ -176,6 +177,7 @@ export default function CampusMarkAttendancePage() {
     let absent = 0
     let late = 0
     let leave = 0
+    let shortLeave = 0
     let holiday = 0
     for (const student of students) {
       const status = String(student.status || '').toUpperCase()
@@ -183,10 +185,11 @@ export default function CampusMarkAttendancePage() {
       else if (status === 'A') absent += 1
       else if (status === 'LT') late += 1
       else if (status === 'LV') leave += 1
+      else if (status === 'SL') shortLeave += 1
       else if (status === 'H') holiday += 1
       else absent += 1
     }
-    return { present, absent, late, leave, holiday, total: students.length }
+    return { present, absent, late, leave, shortLeave, holiday, total: students.length }
   }, [sheet])
 
   const classOptions = useMemo(
@@ -204,6 +207,7 @@ export default function CampusMarkAttendancePage() {
     if (status === 'A') return 'Absent (A)'
     if (status === 'Lt') return 'Late (Lt)'
     if (status === 'Lv') return 'Leave (Lv)'
+    if (status === 'SL') return 'Short Leave (SL)'
     return 'Holiday (H)'
   }
 
@@ -429,6 +433,9 @@ export default function CampusMarkAttendancePage() {
                   </span>
                   <span className="rounded-md bg-violet-50 px-2 py-1 font-medium text-violet-700">
                     Leave {statusCounts.leave}
+                  </span>
+                  <span className="rounded-md bg-teal-50 px-2 py-1 font-medium text-teal-700">
+                    Short leave {statusCounts.shortLeave}
                   </span>
                   <span className="rounded-md bg-amber-50 px-2 py-1 font-medium text-amber-700">
                     Holiday {statusCounts.holiday}

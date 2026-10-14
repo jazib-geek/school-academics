@@ -11,11 +11,12 @@ import {
   setAnnouncementStatus,
   updateAnnouncement,
 } from '../../../services/newsAndEventsService'
+import { getPakistanTodayIso } from '../../../utils/pakistanDate.js'
 
 const emptyForm = {
   title: '',
   type: 'Announcement',
-  date: new Date().toISOString().slice(0, 10),
+  date: getPakistanTodayIso(),
   description: '',
   imagePath: '',
   isActive: true,
@@ -87,7 +88,7 @@ export default function CampusAnnouncementsPage() {
 
   const startCreate = () => {
     setEditingId(null)
-    setForm({ ...emptyForm, date: new Date().toISOString().slice(0, 10) })
+    setForm({ ...emptyForm, date: getPakistanTodayIso() })
     setIsEditorOpen(true)
   }
 
@@ -96,7 +97,7 @@ export default function CampusAnnouncementsPage() {
     setForm({
       title: row.title || '',
       type: row.type || 'Announcement',
-      date: row.date ? String(row.date).slice(0, 10) : new Date().toISOString().slice(0, 10),
+      date: row.date ? String(row.date).slice(0, 10) : getPakistanTodayIso(),
       description: row.description || '',
       imagePath: row.imagePath || '',
       isActive: row.isActive ?? true,

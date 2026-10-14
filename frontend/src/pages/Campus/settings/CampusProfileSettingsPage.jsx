@@ -37,6 +37,7 @@ import {
   sanitizeIntegerInput,
   withIntegerInputValue,
 } from '../../../utils/numericInput.js'
+import { getPakistanDateParts } from '../../../utils/pakistanDate.js'
 
 const inputClass = settingsInputClass
 
@@ -50,7 +51,7 @@ const SETTINGS_SECTIONS = [
 ]
 
 const emptyForm = () => {
-  const year = new Date().getFullYear()
+  const year = getPakistanDateParts().year
   return {
     schoolName: '',
     schoolLogo: '',

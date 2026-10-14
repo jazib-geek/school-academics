@@ -478,13 +478,13 @@
 
 .employee-app .emp-attendance-status-cell {
   width: 1%;
-  white-space: nowrap;
+  white-space: normal;
   vertical-align: middle;
 }
 
 .employee-app .emp-status-pills {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.2rem;
   white-space: nowrap;
@@ -535,6 +535,12 @@
   background: #ede9fe;
   border-color: #c4b5fd;
   color: #6d28d9;
+}
+
+.employee-app .emp-status-pill-sl {
+  background: #ccfbf1;
+  border-color: #5eead4;
+  color: #0f766e;
 }
 
 .employee-app .emp-status-pill-muted {

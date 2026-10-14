@@ -10,6 +10,7 @@ import {
   subscribeEmployeeSalaryProgress,
 } from '../../../services/employeeSalaryService'
 import { MONTH_OPTIONS, isFutureSalaryPeriod } from '../../../constants/salaryComponents'
+import { getPakistanDateParts } from '../../../utils/pakistanDate.js'
 
 const inputClass =
   'h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-[var(--campus-primary)] focus:ring-2 focus:ring-indigo-100'
@@ -138,11 +139,11 @@ function printSlips(rows, monthLabel, year) {
 
 function EmployeeSalaryCalculatorPage() {
   const canCalculate = hasCampusPermission('calculate_employee_salary')
-  const now = new Date()
-  const [month, setMonth] = useState(now.getMonth() + 1)
-  const [year, setYear] = useState(now.getFullYear())
+  const pakistanNow = getPakistanDateParts()
+  const [month, setMonth] = useState(pakistanNow.month)
+  const [year, setYear] = useState(pakistanNow.year)
   const [sundaysToInclude, setSundaysToInclude] = useState(() =>
-    countSundaysInMonth(now.getFullYear(), now.getMonth() + 1),
+    countSundaysInMonth(pakistanNow.year, pakistanNow.month),
   )
   const [rows, setRows] = useState([])
   const [totalNet, setTotalNet] = useState(0)
@@ -166,7 +167,7 @@ function EmployeeSalaryCalculatorPage() {
   }, [maxSundays])
 
   const years = useMemo(() => {
-    const currentYear = new Date().getFullYear()
+    const currentYear = getPakistanDateParts().year
     const list = []
     for (let y = currentYear - 1; y <= currentYear; y += 1) list.push(y)
     return list

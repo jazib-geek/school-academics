@@ -3,10 +3,11 @@ import { Loader2, Printer } from 'lucide-react'
 import CampusShell from '../../../components/campus/CampusShell.jsx'
 import { getIncomeStatement } from '../../../services/feeReportService'
 import { getCampusPrintMeta } from '../../../utils/campusProfile'
+import { getPakistanDateParts } from '../../../utils/pakistanDate.js'
 
-const now = new Date()
-const currentYear = now.getFullYear()
-const currentMonth = now.getMonth() + 1
+const pakistanNow = getPakistanDateParts()
+const currentYear = pakistanNow.year
+const currentMonth = pakistanNow.month
 
 const monthOptions = [
   { value: '1', label: 'January' },

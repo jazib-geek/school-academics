@@ -25,6 +25,7 @@ import {
 } from '../../../services/feeGenerateService'
 import { hasCampusPermission } from '../../../services/authService'
 import { getCampusPrintMeta } from '../../../utils/campusProfile'
+import { getPakistanDateParts } from '../../../utils/pakistanDate.js'
 import { INTEGER_INPUT_ATTRS, readIntegerInput } from '../../../utils/numericInput.js'
 
 const MONTHS = [
@@ -90,7 +91,7 @@ function money(value) {
 function buildYearOptions() {
   const { feeYears } = getCampusPrintMeta()
   if (Array.isArray(feeYears) && feeYears.length > 0) return feeYears
-  const current = new Date().getFullYear()
+  const current = getPakistanDateParts().year
   return [current, current + 1]
 }
 
@@ -172,10 +173,10 @@ export default function GenerateFeePage() {
   const canAll = hasCampusPermission('generate_fee_all')
   const canSingle = hasCampusPermission('generate_fee_single')
 
-  const now = new Date()
+  const pakistanNow = getPakistanDateParts()
   const yearOptions = useMemo(() => buildYearOptions(), [])
-  const [month, setMonth] = useState(now.getMonth() + 1)
-  const [year, setYear] = useState(() => yearOptions[0] ?? now.getFullYear())
+  const [month, setMonth] = useState(pakistanNow.month)
+  const [year, setYear] = useState(() => yearOptions[0] ?? getPakistanDateParts().year)
   const [mode, setMode] = useState(canAll ? 'all' : 'student')
   const [studentModalOpen, setStudentModalOpen] = useState(!canAll && canSingle)
   const [amountMode, setAmountMode] = useState('tuition')
@@ -192,7 +193,7 @@ export default function GenerateFeePage() {
 
   useEffect(() => {
     if (!yearOptions.includes(year)) {
-      setYear(yearOptions[0] ?? new Date().getFullYear())
+      setYear(yearOptions[0] ?? getPakistanDateParts().year)
     }
   }, [year, yearOptions])
 

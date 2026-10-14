@@ -18,6 +18,7 @@ import {
   printFeeReminderNotices,
   richBodyPlainText,
 } from '../../../utils/feeReminderNoticePrint.js'
+import { getPakistanDateParts } from '../../../utils/pakistanDate.js'
 
 const STEPS = ['Class & notice', 'Select students', 'Print preview']
 const PER_PAGE_KEY = 'feeReminderNoticesPerPage'
@@ -64,8 +65,8 @@ function FeeReminderNoticePage() {
   const [templates, setTemplates] = useState([])
   const [noticeCode, setNoticeCode] = useState('pre_due')
 
-  const [dueMonth, setDueMonth] = useState(() => new Date().getMonth())
-  const [dueYear, setDueYear] = useState(() => new Date().getFullYear())
+  const [dueMonth, setDueMonth] = useState(() => getPakistanDateParts().month - 1)
+  const [dueYear, setDueYear] = useState(() => getPakistanDateParts().year)
 
   const [classOptions, setClassOptions] = useState([])
   const [className, setClassName] = useState('')
@@ -234,7 +235,7 @@ function FeeReminderNoticePage() {
   }
 
   const yearOptions = useMemo(() => {
-    const y = new Date().getFullYear()
+    const y = getPakistanDateParts().year
     return [y - 1, y, y + 1]
   }, [])
 

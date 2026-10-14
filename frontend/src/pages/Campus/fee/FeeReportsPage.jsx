@@ -44,6 +44,7 @@ import { FEE_REPORT_PERMISSIONS } from '../../../constants/campusPermissions.js'
 import { SECURITY_DEPOSIT_FUND_TYPE_ID } from '../../../constants/campusFundTypes.js'
 import { getCampusFundTypes, hasCampusPermission } from '../../../services/authService'
 import { getCampusPrintMeta } from '../../../utils/campusProfile'
+import { getPakistanDateParts, getPakistanTodayIso } from '../../../utils/pakistanDate.js'
 import { amountToWordsPk } from '../../../utils/amountToWordsPk'
 import { getClasses } from '../../../services/classService'
 import { resolveClassLabel, sortClassesByCustomOrder } from '../../../services/classSort.js'
@@ -133,8 +134,7 @@ const monthOptions = [
   { value: '12', label: 'December' },
 ]
 
-const now = new Date()
-const currentYear = now.getFullYear()
+const currentYear = getPakistanDateParts().year
 const yearOptions = [currentYear - 1, currentYear, currentYear + 1].map((value) => ({
   value: String(value),
   label: String(value),
@@ -304,17 +304,17 @@ const ATTENDANCE_STATUS_LABEL = {
 const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 const buildLast7Days = () => {
-  const today = new Date()
-  today.setHours(12, 0, 0, 0)
+  const [year, month, day] = getPakistanTodayIso().split('-').map(Number)
+  const today = new Date(Date.UTC(year, month - 1, day, 12))
   const days = []
   for (let offset = 6; offset >= 0; offset -= 1) {
     const date = new Date(today)
-    date.setDate(today.getDate() - offset)
-    const iso = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
-    if (date.getDay() === 0) continue
+    date.setUTCDate(today.getUTCDate() - offset)
+    const iso = date.toISOString().slice(0, 10)
+    if (date.getUTCDay() === 0) continue
     days.push({
       iso,
-      label: `${WEEKDAY_SHORT[date.getDay()]} ${date.getDate()}`,
+      label: `${WEEKDAY_SHORT[date.getUTCDay()]} ${date.getUTCDate()}`,
     })
   }
   return days

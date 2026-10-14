@@ -12,7 +12,7 @@ import {
   setStudentAttendanceStatus,
 } from '../../services/attendanceService'
 
-const ROW_STATUS_OPTIONS = ['P', 'A', 'Lt', 'Lv', 'H']
+const ROW_STATUS_OPTIONS = ['P', 'A', 'Lt', 'Lv', 'SL', 'H']
 const BULK_STATUS_OPTIONS = ['P', 'A', 'H']
 
 /** Select value for whole-school attendance sheet (not a real section id). */
@@ -187,6 +187,7 @@ function EmployeeAttendancePage() {
     if (status === 'A') return 'Absent (A)'
     if (status === 'Lt') return 'Late (Lt)'
     if (status === 'Lv') return 'Leave (Lv)'
+    if (status === 'SL') return 'Short Leave (SL)'
     return 'Holiday (H)'
   }
 
@@ -402,7 +403,9 @@ function EmployeeAttendancePage() {
                                   ? 'emp-status-pill-lt'
                                   : status === 'Lv'
                                     ? 'emp-status-pill-lv'
-                                    : 'emp-status-pill-h'
+                                    : status === 'SL'
+                                      ? 'emp-status-pill-sl'
+                                      : 'emp-status-pill-h'
                           return (
                             <button
                               key={status}

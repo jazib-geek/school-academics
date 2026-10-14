@@ -42,6 +42,19 @@ export const getPakistanClock = (now = new Date()) => {
   return { minutes, isoWeekday: jsDay === 0 ? 7 : jsDay }
 }
 
+/** Pakistan calendar year, month (1–12), and day. */
+export const getPakistanDateParts = (now = new Date()) => {
+  const iso = getPakistanTodayIso(now)
+  const [year, month, day] = iso.split('-').map((part) => Number(part))
+  return { year, month, day, iso }
+}
+
+/** First day of the current Pakistan month (YYYY-MM-01). */
+export const getPakistanMonthStartIso = (now = new Date()) => {
+  const { year, month } = getPakistanDateParts(now)
+  return `${year}-${pad2(month)}-01`
+}
+
 /** Keep YYYY-MM-DD; never allow a day after Pakistan today. */
 export const clampToPakistanToday = (value) => {
   const today = getPakistanTodayIso()

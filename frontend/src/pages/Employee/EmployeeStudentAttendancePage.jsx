@@ -13,6 +13,7 @@ const STATUS_STYLE = {
   A: { cell: 'bg-rose-100 text-rose-800', dot: 'bg-rose-500', label: 'Absent' },
   Lt: { cell: 'bg-sky-100 text-sky-800', dot: 'bg-sky-500', label: 'Late' },
   Lv: { cell: 'bg-violet-100 text-violet-800', dot: 'bg-violet-500', label: 'Leave' },
+  SL: { cell: 'bg-teal-100 text-teal-800', dot: 'bg-teal-500', label: 'Short Leave' },
   H: { cell: 'bg-amber-100 text-amber-800', dot: 'bg-amber-500', label: 'Holiday' },
 }
 
@@ -20,6 +21,7 @@ const SUMMARY_CARDS = [
   { key: 'P', label: 'Present', tone: 'bg-emerald-50 text-emerald-800' },
   { key: 'A', label: 'Absent', tone: 'bg-rose-50 text-rose-800' },
   { key: 'Lv', label: 'Leave', tone: 'bg-violet-50 text-violet-800' },
+  { key: 'SL', label: 'Short Leave', tone: 'bg-teal-50 text-teal-800' },
   { key: 'Lt', label: 'Late', tone: 'bg-sky-50 text-sky-800' },
   { key: 'H', label: 'Holiday', tone: 'bg-amber-50 text-amber-800' },
 ]
@@ -94,6 +96,7 @@ const statusKey = (status) => {
   const raw = String(status || '').trim()
   if (raw.toUpperCase() === 'LT') return 'Lt'
   if (raw.toUpperCase() === 'LV') return 'Lv'
+  if (raw.toUpperCase() === 'SL') return 'SL'
   if (raw.toUpperCase() === 'P') return 'P'
   if (raw.toUpperCase() === 'A') return 'A'
   if (raw.toUpperCase() === 'H') return 'H'

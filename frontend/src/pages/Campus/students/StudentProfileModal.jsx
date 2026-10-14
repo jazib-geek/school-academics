@@ -9,6 +9,7 @@ import {
   GraduationCap,
   Home,
   IdCard,
+  KeyRound,
   Languages,
   Loader2,
   MapPin,
@@ -22,6 +23,7 @@ import {
   Users,
   Wallet,
   Shield,
+  Smartphone,
   X,
 } from 'lucide-react'
 import { getCampusLabel } from '../../../constants/branding'
@@ -111,13 +113,14 @@ function MosqueIcon({ size = 14 }) {
   )
 }
 
-function FieldRow({ icon: Icon, label, value, tone = 'slate', dir }) {
+function FieldRow({ icon: Icon, label, value, tone = 'slate', dir, mono = false }) {
   const tones = {
     slate: 'bg-slate-100 text-slate-600',
     sky: 'bg-sky-100 text-sky-700',
     emerald: 'bg-emerald-100 text-emerald-700',
     violet: 'bg-violet-100 text-violet-700',
     amber: 'bg-amber-100 text-amber-700',
+    indigo: 'bg-indigo-100 text-indigo-700',
   }
 
   return (
@@ -127,7 +130,7 @@ function FieldRow({ icon: Icon, label, value, tone = 'slate', dir }) {
       </span>
       <div className="min-w-0 flex-1">
         <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{label}</p>
-        <p className="mt-0.5 break-words text-sm font-semibold text-slate-800" dir={dir || undefined}>
+        <p className={`mt-0.5 break-words text-sm font-semibold text-slate-800 ${mono ? 'font-mono tracking-wide' : ''}`} dir={dir || undefined}>
           {dash(value)}
         </p>
       </div>
@@ -420,6 +423,13 @@ export default function StudentProfileModal({
                 </div>
               </div>
             </section>
+
+            <SectionCard title="App login" icon={Smartphone} tone="indigo">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <FieldRow icon={Users} label="Family ID" value={detail.familyCode} tone="indigo" />
+                <FieldRow icon={KeyRound} label="Password" value={detail.familyPortalPassword} tone="indigo" mono />
+              </div>
+            </SectionCard>
 
             {/* Personal + Family */}
             <div className="grid gap-4 lg:grid-cols-2">

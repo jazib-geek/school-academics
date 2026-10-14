@@ -13,6 +13,7 @@ import {
   updateFeeReminderTemplate,
 } from '../../services/feeReminderNoticeService'
 import { formatNoticeDueDate, renderBodyHtml } from '../../utils/feeReminderNoticePrint'
+import { getPakistanDateParts } from '../../utils/pakistanDate.js'
 import { INTEGER_INPUT_ATTRS, readIntegerInput } from '../../utils/numericInput.js'
 
 const NOTICE_TYPES = [
@@ -107,8 +108,8 @@ export default function FeeReminderNoticeTemplatesSection({ disabled = false }) 
   }
 
   const previewBody = useMemo(() => {
-    const now = new Date()
-    const dueLabel = isPreDue ? formatNoticeDueDate(draft.dayOfMonth, now.getMonth(), now.getFullYear()) : ''
+    const now = getPakistanDateParts()
+    const dueLabel = isPreDue ? formatNoticeDueDate(draft.dayOfMonth, now.month - 1, now.year) : ''
     return renderBodyHtml(draft.bodyText, dueLabel, isPreDue)
   }, [draft.bodyText, draft.dayOfMonth, isPreDue])
 

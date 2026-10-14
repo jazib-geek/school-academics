@@ -12,6 +12,7 @@ import {
 import { buildVoidReceiptPreviewHtml } from '../../../utils/feeReceiptPrint'
 import { FILTER_INPUT_AUTOCOMPLETE_PROPS } from '../../../utils/filterInputProps'
 import { INTEGER_INPUT_ATTRS, readIntegerInput } from '../../../utils/numericInput.js'
+import { getPakistanTodayIso } from '../../../utils/pakistanDate.js'
 
 const PAGE_SIZE = 25
 
@@ -19,11 +20,7 @@ const inputClass =
   'h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-[13px] text-slate-800 outline-none transition focus:border-[var(--campus-primary)] focus:ring-2 focus:ring-indigo-100'
 
 function todayIso() {
-  const d = new Date()
-  const yyyy = d.getFullYear()
-  const mm = String(d.getMonth() + 1).padStart(2, '0')
-  const dd = String(d.getDate()).padStart(2, '0')
-  return `${yyyy}-${mm}-${dd}`
+  return getPakistanTodayIso()
 }
 
 function formatDisplayDate(value) {

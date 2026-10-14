@@ -5,6 +5,7 @@ import CampusShell from '../../../components/campus/CampusShell.jsx'
 import { getCampusFundTypes } from '../../../services/authService'
 import { getBalanceSheet } from '../../../services/feeReportService'
 import { formatMonthYear, getCampusPrintMeta } from '../../../utils/campusProfile'
+import { getPakistanTodayIso } from '../../../utils/pakistanDate.js'
 
 const PRINT_STYLES = `
   @page { size: A4 landscape; margin: 6mm; }
@@ -129,10 +130,11 @@ function BalanceSheetPage() {
     report?.sessionEndYear,
   )
 
-  const generatedDate = new Date().toLocaleDateString(undefined, {
+  const generatedDate = new Date(`${getPakistanTodayIso()}T12:00:00`).toLocaleDateString('en-GB', {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
+    timeZone: 'Asia/Karachi',
   })
 
   const renderTable = (compact = false) => (

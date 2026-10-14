@@ -44,6 +44,7 @@ import CampusStudentReportsPage from './pages/Campus/reports/CampusStudentReport
 import CampusExamReportsPage from './pages/Campus/reports/CampusExamReportsPage.jsx'
 import CampusAttendanceReportsPage from './pages/Campus/reports/CampusAttendanceReportsPage.jsx'
 import CampusMarkAttendancePage from './pages/Campus/attendance/CampusMarkAttendancePage.jsx'
+import CampusShortLeavePage from './pages/Campus/attendance/CampusShortLeavePage.jsx'
 import CampusAbsentFollowupPage from './pages/Campus/attendance/CampusAbsentFollowupPage.jsx'
 import CampusStudentConductPage from './pages/Campus/conduct/CampusStudentConductPage.jsx'
 import CampusAnnouncementsPage from './pages/Campus/family-portal/CampusAnnouncementsPage.jsx'
@@ -523,6 +524,14 @@ function App() {
         element={
           <ProtectedRoute>
             <CampusMarkAttendancePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/campus/attendance/short-leave"
+        element={
+          <ProtectedRoute>
+            <CampusShortLeavePage />
           </ProtectedRoute>
         }
       />

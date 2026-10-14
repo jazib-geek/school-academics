@@ -1,4 +1,5 @@
 import { getCampusLabel } from '../constants/branding'
+import { getPakistanDateParts } from './pakistanDate.js'
 import {
   getCampusSchoolNameDisplay,
   resolveCampusLogoSrc,
@@ -147,7 +148,7 @@ export function resolveSessionBounds(profile) {
     }
   }
 
-  const year = new Date().getFullYear()
+  const year = getPakistanDateParts().year
   return {
     startMonth: 2,
     startYear: year,
@@ -247,7 +248,7 @@ function buildPhonesDisplay(profile) {
 }
 
 function defaultFeeYears() {
-  const current = new Date().getFullYear()
+  const current = getPakistanDateParts().year
   return [current, current + 1]
 }
 

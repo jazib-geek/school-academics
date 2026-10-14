@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { getPakistanDateParts } from '../../../utils/pakistanDate.js'
 import {
   AlertTriangle,
   Award,
@@ -102,13 +103,16 @@ const TYPE_META = {
   },
 }
 
-const emptyForm = () => ({
-  month: new Date().getMonth() + 1,
-  year: new Date().getFullYear(),
+const emptyForm = () => {
+  const { year, month } = getPakistanDateParts()
+  return {
+  month,
+  year,
   componentType: '',
   amount: '',
   description: '',
-})
+  }
+}
 
 const formatAmount = (value) =>
   Number(value || 0).toLocaleString(undefined, {
@@ -295,7 +299,7 @@ function EmployeeLoansPage() {
   const amountFlashTimerRef = useRef(null)
 
   const years = useMemo(() => {
-    const current = new Date().getFullYear()
+    const current = getPakistanDateParts().year
     const list = []
     for (let y = current - 2; y <= current + 1; y += 1) list.push(y)
     return list

@@ -34,11 +34,13 @@ export const searchStudents = async (search, pageSize = 20, { exactNumericRegId 
     pageNumber: 1,
     pageSize,
     isActive: true,
-    sortBy: 'reg_Id',
-    sortDirection: 'desc',
+    ...(!numericLookup ? { sortBy: 'reg_Id', sortDirection: 'desc' } : {}),
   })
 
-  return data?.items || []
+  return (data?.items || []).filter((student) => {
+    const active = student.isActive ?? student.IsActive
+    return active !== false && active !== 0
+  })
 }
 
 export const mapStudentToSelectOption = (student) => {

@@ -10,6 +10,7 @@ import {
   formatReportPrintDate,
   formatReportPrintMoney,
 } from '../../../utils/campusReportPrint'
+import { getPakistanMonthStartIso, getPakistanTodayIso } from '../../../utils/pakistanDate.js'
 
 const inputClass =
   'h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-[var(--campus-primary)] focus:ring-2 focus:ring-indigo-100'
@@ -24,13 +25,11 @@ const selectStyles = {
 }
 
 function monthStartInput() {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`
+  return getPakistanMonthStartIso()
 }
 
 function todayInput() {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  return getPakistanTodayIso()
 }
 
 export default function CampusAccountLedgerPage() {

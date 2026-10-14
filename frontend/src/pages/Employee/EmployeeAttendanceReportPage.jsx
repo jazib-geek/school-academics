@@ -11,6 +11,7 @@ const STATUS_OPTIONS = [
   { value: 'A', label: 'Absent (A)' },
   { value: 'Lt', label: 'Late (Lt)' },
   { value: 'Lv', label: 'Leave (Lv)' },
+  { value: 'SL', label: 'Short Leave (SL)' },
   { value: 'H', label: 'Holiday (H)' },
 ]
 
@@ -19,6 +20,7 @@ const studentStatusTint = (status) => {
   if (status === 'A') return 'bg-rose-50'
   if (status === 'Lt') return 'bg-sky-50'
   if (status === 'Lv') return 'bg-violet-50'
+  if (status === 'SL') return 'bg-teal-50'
   return 'bg-amber-50'
 }
 
@@ -233,6 +235,10 @@ function EmployeeAttendanceReportPage() {
             <div className="rounded-xl bg-violet-50 px-3 py-2">
               <p className="text-xs text-violet-700">Leave</p>
               <p className="font-semibold text-violet-900">{report.leaveCount ?? 0}</p>
+            </div>
+            <div className="rounded-xl bg-teal-50 px-3 py-2">
+              <p className="text-xs text-teal-700">Short leave</p>
+              <p className="font-semibold text-teal-900">{report.shortLeaveCount ?? 0}</p>
             </div>
             <div className="rounded-xl bg-amber-50 px-3 py-2">
               <p className="text-xs text-amber-700">Holiday</p>

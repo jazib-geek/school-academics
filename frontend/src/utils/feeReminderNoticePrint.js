@@ -1,3 +1,5 @@
+import { getPakistanTodayIso } from './pakistanDate.js'
+
 const MONTH_NAMES = [
   'January',
   'February',
@@ -24,15 +26,14 @@ function escapeHtml(value) {
 export function formatNoticeDueDate(dayOfMonth, monthIndex, year) {
   const day = Math.min(31, Math.max(1, Number(dayOfMonth) || 1))
   const month = MONTH_NAMES[Math.min(11, Math.max(0, Number(monthIndex) || 0))] || 'January'
-  const y = Number(year) || new Date().getFullYear()
+  const y = Number(year) || Number(getPakistanTodayIso().slice(0, 4))
   return `${day}-${month}-${y}`
 }
 
 export function formatIssuanceDate(date = new Date()) {
-  const d = date instanceof Date ? date : new Date(date)
-  const dd = String(d.getDate()).padStart(2, '0')
-  const mm = String(d.getMonth() + 1).padStart(2, '0')
-  const yyyy = d.getFullYear()
+  const instant = date instanceof Date ? date : new Date(date)
+  const iso = getPakistanTodayIso(Number.isNaN(instant.getTime()) ? new Date() : instant)
+  const [yyyy, mm, dd] = iso.split('-')
   return `${dd}-${mm}-${yyyy}`
 }
 
