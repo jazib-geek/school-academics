@@ -245,7 +245,7 @@ namespace School.Application.Services
 
         public async Task<EmployeeAttendanceStatsDto> GetEmployeeAttendanceStatsAsync(DateTime? date = null)
         {
-            var targetDate = (date ?? DateTime.Today).Date;
+            var targetDate = (date ?? PakistanTime.TodayStart).Date;
 
             var dayRows = _context.Attendances
                 .AsNoTracking()
@@ -256,6 +256,7 @@ namespace School.Application.Services
             var absentCount = await dayRows.CountAsync(x => x.Status != null && x.Status.ToUpper() == "A");
             var lateCount = await dayRows.CountAsync(x => x.Status != null && x.Status.ToUpper() == "LT");
             var leaveCount = await dayRows.CountAsync(x => x.Status != null && x.Status.ToUpper() == "LV");
+            var shortLeaveCount = await dayRows.CountAsync(x => x.Status != null && x.Status.ToUpper() == "SL");
             var holidayCount = await dayRows.CountAsync(x => x.Status != null && x.Status.ToUpper() == "H");
             var classCount = await dayRows
                 .Where(x => x.Student != null && x.Student.ClassCompositeID.HasValue)
@@ -271,6 +272,7 @@ namespace School.Application.Services
                 AbsentCount = absentCount,
                 LateCount = lateCount,
                 LeaveCount = leaveCount,
+                ShortLeaveCount = shortLeaveCount,
                 HolidayCount = holidayCount,
                 ClassCount = classCount
             };
@@ -351,6 +353,7 @@ namespace School.Application.Services
                 AbsentCount = items.Count(x => x.Status == StudentAttendanceStatuses.Absent),
                 LateCount = items.Count(x => x.Status == StudentAttendanceStatuses.Late),
                 LeaveCount = items.Count(x => x.Status == StudentAttendanceStatuses.Leave),
+                ShortLeaveCount = items.Count(x => x.Status == StudentAttendanceStatuses.ShortLeave),
                 HolidayCount = items.Count(x => x.Status == StudentAttendanceStatuses.Holiday),
                 ClassCount = items.Select(x => x.ClassSectionCompositeId).Distinct().Count(),
                 StudentCount = items.Select(x => x.StudentId).Distinct().Count(),
@@ -572,7 +575,7 @@ namespace School.Application.Services
 
             var hasCalendarMonth = TryResolveSummaryCalendarMonth(month, year, records, out var summaryYear, out var summaryMonth);
             var lastCountedDay = hasCalendarMonth
-                ? GetLastCountedDayInMonth(summaryYear, summaryMonth, DateTime.Today)
+                ? GetLastCountedDayInMonth(summaryYear, summaryMonth, PakistanTime.TodayStart)
                 : 0;
             var weekdayHolidaysInPeriod = 0;
 
@@ -606,7 +609,7 @@ namespace School.Application.Services
                 {
                     daysAbsent++;
                 }
-                else if (status == StudentAttendanceStatuses.Leave)
+                else if (status == StudentAttendanceStatuses.Leave || status == StudentAttendanceStatuses.ShortLeave)
                 {
                     daysOnLeave++;
                 }

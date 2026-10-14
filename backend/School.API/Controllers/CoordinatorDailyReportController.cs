@@ -59,7 +59,7 @@ public class CoordinatorDailyReportController : ControllerBase
             return auth.ErrorResult!;
         }
 
-        var date = reportDate ?? DateOnly.FromDateTime(DateTime.Today);
+        var date = reportDate ?? PakistanTime.Today;
         var result = await _coordinatorDailyReportService.GetReportAsync(auth.EmployeeId, date, cancellationToken);
         return Ok(ApiResponse<CoordinatorDailyReportDto?>.SuccessResponse(result));
     }
@@ -73,7 +73,7 @@ public class CoordinatorDailyReportController : ControllerBase
         [FromQuery] DateOnly? reportDate,
         CancellationToken cancellationToken)
     {
-        var date = reportDate ?? DateOnly.FromDateTime(DateTime.Today);
+        var date = reportDate ?? PakistanTime.Today;
         var result = await _coordinatorDailyReportService.GetCampusDailyReportingMonitorAsync(date, cancellationToken);
         return Ok(ApiResponse<CoordinatorDailyReportCampusMonitorDto>.SuccessResponse(result));
     }
@@ -88,7 +88,7 @@ public class CoordinatorDailyReportController : ControllerBase
             return auth.ErrorResult!;
         }
 
-        var date = reportDate ?? DateOnly.FromDateTime(DateTime.Today);
+        var date = reportDate ?? PakistanTime.Today;
         var result = await _coordinatorDailyReportService.GetHeadOfficeDayBundleAsync(auth.EmployeeId, date, cancellationToken);
         return Ok(ApiResponse<CoordinatorHeadOfficeDayBundleDto>.SuccessResponse(result));
     }

@@ -112,7 +112,7 @@ public class FeeReminderNoticeService : IFeeReminderNoticeService
             .GroupBy(x => x.StudentId)
             .ToDictionary(g => g.Key, g => g.ToList());
 
-        var today = DateTime.Today;
+        var today = PakistanTime.TodayStart;
         var absentTodayIds = await _context.Attendances
             .AsNoTracking()
             .Where(a =>

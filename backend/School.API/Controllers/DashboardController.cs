@@ -73,7 +73,7 @@ namespace School.API.Controllers
         [HttpGet("all-campuses/fee-collection-by-date")]
         public async Task<IActionResult> GetAllCampusesFeeCollectionByDate([FromQuery] DateTime? date)
         {
-            var selectedDate = (date ?? DateTime.Today).Date;
+            var selectedDate = (date ?? PakistanTime.TodayStart).Date;
             var result = await _service.GetAllCampusesFeeCollectionByDateAsync(selectedDate);
             return Ok(ApiResponse<object>.SuccessResponse(result));
         }
@@ -97,7 +97,7 @@ namespace School.API.Controllers
         [HttpGet("all-campuses/fee-balance-by-month")]
         public async Task<IActionResult> GetAllCampusesFeeBalanceByMonth([FromQuery] int? month, [FromQuery] int? year)
         {
-            var today = DateTime.Today;
+            var today = PakistanTime.TodayStart;
             var selectedMonth = month.GetValueOrDefault(today.Month);
             var selectedYear = year.GetValueOrDefault(today.Year);
 
@@ -114,7 +114,7 @@ namespace School.API.Controllers
         [HttpGet("all-campuses/admissions-by-month")]
         public async Task<IActionResult> GetAllCampusesAdmissionsByMonth([FromQuery] int? month, [FromQuery] int? year)
         {
-            var today = DateTime.Today;
+            var today = PakistanTime.TodayStart;
             var selectedMonth = month.GetValueOrDefault(today.Month);
             var selectedYear = year.GetValueOrDefault(today.Year);
 
@@ -131,7 +131,7 @@ namespace School.API.Controllers
         [HttpGet("campus/{campus}/left-students-by-month")]
         public async Task<IActionResult> GetCampusLeftStudentsByMonth(string campus, [FromQuery] int? month, [FromQuery] int? year)
         {
-            var today = DateTime.Today;
+            var today = PakistanTime.TodayStart;
             var selectedMonth = month.GetValueOrDefault(today.Month);
             var selectedYear = year.GetValueOrDefault(today.Year);
 
@@ -192,7 +192,7 @@ namespace School.API.Controllers
         [HttpGet("campus/{campus}/fee-breakdown-by-month")]
         public async Task<IActionResult> GetCampusFeeBreakdownByMonth(string campus, [FromQuery] int? month, [FromQuery] int? year)
         {
-            var today = DateTime.Today;
+            var today = PakistanTime.TodayStart;
             var selectedMonth = month.GetValueOrDefault(today.Month);
             var selectedYear = year.GetValueOrDefault(today.Year);
 

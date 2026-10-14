@@ -81,6 +81,7 @@ public class CoordinatorClassAttendanceSummaryDto
     public int ClassSectionCompositeId { get; set; }
     public string ClassName { get; set; } = string.Empty;
     public int PresentCount { get; set; }
+    public int ShortLeaveCount { get; set; }
     public int TotalCount { get; set; }
 }
 

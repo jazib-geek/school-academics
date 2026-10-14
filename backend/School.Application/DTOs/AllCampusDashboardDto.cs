@@ -115,6 +115,7 @@ public class DashboardAttendanceOverviewDto
     public int PresentCount { get; set; }
     public int AbsentCount { get; set; }
     public int OnLeaveCount { get; set; }
+    public int ShortLeaveCount { get; set; }
     public int MarkedCount { get; set; }
     public decimal PresentPercent { get; set; }
     public decimal AbsentPercent { get; set; }

@@ -1057,6 +1057,7 @@ public class StudentService : IStudentService
             HomePhone = student.Home_Phone ?? family?.HomePhone,
             SpecialNotes = student.SpecialNotes,
             FamilyCode = student.Family_Code,
+            FamilyPortalPassword = family?.Password,
             ClassCompositeId = student.ClassCompositeID,
             ClassName = student.Section?.ClassName,
             SessionSpan = student.SessionSpan,
@@ -1470,6 +1471,8 @@ public class StudentService : IStudentService
     {
         if (request.TuitionFee < 0)
             throw new ArgumentException("Tuition fee cannot be negative.");
+        if (request.TotalFee is < 0)
+            throw new ArgumentException("Total fee cannot be negative.");
 
         var student = await _context.Students
             .FirstOrDefaultAsync(x => x.Reg_Id == studentId, cancellationToken)
@@ -1481,25 +1484,27 @@ public class StudentService : IStudentService
             .Select(x => x.ClassName)
             .FirstOrDefaultAsync(cancellationToken);
 
-        var classFee = student.Fee ?? 0;
+        var previousClassFee = student.Fee ?? 0;
+        var nextClassFee = request.TotalFee ?? previousClassFee;
         var previousTuition = student.TutionFee ?? 0m;
-        var previousConcession = student.FeeConcession ?? Math.Max(0m, classFee - previousTuition);
+        var previousConcession = student.FeeConcession ?? Math.Max(0m, previousClassFee - previousTuition);
         var nextTuition = request.TuitionFee;
-        var nextConcession = Math.Max(0m, classFee - nextTuition);
+        var nextConcession = Math.Max(0m, nextClassFee - nextTuition);
         var description = string.IsNullOrWhiteSpace(request.Description)
             ? null
             : request.Description.Trim();
 
-        if (previousTuition == nextTuition && previousConcession == nextConcession)
-            throw new ArgumentException("Tuition fee is already set to this amount.");
+        if (previousClassFee == nextClassFee && previousTuition == nextTuition)
+            throw new ArgumentException("Fee is already set to this amount.");
 
         var before = new Dictionary<string, string?>(StringComparer.Ordinal)
         {
             ["tuitionFee"] = FormatDecimal(previousTuition),
             ["feeConcession"] = FormatDecimal(previousConcession),
-            ["classFee"] = FormatDecimal(classFee)
+            ["classFee"] = FormatDecimal(previousClassFee)
         };
 
+        student.Fee = nextClassFee;
         student.TutionFee = nextTuition;
         student.FeeConcession = nextConcession;
 
@@ -1507,7 +1512,7 @@ public class StudentService : IStudentService
         {
             ["tuitionFee"] = FormatDecimal(nextTuition),
             ["feeConcession"] = FormatDecimal(nextConcession),
-            ["classFee"] = FormatDecimal(classFee)
+            ["classFee"] = FormatDecimal(nextClassFee)
         };
 
         await _activityLogService.WriteAsync(
@@ -1525,13 +1530,13 @@ public class StudentService : IStudentService
                 {
                     tuitionFee = previousTuition,
                     feeConcession = previousConcession,
-                    classFee
+                    classFee = previousClassFee
                 },
                 after = new
                 {
                     tuitionFee = nextTuition,
                     feeConcession = nextConcession,
-                    classFee
+                    classFee = nextClassFee
                 }
             },
             cancellationToken);
@@ -1543,7 +1548,8 @@ public class StudentService : IStudentService
             RegId = student.Reg_Id,
             FullName = student.FullName ?? string.Empty,
             ClassName = className,
-            ClassFee = classFee,
+            PreviousClassFee = previousClassFee,
+            ClassFee = nextClassFee,
             PreviousTuitionFee = previousTuition,
             TuitionFee = nextTuition,
             PreviousFeeConcession = previousConcession,

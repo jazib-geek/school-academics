@@ -319,7 +319,7 @@ public class FeeReportService : IFeeReportService
             .FirstOrDefaultAsync();
 
         var session = profile is null
-            ? CampusProfileService.CoalesceSession(CampusProfileService.CreateDefault(DateTime.Now.Year))
+            ? CampusProfileService.CoalesceSession(CampusProfileService.CreateDefault(PakistanTime.Now.Year))
             : CampusProfileService.CoalesceSession(profile);
 
         if (session.StartMonth is null
@@ -531,7 +531,7 @@ public class FeeReportService : IFeeReportService
             .FirstOrDefaultAsync();
 
         var session = profile is null
-            ? CampusProfileService.CoalesceSession(CampusProfileService.CreateDefault(DateTime.Now.Year))
+            ? CampusProfileService.CoalesceSession(CampusProfileService.CreateDefault(PakistanTime.Now.Year))
             : CampusProfileService.CoalesceSession(profile);
 
         if (session.StartMonth is null

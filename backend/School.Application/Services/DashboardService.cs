@@ -65,7 +65,7 @@ namespace School.Application.Services
             // -------------------------
             // 2️⃣ Attendance Summary (current month — same rules as GET attendance/student/{id}/summary)
             // -------------------------
-            var today = DateTime.Today;
+            var today = PakistanTime.TodayStart;
             var attendanceSummary = await _attendanceService.GetStudentAttendanceSummaryAsync(
                 studentId,
                 today.Month,
@@ -134,7 +134,7 @@ namespace School.Application.Services
 
         public async Task<AllCampusDashboardDto> GetAllCampusesDashboardAsync()
         {
-            var today = DateTime.Today;
+            var today = PakistanTime.TodayStart;
             var details = new List<CampusDashboardDetailDto>();
 
             foreach (var campusConfig in GetCampusConnections())
@@ -146,7 +146,7 @@ namespace School.Application.Services
             var result = new AllCampusDashboardDto
             {
                 Date = today,
-                GeneratedAt = DateTime.Now,
+                GeneratedAt = PakistanTime.Now,
                 Campuses = details.Select(x => new DashboardCampusComparisonDto
                 {
                     Campus = x.Campus,
@@ -273,7 +273,7 @@ namespace School.Application.Services
 
         public async Task<CampusExpenseByIntervalDto> GetAllCampusesExpenseByIntervalAsync(int days)
         {
-            var today = DateTime.Today;
+            var today = PakistanTime.TodayStart;
             var from = days <= 1 ? today : today.AddDays(-(days - 1));
             var rows = new List<AmountBucket>();
 
@@ -464,7 +464,7 @@ namespace School.Application.Services
                 throw new KeyNotFoundException($"Campus '{campus}' is not configured.");
             }
 
-            var today = DateTime.Today;
+            var today = PakistanTime.TodayStart;
             var fromDate = days <= 1 ? today : today.AddDays(-(days - 1));
 
             await using var campusContext = CreateCampusContext(campusConfig.ConnectionString);
@@ -556,7 +556,7 @@ namespace School.Application.Services
                 throw new KeyNotFoundException($"Campus '{campus}' is not configured.");
             }
 
-            var today = DateTime.Today;
+            var today = PakistanTime.TodayStart;
             var from = today.AddDays(-(days - 1));
 
             await using var campusContext = CreateCampusContext(campusConfig.ConnectionString);
@@ -572,7 +572,7 @@ namespace School.Application.Services
 
         private async Task<CampusDashboardDetailDto> BuildCampusDashboardAsync(AppDbContext campusContext, string campus, string campusLabel)
         {
-            var today = PakistanTime.Today.ToDateTime(TimeOnly.MinValue);
+            var today = PakistanTime.TodayStart;
             var yesterday = today.AddDays(-1);
             var last30From = today.AddDays(-29);
             var last7From = today.AddDays(-6);
@@ -825,6 +825,7 @@ namespace School.Application.Services
                     PresentCount = g.Count(x =>
                         x.Status == StudentAttendanceStatuses.Present ||
                         x.Status == StudentAttendanceStatuses.Late),
+                    ShortLeaveCount = g.Count(x => x.Status == StudentAttendanceStatuses.ShortLeave),
                     TotalCount = g.Count()
                 })
                 .OrderBy(x => x.ClassName)
@@ -845,7 +846,8 @@ namespace School.Application.Services
             var absentCount = await dayRows.CountAsync(x => x.Status != null && x.Status.ToUpper() == "A");
             var onLeaveCount = await dayRows.CountAsync(x =>
                 x.Status != null && (x.Status.ToUpper() == "H" || x.Status.ToUpper() == "LV"));
-            var markedCount = presentCount + absentCount + onLeaveCount;
+            var shortLeaveCount = await dayRows.CountAsync(x => x.Status != null && x.Status.ToUpper() == "SL");
+            var markedCount = presentCount + absentCount + onLeaveCount + shortLeaveCount;
             var denominator = markedCount > 0 ? markedCount : Math.Max(activeStudents, 1);
 
             return new DashboardAttendanceOverviewDto
@@ -854,6 +856,7 @@ namespace School.Application.Services
                 PresentCount = presentCount,
                 AbsentCount = absentCount,
                 OnLeaveCount = onLeaveCount,
+                ShortLeaveCount = shortLeaveCount,
                 MarkedCount = markedCount,
                 PresentPercent = Math.Round((decimal)presentCount / denominator * 100, 1),
                 AbsentPercent = Math.Round((decimal)absentCount / denominator * 100, 1),
@@ -880,7 +883,8 @@ namespace School.Application.Services
                         x.Status.ToUpper() == "A" ||
                         x.Status.ToUpper() == "H" ||
                         x.Status.ToUpper() == "LT" ||
-                        x.Status.ToUpper() == "LV"))
+                        x.Status.ToUpper() == "LV" ||
+                        x.Status.ToUpper() == "SL"))
                 })
                 .ToListAsync();
 

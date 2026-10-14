@@ -40,8 +40,9 @@ public class SmartAttendanceReportService : ISmartAttendanceReportService
         var absent = dayRows.Count(x => StatusEquals(x.Status, StudentAttendanceStatuses.Absent));
         var late = dayRows.Count(x => StatusEquals(x.Status, StudentAttendanceStatuses.Late));
         var leave = dayRows.Count(x => StatusEquals(x.Status, StudentAttendanceStatuses.Leave));
+        var shortLeave = dayRows.Count(x => StatusEquals(x.Status, StudentAttendanceStatuses.ShortLeave));
         var holiday = dayRows.Count(x => StatusEquals(x.Status, StudentAttendanceStatuses.Holiday));
-        var working = present + absent + late + leave;
+        var working = present + absent + late + leave + shortLeave;
         var presentPercent = working > 0 ? Math.Round(100m * (present + late) / working, 1) : 0m;
         var classesMarked = dayRows
             .Where(x => x.ClassCompositeId.HasValue)
@@ -69,7 +70,8 @@ public class SmartAttendanceReportService : ISmartAttendanceReportService
                     StatusEquals(x.Status, StudentAttendanceStatuses.Present) ||
                     StatusEquals(x.Status, StudentAttendanceStatuses.Absent) ||
                     StatusEquals(x.Status, StudentAttendanceStatuses.Late) ||
-                    StatusEquals(x.Status, StudentAttendanceStatuses.Leave));
+                    StatusEquals(x.Status, StudentAttendanceStatuses.Leave) ||
+                    StatusEquals(x.Status, StudentAttendanceStatuses.ShortLeave));
                 return workingDay > 0 ? 100m * inSchool / workingDay : (decimal?)null;
             })
             .Where(x => x.HasValue)
@@ -88,6 +90,7 @@ public class SmartAttendanceReportService : ISmartAttendanceReportService
             AbsentCount = absent,
             LateCount = late,
             LeaveCount = leave,
+            ShortLeaveCount = shortLeave,
             HolidayCount = holiday,
             TotalMarked = dayRows.Count,
             PresentPercent = presentPercent,
@@ -144,7 +147,7 @@ public class SmartAttendanceReportService : ISmartAttendanceReportService
         Item("this-student", "This Student", "Day-by-day attendance for one registration number.", "student",
             "Individual attendance history.",
             P(Param("studentId", "Reg ID", "int", true, null), DateFromOpt(), DateToOpt())),
-        Item("summary-by-interval", "Summary by Interval", "Student-wise present / late / leave / absent / holiday counts and %.", "student",
+        Item("summary-by-interval", "Summary by Interval", "Student-wise present / late / leave / short leave / absent / holiday counts and %.", "student",
             "Period summary for each student.",
             P(DateFromOpt(required: true), DateToOpt(required: true), ClassCompositeOpt())),
         Item("detailed-register", "Detailed Register", "Flat attendance register with optional status filter.", "daily",
@@ -171,6 +174,7 @@ public class SmartAttendanceReportService : ISmartAttendanceReportService
                     ("present", tally.Present),
                     ("late", tally.Late),
                     ("leave", tally.Leave),
+                    ("shortLeave", tally.ShortLeave),
                     ("absent", tally.Absent),
                     ("holiday", tally.Holiday),
                     ("total", g.Count()),
@@ -185,6 +189,7 @@ public class SmartAttendanceReportService : ISmartAttendanceReportService
             ("present", "Present", "number"),
             ("late", "Late", "number"),
             ("leave", "Leave", "number"),
+            ("shortLeave", "Short leave", "number"),
             ("absent", "Absent", "number"),
             ("holiday", "Holiday", "number"),
             ("total", "Total", "number"),
@@ -196,6 +201,7 @@ public class SmartAttendanceReportService : ISmartAttendanceReportService
                 ("present", "Present", totals.Present.ToString(Invariant), "number"),
                 ("late", "Late", totals.Late.ToString(Invariant), "number"),
                 ("leave", "Leave", totals.Leave.ToString(Invariant), "number"),
+                ("shortLeave", "Short leave", totals.ShortLeave.ToString(Invariant), "number"),
                 ("absent", "Absent", totals.Absent.ToString(Invariant), "number"),
                 ("holiday", "Holiday", totals.Holiday.ToString(Invariant), "number"),
                 ("presentPercent", "Present %", totals.PresentPercent.ToString(Invariant), "percent")));
@@ -243,6 +249,7 @@ public class SmartAttendanceReportService : ISmartAttendanceReportService
                 ("present", "Present", totals.Present.ToString(Invariant), "number"),
                 ("late", "Late", totals.Late.ToString(Invariant), "number"),
                 ("leave", "Leave", totals.Leave.ToString(Invariant), "number"),
+                ("shortLeave", "Short leave", totals.ShortLeave.ToString(Invariant), "number"),
                 ("absent", "Absent", totals.Absent.ToString(Invariant), "number"),
                 ("holiday", "Holiday", totals.Holiday.ToString(Invariant), "number")));
     }
@@ -266,6 +273,7 @@ public class SmartAttendanceReportService : ISmartAttendanceReportService
                     ("present", tally.Present),
                     ("late", tally.Late),
                     ("leave", tally.Leave),
+                    ("shortLeave", tally.ShortLeave),
                     ("absent", tally.Absent),
                     ("holiday", tally.Holiday),
                     ("total", g.Count()),
@@ -280,6 +288,7 @@ public class SmartAttendanceReportService : ISmartAttendanceReportService
             ("present", "Present", "number"),
             ("late", "Late", "number"),
             ("leave", "Leave", "number"),
+            ("shortLeave", "Short leave", "number"),
             ("absent", "Absent", "number"),
             ("holiday", "Holiday", "number"),
             ("total", "Total", "number"),
@@ -309,6 +318,7 @@ public class SmartAttendanceReportService : ISmartAttendanceReportService
                     ("present", tally.Present),
                     ("late", tally.Late),
                     ("leave", tally.Leave),
+                    ("shortLeave", tally.ShortLeave),
                     ("absent", tally.Absent),
                     ("holiday", tally.Holiday),
                     ("total", g.Count()),
@@ -323,6 +333,7 @@ public class SmartAttendanceReportService : ISmartAttendanceReportService
             ("present", "Present", "number"),
             ("late", "Late", "number"),
             ("leave", "Leave", "number"),
+            ("shortLeave", "Short leave", "number"),
             ("absent", "Absent", "number"),
             ("holiday", "Holiday", "number"),
             ("total", "Marked rows", "number"),
@@ -474,6 +485,7 @@ public class SmartAttendanceReportService : ISmartAttendanceReportService
                 ("present", "Present", totals.Present.ToString(Invariant), "number"),
                 ("late", "Late", totals.Late.ToString(Invariant), "number"),
                 ("leave", "Leave", totals.Leave.ToString(Invariant), "number"),
+                ("shortLeave", "Short leave", totals.ShortLeave.ToString(Invariant), "number"),
                 ("absent", "Absent", totals.Absent.ToString(Invariant), "number"),
                 ("holiday", "Holiday", totals.Holiday.ToString(Invariant), "number"),
                 ("presentPercent", "Present %", totals.PresentPercent.ToString(Invariant), "percent")));
@@ -501,6 +513,7 @@ public class SmartAttendanceReportService : ISmartAttendanceReportService
                     ("present", tally.Present),
                     ("late", tally.Late),
                     ("leave", tally.Leave),
+                    ("shortLeave", tally.ShortLeave),
                     ("absent", tally.Absent),
                     ("holiday", tally.Holiday),
                     ("workingDays", tally.Working),
@@ -515,6 +528,7 @@ public class SmartAttendanceReportService : ISmartAttendanceReportService
             ("present", "Present", "number"),
             ("late", "Late", "number"),
             ("leave", "Leave", "number"),
+            ("shortLeave", "Short leave", "number"),
             ("absent", "Absent", "number"),
             ("holiday", "Holiday", "number"),
             ("workingDays", "Working days", "number"),
@@ -566,6 +580,7 @@ public class SmartAttendanceReportService : ISmartAttendanceReportService
                 ("present", "Present", totals.Present.ToString(Invariant), "number"),
                 ("late", "Late", totals.Late.ToString(Invariant), "number"),
                 ("leave", "Leave", totals.Leave.ToString(Invariant), "number"),
+                ("shortLeave", "Short leave", totals.ShortLeave.ToString(Invariant), "number"),
                 ("absent", "Absent", totals.Absent.ToString(Invariant), "number"),
                 ("holiday", "Holiday", totals.Holiday.ToString(Invariant), "number"),
                 ("rows", "Rows", resultRows.Count.ToString(Invariant), "number")));
@@ -646,9 +661,9 @@ public class SmartAttendanceReportService : ISmartAttendanceReportService
     private static bool StatusEquals(string? status, string expected) =>
         StudentAttendanceStatuses.EqualsCode(status, expected);
 
-    private readonly record struct StatusTally(int Present, int Absent, int Late, int Leave, int Holiday)
+    private readonly record struct StatusTally(int Present, int Absent, int Late, int Leave, int ShortLeave, int Holiday)
     {
-        public int Working => Present + Absent + Late + Leave;
+        public int Working => Present + Absent + Late + Leave + ShortLeave;
         public decimal PresentPercent => Working > 0 ? Math.Round(100m * (Present + Late) / Working, 1) : 0m;
     }
 
@@ -658,6 +673,7 @@ public class SmartAttendanceReportService : ISmartAttendanceReportService
         var absent = 0;
         var late = 0;
         var leave = 0;
+        var shortLeave = 0;
         var holiday = 0;
         foreach (var row in rows)
         {
@@ -675,13 +691,16 @@ public class SmartAttendanceReportService : ISmartAttendanceReportService
                 case StudentAttendanceStatuses.Leave:
                     leave++;
                     break;
+                case StudentAttendanceStatuses.ShortLeave:
+                    shortLeave++;
+                    break;
                 case StudentAttendanceStatuses.Holiday:
                     holiday++;
                     break;
             }
         }
 
-        return new StatusTally(present, absent, late, leave, holiday);
+        return new StatusTally(present, absent, late, leave, shortLeave, holiday);
     }
 
     private static string FormatClassSectionDisplayName(string? className, string? sectionName)
@@ -752,6 +771,7 @@ public class SmartAttendanceReportService : ISmartAttendanceReportService
             new SmartFeeReportOptionDto { Value = StudentAttendanceStatuses.Absent, Label = "Absent (A)" },
             new SmartFeeReportOptionDto { Value = StudentAttendanceStatuses.Late, Label = "Late (Lt)" },
             new SmartFeeReportOptionDto { Value = StudentAttendanceStatuses.Leave, Label = "Leave (Lv)" },
+            new SmartFeeReportOptionDto { Value = StudentAttendanceStatuses.ShortLeave, Label = "Short Leave (SL)" },
             new SmartFeeReportOptionDto { Value = StudentAttendanceStatuses.Holiday, Label = "Holiday (H)" },
         ]);
 

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using School.Application.Common;
 using School.Application.DTOs;
 using School.Application.Interfaces;
 using School.Infrastructure.Data;
@@ -136,7 +137,7 @@ public class CampusTimeTableService : ICampusTimeTableService
         }
 
         static string? FormatTime(TimeSpan? t) =>
-            t.HasValue ? DateTime.Today.Add(t.Value).ToString("HH:mm") : null;
+            t.HasValue ? PakistanTime.TodayStart.Add(t.Value).ToString("HH:mm") : null;
 
         var slots = mySlots
             .OrderBy(s => s.PeriodNumber)

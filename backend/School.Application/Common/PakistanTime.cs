@@ -4,7 +4,10 @@ public static class PakistanTime
 {
     private static readonly TimeZoneInfo PakistanZone = ResolvePakistanZone();
 
-    public static DateOnly Today => DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, PakistanZone));
+    public static DateOnly Today => DateOnly.FromDateTime(Now);
+
+    /// <summary>Midnight on the Pakistan calendar date. Use instead of <see cref="DateTime.Today"/>.</summary>
+    public static DateTime TodayStart => Now.Date;
 
     public static DateOnly Yesterday => Today.AddDays(-1);
 

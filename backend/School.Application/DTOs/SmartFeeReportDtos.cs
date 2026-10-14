@@ -1,3 +1,5 @@
+using School.Application.Common;
+
 namespace School.Application.DTOs;
 
 public class SmartFeeReportRunRequestDto
@@ -68,7 +70,7 @@ public class SmartFeeReportResultDto
     public string ReportId { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
     public string Category { get; set; } = string.Empty;
-    public DateTime GeneratedAt { get; set; } = DateTime.Now;
+    public DateTime GeneratedAt { get; set; } = PakistanTime.Now;
     public int TotalRecords { get; set; }
     public decimal TotalAmount { get; set; }
     public List<SmartFeeReportKpiDto> ExtraKpis { get; set; } = [];
@@ -83,7 +85,7 @@ public class SmartFeeReportResultDto
 
 public class FeeExecutiveSnapshotDto
 {
-    public DateTime GeneratedAt { get; set; } = DateTime.Now;
+    public DateTime GeneratedAt { get; set; } = PakistanTime.Now;
     public decimal CollectedToday { get; set; }
     public decimal CollectedMtd { get; set; }
     public decimal CollectedLastMonthSamePeriod { get; set; }

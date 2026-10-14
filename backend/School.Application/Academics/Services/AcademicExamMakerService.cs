@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using School.Application.Common;
 using School.Application.Academics.DTOs;
 using School.Application.Academics.Interfaces;
 using School.Infrastructure.Academics.Data;
@@ -148,7 +149,7 @@ public class AcademicExamMakerService : IAcademicExamMakerService
         var examTitleRow = await RequireExamTitleAsync(request.ExamTitleId);
         var examTypeKeyGen = NormalizeExamPaperType(request.ExamType);
         var paperNameGen = string.IsNullOrWhiteSpace(request.PaperName)
-            ? $"{subjectEntity.SubjectName} - {examTitleRow.Title} ({FormatExamPaperDateLabel(DateTime.Now)})"
+            ? $"{subjectEntity.SubjectName} - {examTitleRow.Title} ({FormatExamPaperDateLabel(PakistanTime.Now)})"
             : RequirePaperName(request.PaperName);
         var existingGenSlot = await FindPaperIdBySlotAndNameAsync(
             request.ClassId, request.SubjectId, examTitleRow.Id, examTypeKeyGen, paperNameGen);

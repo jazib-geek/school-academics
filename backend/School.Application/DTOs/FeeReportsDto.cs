@@ -1,3 +1,5 @@
+using School.Application.Common;
+
 namespace School.Application.DTOs;
 
 public class FeeReportFilterDto
@@ -56,7 +58,7 @@ public class ReceivableItemDto
 
 public class FeeReportResponseDto<TItem>
 {
-    public DateTime GeneratedAt { get; set; } = DateTime.Now;
+    public DateTime GeneratedAt { get; set; } = PakistanTime.Now;
     public int TotalRecords { get; set; }
     public decimal TotalAmount { get; set; }
     /// <summary>Campus-wide active totals (Payment − Recieved), used by overall receivable footers.</summary>
@@ -105,7 +107,7 @@ public class ExpectedIncomeReportDto
     public int SessionEndYear { get; set; }
     public string SessionLabel { get; set; } = string.Empty;
     public string ForMonthLabel { get; set; } = string.Empty;
-    public DateTime GeneratedAt { get; set; } = DateTime.Now;
+    public DateTime GeneratedAt { get; set; } = PakistanTime.Now;
     public List<ExpectedIncomeMonthItemDto> TuitionByMonth { get; set; } = [];
     public List<ExpectedIncomeFundItemDto> FundsOverall { get; set; } = [];
     public decimal TuitionTotal { get; set; }
@@ -126,7 +128,7 @@ public class IncomeStatementReportDto
     public int Month { get; set; }
     public int Year { get; set; }
     public string MonthLabel { get; set; } = string.Empty;
-    public DateTime GeneratedAt { get; set; } = DateTime.Now;
+    public DateTime GeneratedAt { get; set; } = PakistanTime.Now;
     public decimal TotalIncome { get; set; }
     public decimal TotalExpenses { get; set; }
     public decimal NetProfit { get; set; }
@@ -169,7 +171,7 @@ public class BalanceSheetReportDto
     public int SessionStartMonth { get; set; }
     public int SessionEndMonth { get; set; }
     public string SessionLabel { get; set; } = string.Empty;
-    public DateTime GeneratedAt { get; set; } = DateTime.Now;
+    public DateTime GeneratedAt { get; set; } = PakistanTime.Now;
     public int PrevFundTypeId { get; set; } = 4;
     public int MiscFundTypeId { get; set; } = 3;
     public List<BalanceSheetMonthColumnDto> Months { get; set; } = [];

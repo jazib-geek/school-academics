@@ -1,8 +1,10 @@
+using School.Application.Common;
+
 namespace School.Application.DTOs;
 
 public class ExamExecutiveSnapshotDto
 {
-    public DateTime GeneratedAt { get; set; } = DateTime.Now;
+    public DateTime GeneratedAt { get; set; } = PakistanTime.Now;
     public int ActiveStudentCount { get; set; }
     public int ExamTypeCount { get; set; }
     public int ClassesWithMarks { get; set; }

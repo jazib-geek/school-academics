@@ -599,7 +599,7 @@ public class FeeReceiptHistoryService : IFeeReceiptHistoryService
             FamilyCode = student.Family_Code,
             StudentName = student.FullName ?? $"Student {studentId}",
             ClassName = FormatClassName(student.ClassName, student.SectionName),
-            Date = first.Date ?? DateTime.Today,
+            Date = first.Date ?? PakistanTime.TodayStart,
             Time = first.Time ?? string.Empty,
             ReceivedBy = first.ReceivedBy ?? string.Empty,
             Campus = _tenantContext.Campus,

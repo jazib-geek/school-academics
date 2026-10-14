@@ -5524,6 +5524,24 @@ namespace School.Infrastructure.Data.Migrations
                             ModuleHead = "Employee",
                             Name = "Request Employee Attendance Change",
                             SortOrder = 1440
+                        },
+                        new
+                        {
+                            Id = 145,
+                            Code = "refund_security_deposit",
+                            IsActive = true,
+                            ModuleHead = "Fee",
+                            Name = "Refund Security Deposit",
+                            SortOrder = 1450
+                        },
+                        new
+                        {
+                            Id = 146,
+                            Code = "allow_short_leave",
+                            IsActive = true,
+                            ModuleHead = "Attendance",
+                            Name = "Allow Short Leave",
+                            SortOrder = 1460
                         });
                 });
 
@@ -6661,6 +6679,89 @@ namespace School.Infrastructure.Data.Migrations
                         .HasDatabaseName("IX_StudentSecurityDepositEvent_StudentId");
 
                     b.ToTable("tblStudentSecurityDepositEvent", "dbo");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.StudentShortLeave", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ApprovedByUserName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreatedAtPkt")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<DateOnly>("LeaveDate")
+                        .HasColumnType("date");
+
+                    b.Property<bool>("PhoneCallApproved")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("PhoneConfirmationRequired")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("PhoneConfirmedWith")
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<string>("PickupPersonName")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<string>("PickupRelation")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<TimeOnly>("PickupTime")
+                        .HasColumnType("time");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LeaveDate")
+                        .HasDatabaseName("IX_StudentShortLeave_LeaveDate");
+
+                    b.ToTable("tblStudentShortLeave", "dbo");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.StudentShortLeaveStudent", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateOnly>("LeaveDate")
+                        .HasColumnType("date");
+
+                    b.Property<int>("ShortLeaveId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("StudentId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ShortLeaveId");
+
+                    b.HasIndex("StudentId", "LeaveDate")
+                        .IsUnique()
+                        .HasDatabaseName("IX_StudentShortLeaveStudent_Student_LeaveDate");
+
+                    b.ToTable("tblStudentShortLeaveStudent", "dbo");
                 });
 
             modelBuilder.Entity("School.Infrastructure.Entities.StudentType", b =>
@@ -8226,6 +8327,25 @@ namespace School.Infrastructure.Data.Migrations
                     b.Navigation("Student");
                 });
 
+            modelBuilder.Entity("School.Infrastructure.Entities.StudentShortLeaveStudent", b =>
+                {
+                    b.HasOne("School.Infrastructure.Entities.StudentShortLeave", "ShortLeave")
+                        .WithMany("Students")
+                        .HasForeignKey("ShortLeaveId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("School.Infrastructure.Entities.Student", "Student")
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ShortLeave");
+
+                    b.Navigation("Student");
+                });
+
             modelBuilder.Entity("School.Infrastructure.Entities.SubjectClasswise", b =>
                 {
                     b.HasOne("School.Infrastructure.Entities.Section", "Section")
@@ -8386,6 +8506,11 @@ namespace School.Infrastructure.Data.Migrations
                 });
 
             modelBuilder.Entity("School.Infrastructure.Entities.StudentFamilyDetail", b =>
+                {
+                    b.Navigation("Students");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.StudentShortLeave", b =>
                 {
                     b.Navigation("Students");
                 });

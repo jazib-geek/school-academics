@@ -1,3 +1,5 @@
+using School.Application.Common;
+
 namespace School.Application.DTOs;
 
 public class SmartStudentReportRunRequestDto
@@ -8,7 +10,7 @@ public class SmartStudentReportRunRequestDto
 
 public class StudentExecutiveSnapshotDto
 {
-    public DateTime GeneratedAt { get; set; } = DateTime.Now;
+    public DateTime GeneratedAt { get; set; } = PakistanTime.Now;
     public int ActiveStudentCount { get; set; }
     public int InactiveStudentCount { get; set; }
     public int StruckOffMtd { get; set; }

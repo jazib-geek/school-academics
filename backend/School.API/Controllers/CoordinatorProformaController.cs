@@ -32,7 +32,7 @@ public class CoordinatorProformaController : ControllerBase
         if (!auth.Success)
             return auth.ErrorResult!;
 
-        var date = reportDate ?? DateOnly.FromDateTime(DateTime.Today);
+        var date = reportDate ?? PakistanTime.Today;
         var result = await _proformaService.GetMyDayAsync(auth.EmployeeId, date, cancellationToken);
         return Ok(ApiResponse<CoordinatorProformaDayDto>.SuccessResponse(result));
     }
@@ -106,7 +106,7 @@ public class CoordinatorProformaController : ControllerBase
         if (!auth.Success)
             return auth.ErrorResult!;
 
-        var date = query.ReportDate ?? DateOnly.FromDateTime(DateTime.Today);
+        var date = query.ReportDate ?? PakistanTime.Today;
         var campusKey = string.IsNullOrWhiteSpace(query.CampusKey)
             ? HttpContext.Request.Headers["X-Campus"].ToString().Trim().ToLowerInvariant()
             : query.CampusKey.Trim().ToLowerInvariant();

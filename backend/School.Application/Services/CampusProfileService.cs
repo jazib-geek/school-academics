@@ -94,7 +94,7 @@ public class CampusProfileService : ICampusProfileService
         if (row != null)
             return row;
 
-        var year = DateTime.Now.Year;
+        var year = PakistanTime.Now.Year;
         row = CreateDefault(year);
         context.CampusProfiles.Add(row);
         await context.SaveChangesAsync(cancellationToken);
@@ -211,7 +211,7 @@ public class CampusProfileService : ICampusProfileService
             return (2, fromLabel.Value.StartYear, 1, fromLabel.Value.EndYear, fromLabel.Value.Label);
         }
 
-        var year = DateTime.Now.Year;
+        var year = PakistanTime.Now.Year;
         return (2, year, 1, year + 1, $"{year}-{year + 1}");
     }
 

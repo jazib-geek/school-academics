@@ -186,6 +186,7 @@ public class StudentAdmissionDetailDto
     public string? SpecialNotes { get; set; }
 
     public int? FamilyCode { get; set; }
+    public string? FamilyPortalPassword { get; set; }
     public int? ClassCompositeId { get; set; }
     public string? ClassName { get; set; }
     public string? SessionSpan { get; set; }
@@ -377,6 +378,9 @@ public class StudentTuitionFeeUpdateRequestDto
     [Required]
     public decimal TuitionFee { get; set; }
 
+    /// <summary>Roster total fee. When omitted, the student's current fee is kept.</summary>
+    public int? TotalFee { get; set; }
+
     [StringLength(1000)]
     public string? Description { get; set; }
 }
@@ -401,6 +405,7 @@ public class StudentTuitionFeeUpdateResultDto
     public int RegId { get; set; }
     public string FullName { get; set; } = string.Empty;
     public string? ClassName { get; set; }
+    public int PreviousClassFee { get; set; }
     public int ClassFee { get; set; }
     public decimal PreviousTuitionFee { get; set; }
     public decimal TuitionFee { get; set; }

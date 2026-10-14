@@ -153,6 +153,8 @@ public class AppDbContext : DbContext
     public DbSet<StudentConductTag> StudentConductTags => Set<StudentConductTag>();
     public DbSet<StudentConductNote> StudentConductNotes => Set<StudentConductNote>();
     public DbSet<StudentLeaveApplication> StudentLeaveApplications => Set<StudentLeaveApplication>();
+    public DbSet<StudentShortLeave> StudentShortLeaves => Set<StudentShortLeave>();
+    public DbSet<StudentShortLeaveStudent> StudentShortLeaveStudents => Set<StudentShortLeaveStudent>();
     public DbSet<EmployeeAttendanceChangeRequest> EmployeeAttendanceChangeRequests =>
         Set<EmployeeAttendanceChangeRequest>();
     public DbSet<StudentConductNoteTag> StudentConductNoteTags => Set<StudentConductNoteTag>();
@@ -1140,6 +1142,8 @@ public class AppDbContext : DbContext
         modelBuilder.ApplyConfiguration(new StudentConductNoteTagConfiguration());
         modelBuilder.ApplyConfiguration(new StudentConductParentAckConfiguration());
         modelBuilder.ApplyConfiguration(new StudentLeaveApplicationConfiguration());
+        modelBuilder.ApplyConfiguration(new StudentShortLeaveConfiguration());
+        modelBuilder.ApplyConfiguration(new StudentShortLeaveStudentConfiguration());
         modelBuilder.ApplyConfiguration(new EmployeeAttendanceChangeRequestConfiguration());
         modelBuilder.ApplyConfiguration(new AbsentFollowupReasonConfiguration());
         modelBuilder.ApplyConfiguration(new FeeReminderNoticeTemplateConfiguration());

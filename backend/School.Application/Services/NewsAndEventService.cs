@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using School.Application.Common;
 using School.Application.DTOs;
 using School.Application.Interfaces;
 using School.Infrastructure.Data;
@@ -67,7 +68,7 @@ public class NewsAndEventService : INewsAndEventService
 
         var entity = new NewsAndEvent
         {
-            Date = request.Date ?? DateTime.Today,
+            Date = request.Date ?? PakistanTime.TodayStart,
             Title = request.Title.Trim(),
             Type = NormalizeType(request.Type),
             Description = request.Description,
@@ -92,7 +93,7 @@ public class NewsAndEventService : INewsAndEventService
             .FirstOrDefaultAsync(x => x.ID == id, cancellationToken)
             ?? throw new KeyNotFoundException("Announcement not found.");
 
-        entity.Date = request.Date ?? entity.Date ?? DateTime.Today;
+        entity.Date = request.Date ?? entity.Date ?? PakistanTime.TodayStart;
         entity.Title = request.Title.Trim();
         entity.Type = NormalizeType(request.Type);
         entity.Description = request.Description;

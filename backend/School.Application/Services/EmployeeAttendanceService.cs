@@ -124,7 +124,7 @@ public class EmployeeAttendanceService : IEmployeeAttendanceService
         int? month = null,
         CancellationToken cancellationToken = default)
     {
-        var today = DateTime.Today;
+        var today = PakistanTime.TodayStart;
         var targetYear = year ?? today.Year;
         var targetMonth = month ?? today.Month;
 

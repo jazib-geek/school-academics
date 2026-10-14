@@ -125,6 +125,7 @@ builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<INewsAndEventService, NewsAndEventService>();
 builder.Services.AddScoped<IFamilyAccountService, FamilyAccountService>();
 builder.Services.AddScoped<IAttendanceService, AttendanceService>();
+builder.Services.AddScoped<IStudentShortLeaveService, StudentShortLeaveService>();
 builder.Services.AddScoped<IAbsentFollowupService, AbsentFollowupService>();
 builder.Services.AddScoped<IStudentConductService, StudentConductService>();
 builder.Services.AddScoped<IParentConductService, ParentConductService>();

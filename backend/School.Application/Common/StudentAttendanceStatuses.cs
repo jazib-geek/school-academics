@@ -6,9 +6,10 @@ public static class StudentAttendanceStatuses
     public const string Absent = "A";
     public const string Late = "Lt";
     public const string Leave = "Lv";
+    public const string ShortLeave = "SL";
     public const string Holiday = "H";
 
-    public static readonly IReadOnlyList<string> All = [Present, Absent, Late, Leave, Holiday];
+    public static readonly IReadOnlyList<string> All = [Present, Absent, Late, Leave, ShortLeave, Holiday];
     public static readonly IReadOnlyList<string> Bulk = [Present, Absent, Holiday];
 
     public static bool TryCanonicalize(string? status, out string canonical)
@@ -48,6 +49,14 @@ public static class StudentAttendanceStatuses
             return true;
         }
 
+        if (key.Equals(ShortLeave, StringComparison.OrdinalIgnoreCase) ||
+            key.Equals("Short Leave", StringComparison.OrdinalIgnoreCase) ||
+            key.Equals("ShortLeave", StringComparison.OrdinalIgnoreCase))
+        {
+            canonical = ShortLeave;
+            return true;
+        }
+
         if (key.Equals(Holiday, StringComparison.OrdinalIgnoreCase) ||
             key.Equals("Holiday", StringComparison.OrdinalIgnoreCase))
         {
@@ -65,7 +74,7 @@ public static class StudentAttendanceStatuses
     {
         if (!TryCanonicalize(status, out var canonical))
         {
-            throw new ArgumentException("Status must be one of: P, A, Lt, Lv, H.");
+            throw new ArgumentException("Status must be one of: P, A, Lt, Lv, SL, H.");
         }
 
         return canonical;
@@ -97,6 +106,7 @@ public static class StudentAttendanceStatuses
         Absent => "Absent",
         Late => "Late",
         Leave => "Leave",
+        ShortLeave => "Short Leave",
         Holiday => "Holiday",
         _ => "Absent",
     };
