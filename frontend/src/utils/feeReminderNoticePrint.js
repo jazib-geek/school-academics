@@ -81,10 +81,12 @@ function buildVoucherHtml(notice) {
     className,
     amount,
     issuanceDate,
+    code,
   } = notice
+  const variant = code === 'last_due' ? ' fee-reminder-voucher--last-due' : ''
 
   return `
-    <div class="fee-reminder-voucher">
+    <div class="fee-reminder-voucher${variant}">
       <div class="fee-reminder-voucher__title">${escapeHtml(title)}</div>
       <div class="fee-reminder-voucher__body">
         <div class="fee-reminder-voucher__left">
@@ -362,6 +364,30 @@ const PRINT_WINDOW_CSS = `
     .fee-reminder-page--3 .fee-reminder-voucher__body {
       padding-bottom: 4px;
     }
+    /* Past-due copy is longer; keep the slip the same height as the before-due voucher so 3 fit on A4. */
+    .fee-reminder-page--3 .fee-reminder-voucher--last-due .fee-reminder-voucher__right {
+      padding: 6px 12px;
+    }
+    .fee-reminder-page--3 .fee-reminder-voucher--last-due .fee-reminder-voucher__message {
+      padding: 0 4px;
+      line-height: 1.28;
+    }
+    .fee-reminder-page--3 .fee-reminder-voucher--last-due .fee-reminder-voucher__message,
+    .fee-reminder-page--3 .fee-reminder-voucher--last-due .fee-reminder-voucher__message p,
+    .fee-reminder-page--3 .fee-reminder-voucher--last-due .fee-reminder-voucher__message .message,
+    .fee-reminder-page--3 .fee-reminder-voucher--last-due .fee-reminder-voucher__message .message p {
+      font-size: 15px !important;
+      line-height: 1.28;
+    }
+    .fee-reminder-page--3 .fee-reminder-voucher--last-due .fee-reminder-voucher__message p {
+      margin: 0 0 4px;
+    }
+    .fee-reminder-page--3 .fee-reminder-voucher--last-due .fee-reminder-voucher__message .message {
+      margin-bottom: 4px;
+    }
+    .fee-reminder-page--3 .fee-reminder-voucher--last-due .fee-reminder-voucher__message .message p {
+      margin: 0 0 3px;
+    }
   }
 `
 
@@ -378,6 +404,7 @@ export function buildFeeReminderVoucherHtml(notice) {
     className: notice.className,
     amount: notice.amount,
     issuanceDate: notice.issuanceDate,
+    code: notice.code,
   })
 }
 
