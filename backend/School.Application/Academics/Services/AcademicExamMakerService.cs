@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using School.Application.Academics;
 using School.Application.Common;
 using School.Application.Academics.DTOs;
 using School.Application.Academics.Interfaces;
@@ -36,22 +37,64 @@ public class AcademicExamMakerService : IAcademicExamMakerService
         string? searchText = null,
         string? type = null,
         string? category = null,
+        string? structureKind = null,
         int take = 120)
     {
+        var catalogProfile = await GetSubjectCatalogProfileAsync(subjectId);
+        var isLanguageSubject = IsLanguageCatalogProfile(catalogProfile);
+        var allowedLanguageKinds = QuestionStructureCatalog.KindsFor(catalogProfile).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
         var query = _academicContext.QuestionsCatalog
             .AsNoTracking()
             .Include(x => x.Chapter)
             .Where(x => x.Chapter != null && x.Chapter.ClassId == classId && x.Chapter.SubjectId == subjectId);
+
+        if (isLanguageSubject)
+        {
+            query = query.Where(x => allowedLanguageKinds.Contains(x.StructureKind));
+        }
+        else
+        {
+            query = query.Where(x => x.StructureKind == QuestionStructureCatalog.KindStandard);
+        }
 
         if (chapterIds is { Count: > 0 })
         {
             query = query.Where(x => chapterIds.Contains(x.ChapterId));
         }
 
+        var normalizedStructureKind = QuestionStructureCatalog.NormalizeKind(structureKind);
+        if (isLanguageSubject &&
+            !string.IsNullOrWhiteSpace(structureKind) &&
+            !string.Equals(structureKind.Trim(), "all", StringComparison.OrdinalIgnoreCase) &&
+            normalizedStructureKind != QuestionStructureCatalog.KindStandard &&
+            allowedLanguageKinds.Contains(normalizedStructureKind))
+        {
+            query = query.Where(x => x.StructureKind == normalizedStructureKind);
+        }
+
         var normalizedType = type?.Trim().ToLowerInvariant();
         if (!string.IsNullOrWhiteSpace(normalizedType) && normalizedType != "all")
         {
-            query = query.Where(x => x.Type == normalizedType);
+            if (isLanguageSubject)
+            {
+                if (normalizedType == "mcq")
+                {
+                    query = query.Where(x =>
+                        x.StructureKind == QuestionStructureCatalog.KindChoiceSet ||
+                        x.StructureKind == QuestionStructureCatalog.KindSpellingTable);
+                }
+                else if (normalizedType is "saq" or "laq" or "numerical")
+                {
+                    query = query.Where(x =>
+                        x.StructureKind != QuestionStructureCatalog.KindChoiceSet &&
+                        x.StructureKind != QuestionStructureCatalog.KindSpellingTable);
+                }
+            }
+            else
+            {
+                query = query.Where(x => x.Type == normalizedType);
+            }
         }
 
         var normalizedCategory = category?.Trim().ToLowerInvariant();
@@ -65,6 +108,7 @@ public class AcademicExamMakerService : IAcademicExamMakerService
         {
             query = query.Where(x =>
                 EF.Functions.Like(x.DescriptionText, $"%{normalizedSearch}%") ||
+                EF.Functions.Like(x.BodyJson ?? string.Empty, $"%{normalizedSearch}%") ||
                 EF.Functions.Like(x.McqOpt1 ?? string.Empty, $"%{normalizedSearch}%") ||
                 EF.Functions.Like(x.McqOpt2 ?? string.Empty, $"%{normalizedSearch}%") ||
                 EF.Functions.Like(x.McqOpt3 ?? string.Empty, $"%{normalizedSearch}%") ||
@@ -88,7 +132,9 @@ public class AcademicExamMakerService : IAcademicExamMakerService
                 McqOpt1 = x.McqOpt1,
                 McqOpt2 = x.McqOpt2,
                 McqOpt3 = x.McqOpt3,
-                McqOpt4 = x.McqOpt4
+                McqOpt4 = x.McqOpt4,
+                StructureKind = x.StructureKind,
+                BodyJson = x.BodyJson
             })
             .ToListAsync();
     }
@@ -107,6 +153,7 @@ public class AcademicExamMakerService : IAcademicExamMakerService
                 x.Chapter != null &&
                 x.Chapter.ClassId == classId &&
                 x.Chapter.SubjectId == subjectId &&
+                x.StructureKind == QuestionStructureCatalog.KindStandard &&
                 (x.Type == "mcq" || x.Type == "saq" || x.Type == "laq" || x.Type == "numerical"))
             .GroupBy(x => new { x.ChapterId, x.Type })
             .Select(group => new
@@ -174,7 +221,8 @@ public class AcademicExamMakerService : IAcademicExamMakerService
         var baseQuery = _academicContext.QuestionsCatalog
             .AsNoTracking()
             .Include(x => x.Chapter)
-            .Where(x => x.Chapter != null && x.Chapter.ClassId == request.ClassId && x.Chapter.SubjectId == request.SubjectId);
+            .Where(x => x.Chapter != null && x.Chapter.ClassId == request.ClassId && x.Chapter.SubjectId == request.SubjectId)
+            .Where(x => x.StructureKind == QuestionStructureCatalog.KindStandard);
 
         if (chapterIds.Count > 0)
         {
@@ -222,24 +270,7 @@ public class AcademicExamMakerService : IAcademicExamMakerService
                     Section = section
                 });
 
-                displayRows.Add(new PaperQuestionItemDto
-                {
-                    Id = item.Id,
-                    Type = item.Type,
-                    Category = item.Category,
-                    ChapterId = item.ChapterId,
-                    ChapterName = item.Chapter?.ChapterName ?? string.Empty,
-                    ChapterNo = item.Chapter?.ChapterNo ?? 0,
-                    DescriptionText = item.DescriptionText,
-                    StemImage = item.StemImage,
-                    McqOpt1 = item.McqOpt1,
-                    McqOpt2 = item.McqOpt2,
-                    McqOpt3 = item.McqOpt3,
-                    McqOpt4 = item.McqOpt4,
-                    Marks = marks,
-                    Section = section,
-                    Order = order
-                });
+                displayRows.Add(MapQuestionToPaperItem(item, marks, section, order));
                 order++;
             }
         }
@@ -365,11 +396,9 @@ public class AcademicExamMakerService : IAcademicExamMakerService
             throw new InvalidOperationException("One or more selected questions were not found.");
         }
 
+        var catalogProfile = await GetSubjectCatalogProfileAsync(request.SubjectId);
         var invalidQuestion = questionEntities.FirstOrDefault(x =>
-            x.Chapter == null ||
-            x.Chapter.ClassId != request.ClassId ||
-            x.Chapter.SubjectId != request.SubjectId ||
-            (chapterIds.Count > 0 && !chapterIds.Contains(x.ChapterId)));
+            !IsQuestionValidForSubjectProfile(x, request.ClassId, request.SubjectId, catalogProfile, chapterIds));
 
         if (invalidQuestion != null)
         {
@@ -400,24 +429,7 @@ public class AcademicExamMakerService : IAcademicExamMakerService
                 Section = section
             });
 
-            displayRows.Add(new PaperQuestionItemDto
-            {
-                Id = entity.Id,
-                Type = entity.Type,
-                Category = entity.Category,
-                ChapterId = entity.ChapterId,
-                ChapterName = entity.Chapter?.ChapterName ?? string.Empty,
-                ChapterNo = entity.Chapter?.ChapterNo ?? 0,
-                DescriptionText = entity.DescriptionText,
-                StemImage = entity.StemImage,
-                McqOpt1 = entity.McqOpt1,
-                McqOpt2 = entity.McqOpt2,
-                McqOpt3 = entity.McqOpt3,
-                McqOpt4 = entity.McqOpt4,
-                Marks = marks,
-                Section = section,
-                Order = selected.QuestionOrder
-            });
+            displayRows.Add(MapQuestionToPaperItem(entity, marks, section, selected.QuestionOrder));
         }
 
         var sections = NormalizeSections(request.Sections);
@@ -551,11 +563,9 @@ public class AcademicExamMakerService : IAcademicExamMakerService
             throw new InvalidOperationException("One or more selected questions were not found.");
         }
 
+        var catalogProfile = await GetSubjectCatalogProfileAsync(request.SubjectId);
         var invalidQuestion = questionEntities.FirstOrDefault(x =>
-            x.Chapter == null ||
-            x.Chapter.ClassId != request.ClassId ||
-            x.Chapter.SubjectId != request.SubjectId ||
-            (chapterIds.Count > 0 && !chapterIds.Contains(x.ChapterId)));
+            !IsQuestionValidForSubjectProfile(x, request.ClassId, request.SubjectId, catalogProfile, chapterIds));
 
         if (invalidQuestion != null)
         {
@@ -720,7 +730,8 @@ public class AcademicExamMakerService : IAcademicExamMakerService
                 requestedTypes.Contains(x.Type) &&
                 x.Chapter != null &&
                 x.Chapter.ClassId == request.ClassId &&
-                x.Chapter.SubjectId == request.SubjectId)
+                x.Chapter.SubjectId == request.SubjectId &&
+                x.StructureKind == QuestionStructureCatalog.KindStandard)
             .ToListAsync();
 
         var random = new Random();
@@ -967,6 +978,8 @@ public class AcademicExamMakerService : IAcademicExamMakerService
                     McqOpt2 = x.Question?.McqOpt2,
                     McqOpt3 = x.Question?.McqOpt3,
                     McqOpt4 = x.Question?.McqOpt4,
+                    StructureKind = x.Question?.StructureKind ?? QuestionStructureCatalog.KindStandard,
+                    BodyJson = x.Question?.BodyJson,
                     Marks = x.Marks,
                     Section = x.Section,
                     Order = x.QuestionOrder
@@ -974,6 +987,71 @@ public class AcademicExamMakerService : IAcademicExamMakerService
                 .ToList()
         };
     }
+
+    private async Task<string> GetSubjectCatalogProfileAsync(int subjectId)
+    {
+        var subject = await _academicContext.Subjects.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == subjectId);
+        return QuestionStructureCatalog.NormalizeProfile(subject?.CatalogProfile);
+    }
+
+    private static bool IsLanguageCatalogProfile(string profile) =>
+        profile == QuestionStructureCatalog.ProfileEnglish ||
+        profile == QuestionStructureCatalog.ProfileUrdu;
+
+    private static bool IsQuestionValidForSubjectProfile(
+        QuestionCatalog entity,
+        int classId,
+        int subjectId,
+        string catalogProfile,
+        IReadOnlyCollection<int> chapterIds)
+    {
+        if (entity.Chapter == null ||
+            entity.Chapter.ClassId != classId ||
+            entity.Chapter.SubjectId != subjectId)
+        {
+            return false;
+        }
+
+        if (chapterIds.Count > 0 && !chapterIds.Contains(entity.ChapterId))
+        {
+            return false;
+        }
+
+        if (IsLanguageCatalogProfile(catalogProfile))
+        {
+            return QuestionStructureCatalog.KindsFor(catalogProfile)
+                .Any(kind => string.Equals(kind, entity.StructureKind, StringComparison.OrdinalIgnoreCase));
+        }
+
+        return QuestionStructureCatalog.IsStandardKind(entity.StructureKind);
+    }
+
+    private static PaperQuestionItemDto MapQuestionToPaperItem(
+        QuestionCatalog entity,
+        int marks,
+        string? section,
+        int order) =>
+        new()
+        {
+            Id = entity.Id,
+            Type = entity.Type,
+            Category = entity.Category,
+            ChapterId = entity.ChapterId,
+            ChapterName = entity.Chapter?.ChapterName ?? string.Empty,
+            ChapterNo = entity.Chapter?.ChapterNo ?? 0,
+            DescriptionText = entity.DescriptionText,
+            StemImage = entity.StemImage,
+            McqOpt1 = entity.McqOpt1,
+            McqOpt2 = entity.McqOpt2,
+            McqOpt3 = entity.McqOpt3,
+            McqOpt4 = entity.McqOpt4,
+            StructureKind = entity.StructureKind ?? QuestionStructureCatalog.KindStandard,
+            BodyJson = entity.BodyJson,
+            Marks = marks,
+            Section = section,
+            Order = order
+        };
 
     private async Task<ExamTitle> RequireExamTitleAsync(int examTitleId)
     {

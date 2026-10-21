@@ -15,6 +15,17 @@ public class AcademicSubjectConfiguration : IEntityTypeConfiguration<AcademicSub
             .IsRequired()
             .HasMaxLength(150);
 
+        builder.Property(x => x.IsSystem)
+            .HasDefaultValue(false);
+
+        builder.Property(x => x.CatalogProfile)
+            .IsRequired()
+            .HasMaxLength(20)
+            .HasDefaultValue("standard");
+
+        builder.Property(x => x.CatalogHeadingDefaultsJson)
+            .HasColumnType("nvarchar(max)");
+
         builder.HasIndex(x => x.SubjectName)
             .IsUnique();
     }

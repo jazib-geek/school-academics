@@ -11,6 +11,7 @@ public interface IAcademicExamMakerService
         string? searchText = null,
         string? type = null,
         string? category = null,
+        string? structureKind = null,
         int take = 120);
     Task<List<QuestionChapterAvailabilityDto>> GetQuestionAvailabilityByChapterAsync(int classId, int subjectId);
     Task<ExamPaperDto> GeneratePaperAsync(GenerateExamPaperRequestDto request);

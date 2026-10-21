@@ -166,6 +166,8 @@ public class PaperQuestionItemDto
     public string? McqOpt2 { get; set; }
     public string? McqOpt3 { get; set; }
     public string? McqOpt4 { get; set; }
+    public string StructureKind { get; set; } = "standard";
+    public string? BodyJson { get; set; }
     public int Marks { get; set; }
     public string? Section { get; set; }
     public int Order { get; set; }

@@ -30,6 +30,7 @@ public class ExamMakerController : ControllerBase
         [FromQuery] string? search = null,
         [FromQuery] string? type = null,
         [FromQuery] string? category = null,
+        [FromQuery] string? structureKind = null,
         [FromQuery] int take = 120)
     {
         if (classId <= 0 || subjectId <= 0)
@@ -38,7 +39,8 @@ public class ExamMakerController : ControllerBase
         }
 
         var safeTake = Math.Clamp(take, 20, 250);
-        var result = await _academicExamMakerService.GetQuestionPoolAsync(classId, subjectId, chapterIds, search, type, category, safeTake);
+        var result = await _academicExamMakerService.GetQuestionPoolAsync(
+            classId, subjectId, chapterIds, search, type, category, structureKind, safeTake);
         return Ok(ApiResponse<List<QuestionCatalogDto>>.SuccessResponse(result));
     }
 

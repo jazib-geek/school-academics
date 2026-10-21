@@ -13,6 +13,9 @@ public class QuestionCatalog
     public string? McqOpt2 { get; set; }
     public string? McqOpt3 { get; set; }
     public string? McqOpt4 { get; set; }
+    /// <summary>standard for MCQ/SAQ/LAQ/numerical. Language papers use a block kind plus BodyJson.</summary>
+    public string StructureKind { get; set; } = "standard";
+    public string? BodyJson { get; set; }
 
     public Chapter? Chapter { get; set; }
     public ICollection<QuestionPaperQuestion> QuestionPaperQuestions { get; set; } = new List<QuestionPaperQuestion>();

@@ -86,28 +86,19 @@ public class AcademicCatalogService : IAcademicCatalogService
 
     public async Task<List<AcademicSubjectDto>> GetSubjectsAsync()
     {
-        return await _academicContext.Subjects
+        var rows = await _academicContext.Subjects
             .AsNoTracking()
             .OrderBy(x => x.SubjectName)
-            .Select(x => new AcademicSubjectDto
-            {
-                Id = x.Id,
-                SubjectName = x.SubjectName
-            })
             .ToListAsync();
+        return rows.Select(MapSubject).ToList();
     }
 
     public async Task<AcademicSubjectDto?> GetSubjectByIdAsync(int id)
     {
-        return await _academicContext.Subjects
+        var entity = await _academicContext.Subjects
             .AsNoTracking()
-            .Where(x => x.Id == id)
-            .Select(x => new AcademicSubjectDto
-            {
-                Id = x.Id,
-                SubjectName = x.SubjectName
-            })
-            .FirstOrDefaultAsync();
+            .FirstOrDefaultAsync(x => x.Id == id);
+        return entity == null ? null : MapSubject(entity);
     }
 
     public async Task<AcademicSubjectDto> UpsertSubjectAsync(UpsertAcademicSubjectRequestDto request)
@@ -120,18 +111,32 @@ public class AcademicCatalogService : IAcademicCatalogService
 
         if (entity == null)
         {
-            entity = new AcademicSubject();
+            entity = new AcademicSubject
+            {
+                IsSystem = false,
+                CatalogProfile = QuestionStructureCatalog.ProfileStandard
+            };
             _academicContext.Subjects.Add(entity);
+        }
+        else if (entity.IsSystem)
+        {
+            throw new InvalidOperationException("This subject is built in and cannot be renamed.");
         }
 
         entity.SubjectName = subjectName;
         await _academicContext.SaveChangesAsync();
+        return MapSubject(entity);
+    }
 
-        return new AcademicSubjectDto
-        {
-            Id = entity.Id,
-            SubjectName = entity.SubjectName
-        };
+    public async Task<AcademicSubjectDto> UpdateCatalogHeadingsAsync(int id, UpdateCatalogHeadingsRequestDto request)
+    {
+        var entity = await _academicContext.Subjects.FirstOrDefaultAsync(x => x.Id == id)
+            ?? throw new InvalidOperationException("Subject not found.");
+        entity.CatalogHeadingDefaultsJson = QuestionStructureCatalog.SaveHeadings(
+            entity.CatalogProfile,
+            request.Headings);
+        await _academicContext.SaveChangesAsync();
+        return MapSubject(entity);
     }
 
     public async Task<bool> DeleteSubjectAsync(int id)
@@ -140,6 +145,11 @@ public class AcademicCatalogService : IAcademicCatalogService
         if (entity == null)
         {
             return false;
+        }
+
+        if (entity.IsSystem)
+        {
+            throw new InvalidOperationException("This subject is built in and cannot be deleted.");
         }
 
         _academicContext.Subjects.Remove(entity);
@@ -175,29 +185,48 @@ public class AcademicCatalogService : IAcademicCatalogService
 
     public async Task<QuestionCatalogDto> UpsertQuestionCatalogAsync(UpsertQuestionCatalogRequestDto request)
     {
-        var type = request.Type.Trim().ToLowerInvariant();
         var category = request.Category.Trim().ToLowerInvariant();
+        if (!AllowedQuestionCategories.Contains(category))
+        {
+            throw new InvalidOperationException("Question category must be one of: board, text, exercise.");
+        }
+
+        var chapter = await _academicContext.Chapters
+            .Include(x => x.Subject)
+            .FirstOrDefaultAsync(x => x.Id == request.ChapterId);
+        if (chapter == null)
+        {
+            throw new InvalidOperationException("Invalid ChapterId.");
+        }
+
+        var profile = QuestionStructureCatalog.NormalizeProfile(chapter.Subject?.CatalogProfile);
+        var kind = QuestionStructureCatalog.NormalizeKind(request.StructureKind);
+        if (!QuestionStructureCatalog.IsAllowed(profile, kind))
+        {
+            throw new InvalidOperationException("This question shape is not used for the selected subject.");
+        }
+
+        var bodyError = QuestionStructureCatalog.ValidateBody(kind, request.BodyJson);
+        if (bodyError != null)
+        {
+            throw new InvalidOperationException(bodyError);
+        }
+
+        var isStandard = QuestionStructureCatalog.IsStandardKind(kind);
+        var type = isStandard
+            ? request.Type.Trim().ToLowerInvariant()
+            : QuestionStructureCatalog.CoarseType(kind);
 
         if (!AllowedQuestionTypes.Contains(type))
         {
             throw new InvalidOperationException("Question type must be one of: mcq, saq, laq, numerical.");
         }
 
-        if (!AllowedQuestionCategories.Contains(category))
-        {
-            throw new InvalidOperationException("Question category must be one of: board, text, exercise.");
-        }
-
-        if (type == "mcq" &&
+        if (isStandard &&
+            type == "mcq" &&
             (string.IsNullOrWhiteSpace(request.McqOpt1) || string.IsNullOrWhiteSpace(request.McqOpt2)))
         {
             throw new InvalidOperationException("MCQ questions require at least option 1 and option 2.");
-        }
-
-        var chapterExists = await _academicContext.Chapters.AnyAsync(x => x.Id == request.ChapterId);
-        if (!chapterExists)
-        {
-            throw new InvalidOperationException("Invalid ChapterId.");
         }
 
         var questionId = request.Id.GetValueOrDefault();
@@ -215,12 +244,14 @@ public class AcademicCatalogService : IAcademicCatalogService
         entity.Category = category;
         entity.ChapterId = request.ChapterId;
         entity.DescriptionText = request.DescriptionText.Trim();
-        entity.StemImage = NormalizeStemImage(request.StemImage);
-        // Only MCQ stores options; clear them for SAQ / LAQ / Numerical.
-        entity.McqOpt1 = type == "mcq" ? NormalizeNullable(request.McqOpt1) : null;
-        entity.McqOpt2 = type == "mcq" ? NormalizeNullable(request.McqOpt2) : null;
-        entity.McqOpt3 = type == "mcq" ? NormalizeNullable(request.McqOpt3) : null;
-        entity.McqOpt4 = type == "mcq" ? NormalizeNullable(request.McqOpt4) : null;
+        entity.StructureKind = kind;
+        entity.BodyJson = isStandard ? null : string.IsNullOrWhiteSpace(request.BodyJson) ? null : request.BodyJson.Trim();
+        entity.StemImage = isStandard ? NormalizeStemImage(request.StemImage) : null;
+        // Only standard MCQ stores options; language parts live in BodyJson.
+        entity.McqOpt1 = isStandard && type == "mcq" ? NormalizeNullable(request.McqOpt1) : null;
+        entity.McqOpt2 = isStandard && type == "mcq" ? NormalizeNullable(request.McqOpt2) : null;
+        entity.McqOpt3 = isStandard && type == "mcq" ? NormalizeNullable(request.McqOpt3) : null;
+        entity.McqOpt4 = isStandard && type == "mcq" ? NormalizeNullable(request.McqOpt4) : null;
 
         await _academicContext.SaveChangesAsync();
         return MapQuestionCatalog(entity);
@@ -329,6 +360,20 @@ public class AcademicCatalogService : IAcademicCatalogService
         return true;
     }
 
+    private static AcademicSubjectDto MapSubject(AcademicSubject entity)
+    {
+        return new AcademicSubjectDto
+        {
+            Id = entity.Id,
+            SubjectName = entity.SubjectName,
+            IsSystem = entity.IsSystem,
+            CatalogProfile = entity.CatalogProfile,
+            CatalogHeadingDefaults = QuestionStructureCatalog.MergeHeadings(
+                entity.CatalogProfile,
+                entity.CatalogHeadingDefaultsJson)
+        };
+    }
+
     private static string? NormalizeNullable(string? value)
     {
         var trimmed = value?.Trim();
@@ -375,7 +420,11 @@ public class AcademicCatalogService : IAcademicCatalogService
             McqOpt1 = x.McqOpt1,
             McqOpt2 = x.McqOpt2,
             McqOpt3 = x.McqOpt3,
-            McqOpt4 = x.McqOpt4
+            McqOpt4 = x.McqOpt4,
+            StructureKind = string.IsNullOrWhiteSpace(x.StructureKind)
+                ? QuestionStructureCatalog.KindStandard
+                : x.StructureKind,
+            BodyJson = x.BodyJson
         };
     }
 }

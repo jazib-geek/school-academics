@@ -29,6 +29,14 @@ public class QuestionCatalogConfiguration : IEntityTypeConfiguration<QuestionCat
         builder.Property(x => x.McqOpt3).HasColumnName("mcq_opt_3").HasMaxLength(300);
         builder.Property(x => x.McqOpt4).HasColumnName("mcq_opt_4").HasMaxLength(300);
 
+        builder.Property(x => x.StructureKind)
+            .IsRequired()
+            .HasMaxLength(40)
+            .HasDefaultValue("standard");
+
+        builder.Property(x => x.BodyJson)
+            .HasColumnType("nvarchar(max)");
+
         builder.HasOne(x => x.Chapter)
             .WithMany(x => x.Questions)
             .HasForeignKey(x => x.ChapterId)

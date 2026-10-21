@@ -46,8 +46,32 @@ public class SubjectsController : ControllerBase
             return BadRequest(ApiResponse<AcademicSubjectDto>.FailureResponse("SubjectName is required."));
         }
 
-        var result = await _academicCatalogService.UpsertSubjectAsync(request);
-        return Ok(ApiResponse<AcademicSubjectDto>.SuccessResponse(result));
+        try
+        {
+            var result = await _academicCatalogService.UpsertSubjectAsync(request);
+            return Ok(ApiResponse<AcademicSubjectDto>.SuccessResponse(result));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<AcademicSubjectDto>.FailureResponse(ex.Message));
+        }
+    }
+
+    [HttpPost("{id:int}/catalog-headings")]
+    public async Task<IActionResult> UpdateCatalogHeadings(int id, [FromBody] UpdateCatalogHeadingsRequestDto request)
+    {
+        try
+        {
+            var result = await _academicCatalogService.UpdateCatalogHeadingsAsync(id, request);
+            return Ok(ApiResponse<AcademicSubjectDto>.SuccessResponse(result));
+        }
+        catch (InvalidOperationException ex)
+        {
+            var missing = ex.Message == "Subject not found.";
+            return missing
+                ? NotFound(ApiResponse<AcademicSubjectDto>.FailureResponse(ex.Message))
+                : BadRequest(ApiResponse<AcademicSubjectDto>.FailureResponse(ex.Message));
+        }
     }
 
     /// <summary>POST delete route for Plesk/proxies that block HTTP DELETE.</summary>
@@ -55,12 +79,19 @@ public class SubjectsController : ControllerBase
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id)
     {
-        var deleted = await _academicCatalogService.DeleteSubjectAsync(id);
-        if (!deleted)
+        try
         {
-            return NotFound(ApiResponse<object>.FailureResponse("Subject not found."));
-        }
+            var deleted = await _academicCatalogService.DeleteSubjectAsync(id);
+            if (!deleted)
+            {
+                return NotFound(ApiResponse<object>.FailureResponse("Subject not found."));
+            }
 
-        return Ok(ApiResponse<object>.SuccessResponse(new { }, "Subject deleted."));
+            return Ok(ApiResponse<object>.SuccessResponse(new { }, "Subject deleted."));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<object>.FailureResponse(ex.Message));
+        }
     }
 }

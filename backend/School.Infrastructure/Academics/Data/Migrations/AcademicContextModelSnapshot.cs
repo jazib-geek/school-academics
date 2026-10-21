@@ -372,6 +372,21 @@ namespace School.Infrastructure.Academics.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("CatalogHeadingDefaultsJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("CatalogProfile")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasDefaultValue("standard");
+
+                    b.Property<bool>("IsSystem")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
                     b.Property<string>("SubjectName")
                         .IsRequired()
                         .HasMaxLength(150)
@@ -548,6 +563,9 @@ namespace School.Infrastructure.Academics.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("BodyJson")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("Category")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -582,6 +600,13 @@ namespace School.Infrastructure.Academics.Data.Migrations
 
                     b.Property<string>("StemImage")
                         .HasColumnType("varchar(max)");
+
+                    b.Property<string>("StructureKind")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)")
+                        .HasDefaultValue("standard");
 
                     b.Property<string>("Type")
                         .IsRequired()

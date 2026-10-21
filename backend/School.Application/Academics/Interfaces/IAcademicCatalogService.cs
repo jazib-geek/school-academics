@@ -12,6 +12,7 @@ public interface IAcademicCatalogService
     Task<List<AcademicSubjectDto>> GetSubjectsAsync();
     Task<AcademicSubjectDto?> GetSubjectByIdAsync(int id);
     Task<AcademicSubjectDto> UpsertSubjectAsync(UpsertAcademicSubjectRequestDto request);
+    Task<AcademicSubjectDto> UpdateCatalogHeadingsAsync(int id, UpdateCatalogHeadingsRequestDto request);
     Task<bool> DeleteSubjectAsync(int id);
 
     Task<List<QuestionCatalogDto>> GetQuestionCatalogAsync(int? chapterId = null);
