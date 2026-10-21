@@ -192,6 +192,7 @@ public static class PermissionCatalog
         Add("request_emp_attendance_change", "Request Employee Attendance Change", "Employee");
         Add("refund_security_deposit", "Refund Security Deposit", "Fee");
         Add("allow_short_leave", "Allow Short Leave", "Attendance");
+        Add("assign_user_reminders", "Assign Reminders / Tasks to Other Users", "General");
 
         return items
             .Select((item, index) => new Permission

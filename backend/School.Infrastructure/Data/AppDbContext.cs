@@ -155,6 +155,8 @@ public class AppDbContext : DbContext
     public DbSet<StudentLeaveApplication> StudentLeaveApplications => Set<StudentLeaveApplication>();
     public DbSet<StudentShortLeave> StudentShortLeaves => Set<StudentShortLeave>();
     public DbSet<StudentShortLeaveStudent> StudentShortLeaveStudents => Set<StudentShortLeaveStudent>();
+    public DbSet<UserReminder> UserReminders => Set<UserReminder>();
+    public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
     public DbSet<EmployeeAttendanceChangeRequest> EmployeeAttendanceChangeRequests =>
         Set<EmployeeAttendanceChangeRequest>();
     public DbSet<StudentConductNoteTag> StudentConductNoteTags => Set<StudentConductNoteTag>();
@@ -1144,6 +1146,8 @@ public class AppDbContext : DbContext
         modelBuilder.ApplyConfiguration(new StudentLeaveApplicationConfiguration());
         modelBuilder.ApplyConfiguration(new StudentShortLeaveConfiguration());
         modelBuilder.ApplyConfiguration(new StudentShortLeaveStudentConfiguration());
+        modelBuilder.ApplyConfiguration(new UserReminderConfiguration());
+        modelBuilder.ApplyConfiguration(new ChatMessageConfiguration());
         modelBuilder.ApplyConfiguration(new EmployeeAttendanceChangeRequestConfiguration());
         modelBuilder.ApplyConfiguration(new AbsentFollowupReasonConfiguration());
         modelBuilder.ApplyConfiguration(new FeeReminderNoticeTemplateConfiguration());

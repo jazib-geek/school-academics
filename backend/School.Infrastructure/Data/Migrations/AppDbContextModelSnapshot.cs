@@ -1007,6 +1007,45 @@ namespace School.Infrastructure.Data.Migrations
                     b.ToTable("tblCampusTimeTableSlot", "dbo");
                 });
 
+            modelBuilder.Entity("School.Infrastructure.Entities.ChatMessage", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime?>("ReadAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<int>("RecipientUserId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SenderUserId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("SentAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SentAtUtc")
+                        .HasDatabaseName("IX_ChatMessage_SentAt");
+
+                    b.HasIndex("RecipientUserId", "ReadAtUtc")
+                        .HasDatabaseName("IX_ChatMessage_Recipient_Read");
+
+                    b.HasIndex("SenderUserId", "RecipientUserId", "SentAtUtc")
+                        .HasDatabaseName("IX_ChatMessage_Sender_Recipient_Sent");
+
+                    b.ToTable("tblChatMessage", "dbo");
+                });
+
             modelBuilder.Entity("School.Infrastructure.Entities.Class", b =>
                 {
                     b.Property<int>("Class_ID")
@@ -5542,6 +5581,15 @@ namespace School.Infrastructure.Data.Migrations
                             ModuleHead = "Attendance",
                             Name = "Allow Short Leave",
                             SortOrder = 1460
+                        },
+                        new
+                        {
+                            Id = 147,
+                            Code = "assign_user_reminders",
+                            IsActive = true,
+                            ModuleHead = "General",
+                            Name = "Assign Reminders / Tasks to Other Users",
+                            SortOrder = 1470
                         });
                 });
 
@@ -7143,6 +7191,78 @@ namespace School.Infrastructure.Data.Migrations
                     b.HasKey("ID");
 
                     b.ToTable("tblUser", "dbo");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.UserReminder", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Body")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<string>("Color")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime?>("CompletedAtUtc")
+                        .HasColumnType("datetime2(0)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2(0)");
+
+                    b.Property<int>("CreatedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsPinned")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<int>("OwnerUserId")
+                        .HasColumnType("int");
+
+                    b.Property<byte>("Priority")
+                        .HasColumnType("tinyint");
+
+                    b.Property<DateTime?>("RemindAtUtc")
+                        .HasColumnType("datetime2(0)");
+
+                    b.Property<DateTime?>("SnoozedUntilUtc")
+                        .HasColumnType("datetime2(0)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("datetime2(0)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId")
+                        .HasDatabaseName("IX_UserReminder_CreatedBy");
+
+                    b.HasIndex("OwnerUserId", "Status", "RemindAtUtc")
+                        .HasDatabaseName("IX_UserReminder_Owner_Status_RemindAt");
+
+                    b.ToTable("tblUserReminder", "dbo");
                 });
 
             modelBuilder.Entity("School.Infrastructure.Entities.UserRight", b =>

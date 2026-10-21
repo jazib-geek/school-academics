@@ -118,6 +118,8 @@ public class SmartAttendanceReportService : ISmartAttendanceReportService
             "this-student" => await ThisStudentAsync(catalog, parameters),
             "summary-by-interval" => await SummaryByIntervalAsync(catalog, parameters),
             "detailed-register" => await DetailedRegisterAsync(catalog, parameters),
+            "most-regular" => await RegularityRollAsync(catalog, parameters, honour: true),
+            "least-regular" => await RegularityRollAsync(catalog, parameters, honour: false),
             _ => throw new ArgumentException($"Unknown report '{reportId}'.")
         };
     }
@@ -150,6 +152,12 @@ public class SmartAttendanceReportService : ISmartAttendanceReportService
         Item("summary-by-interval", "Summary by Interval", "Student-wise present / late / leave / short leave / absent / holiday counts and %.", "student",
             "Period summary for each student.",
             P(DateFromOpt(required: true), DateToOpt(required: true), ClassCompositeOpt())),
+        Item("most-regular", "Most Regular Students", "Honour roll of students with the strongest attendance, for recognition and reward.", "student",
+            "Who should be recognised for regular attendance?",
+            RegularityParams()),
+        Item("least-regular", "Least Regular Students", "Students with the lowest attendance in the period, for follow-up.", "student",
+            "Who needs encouragement to attend more regularly?",
+            RegularityParams()),
         Item("detailed-register", "Detailed Register", "Flat attendance register with optional status filter.", "daily",
             "Full day-by-day register dump.",
             P(DateFromOpt(required: true), DateToOpt(required: true), ClassCompositeOpt(), StatusOpt())),
@@ -586,14 +594,167 @@ public class SmartAttendanceReportService : ISmartAttendanceReportService
                 ("rows", "Rows", resultRows.Count.ToString(Invariant), "number")));
     }
 
+    private static List<SmartFeeReportParamDefDto> RegularityParams()
+    {
+        var today = PakistanTime.Today;
+        return P(
+            Param("periodMode", "Period", "select", true, "month", null,
+            [
+                new SmartFeeReportOptionDto { Value = "month", Label = "Month" },
+                new SmartFeeReportOptionDto { Value = "range", Label = "From and to dates" },
+            ]),
+            DateFromOpt(),
+            DateToOpt(),
+            Param("month", "Month", "month", false, today.Month),
+            Param("year", "Year", "year", false, today.Year),
+            Param("topCount", "How many students", "int", true, 20),
+            Param("minDays", "Minimum marked days", "int", false, 5),
+            Param("perfectOnly", "Attendance", "select", false, "0", null,
+            [
+                new SmartFeeReportOptionDto { Value = "0", Label = "All" },
+                new SmartFeeReportOptionDto { Value = "1", Label = "100% only" },
+            ]),
+            ClassCompositeOpt());
+    }
+
+    private async Task<SmartFeeReportResultDto> RegularityRollAsync(
+        SmartFeeReportCatalogItemDto cat,
+        Dictionary<string, object?> p,
+        bool honour)
+    {
+        var (from, to, periodLabel) = ResolveRegularityPeriod(p);
+        var classId = OptInt(p, "classCompositeId");
+        var topCount = OptInt(p, "topCount") ?? 20;
+        if (topCount < 1 || topCount > 200)
+            throw new ArgumentException("How many students must be between 1 and 200.");
+
+        var minDays = OptInt(p, "minDays") ?? 5;
+        if (minDays < 1)
+            throw new ArgumentException("Minimum marked days must be at least 1.");
+
+        var perfectOnly = OptFlag(p, "perfectOnly");
+
+        var rows = await LoadAttendanceRowsAsync(from, to, classId, activeStudentsOnly: true);
+
+        var ranked = rows
+            .GroupBy(x => new { x.StudentId, x.StudentName, x.ClassName })
+            .Select(g =>
+            {
+                var tally = Tally(g);
+                return new
+                {
+                    g.Key.StudentId,
+                    g.Key.StudentName,
+                    g.Key.ClassName,
+                    tally.Present,
+                    tally.Late,
+                    tally.Leave,
+                    tally.ShortLeave,
+                    tally.Absent,
+                    tally.Holiday,
+                    tally.Working,
+                    tally.PresentPercent
+                };
+            })
+            .Where(x => x.Working >= minDays);
+
+        if (perfectOnly)
+            ranked = ranked.Where(x => x.PresentPercent >= 100m);
+
+        var ordered = honour
+            ? ranked
+                .OrderByDescending(x => x.PresentPercent)
+                .ThenByDescending(x => x.Present + x.Late)
+                .ThenBy(x => x.Absent)
+                .ThenBy(x => x.StudentName)
+            : ranked
+                .OrderBy(x => x.PresentPercent)
+                .ThenByDescending(x => x.Absent)
+                .ThenBy(x => x.Present + x.Late)
+                .ThenBy(x => x.StudentName);
+
+        var resultRows = ordered
+            .Take(topCount)
+            .Select(x => Dict(
+                ("regId", x.StudentId),
+                ("studentName", x.StudentName),
+                ("sectionLabel", x.ClassName),
+                ("totalDays", x.Working),
+                ("presentDays", x.Present + x.Late),
+                ("presentPercent", x.PresentPercent),
+                ("standing", honour ? HonourStanding(x.PresentPercent) : FollowUpStanding(x.PresentPercent))))
+            .ToList();
+
+        var best = resultRows.Count > 0 ? resultRows[0] : null;
+        var leadPercent = "—";
+        if (best != null && best.TryGetValue("presentPercent", out var pct) && pct is decimal percent)
+        {
+            leadPercent = percent == decimal.Truncate(percent)
+                ? $"{percent.ToString("0", Invariant)}%"
+                : $"{percent.ToString("0.0", Invariant)}%";
+        }
+
+        return Result(cat, resultRows, Cols(
+            ("regId", "Reg ID", "text"),
+            ("studentName", "Student", "text"),
+            ("sectionLabel", "Class", "text"),
+            ("totalDays", "Total days", "number"),
+            ("presentDays", "Present days", "number"),
+            ("presentPercent", "Attendance %", "percent"),
+            ("standing", honour ? "Recognition" : "Remark", "text")),
+            null, 0,
+            Extra(
+                ("period", "Period", periodLabel, "text"),
+                ("listed", "Students listed", resultRows.Count.ToString(Invariant), "number"),
+                ("leadPercent", honour ? "Highest attendance" : "Lowest attendance", leadPercent, "text")));
+    }
+
+    private static string HonourStanding(decimal percent) =>
+        percent >= 100m ? "Perfect attendance" :
+        percent >= 95m ? "Excellent" :
+        percent >= 90m ? "Very good" :
+        "Regular";
+
+    private static string FollowUpStanding(decimal percent) =>
+        percent < 50m ? "Needs close support" :
+        percent < 75m ? "Needs support" :
+        "Below the group";
+
+    private static (DateTime From, DateTime To, string Label) ResolveRegularityPeriod(Dictionary<string, object?> p)
+    {
+        var mode = (OptString(p, "periodMode") ?? "range").Trim().ToLowerInvariant();
+        if (mode == "month")
+        {
+            var month = OptInt(p, "month") ?? throw new ArgumentException("Choose a month.");
+            var year = OptInt(p, "year") ?? throw new ArgumentException("Choose a year.");
+            if (month is < 1 or > 12) throw new ArgumentException("Choose a valid month.");
+            if (year is < 2000 or > 2100) throw new ArgumentException("Choose a valid year.");
+            var from = new DateTime(year, month, 1);
+            var to = from.AddMonths(1).AddDays(-1);
+            var label = from.ToString("MMMM yyyy", CultureInfo.GetCultureInfo("en-US"));
+            return (from, to, label);
+        }
+
+        var fromDate = OptDate(p, "dateFrom") ?? throw new ArgumentException("Choose a from date.");
+        var toDate = OptDate(p, "dateTo") ?? throw new ArgumentException("Choose a to date.");
+        if (toDate < fromDate) throw new ArgumentException("The to date must be on or after the from date.");
+        return (fromDate, toDate, $"{FormatDate(fromDate)} – {FormatDate(toDate)}");
+    }
+
     private async Task<List<AttendanceFlatRow>> LoadAttendanceRowsAsync(
         DateTime from,
         DateTime to,
-        int? classSectionCompositeId)
+        int? classSectionCompositeId,
+        bool activeStudentsOnly = false)
     {
         var query = _context.Attendances
             .AsNoTracking()
             .Where(x => x.Date.HasValue && x.Date.Value.Date >= from && x.Date.Value.Date <= to);
+
+        if (activeStudentsOnly)
+        {
+            query = query.Where(x => x.Student != null && x.Student.IsActive == true);
+        }
 
         if (classSectionCompositeId.HasValue)
         {
@@ -827,6 +988,12 @@ public class SmartAttendanceReportService : ISmartAttendanceReportService
         }
         var text = Convert.ToString(raw, Invariant);
         return string.IsNullOrWhiteSpace(text) ? null : text;
+    }
+
+    private static bool OptFlag(Dictionary<string, object?> p, string key)
+    {
+        var text = OptString(p, key)?.Trim().ToLowerInvariant();
+        return text is "1" or "true" or "yes";
     }
 
     private static DateTime? OptDate(Dictionary<string, object?> p, string key)

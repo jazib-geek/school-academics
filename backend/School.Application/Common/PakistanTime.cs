@@ -16,6 +16,10 @@ public static class PakistanTime
     /// <summary>Current date/time in Pakistan (Asia/Karachi). Use for attendance/enrollment timestamps.</summary>
     public static DateTime Now => TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, PakistanZone);
 
+    /// <summary>Converts a Pakistan wall-clock time to UTC (Kind = Utc).</summary>
+    public static DateTime ToUtc(DateTime pakistanLocal) =>
+        TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(pakistanLocal, DateTimeKind.Unspecified), PakistanZone);
+
     public static bool IsTodayOrYesterday(DateOnly date) => date == Today || date == Yesterday;
 
     /// <summary>Class diary upload window: yesterday, today, or tomorrow (Pakistan).</summary>

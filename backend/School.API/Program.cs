@@ -137,6 +137,10 @@ builder.Services.AddScoped<IEmployeeAttendanceImportService, EmployeeAttendanceI
 builder.Services.AddSingleton<IEmployeeAttendanceLiveUpdateSink, EmployeeAttendanceLiveUpdateStream>();
 builder.Services.AddSingleton<ICampusNotificationSink, CampusNotificationStream>();
 builder.Services.AddSingleton<IEmployeeNotificationSink, EmployeeNotificationStream>();
+builder.Services.AddSingleton<ICampusChatSink, CampusChatStream>();
+builder.Services.AddScoped<IChatService, ChatService>();
+builder.Services.AddScoped<IUserReminderService, UserReminderService>();
+builder.Services.AddHostedService<ChatPurgeService>();
 builder.Services.AddScoped<IEmployeeNotificationService, EmployeeNotificationService>();
 builder.Services.AddScoped<ICampusNotificationService, CampusNotificationService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
@@ -179,6 +183,7 @@ builder.Services.AddAuthentication(options =>
             if (!string.IsNullOrEmpty(accessToken) &&
                 (path.StartsWithSegments("/api/employee-attendance/live/stream") ||
                  path.StartsWithSegments("/api/notifications/stream") ||
+                 path.StartsWithSegments("/api/chat/stream") ||
                  path.StartsWithSegments("/api/employee/notifications/stream")))
             {
                 context.Token = accessToken;
