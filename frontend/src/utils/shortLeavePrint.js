@@ -25,24 +25,53 @@ const formatTime = (value) => {
   return `${hour12}:${minutes} ${suffix}`
 }
 
-export const printShortLeavePass = (pass) => {
-  if (!pass) return
-  const meta = getCampusPrintMeta()
-  const students = Array.isArray(pass.students) ? pass.students : []
-  const studentRows = students
-    .map(
-      (student) => `
+const fieldRow = (label, value) => `
         <tr>
-          <td>${escapeHtml(student.studentId)}</td>
-          <td>${escapeHtml(student.studentName)}</td>
-          <td>${escapeHtml(student.className)}</td>
-        </tr>`,
-    )
+          <th>${escapeHtml(label)}</th>
+          <td>${escapeHtml(value)}</td>
+        </tr>`
+
+const renderSlip = (pass, meta, copyLabel) => {
+  const students = Array.isArray(pass.students) ? pass.students : []
+  const rows = students
+    .flatMap((student) => [
+      fieldRow('Reg no.', student.studentId),
+      fieldRow('Student', student.studentName),
+      fieldRow('Class', student.className),
+    ])
     .join('')
 
   const phoneLine = pass.phoneConfirmationRequired
     ? `<p><strong>Phone confirmation:</strong> Approved by ${escapeHtml(pass.phoneConfirmedWith || 'home')}</p>`
     : ''
+
+  return `
+  <div class="slip">
+    <h1>${escapeHtml(meta.schoolName || 'School')}</h1>
+    <p class="sub">${escapeHtml(meta.addressDisplay || meta.campusLabel || '')}</p>
+    <p class="title">Short Leave</p>
+    <p class="copy">${escapeHtml(copyLabel)}</p>
+    <div class="meta">
+      <span>Pass ${escapeHtml(pass.id)}</span>
+      <span>${escapeHtml(formatDate(pass.leaveDate))} · ${escapeHtml(formatTime(pass.pickupTime))}</span>
+    </div>
+    <table class="fields">
+      <tbody>${rows}</tbody>
+    </table>
+    <p><strong>Collected by:</strong> ${escapeHtml(pass.pickupPersonName)} (${escapeHtml(pass.pickupRelation)})</p>
+    <p><strong>Reason:</strong> ${escapeHtml(pass.reason)}</p>
+    ${phoneLine}
+    <p><strong>Allowed by:</strong> ${escapeHtml(pass.approvedByUserName)}</p>
+    <div class="signs">
+      <div class="sign"><div class="line">Person collecting</div></div>
+      <div class="sign"><div class="line">Office</div></div>
+    </div>
+  </div>`
+}
+
+export const printShortLeavePass = (pass) => {
+  if (!pass) return
+  const meta = getCampusPrintMeta()
 
   const html = `<!DOCTYPE html>
 <html>
@@ -53,49 +82,37 @@ export const printShortLeavePass = (pass) => {
     @page { size: A4 portrait; margin: 8mm; }
     * { box-sizing: border-box; }
     body { margin: 0; font-family: Arial, Helvetica, sans-serif; color: #000; }
+    .sheet { display: flex; width: 100%; align-items: stretch; gap: 4mm; }
     .slip {
-      width: 100%;
-      height: 148mm;
+      flex: 1 1 0;
+      width: 50%;
       border: 1px solid #000;
-      padding: 7mm 8mm;
-      overflow: hidden;
+      padding: 5mm 4mm 5mm;
     }
-    h1 { margin: 0; font-size: 16px; text-align: center; }
-    .sub { margin: 2px 0 0; text-align: center; font-size: 11px; }
-    .title { margin: 8px 0 0; text-align: center; font-size: 14px; letter-spacing: 0.04em; text-transform: uppercase; }
-    .meta { margin-top: 8px; display: flex; justify-content: space-between; font-size: 12px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 12px; }
-    th, td { border: 1px solid #000; padding: 3px 5px; text-align: left; }
-    th { background: #d9d9d9; }
-    p { margin: 6px 0 0; font-size: 12px; }
-    .signs { margin-top: 14px; display: flex; justify-content: space-between; gap: 16px; font-size: 12px; }
-    .sign { width: 42%; }
+    h1 { margin: 0; font-size: 14px; text-align: center; }
+    .sub { margin: 2px 0 0; text-align: center; font-size: 10px; }
+    .title { margin: 6px 0 0; text-align: center; font-size: 13px; letter-spacing: 0.04em; text-transform: uppercase; }
+    .copy { margin: 2px 0 0; text-align: center; font-size: 11px; font-weight: bold; text-transform: uppercase; }
+    .meta { margin-top: 6px; display: flex; justify-content: space-between; gap: 6px; font-size: 11px; }
+    table.fields { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 11px; table-layout: fixed; }
+    table.fields th, table.fields td {
+      border: 1px solid #000;
+      padding: 3px 5px;
+      text-align: left;
+      vertical-align: middle;
+      height: 18px;
+    }
+    table.fields th { width: 28mm; background: #d9d9d9; font-weight: bold; }
+    p { margin: 6px 0 0; font-size: 11px; }
+    .signs { margin-top: 14px; display: flex; justify-content: space-between; gap: 10px; font-size: 11px; }
+    .sign { width: 46%; }
     .line { margin-top: 22px; border-top: 1px solid #000; padding-top: 3px; }
   </style>
 </head>
 <body>
-  <div class="slip">
-    <h1>${escapeHtml(meta.schoolName || 'School')}</h1>
-    <p class="sub">${escapeHtml(meta.addressDisplay || meta.campusLabel || '')}</p>
-    <p class="title">Short Leave</p>
-    <div class="meta">
-      <span>Pass ${escapeHtml(pass.id)}</span>
-      <span>${escapeHtml(formatDate(pass.leaveDate))} · ${escapeHtml(formatTime(pass.pickupTime))}</span>
-    </div>
-    <table>
-      <thead>
-        <tr><th>Reg no.</th><th>Student</th><th>Class</th></tr>
-      </thead>
-      <tbody>${studentRows}</tbody>
-    </table>
-    <p><strong>Collected by:</strong> ${escapeHtml(pass.pickupPersonName)} (${escapeHtml(pass.pickupRelation)})</p>
-    <p><strong>Reason:</strong> ${escapeHtml(pass.reason)}</p>
-    ${phoneLine}
-    <p><strong>Allowed by:</strong> ${escapeHtml(pass.approvedByUserName)}</p>
-    <div class="signs">
-      <div class="sign"><div class="line">Person collecting</div></div>
-      <div class="sign"><div class="line">Office</div></div>
-    </div>
+  <div class="sheet">
+    ${renderSlip(pass, meta, 'Office copy')}
+    ${renderSlip(pass, meta, 'Student copy')}
   </div>
 </body>
 </html>`

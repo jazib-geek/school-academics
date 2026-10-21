@@ -29,6 +29,28 @@ import { getStudentSecurityDepositSummary } from '../../../services/studentServi
 
 const ANNUAL_FUND_TYPE_IDS = [2, 3, 4, SECURITY_DEPOSIT_FUND_TYPE_ID]
 const BULK_FUND_GENERATE_ENABLED = false
+const PRIMARY_FUND_INDEX = 1
+
+function focusAndSelect(el) {
+  if (!el || el.disabled) return
+  el.focus()
+  el.select?.()
+}
+
+function fundGridColumns() {
+  if (typeof window === 'undefined') return 2
+  return window.matchMedia('(min-width: 640px)').matches ? 2 : 1
+}
+
+function adjacentFundIndex(index, key, count) {
+  const cols = fundGridColumns()
+  const col = index % cols
+  if (key === 'ArrowLeft') return col > 0 ? index - 1 : null
+  if (key === 'ArrowRight') return col < cols - 1 && index + 1 < count ? index + 1 : null
+  if (key === 'ArrowUp') return index - cols >= 0 ? index - cols : null
+  if (key === 'ArrowDown') return index + cols < count ? index + cols : null
+  return null
+}
 
 const embeddedSelectStyles = {
   control: (base) => ({
@@ -181,6 +203,10 @@ export default function GenerateFundPage() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [securityMeta, setSecurityMeta] = useState(null)
+  const studentSelectRef = useRef(null)
+  const fundInputRefs = useRef([])
+  const focusSecondFundAfterLoad = useRef(false)
+  const focusSearchAfterSuccess = useRef(false)
 
   const loadStudentOptions = useRef(
     debouncePromise(async (inputValue) => {
@@ -242,9 +268,28 @@ export default function GenerateFundPage() {
   )
 
   const onStudentChange = (option) => {
+    focusSecondFundAfterLoad.current = Boolean(option?.value)
     setSelectedStudent(option)
     loadStudent(Number(option?.value) || 0)
   }
+
+  const focusPrimaryFund = useCallback(() => {
+    const index = fundTypes.length > PRIMARY_FUND_INDEX ? PRIMARY_FUND_INDEX : 0
+    requestAnimationFrame(() => focusAndSelect(fundInputRefs.current[index]))
+  }, [fundTypes.length])
+
+  useEffect(() => {
+    if (isLoadingDetail || !focusSecondFundAfterLoad.current) return
+    focusSecondFundAfterLoad.current = false
+    if (!detail) return
+    focusPrimaryFund()
+  }, [detail, focusPrimaryFund, isLoadingDetail])
+
+  useEffect(() => {
+    if (!focusSearchAfterSuccess.current || isGenerating || confirmOpen) return
+    focusSearchAfterSuccess.current = false
+    requestAnimationFrame(() => studentSelectRef.current?.focus())
+  }, [confirmOpen, isGenerating])
 
   const canSubmit = useMemo(() => {
     if (isGenerating) return false
@@ -327,8 +372,10 @@ export default function GenerateFundPage() {
           amounts: payloadAmounts,
         })
         toast.success(`Funds generated for #${regId}.`, { id: toastId })
+        focusSearchAfterSuccess.current = true
         setSelectedStudent(null)
         setDetail(null)
+        setSecurityMeta(null)
         setAmounts(Object.fromEntries(fundTypes.map((t) => [t.id, ''])))
       } else {
         await generateFundBulk({
@@ -346,6 +393,20 @@ export default function GenerateFundPage() {
     } finally {
       setIsGenerating(false)
     }
+  }
+
+  const onFundAmountKeyDown = (event, index) => {
+    if (event.key === 'Enter' && index === PRIMARY_FUND_INDEX) {
+      event.preventDefault()
+      openConfirm(event)
+      return
+    }
+    const next = adjacentFundIndex(index, event.key, fundTypes.length)
+    if (next == null) return
+    const target = fundInputRefs.current[next]
+    if (!target || target.disabled) return
+    event.preventDefault()
+    focusAndSelect(target)
   }
 
   if (!canAll && !canSingle) {
@@ -424,6 +485,7 @@ export default function GenerateFundPage() {
               <div className="space-y-4 rounded-xl border border-slate-200 bg-slate-50/50 p-4">
                 <PrefixedSelectShell icon={UserRound} label="Student">
                   <AsyncSelect
+                    ref={studentSelectRef}
                     cacheOptions
                     defaultOptions={false}
                     loadOptions={loadStudentOptions}
@@ -474,7 +536,7 @@ export default function GenerateFundPage() {
                 <div>
                   <p className="mb-2 text-[13px] font-medium text-slate-700">Fund amounts</p>
                   <div className="grid gap-3 sm:grid-cols-2">
-                    {fundTypes.map((t) => {
+                    {fundTypes.map((t, index) => {
                       const isSecurity = t.id === SECURITY_DEPOSIT_FUND_TYPE_ID
                       const securityBlocked =
                         isSecurity
@@ -487,6 +549,9 @@ export default function GenerateFundPage() {
                           {t.name}
                           <input
                             {...INTEGER_INPUT_ATTRS}
+                            ref={(node) => {
+                              fundInputRefs.current[index] = node
+                            }}
                             className={inputClass}
                             value={amounts[t.id] ?? ''}
                             onChange={(e) =>
@@ -495,6 +560,7 @@ export default function GenerateFundPage() {
                                 [t.id]: readIntegerInput(e),
                               }))
                             }
+                            onKeyDown={(event) => onFundAmountKeyDown(event, index)}
                             placeholder="0"
                             disabled={isGenerating || !detail || securityBlocked}
                           />
@@ -576,8 +642,13 @@ export default function GenerateFundPage() {
         description={confirmDescription}
         confirmLabel="Generate fund"
         busy={isGenerating}
+        confirmOnEnter
         icon={<HandCoins size={21} />}
-        onCancel={() => !isGenerating && setConfirmOpen(false)}
+        onCancel={() => {
+          if (isGenerating) return
+          setConfirmOpen(false)
+          if (mode === 'student' && detail) focusPrimaryFund()
+        }}
         onConfirm={performGenerate}
       />
     </CampusShell>

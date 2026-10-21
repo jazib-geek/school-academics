@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { Loader2 } from 'lucide-react'
 
 /**
@@ -12,9 +13,38 @@ export default function ConfirmDialog({
   confirmClass = 'inline-flex items-center gap-2 rounded-lg bg-[var(--campus-primary)] px-4 py-2 text-sm font-semibold text-white hover:bg-[#364574] disabled:opacity-60',
   busy = false,
   icon = null,
+  confirmAutoFocus = false,
+  confirmOnEnter = false,
   onCancel,
   onConfirm,
 }) {
+  const onConfirmRef = useRef(onConfirm)
+  const confirmButtonRef = useRef(null)
+  onConfirmRef.current = onConfirm
+
+  useEffect(() => {
+    if (!open || !confirmOnEnter) return undefined
+    let armed = false
+    const arm = (event) => {
+      if (event.key === 'Enter') armed = true
+    }
+    const onKeyDown = (event) => {
+      if (event.key !== 'Enter' || busy) return
+      event.preventDefault()
+      event.stopPropagation()
+      if (!armed || event.repeat) return
+      onConfirmRef.current?.()
+    }
+    window.addEventListener('keyup', arm, true)
+    window.addEventListener('keydown', onKeyDown, true)
+    const focusId = requestAnimationFrame(() => confirmButtonRef.current?.focus())
+    return () => {
+      cancelAnimationFrame(focusId)
+      window.removeEventListener('keyup', arm, true)
+      window.removeEventListener('keydown', onKeyDown, true)
+    }
+  }, [open, confirmOnEnter, busy])
+
   if (!open) return null
 
   return (
@@ -54,7 +84,14 @@ export default function ConfirmDialog({
           >
             {cancelLabel}
           </button>
-          <button type="button" onClick={onConfirm} disabled={busy} className={confirmClass}>
+          <button
+            ref={confirmButtonRef}
+            type="button"
+            onClick={onConfirm}
+            disabled={busy}
+            autoFocus={confirmAutoFocus && !confirmOnEnter}
+            className={confirmClass}
+          >
             {busy ? <Loader2 size={14} className="animate-spin" /> : null}
             {confirmLabel}
           </button>
