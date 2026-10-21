@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
+  AlarmClock,
   BadgeCheck,
   Bell,
   BookMarked,
@@ -18,7 +19,9 @@ import {
   LayoutGrid,
   Loader2,
   LogOut,
+  Mail,
   Menu,
+  NotebookPen,
   Palette,
   Receipt,
   School,
@@ -47,6 +50,7 @@ import {
 import softelligentLogo from '../../assets/softelligent-transparent.png'
 import { THEME_SETTINGS_NOTICE_LINK, useCampusNotifications } from '../../hooks/useCampusNotifications.jsx'
 import CampusNotificationsDrawer from './CampusNotificationsDrawer.jsx'
+import { useCampusRealtime } from '../../contexts/CampusRealtimeContext.jsx'
 
 const FORBIDDEN_ACCESS_MESSAGE = "You don't have access to this."
 
@@ -129,6 +133,7 @@ function navItemAllowed(item) {
 /** Single source of truth for campus (per-campus DB) shell navigation. */
 export const CAMPUS_SHELL_NAV = [
   { id: 'dashboard', label: 'Dashboard', icon: Home, iconClass: 'text-sky-300', to: '/campus/dashboard', permission: 'stats_home' },
+  { id: 'reminders', label: 'Reminders & Notes', icon: NotebookPen, iconClass: 'text-amber-300', to: '/campus/reminders' },
   {
     id: 'daily',
     label: 'Coordinator Reporting',
@@ -404,6 +409,7 @@ export default function CampusShell({
     unreadCount,
     markAllRead,
   } = useCampusNotifications()
+  const realtime = useCampusRealtime()
 
   const campus = localStorage.getItem('campus') || 'N/A'
   const normalizedCampus = getCampusLabel(campus)
@@ -809,6 +815,50 @@ export default function CampusShell({
               </div>
 
               <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+                <button
+                  type="button"
+                  onClick={() => navigate('/campus/reminders')}
+                  className={`relative flex cursor-pointer items-center justify-center rounded-lg border p-2 transition sm:px-2.5 sm:py-1.5 ${
+                    pathname.startsWith('/campus/reminders') || realtime.pendingReminderCount > 0
+                      ? 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100'
+                      : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-800'
+                  }`}
+                  title="Reminders & notes"
+                  aria-label="Reminders and notes"
+                >
+                  <AlarmClock size={16} className="shrink-0" strokeWidth={2.25} />
+                  {realtime.pendingReminderCount > 0 ? (
+                    <span className="absolute -right-1.5 -top-1.5 grid h-[1.1rem] min-w-[1.1rem] place-items-center rounded-full bg-amber-500 px-1 text-[10px] font-bold leading-none text-white shadow-sm ring-2 ring-white">
+                      {realtime.pendingReminderCount > 9 ? '9+' : realtime.pendingReminderCount}
+                    </span>
+                  ) : null}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsUserMenuOpen(false)
+                    setIsQuickLinksOpen(false)
+                    setIsCampusMenuOpen(false)
+                    realtime.openChat()
+                  }}
+                  className={`relative flex cursor-pointer items-center justify-center rounded-lg border p-2 transition sm:px-2.5 sm:py-1.5 ${
+                    realtime.chatOpen || realtime.chatUnread > 0
+                      ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                      : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-800'
+                  }`}
+                  title="Messages"
+                  aria-label="Messages"
+                  aria-expanded={realtime.chatOpen}
+                >
+                  <Mail size={16} className="shrink-0" strokeWidth={2.25} />
+                  {realtime.chatUnread > 0 ? (
+                    <span className="absolute -right-1.5 -top-1.5 grid h-[1.1rem] min-w-[1.1rem] place-items-center rounded-full bg-emerald-600 px-1 text-[10px] font-bold leading-none text-white shadow-sm ring-2 ring-white">
+                      {realtime.chatUnread > 9 ? '9+' : realtime.chatUnread}
+                    </span>
+                  ) : null}
+                </button>
+
                 <button
                   type="button"
                   onClick={() => {

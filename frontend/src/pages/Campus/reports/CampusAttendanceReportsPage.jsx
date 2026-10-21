@@ -15,6 +15,7 @@ import {
   Loader2,
   LogOut,
   Percent,
+  Medal,
   Printer,
   Star,
   User,
@@ -24,6 +25,7 @@ import {
 } from 'lucide-react'
 import Select from 'react-select'
 import CampusShell from '../../../components/campus/CampusShell.jsx'
+import CampusReportPrintHeader from '../../../components/campus/CampusReportPrintHeader.jsx'
 import { ATTENDANCE_REPORT_PERMISSIONS } from '../../../constants/campusPermissions.js'
 import { hasCampusPermission } from '../../../services/authService'
 import { getCampusPrintMeta } from '../../../utils/campusProfile'
@@ -34,6 +36,7 @@ import {
   runSmartAttendanceReport,
 } from '../../../services/attendanceReportService'
 import { sortClassesByCustomOrder } from '../../../services/classSort'
+import { getPakistanDateParts } from '../../../utils/pakistanDate'
 
 const FREQUENT_REPORT_IDS = [
   'day-class-summary',
@@ -43,6 +46,8 @@ const FREQUENT_REPORT_IDS = [
   'absent-list',
   'absent-list-ndays',
   'summary-by-interval',
+  'most-regular',
+  'least-regular',
 ]
 
 const CATEGORIES = [
@@ -67,8 +72,33 @@ const REPORT_ICONS = {
   'absent-list-ndays': CalendarX,
   'this-student': User,
   'summary-by-interval': BarChart3,
+  'most-regular': Medal,
+  'least-regular': UserX,
   'detailed-register': ClipboardList,
 }
+
+const REGULARITY_REPORT_IDS = new Set(['most-regular', 'least-regular'])
+
+const monthOptions = [
+  { value: '1', label: 'January' },
+  { value: '2', label: 'February' },
+  { value: '3', label: 'March' },
+  { value: '4', label: 'April' },
+  { value: '5', label: 'May' },
+  { value: '6', label: 'June' },
+  { value: '7', label: 'July' },
+  { value: '8', label: 'August' },
+  { value: '9', label: 'September' },
+  { value: '10', label: 'October' },
+  { value: '11', label: 'November' },
+  { value: '12', label: 'December' },
+]
+
+const currentYear = getPakistanDateParts().year
+const yearOptions = Array.from({ length: 6 }, (_, index) => currentYear - 4 + index).map((value) => ({
+  value: String(value),
+  label: String(value),
+}))
 
 const getReportNatureKey = (item) =>
   item?.category && REPORT_NATURE_BADGE[item.category] ? item.category : 'daily'
@@ -162,6 +192,147 @@ function SnapshotCard({ label, value, hint, icon: Icon, accent }) {
       <p className="mt-1 text-xl font-bold tabular-nums text-slate-800 sm:text-2xl">{value ?? '—'}</p>
       {hint ? <p className="mt-2 text-xs text-slate-500">{hint}</p> : null}
     </article>
+  )
+}
+
+const sortRegularityRows = (rows) => sortClassesByCustomOrder(rows || [], 'sectionLabel')
+
+const CENTER_COLUMN_KEYS = new Set(['regId', 'totalDays', 'presentDays'])
+const HIDDEN_COLUMN_KEYS = new Set(['rank'])
+const PRINT_HIDDEN_KEYS = new Set(['standing', 'rank'])
+
+const visibleRegularityColumns = (columns, hidden) =>
+  (columns || []).filter((col) => !hidden.has(col.key))
+
+function RegularityBoard({ result }) {
+  const rows = sortRegularityRows(result.rows)
+  const columns = visibleRegularityColumns(result.columns, HIDDEN_COLUMN_KEYS)
+
+  return (
+    <div className="overflow-x-auto">
+        <table className="min-w-full border-collapse text-[13px] leading-snug">
+          <thead>
+            <tr className="border-b border-slate-200 bg-[var(--campus-primary)] text-left text-xs uppercase tracking-wide text-white">
+              {columns.map((col) => (
+                <th
+                  key={col.key}
+                  className={`px-3 py-2 font-semibold ${
+                    CENTER_COLUMN_KEYS.has(col.key) || col.format === 'percent'
+                      ? 'text-center'
+                      : col.format === 'number'
+                        ? 'text-right'
+                        : ''
+                  }`}
+                >
+                  {col.label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.length === 0 ? (
+              <tr>
+                <td colSpan={Math.max(columns.length, 1)} className="px-3 py-8 text-center text-slate-500">
+                  No students had enough marked days in this period.
+                </td>
+              </tr>
+            ) : (
+              rows.map((row) => (
+                  <tr key={row.regId} className="border-b border-slate-100 hover:bg-slate-50/80">
+                    {columns.map((col) => (
+                      <td
+                        key={col.key}
+                        className={`px-3 py-1.5 ${
+                          CENTER_COLUMN_KEYS.has(col.key) || col.format === 'percent'
+                            ? 'text-center tabular-nums'
+                            : col.format === 'number'
+                              ? 'text-right tabular-nums'
+                              : ''
+                        } ${col.key === 'studentName' ? 'font-semibold text-slate-900' : ''}`}
+                      >
+                        {formatCell(row[col.key], col.format, col.key)}
+                      </td>
+                    ))}
+                  </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+    </div>
+  )
+}
+
+function RegularityFilters({ params, setParams, definitions, renderParamInput }) {
+  const byKey = Object.fromEntries((definitions || []).map((def) => [def.key, def]))
+  const mode = params.periodMode || 'month'
+
+  const field = (def, label, required = false) =>
+    def ? (
+      <label key={def.key} className="block min-w-0 text-sm">
+        <span className="mb-0.5 block text-xs font-medium text-slate-600">
+          {label}
+          {required ? ' *' : ''}
+        </span>
+        {renderParamInput(def, true)}
+      </label>
+    ) : null
+
+  return (
+    <div className="space-y-2">
+      <div className="grid grid-cols-2 gap-1 rounded-lg bg-slate-100 p-1">
+        {[
+          ['month', 'Month'],
+          ['range', 'From–to'],
+        ].map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            onClick={() => setParams((prev) => ({ ...prev, periodMode: value }))}
+            className={`rounded-md px-2 py-1.5 text-xs font-semibold ${
+              mode === value ? 'bg-indigo-200 text-[#312e81]' : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {field(byKey.classCompositeId, 'Class')}
+      {mode === 'month' ? (
+        <div className="grid grid-cols-2 gap-2">
+          {field(byKey.month, 'Month', true)}
+          {field(byKey.year, 'Year', true)}
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-2">
+          {field(byKey.dateFrom, 'From', true)}
+          {field(byKey.dateTo, 'To', true)}
+        </div>
+      )}
+      <div className="grid grid-cols-2 gap-2">
+        {field(byKey.topCount, 'How many', true)}
+        {field(byKey.minDays, 'Min. days')}
+      </div>
+      <div>
+        <span className="mb-0.5 block text-xs font-medium text-slate-600">Attendance</span>
+        <div className="grid grid-cols-2 gap-1 rounded-lg bg-slate-100 p-1">
+          {[
+            ['0', 'All'],
+            ['1', '100% only'],
+          ].map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setParams((prev) => ({ ...prev, perfectOnly: value }))}
+              className={`rounded-md px-2 py-1.5 text-xs font-semibold ${
+                (params.perfectOnly || '0') === value ? 'bg-indigo-200 text-[#312e81]' : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -433,9 +604,12 @@ export default function CampusAttendanceReportsPage() {
     URL.revokeObjectURL(url)
   }
 
-  const renderParamInput = (def) => {
+  const renderParamInput = (def, compact = false) => {
     const value = params[def.key] ?? ''
     const onChange = (next) => setParams((prev) => ({ ...prev, [def.key]: next }))
+    const fieldClass = compact
+      ? 'w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm'
+      : 'w-full rounded-lg border border-slate-300 px-3 py-2 text-sm'
 
     if (def.type === 'date') {
       return (
@@ -443,8 +617,42 @@ export default function CampusAttendanceReportsPage() {
           type="date"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+          className={fieldClass}
         />
+      )
+    }
+
+    if (def.type === 'month') {
+      return (
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className={fieldClass}
+        >
+          {!def.required ? <option value="">Select month</option> : null}
+          {monthOptions.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      )
+    }
+
+    if (def.type === 'year') {
+      return (
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className={fieldClass}
+        >
+          {!def.required ? <option value="">Select year</option> : null}
+          {yearOptions.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
       )
     }
 
@@ -454,7 +662,7 @@ export default function CampusAttendanceReportsPage() {
           isClearable={!def.required}
           isSearchable
           options={classSelectOptions}
-          placeholder="Search class"
+          placeholder="All Classes"
           value={classSelectOptions.find((opt) => opt.value === String(value)) || null}
           onChange={(selectedOption) => onChange(selectedOption?.value || '')}
           className="text-sm"
@@ -463,8 +671,8 @@ export default function CampusAttendanceReportsPage() {
           styles={{
             control: (baseStyles) => ({
               ...baseStyles,
-              minHeight: '40px',
-              borderRadius: '0.5rem',
+              minHeight: compact ? '34px' : '40px',
+              borderRadius: compact ? '0.375rem' : '0.5rem',
             }),
             menu: (baseStyles) => ({
               ...baseStyles,
@@ -484,7 +692,7 @@ export default function CampusAttendanceReportsPage() {
         <select
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+          className={fieldClass}
         >
           {!def.required ? <option value="">Any</option> : null}
           {def.options.map((opt) => (
@@ -501,15 +709,31 @@ export default function CampusAttendanceReportsPage() {
         type={def.type === 'decimal' || def.type === 'int' ? 'number' : 'text'}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+        className={fieldClass}
       />
     )
   }
 
+  const visibleParameters = useMemo(() => {
+    const defs = selectedReport?.parameters || []
+    if (!REGULARITY_REPORT_IDS.has(reportId)) return defs
+    const mode = params.periodMode || 'month'
+    return defs.filter((def) => {
+      if (mode === 'month' && (def.key === 'dateFrom' || def.key === 'dateTo')) return false
+      if (mode === 'range' && (def.key === 'month' || def.key === 'year')) return false
+      return true
+    })
+  }, [selectedReport, reportId, params.periodMode])
+
+  const isRegularityResult = REGULARITY_REPORT_IDS.has(result?.reportId)
+
   const printSubtitle = useMemo(() => {
     if (!result) return ''
     const bits = []
-    if (params.date) {
+    if (params.periodMode === 'month' && params.month && params.year) {
+      const monthLabel = monthOptions.find((opt) => opt.value === String(params.month))?.label || params.month
+      bits.push(`${monthLabel} ${params.year}`)
+    } else if (params.date) {
       bits.push(`Date: ${formatPrintDate(params.date)}`)
     } else if (params.dateFrom || params.dateTo) {
       bits.push(`From: ${formatPrintDate(params.dateFrom)}   To: ${formatPrintDate(params.dateTo)}`)
@@ -519,11 +743,14 @@ export default function CampusAttendanceReportsPage() {
       bits.push(`Class : ${cls?.label || params.classCompositeId}`)
     }
     if (params.studentId) bits.push(`Reg ID: ${params.studentId}`)
-    if (params.minDays) bits.push(`Min absent days: ${params.minDays}`)
+    if (params.minDays && !isRegularityResult) bits.push(`Min absent days: ${params.minDays}`)
+    if (isRegularityResult && params.minDays) bits.push(`Marked on at least ${params.minDays} days`)
+    if (isRegularityResult && params.topCount) bits.push(`Top ${params.topCount}`)
+    if (isRegularityResult && params.perfectOnly === '1') bits.push('100% only')
     if (params.status) bits.push(`Status: ${params.status}`)
     bits.push(`Printed: ${formatLongDate(result.generatedAt)}`)
     return bits.join('   ')
-  }, [params, result, classSelectOptions])
+  }, [params, result, classSelectOptions, isRegularityResult])
 
   const printTitle = useMemo(
     () => (result?.title || selectedReport?.title || 'Attendance Report').toUpperCase(),
@@ -621,6 +848,19 @@ export default function CampusAttendanceReportsPage() {
           }
           .legacy-print-summary th {
             background: #d9d9d9 !important;
+          }
+          .legacy-print-table td.num { text-align: right !important; }
+          .legacy-print-table td.ctr { text-align: center !important; }
+          .print-award-note {
+            margin: 0 0 8px !important;
+            font-size: 11px !important;
+            text-align: center !important;
+          }
+          .print-sign-row {
+            margin-top: 22px !important;
+            display: flex !important;
+            justify-content: space-between !important;
+            font-size: 11px !important;
           }
         }
         .print-only { display: none; }
@@ -788,20 +1028,41 @@ export default function CampusAttendanceReportsPage() {
                   </div>
                 </div>
 
-                <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100 md:p-5 lg:col-span-2">
+                <div
+                  className={`rounded-2xl bg-white shadow-sm ring-1 ring-slate-100 lg:col-span-2 ${
+                    REGULARITY_REPORT_IDS.has(reportId) ? 'p-3' : 'p-4 md:p-5'
+                  }`}
+                >
                   {selectedReport ? (
                     <>
-                      <div className="mb-4 border-b border-slate-100 pb-3">
+                      <div
+                        className={`border-b border-slate-100 ${
+                          REGULARITY_REPORT_IDS.has(reportId) ? 'mb-2.5 pb-2' : 'mb-4 pb-3'
+                        }`}
+                      >
                         <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                           Selected report
                         </p>
-                        <h2 className="mt-1 text-lg font-bold text-slate-800">{selectedReport.title}</h2>
-                        <p className="mt-1 text-sm text-slate-500">{selectedReport.description}</p>
+                        <h2
+                          className={`font-bold text-slate-800 ${
+                            REGULARITY_REPORT_IDS.has(reportId) ? 'mt-0.5 text-base' : 'mt-1 text-lg'
+                          }`}
+                        >
+                          {selectedReport.title}
+                        </h2>
+                        <p className="mt-0.5 text-sm text-slate-500">{selectedReport.description}</p>
                       </div>
 
-                      {(selectedReport.parameters || []).length > 0 ? (
+                      {REGULARITY_REPORT_IDS.has(reportId) ? (
+                        <RegularityFilters
+                          params={params}
+                          setParams={setParams}
+                          definitions={selectedReport.parameters || []}
+                          renderParamInput={renderParamInput}
+                        />
+                      ) : visibleParameters.length > 0 ? (
                         <div className="grid gap-3">
-                          {(selectedReport.parameters || []).map((def) => (
+                          {visibleParameters.map((def) => (
                             <label key={def.key} className="block text-sm">
                               <span className="mb-1 block font-medium text-slate-600">
                                 {def.label}
@@ -821,7 +1082,9 @@ export default function CampusAttendanceReportsPage() {
                         type="button"
                         onClick={runReport}
                         disabled={isLoading || !reportId}
-                        className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[var(--campus-primary)] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#364574] disabled:opacity-60"
+                        className={`inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[var(--campus-primary)] px-4 text-sm font-semibold text-white hover:bg-[#364574] disabled:opacity-60 ${
+                          REGULARITY_REPORT_IDS.has(reportId) ? 'mt-2.5 py-2' : 'mt-4 py-2.5'
+                        }`}
                       >
                         {isLoading ? <Loader2 className="animate-spin" size={16} /> : null}
                         Generate report
@@ -900,6 +1163,17 @@ export default function CampusAttendanceReportsPage() {
                         <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
                           {runError}
                         </div>
+                      ) : result && isRegularityResult ? (
+                        <>
+                          <div className="mb-4 flex flex-wrap gap-2">
+                            {(result.extraKpis || []).map((kpi) => (
+                              <span key={kpi.key} className="rounded-lg bg-slate-100 px-3 py-1.5 text-sm">
+                                {kpi.label}: <strong>{kpi.value}</strong>
+                              </span>
+                            ))}
+                          </div>
+                          <RegularityBoard result={result} />
+                        </>
                       ) : result ? (
                         <>
                           <div className="mb-4 flex flex-wrap gap-2">
@@ -990,7 +1264,70 @@ export default function CampusAttendanceReportsPage() {
             </>
           )}
 
-          {result ? (
+          {result && isRegularityResult ? (
+            <div className="print-only print-sheet">
+              <CampusReportPrintHeader
+                title={result.reportId === 'most-regular' ? 'HONOUR ROLL — MOST REGULAR STUDENTS' : 'LEAST REGULAR STUDENTS'}
+                subtitle={printSubtitle}
+              />
+              {result.reportId === 'least-regular' ? (
+                <p className="print-award-note">
+                  Students with the lowest attendance in this period, for follow-up and support.
+                </p>
+              ) : null}
+              <table className="legacy-print-table">
+                <thead>
+                  <tr>
+                    {visibleRegularityColumns(result.columns, PRINT_HIDDEN_KEYS).map((col) => (
+                      <th key={col.key}>{col.label}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {sortRegularityRows(result.rows).map((row) => (
+                    <tr key={row.regId}>
+                      {visibleRegularityColumns(result.columns, PRINT_HIDDEN_KEYS).map((col) => (
+                        <td
+                          key={col.key}
+                          className={
+                            CENTER_COLUMN_KEYS.has(col.key) || col.format === 'percent'
+                              ? 'ctr'
+                              : col.format === 'number'
+                                ? 'num'
+                                : ''
+                          }
+                        >
+                          {dash(formatCell(row[col.key], col.format, col.key))}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {printSummaryItems.length > 0 ? (
+                <table className="legacy-print-summary">
+                  <thead>
+                    <tr>
+                      {printSummaryItems.map((item) => (
+                        <th key={item.label}>{item.label}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      {printSummaryItems.map((item) => (
+                        <td key={`v-${item.label}`}>{item.value}</td>
+                      ))}
+                    </tr>
+                  </tbody>
+                </table>
+              ) : null}
+              <div className="print-sign-row">
+                <span>Class teacher ____________________</span>
+                <span>{result.reportId === 'most-regular' ? 'Principal' : 'Coordinator'} ____________________</span>
+              </div>
+            </div>
+          ) : result ? (
             <div className="print-only print-sheet">
               <div className="mb-2 text-center">
                 <div className="print-school-name font-bold">{schoolName}</div>

@@ -5,6 +5,7 @@ import { Toaster } from 'sonner'
 import './index.css'
 import App from './App.jsx'
 import { AcademicInstituteSettingsProvider } from './contexts/AcademicInstituteSettingsContext.jsx'
+import { CampusRealtimeProvider } from './contexts/CampusRealtimeContext.jsx'
 import { CAMPUS_REALTIME_TOASTER_ID } from './hooks/useCampusNotifications.jsx'
 import { EMPLOYEE_REALTIME_TOASTER_ID } from './hooks/useEmployeeNotifications.jsx'
 import { applyTableHeaderTheme, loadSidebarTheme } from './utils/sidebarTheme'
@@ -15,7 +16,9 @@ createRoot(document.getElementById('root')).render(
     <StrictMode>
     <AcademicInstituteSettingsProvider>
       <HashRouter>
-        <App />
+        <CampusRealtimeProvider>
+          <App />
+        </CampusRealtimeProvider>
         <Toaster
           position="top-center"
           richColors={false}

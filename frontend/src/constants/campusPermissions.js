@@ -26,6 +26,8 @@ export const ATTENDANCE_REPORT_PERMISSIONS = {
   'absent-list-ndays': 'rpt_att_list_absent_ndays',
   'this-student': 'rpt_att_list_student',
   'summary-by-interval': 'rpt_att_list_summary_interval',
+  'most-regular': 'rpt_attnd',
+  'least-regular': 'rpt_attnd',
   'detailed-register': 'rpt_attnd',
 }
 
