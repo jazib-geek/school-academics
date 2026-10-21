@@ -1,11 +1,16 @@
 import { useCallback, useEffect, useState } from 'react'
-import { BookOpen, Loader2, Pencil, Plus, Save, Trash2, X } from 'lucide-react'
+import { BookOpen, Loader2, Pencil, Plus, Save, Trash2, Type, X } from 'lucide-react'
 import AcademicLayout from '../../../components/academics/AcademicLayout'
 import {
   deleteAcademicSubject,
   getAcademicSubjects,
+  updateAcademicSubjectHeadings,
   upsertAcademicSubject,
 } from '../../../services/academicCatalogService'
+import { headingForKind, isLanguageProfile, kindsForProfile } from '../questions/languageQuestionStructures'
+
+const urduFontFamily =
+  '"Jameel Noori Nastaleeq Web", "Jameel Noori Nastaleeq", "Jameel Noori Nastaleeq Regular", "Noto Nastaliq Urdu", serif'
 
 function AcademicSubjectsPage() {
   const [rows, setRows] = useState([])
@@ -15,6 +20,10 @@ function AcademicSubjectsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [error, setError] = useState('')
   const [form, setForm] = useState({ id: '', subjectName: '' })
+  const [pendingDelete, setPendingDelete] = useState(null)
+  const [headingsSubject, setHeadingsSubject] = useState(null)
+  const [headingDraft, setHeadingDraft] = useState({})
+  const [headingsError, setHeadingsError] = useState('')
 
   const load = useCallback(async () => {
     setIsLoading(true)
@@ -70,11 +79,44 @@ function AcademicSubjectsPage() {
     setIsModalOpen(false)
   }
 
-  const onDelete = async (itemId) => {
+  const openHeadings = (item) => {
+    const draft = {}
+    kindsForProfile(item.catalogProfile).forEach((kind) => {
+      draft[kind.id] = headingForKind(kind.id, item.catalogHeadingDefaults, item.catalogProfile)
+    })
+    setHeadingsError('')
+    setHeadingDraft(draft)
+    setHeadingsSubject(item)
+  }
+
+  const onSaveHeadings = async (event) => {
+    event.preventDefault()
+    if (!headingsSubject) return
+    if (Object.values(headingDraft).some((value) => !`${value || ''}`.trim())) {
+      setHeadingsError('Enter a heading for each question shape.')
+      return
+    }
+    setIsSaving(true)
+    setHeadingsError('')
+    try {
+      await updateAcademicSubjectHeadings(headingsSubject.id, headingDraft)
+      setHeadingsSubject(null)
+      await load()
+    } catch (requestError) {
+      setHeadingsError(requestError?.response?.data?.message || 'Could not save headings.')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const onDelete = async () => {
+    if (!pendingDelete) return
+    const itemId = pendingDelete.id
     setDeletingId(itemId)
     setError('')
     try {
       await deleteAcademicSubject(itemId)
+      setPendingDelete(null)
       await load()
     } catch (requestError) {
       setError(requestError?.response?.data?.message || 'Subject delete failed.')
@@ -146,6 +188,22 @@ function AcademicSubjectsPage() {
                   <td className="border border-slate-200 px-2 py-1.5 md:px-3 md:py-1.5">
                     <div className="flex justify-end">
                       <div className="action-group">
+                        {isLanguageProfile(item.catalogProfile) ? (
+                          <button
+                            type="button"
+                            onClick={() => openHeadings(item)}
+                            className="action-link"
+                          >
+                            <Type size={14} />
+                            <span className="hidden sm:inline">Headings</span>
+                          </button>
+                        ) : null}
+                        {item.isSystem ? (
+                          isLanguageProfile(item.catalogProfile) ? null : (
+                            <span className="text-xs text-slate-400">Built in</span>
+                          )
+                        ) : (
+                        <>
                         <button
                           type="button"
                           onClick={() => openEditModal(item)}
@@ -156,7 +214,7 @@ function AcademicSubjectsPage() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => onDelete(item.id)}
+                          onClick={() => setPendingDelete({ id: item.id, subjectName: item.subjectName })}
                           disabled={deletingId === item.id}
                           className="action-link action-link-danger"
                         >
@@ -167,6 +225,8 @@ function AcademicSubjectsPage() {
                           )}
                           <span className="hidden sm:inline">Delete</span>
                         </button>
+                        </>
+                        )}
                       </div>
                     </div>
                   </td>
@@ -248,6 +308,91 @@ function AcademicSubjectsPage() {
           </form>
         </div>
       </div>
+
+      {headingsSubject ? (
+        <div className="fixed inset-0 z-[85] flex items-center justify-center bg-slate-900/40 p-4">
+          <form
+            onSubmit={onSaveHeadings}
+            className="flex max-h-[90vh] w-full max-w-lg flex-col rounded-2xl bg-white shadow-2xl"
+          >
+            <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-5 py-4">
+              <div>
+                <h3 className="text-lg font-semibold text-slate-800">{headingsSubject.subjectName} headings</h3>
+                <p className="mt-1 text-sm text-slate-500">These lines fill in when a new question of that shape is added. You can still change them on the question.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setHeadingsSubject(null)}
+                disabled={isSaving}
+                className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="grid gap-3 overflow-y-auto px-5 py-4">
+              {headingsError ? (
+                <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{headingsError}</p>
+              ) : null}
+              {kindsForProfile(headingsSubject.catalogProfile).map((kind) => {
+                const isUrdu = headingsSubject.catalogProfile === 'urdu'
+                return (
+                  <label key={kind.id} className="grid gap-1 text-sm text-slate-700">
+                    <span className="font-medium">{kind.label}</span>
+                    <textarea
+                      value={headingDraft[kind.id] || ''}
+                      onChange={(event) =>
+                        setHeadingDraft((previous) => ({ ...previous, [kind.id]: event.target.value }))
+                      }
+                      dir={isUrdu ? 'rtl' : 'ltr'}
+                      style={isUrdu ? { fontFamily: urduFontFamily, lineHeight: 1.8 } : undefined}
+                      className="min-h-16 rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    />
+                  </label>
+                )
+              })}
+            </div>
+            <div className="flex justify-end gap-2 border-t border-slate-100 px-5 py-3">
+              <button type="button" onClick={() => setHeadingsSubject(null)} disabled={isSaving} className="btn-soft btn-soft-primary">
+                Cancel
+              </button>
+              <button type="submit" disabled={isSaving} className="btn-soft btn-soft-success">
+                {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                Save headings
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
+
+      {pendingDelete ? (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-900/40 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl">
+            <h3 className="text-lg font-semibold text-slate-800">Delete subject?</h3>
+            <p className="mt-2 text-sm text-slate-600">
+              <span className="font-medium text-slate-800">{pendingDelete.subjectName}</span> will be removed. This cannot be undone.
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setPendingDelete(null)}
+                disabled={Boolean(deletingId)}
+                className="btn-soft btn-soft-primary"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void onDelete()}
+                disabled={Boolean(deletingId)}
+                className="btn-soft btn-soft-danger"
+              >
+                {deletingId ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </AcademicLayout>
   )
 }

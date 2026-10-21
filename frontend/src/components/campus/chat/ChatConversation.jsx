@@ -3,8 +3,15 @@ import { ArrowLeft, Check, CheckCheck, Loader2, SendHorizontal } from 'lucide-re
 import { getChatConversation, sendChatMessage } from '../../../services/chatService'
 import { formatPkDayHeading, formatPkTime, pkDateKey } from '../../../utils/pakistanTime'
 import ChatAvatar from './ChatAvatar.jsx'
+import ChatEmojiPicker from './ChatEmojiPicker.jsx'
 
 const MAX_LENGTH = 1000
+
+function isEmojiOnly(text) {
+  const compact = String(text || '').replace(/\s/g, '')
+  if (!compact || [...compact].length > 8) return false
+  return /^(\p{Extended_Pictographic}|\uFE0F|\u200D)+$/u.test(compact)
+}
 
 export default function ChatConversation({ user, myUserId, subscribe, onRead, onBack }) {
   const otherId = user.userId
@@ -84,6 +91,20 @@ export default function ChatConversation({ user, myUserId, subscribe, onRead, on
     return out
   }, [messages])
 
+  const insertEmoji = (emoji) => {
+    const el = inputRef.current
+    const start = el?.selectionStart ?? draft.length
+    const end = el?.selectionEnd ?? draft.length
+    const next = `${draft.slice(0, start)}${emoji}${draft.slice(end)}`
+    if ([...next].length > MAX_LENGTH) return
+    setDraft(next)
+    const caret = start + emoji.length
+    requestAnimationFrame(() => {
+      el?.focus()
+      el?.setSelectionRange(caret, caret)
+    })
+  }
+
   const send = async () => {
     const body = draft.trim()
     if (!body || sending) return
@@ -156,7 +177,9 @@ export default function ChatConversation({ user, myUserId, subscribe, onRead, on
                         : 'rounded-bl-md bg-white text-slate-800 ring-1 ring-slate-100'
                     }`}
                   >
-                    <p className="whitespace-pre-wrap break-words">{m.body}</p>
+                    <p className={`whitespace-pre-wrap break-words ${isEmojiOnly(m.body) ? 'text-2xl leading-snug' : ''}`}>
+                      {m.body}
+                    </p>
                     <p
                       className={`mt-0.5 flex items-center justify-end gap-1 text-[10px] ${
                         mine ? 'text-indigo-200' : 'text-slate-400'
@@ -182,6 +205,7 @@ export default function ChatConversation({ user, myUserId, subscribe, onRead, on
       <div className="shrink-0 border-t border-slate-100 bg-white p-2.5">
         {error ? <p className="mb-1.5 px-1 text-xs text-rose-600">{error}</p> : null}
         <div className="flex items-end gap-2">
+          <ChatEmojiPicker onPick={insertEmoji} disabled={sending} />
           <textarea
             ref={inputRef}
             rows={1}

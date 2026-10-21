@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { FileQuestion, Loader2, Pencil, Plus, Save, Search, Trash2, X } from 'lucide-react'
+import { Eye, FileQuestion, Loader2, Pencil, Plus, Save, Search, Trash2, X } from 'lucide-react'
 import katex from 'katex'
 import 'katex/dist/katex.min.css'
 import 'katex/contrib/mhchem'
@@ -27,6 +27,21 @@ import {
   getQuestionCatalog,
   upsertQuestionCatalog,
 } from '../../../services/academicCatalogService'
+import LanguageQuestionFields from './LanguageQuestionFields'
+import LanguageQuestionPreview from './LanguageQuestionPreview'
+import {
+  applyBodyKey,
+  applyTextKey,
+  coarseTypeForKind,
+  emptyBody,
+  headingForKind,
+  isLanguageProfile,
+  kindsForProfile,
+  parseBody,
+  structureLabel,
+  summarizeBody,
+  validateLanguageBody,
+} from './languageQuestionStructures'
 
 const emptyForm = {
   id: '',
@@ -76,6 +91,11 @@ const getUrduTextStyle = (value, forceUrdu = false) =>
         lineHeight: 1.4,
       }
     : undefined
+
+const urduListStyle = (value) => {
+  const style = getUrduTextStyle(value)
+  return style ? { ...style, fontSize: '1.05rem', lineHeight: 1.9 } : undefined
+}
 
 const latexSymbolMap = new Map([
   ['×', '\\times'],
@@ -372,14 +392,16 @@ function AcademicQuestionCatalogPage() {
   const [rows, setRows] = useState([])
   const [classes, setClasses] = useState([])
   const [subjects, setSubjects] = useState([])
-  const [chapters, setChapters] = useState([])
+  const [allChapters, setAllChapters] = useState([])
   const [filters, setFilters] = useState({ classId: '', subjectId: '', chapterId: '' })
   const [questionTypeFilter, setQuestionTypeFilter] = useState('')
-  const [isFilterLoading, setIsFilterLoading] = useState(false)
+  const [, setIsFilterLoading] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [deletingId, setDeletingId] = useState(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [previewItem, setPreviewItem] = useState(null)
+  const [browserOpen, setBrowserOpen] = useState(true)
   const [error, setError] = useState('')
   /** Validation / save errors while the add-edit modal is open (shown inside the modal). */
   const [formError, setFormError] = useState('')
@@ -391,20 +413,10 @@ function AcademicQuestionCatalogPage() {
   const [activeUrduField, setActiveUrduField] = useState('descriptionText')
   const [activeFormulaField, setActiveFormulaField] = useState('descriptionText')
   const mathFieldRefs = useRef({})
+  const languageFieldPathRef = useRef('descriptionText')
 
   const isMcq = useMemo(() => form.type === 'mcq', [form.type])
   const showUrduSidePanel = urduKeyboard && !scientificEditor
-  const questionModalWide = isMcq
-  const questionModalMaxWidthClass = questionModalWide
-    ? 'max-w-[min(1400px,calc(100vw-1.5rem))]'
-    : showUrduSidePanel
-      ? 'max-w-[min(1100px,calc(100vw-1.5rem))]'
-      : 'max-w-[min(960px,calc(100vw-1.5rem))]'
-  const questionBodyGridClass = isMcq
-    ? 'grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(400px,520px)]'
-    : showUrduSidePanel
-      ? 'grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]'
-      : 'grid gap-3'
   const useFormulaEditor = scientificEditor
   const useUrduFormOptionLabels =
     urduKeyboard ||
@@ -465,51 +477,76 @@ function AcademicQuestionCatalogPage() {
     [],
   )
 
-  const classOptions = useMemo(
-    () => classes.map((item) => ({ value: item.id, label: item.className })),
-    [classes],
-  )
-  const subjectOptions = useMemo(
-    () => subjects.map((item) => ({ value: item.id, label: item.subjectName })),
-    [subjects],
-  )
+  const subjectsForClass = useMemo(() => {
+    if (!filters.classId) return []
+    const classId = Number(filters.classId)
+    const subjectIds = new Set(
+      allChapters.filter((chapter) => chapter.classId === classId).map((chapter) => chapter.subjectId),
+    )
+    return subjects.filter((subject) => subjectIds.has(subject.id))
+  }, [allChapters, filters.classId, subjects])
+  const chaptersForSelection = useMemo(() => {
+    if (!filters.classId || !filters.subjectId) return []
+    const classId = Number(filters.classId)
+    const subjectId = Number(filters.subjectId)
+    return allChapters
+      .filter((chapter) => chapter.classId === classId && chapter.subjectId === subjectId)
+      .sort((a, b) => a.chapterNo - b.chapterNo || a.id - b.id)
+  }, [allChapters, filters.classId, filters.subjectId])
   const chapterOptions = useMemo(
     () =>
-      chapters.map((item) => ({
+      chaptersForSelection.map((item) => ({
         value: item.id,
         label: `${item.chapterNo}. ${item.chapterName}`,
       })),
-    [chapters],
+    [chaptersForSelection],
   )
 
-  const selectedClassOption = useMemo(
-    () => classOptions.find((option) => option.value === Number(filters.classId)) || null,
-    [classOptions, filters.classId],
+  const selectedSubjectRecord = useMemo(
+    () => subjects.find((item) => item.id === Number(filters.subjectId)) || null,
+    [filters.subjectId, subjects],
   )
-  const selectedSubjectOption = useMemo(
-    () => subjectOptions.find((option) => option.value === Number(filters.subjectId)) || null,
-    [filters.subjectId, subjectOptions],
-  )
-  const selectedChapterOption = useMemo(
-    () => chapterOptions.find((option) => option.value === Number(filters.chapterId)) || null,
-    [chapterOptions, filters.chapterId],
-  )
+  const catalogProfile = selectedSubjectRecord?.catalogProfile || 'standard'
+  const isLanguageCatalog = isLanguageProfile(catalogProfile)
+  const languageKindOptions = useMemo(() => kindsForProfile(catalogProfile), [catalogProfile])
+  const questionModalWide = isMcq && !isLanguageCatalog
+  const questionModalMaxWidthClass = questionModalWide
+    ? 'max-w-[min(1400px,calc(100vw-1.5rem))]'
+    : showUrduSidePanel
+      ? 'max-w-[min(1100px,calc(100vw-1.5rem))]'
+      : 'max-w-[min(960px,calc(100vw-1.5rem))]'
+  const questionBodyGridClass = questionModalWide
+    ? 'grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(400px,520px)]'
+    : showUrduSidePanel
+      ? 'grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]'
+      : 'grid gap-3'
   const selectedFormChapterOption = useMemo(
     () => chapterOptions.find((option) => option.value === Number(form.chapterId)) || null,
     [chapterOptions, form.chapterId],
   )
-  const filteredRows = useMemo(
-    () => (questionTypeFilter ? rows.filter((item) => item.type === questionTypeFilter) : rows),
-    [questionTypeFilter, rows],
-  )
+  const filteredRows = useMemo(() => {
+    if (!questionTypeFilter) return rows
+    if (isLanguageCatalog) {
+      return rows.filter((item) => (item.structureKind || 'standard') === questionTypeFilter)
+    }
+    return rows.filter((item) => item.type === questionTypeFilter && (item.structureKind || 'standard') === 'standard')
+  }, [isLanguageCatalog, questionTypeFilter, rows])
+  const typeFilterOptions = isLanguageCatalog
+    ? [{ value: '', label: 'All' }, ...languageKindOptions.map((item) => ({ value: item.id, label: item.label }))]
+    : questionTypeFilterOptions
 
   const loadFilters = useCallback(async () => {
     setIsFilterLoading(true)
     setError('')
     try {
-      const [classData, subjectData] = await Promise.all([getAcademicClasses(), getAcademicSubjects()])
+      const [classData, subjectData, chapterData] = await Promise.all([
+        getAcademicClasses(),
+        getAcademicSubjects(),
+        getAcademicChapters(),
+      ])
       setClasses(classData)
       setSubjects(subjectData)
+      setAllChapters(chapterData)
     } catch (requestError) {
       setError(requestError?.response?.data?.message || 'Unable to load filter options.')
     } finally {
@@ -540,39 +577,26 @@ function AcademicQuestionCatalogPage() {
     }
   }, [])
 
-  useEffect(() => {
-    const loadChaptersForFilter = async () => {
-      if (!filters.classId || !filters.subjectId) {
-        setChapters([])
-        setFilters((previous) => ({ ...previous, chapterId: '' }))
-        setRows([])
-        return
-      }
+  const pickClass = (classId) => {
+    setQuestionTypeFilter('')
+    setBrowserOpen(true)
+    setFilters({ classId: String(classId), subjectId: '', chapterId: '' })
+  }
 
-      setIsFilterLoading(true)
-      setError('')
-      try {
-        const chapterData = await getAcademicChapters()
-        const scopedChapters = chapterData.filter(
-          (item) => item.classId === Number(filters.classId) && item.subjectId === Number(filters.subjectId),
-        )
-        setChapters(scopedChapters)
-        setFilters((previous) => ({
-          ...previous,
-          chapterId: scopedChapters.some((item) => item.id === Number(previous.chapterId))
-            ? previous.chapterId
-            : '',
-        }))
-        setRows([])
-      } catch (requestError) {
-        setError(requestError?.response?.data?.message || 'Unable to load chapters.')
-      } finally {
-        setIsFilterLoading(false)
-      }
-    }
+  const pickSubject = (subjectId) => {
+    setQuestionTypeFilter('')
+    setBrowserOpen(true)
+    setFilters((previous) => ({
+      ...previous,
+      subjectId: String(subjectId),
+      chapterId: '',
+    }))
+  }
 
-    void loadChaptersForFilter()
-  }, [filters.classId, filters.subjectId])
+  const pickChapter = (chapterId) => {
+    setFilters((previous) => ({ ...previous, chapterId: String(chapterId) }))
+    setBrowserOpen(false)
+  }
 
   useEffect(() => {
     const timerId = setTimeout(() => {
@@ -584,7 +608,43 @@ function AcademicQuestionCatalogPage() {
   const onSubmit = async (event) => {
     event.preventDefault()
     if (!String(form.descriptionText ?? '').trim()) {
-      setFormError('Question text is required.')
+      setFormError(isLanguageCatalog ? 'Heading is required.' : 'Question text is required.')
+      return
+    }
+    if (isLanguageCatalog) {
+      const bodyError = validateLanguageBody(form.structureKind, form.body)
+      if (bodyError) {
+        setFormError(bodyError)
+        return
+      }
+      setIsSaving(true)
+      setFormError('')
+      try {
+        await upsertQuestionCatalog({
+          id: form.id ? Number(form.id) : undefined,
+          type: coarseTypeForKind(form.structureKind),
+          category: form.category,
+          chapterId: Number(form.chapterId),
+          descriptionText: form.descriptionText.trim(),
+          structureKind: form.structureKind,
+          bodyJson: JSON.stringify(form.body || emptyBody(form.structureKind)),
+          stemImage: null,
+          mcqOpt1: null,
+          mcqOpt2: null,
+          mcqOpt3: null,
+          mcqOpt4: null,
+        })
+        await loadQuestionsByChapter(filters.chapterId || form.chapterId)
+        setScientificEditor(false)
+        setUrduKeyboard(false)
+        setFormError('')
+        setIsModalOpen(false)
+        setForm(emptyForm)
+      } catch (requestError) {
+        setFormError(requestError?.response?.data?.message || 'Could not save this question.')
+      } finally {
+        setIsSaving(false)
+      }
       return
     }
     setIsSaving(true)
@@ -661,11 +721,21 @@ function AcademicQuestionCatalogPage() {
     setUrduKeyboard(false)
     setActiveUrduField('descriptionText')
     setActiveFormulaField('descriptionText')
+    const languageKind = languageKindOptions.some((item) => item.id === questionTypeFilter)
+      ? questionTypeFilter
+      : languageKindOptions[0]?.id
     setForm({
       ...emptyForm,
       chapterId: filters.chapterId,
-      type: questionTypeFilter || emptyForm.type,
+      descriptionText: isLanguageCatalog
+        ? headingForKind(languageKind, selectedSubjectRecord?.catalogHeadingDefaults, catalogProfile)
+        : '',
+      type: isLanguageCatalog ? coarseTypeForKind(languageKind) : questionTypeFilter || emptyForm.type,
+      structureKind: isLanguageCatalog ? languageKind : 'standard',
+      body: isLanguageCatalog ? emptyBody(languageKind) : null,
     })
+    languageFieldPathRef.current = 'descriptionText'
+    if (isLanguageCatalog && catalogProfile === 'urdu') setUrduKeyboard(true)
     setMathFieldSession((session) => session + 1)
     setIsModalOpen(true)
   }
@@ -673,6 +743,28 @@ function AcademicQuestionCatalogPage() {
   const openEditModal = (item) => {
     setError('')
     setFormError('')
+    if (isLanguageProfile(catalogProfile) && item.structureKind && item.structureKind !== 'standard') {
+      const body = parseBody(item.bodyJson) || emptyBody(item.structureKind)
+      setForm({
+        id: String(item.id),
+        type: item.type,
+        category: item.category,
+        chapterId: String(item.chapterId),
+        descriptionText: item.descriptionText || '',
+        stemImage: '',
+        mcqOpt1: '',
+        mcqOpt2: '',
+        mcqOpt3: '',
+        mcqOpt4: '',
+        structureKind: item.structureKind,
+        body,
+      })
+      setScientificEditor(false)
+      setUrduKeyboard(catalogProfile === 'urdu' || containsUrduText(item.descriptionText) || containsUrduText(item.bodyJson))
+      languageFieldPathRef.current = 'descriptionText'
+      setIsModalOpen(true)
+      return
+    }
     const descriptionText = stripLatexDelimitersForKatex(normalizeLatexEscapes(item.descriptionText || ''))
     const mcqOpt1 = stripLatexDelimitersForKatex(normalizeLatexEscapes(item.mcqOpt1 || ''))
     const mcqOpt2 = stripLatexDelimitersForKatex(normalizeLatexEscapes(item.mcqOpt2 || ''))
@@ -722,6 +814,7 @@ function AcademicQuestionCatalogPage() {
   }
 
   const handleQuestionPastePlain = (event) => {
+    if (isLanguageCatalog) return
     const pasted = event.clipboardData.getData('text')
     if (!pasted || !hasMathLikePasteContent(pasted)) return
     event.preventDefault()
@@ -789,6 +882,21 @@ function AcademicQuestionCatalogPage() {
   }
 
   const handleUrduKeyPress = (keyValue) => {
+    if (isLanguageCatalog) {
+      const path = languageFieldPathRef.current || 'descriptionText'
+      if (path === 'descriptionText') {
+        setForm((previous) => ({
+          ...previous,
+          descriptionText: applyTextKey(previous.descriptionText, keyValue),
+        }))
+      } else {
+        setForm((previous) => ({
+          ...previous,
+          body: applyBodyKey(previous.body, path, keyValue),
+        }))
+      }
+      return
+    }
     const fieldName = activeUrduField || 'descriptionText'
     setForm((previous) => {
       const current = previous[fieldName] || ''
@@ -802,7 +910,10 @@ function AcademicQuestionCatalogPage() {
   const plainFieldProps = (fieldName, value) => ({
     dir: urduKeyboard || containsUrduText(value) ? 'rtl' : 'auto',
     style: getUrduTextStyle(value, urduKeyboard),
-    onFocus: () => setActiveUrduField(fieldName),
+    onFocus: () => {
+      languageFieldPathRef.current = fieldName
+      setActiveUrduField(fieldName)
+    },
   })
 
   return (
@@ -824,38 +935,125 @@ function AcademicQuestionCatalogPage() {
         </section>
       ) : null}
 
-      <section className="mb-4 grid gap-3 md:grid-cols-3">
-        <Select
-          options={classOptions}
-          value={selectedClassOption}
-          onChange={(option) =>
-            setFilters({ classId: option?.value ? String(option.value) : '', subjectId: '', chapterId: '' })
-          }
-          isClearable
-          placeholder="Select class"
-        />
-        <Select
-          options={subjectOptions}
-          value={selectedSubjectOption}
-          onChange={(option) => setFilters((p) => ({ ...p, subjectId: option?.value ? String(option.value) : '', chapterId: '' }))}
-          isClearable
-          isDisabled={!filters.classId}
-          placeholder="Select subject"
-        />
-        <Select
-          options={chapterOptions}
-          value={selectedChapterOption}
-          onChange={(option) => setFilters((p) => ({ ...p, chapterId: option?.value ? String(option.value) : '' }))}
-          isClearable
-          isDisabled={!filters.classId || !filters.subjectId || isFilterLoading}
-          placeholder="Select chapter"
-        />
-      </section>
+      <div
+        className={`overflow-hidden transition-all duration-300 ease-out ${
+          browserOpen ? 'mb-4 max-h-[31rem] opacity-100' : 'mb-0 max-h-0 opacity-0'
+        }`}
+      >
+        <div className="grid gap-3 md:grid-cols-3 md:items-stretch">
+          <div className="flex h-[30rem] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white">
+            <p className="shrink-0 border-b border-slate-100 bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Class</p>
+            <div className="min-h-0 flex-1 space-y-1 overflow-y-auto p-1.5">
+              {classes.map((item) => {
+                const active = String(item.id) === String(filters.classId)
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => pickClass(item.id)}
+                    className={`w-full rounded-md border px-2.5 py-1.5 text-left text-sm ${
+                      active
+                        ? 'border-[#405189] bg-[#405189] font-medium text-white'
+                        : 'border-slate-200/90 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+                    }`}
+                  >
+                    {item.className}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+          <div className="flex h-[30rem] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white">
+            <p className="shrink-0 border-b border-slate-100 bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Subject</p>
+            <div className="min-h-0 flex-1 space-y-1 overflow-y-auto p-1.5">
+              {!filters.classId ? (
+                <p className="px-2 py-6 text-center text-sm text-slate-400">Choose a class</p>
+              ) : subjectsForClass.length === 0 ? (
+                <p className="px-2 py-6 text-center text-sm text-slate-400">No chapters for this class yet</p>
+              ) : (
+                subjectsForClass.map((item) => {
+                  const active = String(item.id) === String(filters.subjectId)
+                  const urdu = containsUrduText(item.subjectName)
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => pickSubject(item.id)}
+                      style={urduListStyle(item.subjectName)}
+                      className={`w-full rounded-md border px-2.5 py-1.5 text-sm ${urdu ? 'text-right' : 'text-left'} ${
+                        active
+                          ? 'border-[#405189] bg-[#405189] font-medium text-white'
+                          : 'border-slate-200/90 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+                      }`}
+                    >
+                      {item.subjectName}
+                    </button>
+                  )
+                })
+              )}
+            </div>
+          </div>
+          <div className="flex h-[30rem] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white">
+            <p className="shrink-0 border-b border-slate-100 bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Chapter</p>
+            <div className="min-h-0 flex-1 space-y-1 overflow-y-auto p-1.5">
+              {!filters.subjectId ? (
+                <p className="px-2 py-6 text-center text-sm text-slate-400">Choose a subject</p>
+              ) : (
+                chaptersForSelection.map((item) => {
+                  const active = String(item.id) === String(filters.chapterId)
+                  const label = `${item.chapterNo}. ${item.chapterName}`
+                  const urdu = containsUrduText(item.chapterName)
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => pickChapter(item.id)}
+                      style={urduListStyle(item.chapterName)}
+                      className={`w-full rounded-md border px-2.5 py-1.5 text-sm ${urdu ? 'text-right' : 'text-left'} ${
+                        active
+                          ? 'border-[#405189] bg-[#405189] font-medium text-white'
+                          : 'border-slate-200/90 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  )
+                })
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
 
-      <section className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-        <span className="text-sm font-medium text-slate-700">Question type</span>
+      {filters.chapterId ? (
+        <button
+          type="button"
+          onClick={() => setBrowserOpen((open) => !open)}
+          className="mb-4 flex w-full items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-left text-sm text-slate-700 transition hover:border-slate-300"
+        >
+          <span className="min-w-0 truncate">
+            <span>{classes.find((item) => String(item.id) === String(filters.classId))?.className}</span>
+            <span className="px-1.5 text-slate-300">/</span>
+            <span style={urduListStyle(selectedSubjectRecord?.subjectName)}>
+              {selectedSubjectRecord?.subjectName}
+            </span>
+            <span className="px-1.5 text-slate-300">/</span>
+            <span style={urduListStyle(chaptersForSelection.find((item) => String(item.id) === String(filters.chapterId))?.chapterName)}>
+              {chaptersForSelection.find((item) => String(item.id) === String(filters.chapterId))
+                ? `${chaptersForSelection.find((item) => String(item.id) === String(filters.chapterId)).chapterNo}. ${chaptersForSelection.find((item) => String(item.id) === String(filters.chapterId)).chapterName}`
+                : ''}
+            </span>
+          </span>
+          <span className="shrink-0 text-xs font-medium text-[#405189]">{browserOpen ? 'Hide' : 'Change'}</span>
+        </button>
+      ) : null}
+
+      {filters.chapterId ? (
+      <>
+      <section className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 transition-opacity duration-300">
+        <span className="text-sm font-medium text-slate-700">{isLanguageCatalog ? 'Question shape' : 'Question type'}</span>
         <div className="flex flex-wrap gap-2">
-          {questionTypeFilterOptions.map((option) => (
+          {typeFilterOptions.map((option) => (
             <label
               key={option.value || 'all'}
               className={`inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition ${
@@ -878,15 +1076,15 @@ function AcademicQuestionCatalogPage() {
         </div>
       </section>
 
-      <section className="overflow-x-auto overflow-y-auto max-h-[65vh] rounded-xl border border-slate-200">
-        <table className="w-full min-w-[960px] table-fixed border-collapse text-[13px] leading-snug">
+      <section className="max-h-[65vh] overflow-x-hidden overflow-y-auto rounded-xl border border-slate-200 [scrollbar-gutter:stable]">
+        <table className="w-full table-fixed border-collapse text-[13px] leading-snug">
           <colgroup>
             <col className="w-14" />
             <col className="w-[7.25rem]" />
             <col className="w-[5.5rem]" />
             <col className="w-20" />
             <col />
-            <col className="w-24" />
+            <col className="w-[7.25rem]" />
           </colgroup>
           <thead className="sticky top-0 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
             <tr>
@@ -913,7 +1111,7 @@ function AcademicQuestionCatalogPage() {
                 <td colSpan={6} className="border border-slate-200 px-4 py-10 text-center text-slate-500">
                   <div className="flex items-center justify-center gap-2">
                     <Search size={16} />
-                    <span>Select class, subject, and chapter to load questions.</span>
+                    <span>Choose a class, then a subject.</span>
                   </div>
                 </td>
               </tr>
@@ -926,11 +1124,12 @@ function AcademicQuestionCatalogPage() {
             ) : filteredRows.length === 0 ? (
               <tr>
                 <td colSpan={6} className="border border-slate-200 px-4 py-10 text-center text-slate-500">
-                  No {questionTypeFilter === 'numerical' ? 'Numerical' : questionTypeFilter.toUpperCase()} questions found.
+                  No {isLanguageCatalog ? structureLabel(questionTypeFilter).toLowerCase() : questionTypeFilter === 'numerical' ? 'Numerical' : questionTypeFilter.toUpperCase()} questions found.
                 </td>
               </tr>
             ) : (
               filteredRows.map((item, index) => {
+                const itemIsLanguage = isLanguageCatalog && item.structureKind && item.structureKind !== 'standard'
                 const useUrduOptionLabels = [
                   item.descriptionText,
                   item.mcqOpt1,
@@ -940,16 +1139,35 @@ function AcademicQuestionCatalogPage() {
                 ].some((value) => containsUrduText(value))
 
                 return (
-                <tr key={item.id} className="hover:bg-slate-50/70">
+                <tr key={item.id} className="group hover:bg-slate-50/70">
                   <td className="border border-slate-200 px-3 py-1.5">{index + 1}</td>
-                  <td className="border border-slate-200 px-3 py-1.5 whitespace-nowrap uppercase">{item.type}</td>
+                  <td className="border border-slate-200 px-3 py-1.5 whitespace-nowrap">
+                    {itemIsLanguage ? structureLabel(item.structureKind) : item.type.toUpperCase()}
+                  </td>
                   <td className="border border-slate-200 px-3 py-1.5 whitespace-nowrap uppercase">{item.category}</td>
                   <td className="border border-slate-200 px-3 py-1.5">{item.chapterId}</td>
-                  <td className="border border-slate-200 px-3 py-1.5 text-slate-700">
-                    <div className="max-w-[520px] space-y-1.5 break-words">
-                      <MathText value={item.descriptionText} className="block text-slate-800" />
+                  <td className="w-0 min-w-0 overflow-hidden border border-slate-200 px-3 py-1.5 align-top text-slate-700">
+                    <div className="min-w-0 space-y-1.5 break-words [overflow-wrap:anywhere]">
+                      {itemIsLanguage ? (
+                        <>
+                          <p className="text-slate-800" style={urduListStyle(item.descriptionText)}>
+                            {item.descriptionText}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => setPreviewItem(item)}
+                            className="text-left text-xs text-[#405189] hover:underline"
+                          >
+                            {summarizeBody(item.structureKind, parseBody(item.bodyJson))}
+                          </button>
+                        </>
+                      ) : (
+                      <div className="min-w-0 max-w-full overflow-x-auto" style={urduListStyle(item.descriptionText)}>
+                        <MathText value={item.descriptionText} className="block max-w-full text-slate-800" />
+                      </div>
+                      )}
                       <QuestionStemImage src={item.stemImage} className="mt-1 rounded border border-slate-200 bg-white p-1" />
-                      {item.type === 'mcq' ? (
+                      {!itemIsLanguage && item.type === 'mcq' ? (
                         <div className="grid gap-1 text-xs text-slate-600">
                           <p className={useUrduOptionLabels ? 'text-right' : ''} style={getUrduTextStyle('', useUrduOptionLabels)}>
                             <span
@@ -995,9 +1213,20 @@ function AcademicQuestionCatalogPage() {
                       ) : null}
                     </div>
                   </td>
-                  <td className="border border-slate-200 px-3 py-1.5">
+                  <td className="whitespace-nowrap border border-slate-200 px-3 py-1.5 align-top">
                     <div className="flex justify-end">
                       <div className="action-group">
+                        {itemIsLanguage ? (
+                          <button
+                            type="button"
+                            onClick={() => setPreviewItem(item)}
+                            className="action-link"
+                            aria-label="View question parts"
+                            title="View parts"
+                          >
+                            <Eye size={14} />
+                          </button>
+                        ) : null}
                         <button
                           type="button"
                           onClick={() => openEditModal(item)}
@@ -1031,6 +1260,51 @@ function AcademicQuestionCatalogPage() {
           </tbody>
         </table>
       </section>
+      </>
+      ) : null}
+
+      {previewItem ? (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-900/40 p-4">
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-2xl bg-white shadow-2xl"
+          >
+            <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-4 py-3">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  {structureLabel(previewItem.structureKind)}
+                </p>
+                <h3
+                  className="mt-1 text-base font-semibold text-slate-900"
+                  style={getUrduTextStyle(previewItem.descriptionText, catalogProfile === 'urdu' || containsUrduText(previewItem.descriptionText))}
+                >
+                  {previewItem.descriptionText}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewItem(null)}
+                className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
+                aria-label="Close"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
+              <LanguageQuestionPreview
+                kind={previewItem.structureKind}
+                body={parseBody(previewItem.bodyJson)}
+                rtl={catalogProfile === 'urdu' || containsUrduText(previewItem.descriptionText) || containsUrduText(previewItem.bodyJson)}
+                textStyle={getUrduTextStyle(
+                  previewItem.descriptionText || previewItem.bodyJson,
+                  catalogProfile === 'urdu' || containsUrduText(previewItem.descriptionText) || containsUrduText(previewItem.bodyJson),
+                )}
+              />
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <div
         className={`fixed inset-0 z-[80] flex items-center justify-center p-4 transition-all duration-300 ${
@@ -1052,6 +1326,7 @@ function AcademicQuestionCatalogPage() {
               <p className="mt-0.5 text-sm text-slate-500">Manage question metadata and content.</p>
             </div>
             <div className="flex min-w-0 flex-1 flex-wrap items-stretch justify-end gap-2">
+              {isLanguageCatalog ? null : (
               <label
                 className="flex max-w-[17rem] cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-slate-50/80 px-2.5 py-2 text-xs text-slate-700"
                 title="Visual math and chemistry entry, with Chem and Math keys on the on-screen keyboard."
@@ -1075,6 +1350,7 @@ function AcademicQuestionCatalogPage() {
                 />
                 <span className="font-medium leading-snug text-slate-800">Scientific keyboard (formula editor)</span>
               </label>
+              )}
               <label
                 className="flex max-w-[15rem] cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-slate-50/80 px-2.5 py-2 text-xs text-slate-700"
                 title="Native Urdu typing, pasted Urdu text, and on-screen Urdu keyboard."
@@ -1112,6 +1388,30 @@ function AcademicQuestionCatalogPage() {
           <form onSubmit={onSubmit} className="flex min-h-0 flex-1 flex-col">
             <div className="grid min-h-0 flex-1 gap-3 overflow-y-auto px-4 py-3">
             <div className="grid gap-3 md:grid-cols-3">
+              {isLanguageCatalog ? (
+                <select
+                  value={form.structureKind || languageKindOptions[0]?.id || ''}
+                  onChange={(event) => {
+                    const structureKind = event.target.value
+                    setForm((previous) => ({
+                      ...previous,
+                      structureKind,
+                      type: coarseTypeForKind(structureKind),
+                      descriptionText: headingForKind(
+                        structureKind,
+                        selectedSubjectRecord?.catalogHeadingDefaults,
+                        catalogProfile,
+                      ),
+                      body: emptyBody(structureKind),
+                    }))
+                  }}
+                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                >
+                  {languageKindOptions.map((item) => (
+                    <option key={item.id} value={item.id}>{item.label}</option>
+                  ))}
+                </select>
+              ) : (
               <select
                 value={form.type}
                 onChange={(event) => setForm((previous) => ({ ...previous, type: event.target.value }))}
@@ -1122,6 +1422,7 @@ function AcademicQuestionCatalogPage() {
                 <option value="laq">laq</option>
                 <option value="numerical">numerical</option>
               </select>
+              )}
               <select
                 value={form.category}
                 onChange={(event) => setForm((previous) => ({ ...previous, category: event.target.value }))}
@@ -1145,7 +1446,7 @@ function AcademicQuestionCatalogPage() {
             <div className={questionBodyGridClass}>
               <div className="grid min-w-0 content-start gap-3">
                 <div className="grid gap-1.5">
-                  <span className="text-sm font-medium text-slate-700">Question text</span>
+                  <span className="text-sm font-medium text-slate-700">{isLanguageCatalog ? 'Heading' : 'Question text'}</span>
                   {formError ? (
                     <div
                       role="alert"
@@ -1157,6 +1458,10 @@ function AcademicQuestionCatalogPage() {
                   {useFormulaEditor ? (
                     <p className="text-xs text-slate-500">
                       Use the Chem/Math buttons below, or the keyboard icon for more symbols.
+                    </p>
+                  ) : isLanguageCatalog ? (
+                    <p className="text-xs text-slate-500">
+                      This is the instruction printed above the parts, such as “Choose the correct form of verb.”
                     </p>
                   ) : (
                     <p className="text-xs text-slate-500">
@@ -1201,6 +1506,26 @@ function AcademicQuestionCatalogPage() {
                       {...plainFieldProps('descriptionText', form.descriptionText)}
                     />
                   )}
+                  {isLanguageCatalog ? (
+                    <LanguageQuestionFields
+                      kind={form.structureKind}
+                      body={form.body}
+                      disabled={isSaving}
+                      rtl={urduKeyboard || catalogProfile === 'urdu'}
+                      onChange={(body) => setForm((previous) => ({ ...previous, body }))}
+                      fieldProps={(path) => {
+                        const useUrduFields = urduKeyboard || catalogProfile === 'urdu'
+                        return {
+                          dir: useUrduFields ? 'rtl' : 'ltr',
+                          style: useUrduFields ? getUrduTextStyle('', true) : undefined,
+                          onFocus: () => {
+                            languageFieldPathRef.current = path
+                          },
+                        }
+                      }}
+                    />
+                  ) : null}
+                  {isLanguageCatalog ? null : (
                   <div className="rounded-lg border border-dashed border-slate-300 bg-white px-3 py-2">
                     <div className="flex flex-wrap items-center gap-2">
                       <label className="inline-flex cursor-pointer items-center rounded-md border border-slate-300 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700 hover:border-[#405189] hover:text-[#405189]">
@@ -1235,16 +1560,17 @@ function AcademicQuestionCatalogPage() {
                       />
                     ) : null}
                   </div>
+                  )}
                 </div>
               </div>
 
-              {isMcq || showUrduSidePanel ? (
+              {(isMcq && !isLanguageCatalog) || showUrduSidePanel ? (
               <div className="grid min-w-0 content-start gap-3">
                 {showUrduSidePanel ? (
                   <UrduKeyboard disabled={isSaving} onKeyPress={handleUrduKeyPress} />
                 ) : null}
 
-                {isMcq ? (
+                {isMcq && !isLanguageCatalog ? (
                   <>
                     <div className="grid gap-2">
                       <span className="text-sm font-medium text-slate-700">MCQ options</span>

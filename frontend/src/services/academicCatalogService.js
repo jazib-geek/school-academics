@@ -25,6 +25,11 @@ export const upsertAcademicSubject = async (payload) => {
   return response?.data?.data
 }
 
+export const updateAcademicSubjectHeadings = async (id, headings) => {
+  const response = await academicApi.post(`/api/academics/subjects/${id}/catalog-headings`, { headings })
+  return response?.data?.data
+}
+
 export const deleteAcademicSubject = async (id) => {
   await academicApi.post(`/api/academics/subjects/${id}/delete`)
 }

@@ -7,6 +7,7 @@ export const getExamQuestionPool = async ({
   search = '',
   type = 'all',
   category = 'all',
+  structureKind = 'all',
   take = 120,
 }) => {
   const params = new URLSearchParams()
@@ -16,6 +17,7 @@ export const getExamQuestionPool = async ({
   if (`${search}`.trim()) params.append('search', `${search}`.trim())
   if (type && type !== 'all') params.append('type', type)
   if (category && category !== 'all') params.append('category', category)
+  if (structureKind && structureKind !== 'all') params.append('structureKind', structureKind)
   params.append('take', String(take))
   const response = await academicApi.get(`/api/academics/exammaker/question-pool?${params.toString()}`)
   return response?.data?.data || []

@@ -418,11 +418,21 @@ table:not(.table-comfortable):not(.exam-paper-student-table):not(.legacy-print-t
   line-height: 1.35;
 }
 
-table:not(.table-comfortable):not(.exam-paper-student-table):not(.legacy-print-table):not(.exam-print-table) > thead > tr > th {
+table:not(.table-comfortable):not(.exam-paper-student-table):not(.legacy-print-table):not(.exam-print-table):not(
+    .exam-paper-language-spelling-table
+  )
+  > thead
+  > tr
+  > th {
   padding: 0.5rem 0.75rem;
 }
 
-table:not(.table-comfortable):not(.exam-paper-student-table):not(.legacy-print-table):not(.exam-print-table) > tbody > tr > td {
+table:not(.table-comfortable):not(.exam-paper-student-table):not(.legacy-print-table):not(.exam-print-table):not(
+    .exam-paper-language-spelling-table
+  )
+  > tbody
+  > tr
+  > td {
   padding: 0.375rem 0.75rem;
 }
 
@@ -469,6 +479,14 @@ table:not(.table-comfortable):not(.exam-paper-student-table):not(.legacy-print-t
 .exam-print-preview table thead th {
   background: transparent;
   color: inherit;
+}
+
+.exam-paper-language-spelling-table thead,
+.exam-paper-language-spelling-table thead th,
+.exam-paper-language-spelling-head th {
+  background: transparent !important;
+  color: inherit;
+  font-weight: inherit;
 }
 
 .btn-soft {
@@ -803,6 +821,125 @@ table:not(.table-comfortable):not(.exam-paper-student-table):not(.legacy-print-t
 
 .exam-paper-section-marks {
   margin: 0;
+}
+
+.exam-paper-language-section {
+  margin-top: 0.65rem;
+}
+
+.exam-paper-language-block {
+  margin-top: 0.55rem;
+}
+
+.exam-paper-language-block-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.5rem;
+  font-weight: 600;
+  line-height: 1.25;
+  margin-bottom: 0.25rem;
+}
+
+.exam-paper-language-part {
+  flex-shrink: 0;
+}
+
+.exam-paper-language-block-title {
+  flex: 1 1 12rem;
+  min-width: 0;
+  font-weight: 600;
+}
+
+.exam-paper-language-block-marks {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-weight: 600;
+}
+
+.exam-paper-language-choice-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.exam-paper-language-choice-stem {
+  margin: 0 0 0.15rem;
+  font-weight: 500;
+}
+
+.exam-paper-language-choice-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 1.5rem;
+  row-gap: 0.1rem;
+  padding-left: 1.1rem;
+}
+
+.exam-paper-language-choice-options--single-row {
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 100%;
+  padding-left: 1.1rem;
+  padding-right: 0.25rem;
+  box-sizing: border-box;
+}
+
+.exam-paper-language-choice-options--single-row .exam-paper-language-choice-option {
+  flex: 1 1 0;
+  min-width: 0;
+  text-align: left;
+}
+
+.exam-paper-language-choice-option {
+  margin: 0;
+  white-space: nowrap;
+  font-weight: inherit;
+}
+
+.exam-paper-language-choice-options:not(.exam-paper-language-choice-options--single-row) .exam-paper-language-choice-option {
+  white-space: normal;
+}
+
+.exam-paper-language-spelling-table {
+  margin-top: 0.15rem;
+}
+
+.exam-paper-language-spelling-th,
+.exam-paper-language-spelling-td {
+  border: 1px solid #000;
+  vertical-align: middle;
+  padding: 0.2rem 0.35rem;
+  line-height: 1.2;
+  font-weight: inherit;
+}
+
+.exam-paper-language-spelling-th {
+  text-align: center;
+}
+
+.exam-paper-language-spelling-table thead .exam-paper-language-spelling-th:not(:first-child) {
+  font-weight: 600;
+}
+
+.exam-paper-language-spelling-index {
+  text-align: center;
+  width: 1.4rem;
+}
+
+.exam-paper-language-lines {
+  margin: 0.2rem 0 0;
+  padding-left: 1.25rem;
+  line-height: 1.35;
+}
+
+.exam-paper-language-line {
+  margin: 0.2rem 0;
+  line-height: 1.35;
 }
 
 /* Keep Name / Roll / Section on one row; underline blanks without wrapping underscores */

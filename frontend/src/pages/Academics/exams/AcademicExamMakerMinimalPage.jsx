@@ -114,6 +114,18 @@ import {
   normalizeExamTypeOption,
   QUESTION_TYPE,
 } from './examMakerExamTypes'
+import LanguageExamPaperBlock from './LanguageExamPaperBlock.jsx'
+import {
+  countExamItems,
+  defaultMarksForLanguageBlock,
+  isLanguageKindAllowedForExam,
+  isLanguageProfile,
+  kindsForProfile,
+  parseBody,
+  resolveLanguageBlockMarks,
+  structureLabel,
+  summarizeBody,
+} from '../questions/languageQuestionStructures'
 
 function instituteLogoToSrc(logo) {
   if (!logo || typeof logo !== 'string') return ''
@@ -490,6 +502,7 @@ function AcademicExamMakerMinimalPage() {
   const [suppressPaperPreload, setSuppressPaperPreload] = useState(false)
   const [isGeneratedPapersOpen, setIsGeneratedPapersOpen] = useState(false)
   const [generatedPapersSearch, setGeneratedPapersSearch] = useState('')
+  const [generatedPapersSubject, setGeneratedPapersSubject] = useState('')
   const [paperPendingDelete, setPaperPendingDelete] = useState(null)
   const [deletingPaperId, setDeletingPaperId] = useState(null)
   const [pendingDestructiveAction, setPendingDestructiveAction] = useState(null)
@@ -501,6 +514,7 @@ function AcademicExamMakerMinimalPage() {
   const [poolFilters, setPoolFilters] = useState({
     type: defaultCatalogFilterType(EXAM_TYPE.OBJECTIVE),
     category: 'all',
+    structureKind: 'all',
     search: '',
   })
   const [debouncedPoolSearch, setDebouncedPoolSearch] = useState('')
@@ -547,7 +561,15 @@ function AcademicExamMakerMinimalPage() {
   }, [form, selectedQuestions, sectionConfigs, baselineVersion])
 
   const classOptions = useMemo(() => classes.map((item) => ({ value: item.id, label: item.className })), [classes])
-  const subjectOptions = useMemo(() => subjects.map((item) => ({ value: item.id, label: item.subjectName })), [subjects])
+  const subjectOptions = useMemo(
+    () =>
+      subjects.map((item) => ({
+        value: item.id,
+        label: item.subjectName,
+        catalogProfile: item.catalogProfile || 'standard',
+      })),
+    [subjects],
+  )
   const examTitleOptions = useMemo(
     () => examTitles.map((item) => ({ value: item.id, label: item.title })),
     [examTitles],
@@ -560,6 +582,12 @@ function AcademicExamMakerMinimalPage() {
   const selectedSubject = useMemo(
     () => subjectOptions.find((option) => option.value === Number(form.subjectId)) || null,
     [subjectOptions, form.subjectId],
+  )
+  const activeCatalogProfile = selectedSubject?.catalogProfile || 'standard'
+  const isLanguageExamSubject = isLanguageProfile(activeCatalogProfile)
+  const languageKindFilterOptions = useMemo(
+    () => kindsForProfile(activeCatalogProfile),
+    [activeCatalogProfile],
   )
   const selectedExamTitle = useMemo(
     () => examTitleOptions.find((option) => option.value === Number(form.examTitleId)) || null,
@@ -597,51 +625,45 @@ function AcademicExamMakerMinimalPage() {
     })
   }, [generatedPapers, generatedPapersSearch])
 
-  const groupedGeneratedPapers = useMemo(() => {
-    const sortPapers = (list) =>
-      [...list].sort((a, b) => {
-        const aTime = a.createdOn ? new Date(a.createdOn).getTime() : 0
-        const bTime = b.createdOn ? new Date(b.createdOn).getTime() : 0
-        return bTime - aTime
-      })
+  const generatedPapersBySubject = useMemo(() => {
+    const bySubject = new Map()
+    filteredGeneratedPapers.forEach((paper) => {
+      const subjectKey = `${paper.subjectName || ''}`.trim() || 'Other'
+      if (!bySubject.has(subjectKey)) bySubject.set(subjectKey, [])
+      bySubject.get(subjectKey).push(paper)
+    })
 
-    const buildSubjectGroups = (examType) => {
-      const bySubject = new Map()
-      filteredGeneratedPapers
-        .filter((paper) => normalizeExamTypeOption(paper.examType) === examType)
-        .forEach((paper) => {
-          const subjectKey = `${paper.subjectName || ''}`.trim() || 'Other'
-          if (!bySubject.has(subjectKey)) bySubject.set(subjectKey, [])
-          bySubject.get(subjectKey).push(paper)
-        })
-
-      return [...bySubject.entries()]
-        .sort(([a], [b]) => a.localeCompare(b, undefined, { sensitivity: 'base' }))
-        .map(([subjectName, papers]) => ({
-          subjectName,
-          papers: sortPapers(papers),
-        }))
-    }
-
-    return [
-      {
-        examType: EXAM_TYPE.OBJECTIVE,
-        label: formatExamTypeDisplay(EXAM_TYPE.OBJECTIVE),
-        subjects: buildSubjectGroups(EXAM_TYPE.OBJECTIVE),
-      },
-      {
-        examType: EXAM_TYPE.SUBJECTIVE,
-        label: formatExamTypeDisplay(EXAM_TYPE.SUBJECTIVE),
-        subjects: buildSubjectGroups(EXAM_TYPE.SUBJECTIVE),
-      },
-    ]
+    return [...bySubject.entries()]
+      .sort(([a], [b]) => a.localeCompare(b, undefined, { sensitivity: 'base' }))
+      .map(([subjectName, papers]) => ({
+        subjectName,
+        papers: [...papers].sort((a, b) => {
+          const aTime = a.createdOn ? new Date(a.createdOn).getTime() : 0
+          const bTime = b.createdOn ? new Date(b.createdOn).getTime() : 0
+          return bTime - aTime
+        }),
+      }))
   }, [filteredGeneratedPapers])
+
+  const activeGeneratedSubject =
+    generatedPapersBySubject.find((group) => group.subjectName === generatedPapersSubject)?.subjectName ||
+    generatedPapersBySubject[0]?.subjectName ||
+    ''
+  const activeGeneratedSubjectPapers =
+    generatedPapersBySubject.find((group) => group.subjectName === activeGeneratedSubject)?.papers ?? []
 
   const closeGeneratedPapersModal = () => {
     if (deletingPaperId) return
     setGeneratedPapersSearch('')
     setPaperPendingDelete(null)
     setIsGeneratedPapersOpen(false)
+  }
+
+  const openGeneratedPapersModal = () => {
+    const preferred =
+      `${selectedPaper?.subjectName || ''}`.trim() || `${selectedSubject?.label || ''}`.trim()
+    if (preferred) setGeneratedPapersSubject(preferred)
+    setIsGeneratedPapersOpen(true)
   }
   const draftExamTitleLabel = useMemo(() => {
     if (selectedPaper?.examTitle) return selectedPaper.examTitle
@@ -687,7 +709,16 @@ function AcademicExamMakerMinimalPage() {
         id: item.questionId,
         order: Number(item.questionOrder),
         section: item.section || 'Q1',
-        marks: Number(item.marks),
+        marks:
+          isLanguageExamSubject &&
+          item.question?.structureKind &&
+          item.question.structureKind !== 'standard'
+            ? resolveLanguageBlockMarks(
+                item.question.structureKind,
+                item.question?.bodyJson,
+                item.marks,
+              )
+            : Number(item.marks),
         type: item.question?.type,
         category: item.question?.category,
         chapterId: item.question?.chapterId,
@@ -697,8 +728,10 @@ function AcademicExamMakerMinimalPage() {
         mcqOpt2: item.question?.mcqOpt2,
         mcqOpt3: item.question?.mcqOpt3,
         mcqOpt4: item.question?.mcqOpt4,
+        structureKind: item.question?.structureKind,
+        bodyJson: item.question?.bodyJson,
       })),
-    [selectedWithDetails],
+    [isLanguageExamSubject, selectedWithDetails],
   )
 
   const applyQuestionPrintTweaks = useCallback(
@@ -737,10 +770,22 @@ function AcademicExamMakerMinimalPage() {
     ])
   }, [displayQuestions])
 
-  const previewTotalMarks = useMemo(
-    () => computePreviewTotalMarks(selectedWithDetails, sectionConfigs),
-    [sectionConfigs, selectedWithDetails],
+  const resolveCatalogRowMarks = useCallback(
+    (item) => {
+      if (!isLanguageExamSubject) return Number(item.marks || 0)
+      const kind = item.question?.structureKind
+      if (!kind || kind === 'standard') return Number(item.marks || 0)
+      return resolveLanguageBlockMarks(kind, item.question?.bodyJson, item.marks)
+    },
+    [isLanguageExamSubject],
   )
+
+  const previewTotalMarks = useMemo(() => {
+    const rows = isLanguageExamSubject
+      ? selectedWithDetails.map((item) => ({ ...item, marks: resolveCatalogRowMarks(item) }))
+      : selectedWithDetails
+    return computePreviewTotalMarks(rows, sectionConfigs)
+  }, [isLanguageExamSubject, resolveCatalogRowMarks, sectionConfigs, selectedWithDetails])
 
   const sectionOptions = useMemo(() => {
     const fromConfigs = sectionConfigs.map((item) => `${item.sectionKey || ''}`.trim()).filter(Boolean)
@@ -853,6 +898,8 @@ function AcademicExamMakerMinimalPage() {
         mcqOpt2: question.mcqOpt2,
         mcqOpt3: question.mcqOpt3,
         mcqOpt4: question.mcqOpt4,
+        structureKind: question.structureKind,
+        bodyJson: question.bodyJson,
       },
     }))
 
@@ -895,7 +942,16 @@ function AcademicExamMakerMinimalPage() {
 
   const hydratePaperInEditor = (paper, { syncForm = false } = {}) => {
     setSelectedPaper(paper)
-    const selected = mapPaperToSelectedQuestions(paper)
+    const paperSubjectProfile =
+      subjectOptions.find((option) => option.value === Number(paper.subjectId))?.catalogProfile ||
+      'standard'
+    const selected = mapPaperToSelectedQuestions(paper).map((item) => {
+      if (!isLanguageProfile(paperSubjectProfile)) return item
+      const kind = item.question?.structureKind
+      if (!kind || kind === 'standard') return item
+      const marks = resolveLanguageBlockMarks(kind, item.question?.bodyJson, item.marks)
+      return { ...item, marks }
+    })
     let configs = mapPaperToSectionConfigs(paper)
     if (isSubjectiveExamType(paper.examType)) {
       configs = configs.map((section) => {
@@ -991,7 +1047,7 @@ function AcademicExamMakerMinimalPage() {
       if (!initialPapersModalShownRef.current) {
         initialPapersModalShownRef.current = true
         if (!searchParams.get('paperId')) {
-          setIsGeneratedPapersOpen(true)
+          openGeneratedPapersModal()
         }
       }
     } catch (requestError) {
@@ -1215,6 +1271,7 @@ function AcademicExamMakerMinimalPage() {
           search: debouncedPoolSearch,
           type: poolFilters.type,
           category: poolFilters.category,
+          structureKind: isLanguageExamSubject ? poolFilters.structureKind : 'all',
           take: 120,
         })
         setQuestionPool(data)
@@ -1234,6 +1291,8 @@ function AcademicExamMakerMinimalPage() {
     form.subjectId,
     poolFilters.category,
     poolFilters.type,
+    poolFilters.structureKind,
+    isLanguageExamSubject,
   ])
 
   useEffect(() => {
@@ -1245,10 +1304,14 @@ function AcademicExamMakerMinimalPage() {
     })
     setSelectedQuestions((previous) =>
       resequenceQuestionOrders(
-        previous.filter((item) => isQuestionTypeAllowedForExam(examType, item.question?.type)),
+        previous.filter((item) =>
+          isLanguageExamSubject
+            ? isLanguageKindAllowedForExam(examType, item.question?.structureKind)
+            : isQuestionTypeAllowedForExam(examType, item.question?.type),
+        ),
       ),
     )
-  }, [form.examType])
+  }, [form.examType, isLanguageExamSubject])
 
   useEffect(() => {
     if (selectedQuestions.length === 0) return
@@ -1665,7 +1728,17 @@ function AcademicExamMakerMinimalPage() {
   }
 
   const addQuestionFromCatalog = (question) => {
-    if (!isQuestionTypeAllowedForExam(form.examType, question.type)) {
+    const structureKind = question.structureKind || 'standard'
+    if (isLanguageExamSubject) {
+      if (!isLanguageKindAllowedForExam(form.examType, structureKind)) {
+        setError(
+          isObjectiveExamType(form.examType)
+            ? 'Objective papers can include choice and spelling blocks only.'
+            : 'Subjective papers cannot include objective language blocks.',
+        )
+        return
+      }
+    } else if (!isQuestionTypeAllowedForExam(form.examType, question.type)) {
       setError(
         isObjectiveExamType(form.examType)
           ? 'Objective papers can include MCQ questions only.'
@@ -1686,7 +1759,9 @@ function AcademicExamMakerMinimalPage() {
           questionId: question.id,
           questionOrder: previous.length + 1,
           section: sectionKey,
-          marks: Math.min(defaultMarksForQuestionType(question.type), 100),
+          marks: isLanguageExamSubject
+            ? defaultMarksForLanguageBlock(question.structureKind, question.bodyJson)
+            : Math.min(defaultMarksForQuestionType(question.type), 100),
           question: {
             id: question.id,
             type: question.type,
@@ -1698,6 +1773,8 @@ function AcademicExamMakerMinimalPage() {
             mcqOpt2: question.mcqOpt2,
             mcqOpt3: question.mcqOpt3,
             mcqOpt4: question.mcqOpt4,
+            structureKind: question.structureKind,
+            bodyJson: question.bodyJson,
           },
         },
       ]
@@ -1745,16 +1822,30 @@ function AcademicExamMakerMinimalPage() {
       return false
     }
 
-    const disallowedType = selectedQuestions.find(
-      (item) => !isQuestionTypeAllowedForExam(form.examType, item.question?.type),
-    )
-    if (disallowedType) {
-      setError(
-        isObjectiveExamType(form.examType)
-          ? 'Remove SAQ/LAQ questions — this paper is objective (MCQ only).'
-          : 'Remove MCQ questions — this paper is subjective (SAQ/LAQ only).',
+    if (!isLanguageExamSubject) {
+      const disallowedType = selectedQuestions.find(
+        (item) => !isQuestionTypeAllowedForExam(form.examType, item.question?.type),
       )
-      return false
+      if (disallowedType) {
+        setError(
+          isObjectiveExamType(form.examType)
+            ? 'Remove SAQ/LAQ questions — this paper is objective (MCQ only).'
+            : 'Remove MCQ questions — this paper is subjective (SAQ/LAQ only).',
+        )
+        return false
+      }
+    } else {
+      const disallowedKind = selectedQuestions.find(
+        (item) => !isLanguageKindAllowedForExam(form.examType, item.question?.structureKind),
+      )
+      if (disallowedKind) {
+        setError(
+          isObjectiveExamType(form.examType)
+            ? 'Remove subjective blocks — this paper is objective.'
+            : 'Remove objective blocks — this paper is subjective.',
+        )
+        return false
+      }
     }
 
     const marksInvalid = selectedQuestions.some((item) => {
@@ -1806,7 +1897,7 @@ function AcademicExamMakerMinimalPage() {
           questionId: item.questionId,
           questionOrder: Number(item.questionOrder),
           section: item.section,
-          marks: Number(item.marks),
+          marks: resolveCatalogRowMarks(item),
         })),
         printAdjustments: printAdjustmentsToApi(
           printTweaks,
@@ -2515,6 +2606,48 @@ function AcademicExamMakerMinimalPage() {
             </p>
           ) : null}
           {groupedPreviewQuestions.map(([section, questions]) => {
+            if (isLanguageExamSubject) {
+              let runningNumber = 1
+              const config = sectionConfigMap.get(section)
+              const rtl = activeCatalogProfile === 'urdu'
+              return (
+                <section
+                  key={`lang-${section}`}
+                  className="exam-paper-section exam-paper-language-section"
+                >
+                  {previewShowSectionNames ? (
+                    <p className="exam-paper-section-ref-label">
+                      {resolveSectionBannerLabel(section, config?.sectionName)}
+                    </p>
+                  ) : null}
+                  {questions.map((question, blockIndex) => {
+                    const kind =
+                      question.structureKind && question.structureKind !== 'standard'
+                        ? question.structureKind
+                        : 'choice-set'
+                    const startNumber = isObjectiveExamType(previewExamType) ? runningNumber : 1
+                    const block = (
+                      <LanguageExamPaperBlock
+                        key={`${section}-${question.id}-${question.order}`}
+                        kind={kind}
+                        bodyJson={question.bodyJson}
+                        descriptionText={question.descriptionText}
+                        marks={question.marks}
+                        partIndex={blockIndex}
+                        startNumber={startNumber}
+                        rtl={rtl}
+                        wrapMarksInParentheses={Boolean(form.wrapQuestionMarksInParentheses)}
+                      />
+                    )
+                    if (isObjectiveExamType(previewExamType)) {
+                      runningNumber += countExamItems(kind, parseBody(question.bodyJson))
+                    }
+                    return block
+                  })}
+                </section>
+              )
+            }
+
             const config = sectionConfigMap.get(section)
             const sectionMode = inferSectionDisplayMode(questions)
             const optionalActive =
@@ -3021,7 +3154,7 @@ function AcademicExamMakerMinimalPage() {
               </button>
               <button
                 type="button"
-                onClick={() => setIsGeneratedPapersOpen(true)}
+                onClick={openGeneratedPapersModal}
                 className="rounded border border-amber-500 bg-white px-2 py-1.5 text-xs font-semibold text-amber-600 hover:bg-amber-50"
               >
                 <FolderOpen size={14} className="mr-1 inline" />
@@ -3051,7 +3184,8 @@ function AcademicExamMakerMinimalPage() {
               <button
                 type="button"
                 onClick={openAutoMakerModal}
-                disabled={!hasActiveExamWorkspace}
+                disabled={!hasActiveExamWorkspace || isLanguageExamSubject}
+                title={isLanguageExamSubject ? 'Auto maker is for standard subjects only' : undefined}
                 className="rounded border border-orange-500 bg-white px-2 py-1.5 text-xs font-semibold text-orange-600 hover:bg-orange-50 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Sparkles size={14} className="mr-1 inline" />
@@ -3161,7 +3295,12 @@ function AcademicExamMakerMinimalPage() {
               </div>
             ) : (
               <div className="space-y-2">
-                {selectedWithDetails.map((item) => (
+                {selectedWithDetails.map((item) => {
+                  const resolvedRowMarks = resolveCatalogRowMarks(item)
+                  const languageMarksFromItems =
+                    isLanguageExamSubject &&
+                    ['choice-set', 'spelling-table'].includes(item.question?.structureKind)
+                  return (
                   <div
                     key={item.questionId}
                     className="flex flex-wrap items-end gap-2 rounded border border-slate-200 bg-slate-50/80 p-2"
@@ -3197,7 +3336,13 @@ function AcademicExamMakerMinimalPage() {
                       <input
                         {...INTEGER_INPUT_ATTRS}
                         required
-                        value={item.marks}
+                        value={languageMarksFromItems ? resolvedRowMarks : item.marks}
+                        readOnly={languageMarksFromItems}
+                        title={
+                          languageMarksFromItems
+                            ? 'One mark per sub-question in this block'
+                            : undefined
+                        }
                         onChange={(e) =>
                           updateSelectedQuestion(
                             item.questionId,
@@ -3205,7 +3350,7 @@ function AcademicExamMakerMinimalPage() {
                             Math.max(1, Math.min(100, Number(readIntegerInput(e)) || 1)),
                           )
                         }
-                        className="w-16 rounded border border-slate-200 px-1 py-0.5 text-xs"
+                        className="w-16 rounded border border-slate-200 px-1 py-0.5 text-xs disabled:bg-slate-100"
                       />
                     </label>
                     <button
@@ -3224,7 +3369,8 @@ function AcademicExamMakerMinimalPage() {
                       />
                     </div>
                   </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </div>
@@ -3503,6 +3649,19 @@ function AcademicExamMakerMinimalPage() {
                 <option value="text">Text</option>
                 <option value="board">Board</option>
               </select>
+              {isLanguageExamSubject ? (
+                <select
+                  value={poolFilters.structureKind}
+                  onChange={(e) => setPoolFilters((p) => ({ ...p, structureKind: e.target.value }))}
+                  className="min-w-[9rem] rounded border border-slate-200 px-2 py-2 text-xs"
+                  aria-label="Block type filter"
+                >
+                  <option value="all">All block types</option>
+                  {languageKindFilterOptions.map((kind) => (
+                    <option key={kind} value={kind}>{structureLabel(kind)}</option>
+                  ))}
+                </select>
+              ) : null}
               {catalogTypesForCurrentExam.length > 1 ? (
                 <div className="flex items-center gap-2 py-2 text-xs">
                   {CATALOG_TYPE_OPTIONS.filter((type) => catalogTypesForCurrentExam.includes(type.value)).map(
@@ -3565,9 +3724,9 @@ function AcademicExamMakerMinimalPage() {
               <table className="exam-maker-catalog-table w-full text-xs">
                 <thead className="sticky top-0 z-[1] bg-slate-100">
                   <tr>
-                    <th className="border px-2 py-1 text-left">Type</th>
+                    <th className="border px-2 py-1 text-left">{isLanguageExamSubject ? 'Block' : 'Type'}</th>
                     <th className="border px-2 py-1 text-left">Cat</th>
-                    <th className="border px-2 py-1 text-left">Question</th>
+                    <th className="border px-2 py-1 text-left">{isLanguageExamSubject ? 'Heading' : 'Question'}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -3585,10 +3744,19 @@ function AcademicExamMakerMinimalPage() {
                       }}
                       className={`cursor-pointer align-top hover:bg-indigo-50/60 ${selectedQuestionIds.has(q.id) ? 'bg-emerald-50/80' : ''}`}
                     >
-                      <td className="border border-slate-200 px-2 py-1 uppercase">{q.type}</td>
+                      <td className="border border-slate-200 px-2 py-1">
+                        {isLanguageExamSubject
+                          ? structureLabel(q.structureKind)
+                          : `${q.type}`.toUpperCase()}
+                      </td>
                       <td className="border border-slate-200 px-2 py-1 uppercase">{q.category}</td>
                       <td className="border border-slate-200 px-2 py-1 leading-snug">
                         <ExamPaperMathText value={q.descriptionText} />
+                        {isLanguageExamSubject ? (
+                          <span className="mt-0.5 block text-[10px] text-slate-500">
+                            {summarizeBody(q.structureKind, parseBody(q.bodyJson))}
+                          </span>
+                        ) : null}
                         <QuestionStemImage
                           src={q.stemImage}
                           className="mt-1 max-h-24 rounded border border-slate-200 bg-white p-0.5"
@@ -3946,85 +4114,103 @@ function AcademicExamMakerMinimalPage() {
             ) : filteredGeneratedPapers.length === 0 ? (
               <p className="text-sm text-slate-500">No papers match your search.</p>
             ) : (
-              <div className="grid h-full min-h-[min(60vh,520px)] grid-cols-1 gap-4 md:grid-cols-2">
-                {groupedGeneratedPapers.map((examSection) => {
-                  const paperCount = examSection.subjects.reduce((sum, g) => sum + g.papers.length, 0)
-                  const isObjectiveColumn = examSection.examType === EXAM_TYPE.OBJECTIVE
-                  return (
-                    <section
-                      key={examSection.examType}
-                      className="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white"
-                    >
-                      <h4
-                        className={`shrink-0 rounded-t-lg border-b px-3 py-2.5 text-xs font-bold uppercase tracking-wide ${
-                          isObjectiveColumn
-                            ? 'border-sky-200/80 bg-sky-50 text-sky-900'
-                            : 'border-violet-200/80 bg-violet-50 text-violet-900'
-                        }`}
-                      >
-                        {examSection.label}
-                        <span
-                          className={`ml-2 font-normal normal-case ${
-                            isObjectiveColumn ? 'text-sky-700/80' : 'text-violet-700/80'
-                          }`}
-                        >
-                          ({paperCount})
-                        </span>
-                      </h4>
-                      <div className="min-h-0 flex-1 overflow-y-auto p-3">
-                        {examSection.subjects.length === 0 ? (
-                          <p className="py-6 text-center text-xs text-slate-500">
-                            No {examSection.label.toLowerCase()} papers
-                          </p>
-                        ) : (
-                          <div className="space-y-4">
-                            {examSection.subjects.map((subjectGroup) => (
-                              <div key={`${examSection.examType}-${subjectGroup.subjectName}`}>
-                                <p className="mb-2 text-sm font-semibold text-slate-800">{subjectGroup.subjectName}</p>
-                                <div className="space-y-2">
-                                  {subjectGroup.papers.map((paper) => (
-                                    <div
-                                      key={paper.id}
-                                      className={`flex items-stretch gap-1 rounded border bg-white ${
-                                        selectedPaper?.id === paper.id ? 'border-indigo-400 bg-indigo-50' : 'border-slate-200'
-                                      }`}
-                                    >
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          requestOpenPaper(paper.id)
-                                          if (!isWorkspaceDirty) closeGeneratedPapersModal()
-                                        }}
-                                        className="min-w-0 flex-1 rounded-l px-3 py-2 text-left text-sm hover:bg-slate-50/80"
-                                      >
-                                        <p className="font-medium leading-snug">
-                                          {formatPaperNameForDisplay(paper.paperName)}
-                                        </p>
-                                        <p className="mt-0.5 text-xs text-slate-500">
-                                          {paper.className} · {paper.examTitle || '—'} · {paper.totalMarks ?? 0} marks
-                                        </p>
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={(e) => onRequestDeletePaper(paper, e)}
-                                        disabled={Boolean(deletingPaperId) || Boolean(paperPendingDelete)}
-                                        className="shrink-0 rounded-r border-l border-slate-200 px-2.5 text-rose-600 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
-                                        aria-label={`Delete ${formatPaperNameForDisplay(paper.paperName)}`}
-                                        title="Delete permanently"
-                                      >
-                                        <Trash2 size={16} />
-                                      </button>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
+              <div className="grid h-full min-h-[min(60vh,520px)] grid-cols-1 gap-4 md:grid-cols-[220px_minmax(0,1fr)]">
+                <section className="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white">
+                  <h4 className="shrink-0 border-b border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-bold uppercase tracking-wide text-slate-700">
+                    Subjects
+                    <span className="ml-2 font-normal normal-case text-slate-500">
+                      ({generatedPapersBySubject.length})
+                    </span>
+                  </h4>
+                  <div className="min-h-0 flex-1 overflow-y-auto p-2">
+                    <div className="space-y-1">
+                      {generatedPapersBySubject.map((group) => {
+                        const isActive = group.subjectName === activeGeneratedSubject
+                        return (
+                          <button
+                            key={group.subjectName}
+                            type="button"
+                            onClick={() => setGeneratedPapersSubject(group.subjectName)}
+                            className={`flex w-full items-center justify-between gap-2 rounded-md px-2.5 py-2 text-left text-sm ${
+                              isActive
+                                ? 'bg-indigo-50 font-semibold text-indigo-900'
+                                : 'text-slate-800 hover:bg-slate-50'
+                            }`}
+                          >
+                            <span className="min-w-0 truncate">{group.subjectName}</span>
+                            <span
+                              className={`shrink-0 rounded px-1.5 text-xs tabular-nums ${
+                                isActive ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-500'
+                              }`}
+                            >
+                              {group.papers.length}
+                            </span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </section>
+                <section className="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white">
+                  <h4 className="shrink-0 border-b border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-bold uppercase tracking-wide text-slate-700">
+                    {activeGeneratedSubject || 'Exams'}
+                    <span className="ml-2 font-normal normal-case text-slate-500">
+                      ({activeGeneratedSubjectPapers.length})
+                    </span>
+                  </h4>
+                  <div className="min-h-0 flex-1 overflow-y-auto p-3">
+                    {activeGeneratedSubjectPapers.length === 0 ? (
+                      <p className="py-6 text-center text-xs text-slate-500">No exams for this subject</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {activeGeneratedSubjectPapers.map((paper) => {
+                          const isObjective = normalizeExamTypeOption(paper.examType) === EXAM_TYPE.OBJECTIVE
+                          return (
+                            <div
+                              key={paper.id}
+                              className={`flex items-stretch gap-1 rounded border bg-white ${
+                                selectedPaper?.id === paper.id ? 'border-indigo-400 bg-indigo-50' : 'border-slate-200'
+                              }`}
+                            >
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  requestOpenPaper(paper.id)
+                                  if (!isWorkspaceDirty) closeGeneratedPapersModal()
+                                }}
+                                className="min-w-0 flex-1 rounded-l px-3 py-2 text-left text-sm hover:bg-slate-50/80"
+                              >
+                                <p className="flex items-center gap-2 font-medium leading-snug">
+                                  <span className="min-w-0 truncate">{formatPaperNameForDisplay(paper.paperName)}</span>
+                                  <span
+                                    className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                                      isObjective ? 'bg-sky-100 text-sky-800' : 'bg-violet-100 text-violet-800'
+                                    }`}
+                                  >
+                                    {formatExamTypeShort(paper.examType)}
+                                  </span>
+                                </p>
+                                <p className="mt-0.5 text-xs text-slate-500">
+                                  {paper.className} · {paper.examTitle || '—'} · {paper.totalMarks ?? 0} marks
+                                </p>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => onRequestDeletePaper(paper, e)}
+                                disabled={Boolean(deletingPaperId) || Boolean(paperPendingDelete)}
+                                className="shrink-0 rounded-r border-l border-slate-200 px-2.5 text-rose-600 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                aria-label={`Delete ${formatPaperNameForDisplay(paper.paperName)}`}
+                                title="Delete permanently"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          )
+                        })}
                       </div>
-                    </section>
-                  )
-                })}
+                    )}
+                  </div>
+                </section>
               </div>
             )}
           </div>
