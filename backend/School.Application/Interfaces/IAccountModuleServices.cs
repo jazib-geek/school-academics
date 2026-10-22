@@ -16,6 +16,8 @@ public interface ISystemAccountResolver
     Task<AccountLookupDto?> GetOwnerDrawingsAsync(CancellationToken cancellationToken = default);
 
     Task<string?> GetSecurityDepositRefundsAccountIdAsync(CancellationToken cancellationToken = default);
+
+    Task<string?> GetFranchiseRoyaltyAccountIdAsync(CancellationToken cancellationToken = default);
 }
 
 public interface IAccountChartService
@@ -61,6 +63,13 @@ public interface IAccountVoucherService
         SaveVoucherRequestDto request,
         string? entryUser,
         CancellationToken cancellationToken = default);
+
+    Task UpdateVoucherLineAsync(
+        int detailId,
+        UpdateVoucherLineRequestDto request,
+        CancellationToken cancellationToken = default);
+
+    Task DeleteVoucherLineAsync(int detailId, CancellationToken cancellationToken = default);
 }
 
 public interface IAccountLedgerService

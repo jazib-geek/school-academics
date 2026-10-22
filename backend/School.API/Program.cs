@@ -159,6 +159,7 @@ builder.Services.AddScoped<IAccountLedgerService, AccountLedgerService>();
 builder.Services.AddScoped<IAccountCashBookService, AccountCashBookService>();
 builder.Services.AddScoped<IAccountSummaryService, AccountSummaryService>();
 builder.Services.AddScoped<IDayClosingService, DayClosingService>();
+builder.Services.AddScoped<IRoyaltyShareService, RoyaltyShareService>();
 builder.Services.AddScoped<IExamService, ExamService>();
 builder.Services.AddScoped<ISmartExamReportService, SmartExamReportService>();
 

@@ -13,6 +13,7 @@ public static class AbsentFollowupReasonCatalog
     public const int OutOfCityId = 4;
     public const int FamilyFunctionId = 5;
     public const int WeatherRoadConditionId = 6;
+    public const int CallNotAnsweredId = 8;
     public const int OtherId = 7;
 
     public static IReadOnlyList<AbsentFollowupReason> Reasons { get; } =
@@ -23,6 +24,7 @@ public static class AbsentFollowupReasonCatalog
         Reason(OutOfCityId, "Out of city", 40),
         Reason(FamilyFunctionId, "Family function", 50),
         Reason(WeatherRoadConditionId, "Weather / road condition", 60),
+        Reason(CallNotAnsweredId, "Call not answered", 65),
         Reason(OtherId, "Other", 70),
     ];
 

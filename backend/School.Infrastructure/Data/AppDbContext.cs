@@ -172,6 +172,7 @@ public class AppDbContext : DbContext
     public DbSet<StationeryHandoverLine> StationeryHandoverLines => Set<StationeryHandoverLine>();
 
     public DbSet<DayClosing> DayClosings => Set<DayClosing>();
+    public DbSet<FranchiseRoyaltyClosing> FranchiseRoyaltyClosings => Set<FranchiseRoyaltyClosing>();
     public DbSet<Transaction> Transactions => Set<Transaction>();
     public DbSet<TransactionDetail> TransactionDetails => Set<TransactionDetail>();
     public DbSet<TransactionMaster> TransactionMasters => Set<TransactionMaster>();
@@ -827,6 +828,8 @@ public class AppDbContext : DbContext
             entity.Property(e => e.TeacherCheckInTime).HasColumnType("time");
             entity.Property(e => e.TeacherCheckOutTime).HasColumnType("time");
             entity.Property(e => e.FridayCheckOutTime).HasColumnType("time");
+            entity.Property(e => e.IsFranchise).HasDefaultValue(false);
+            entity.Property(e => e.RoyaltySharePercent).HasColumnType("decimal(5, 2)");
         });
         modelBuilder.Entity<FeeReceiptSequence>(entity =>
         {
@@ -1133,6 +1136,7 @@ public class AppDbContext : DbContext
 
         modelBuilder.ApplyConfiguration(new PermissionConfiguration());
         modelBuilder.ApplyConfiguration(new DayClosingConfiguration());
+        modelBuilder.ApplyConfiguration(new FranchiseRoyaltyClosingConfiguration());
         modelBuilder.ApplyConfiguration(new CoordinatorDailyReportConfiguration());
         CoordinatorProformaConfiguration.Configure(modelBuilder);
         modelBuilder.ApplyConfiguration(new CoordinatorModDutyConfiguration());

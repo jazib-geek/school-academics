@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using School.API.Services;
 using School.Application.Common;
 using School.Application.DTOs;
 using School.Application.Interfaces;
@@ -236,6 +237,53 @@ public class AccountsController : ControllerBase
         }
     }
 
+    [HttpPost("voucher-lines/{id:int}/update")]
+    public async Task<IActionResult> UpdateVoucherLine(
+        int id,
+        [FromBody] UpdateVoucherLineRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        var denied = await DenyUnlessPermissionAsync("edit_voucher", cancellationToken);
+        if (denied is not null)
+            return denied;
+
+        try
+        {
+            await _voucherService.UpdateVoucherLineAsync(id, request, cancellationToken);
+            return Ok(ApiResponse<object>.SuccessResponse(new { }, "Entry updated."));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiResponse<object>.FailureResponse(ex.Message));
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+        {
+            return BadRequest(ApiResponse<object>.FailureResponse(ex.Message));
+        }
+    }
+
+    [HttpPost("voucher-lines/{id:int}/delete")]
+    public async Task<IActionResult> DeleteVoucherLine(int id, CancellationToken cancellationToken)
+    {
+        var denied = await DenyUnlessPermissionAsync("delete_voucher", cancellationToken);
+        if (denied is not null)
+            return denied;
+
+        try
+        {
+            await _voucherService.DeleteVoucherLineAsync(id, cancellationToken);
+            return Ok(ApiResponse<object>.SuccessResponse(new { }, "Entry removed."));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiResponse<object>.FailureResponse(ex.Message));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<object>.FailureResponse(ex.Message));
+        }
+    }
+
     [HttpGet("ledger")]
     public async Task<IActionResult> GetLedger(
         [FromQuery] string accountId,
@@ -335,5 +383,18 @@ public class AccountsController : ControllerBase
             .Where(x => x.ID == userId)
             .Select(x => x.Username)
             .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    private async Task<IActionResult?> DenyUnlessPermissionAsync(
+        string permissionCode,
+        CancellationToken cancellationToken)
+    {
+        if (!CampusUserAccess.TryGetCampusUserId(User, out var userId))
+            return Unauthorized();
+
+        if (!await CampusUserAccess.HasPermissionAsync(_context, userId, permissionCode, cancellationToken))
+            return Forbid();
+
+        return null;
     }
 }

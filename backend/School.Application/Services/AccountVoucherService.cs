@@ -9,6 +9,8 @@ namespace School.Application.Services;
 
 public class AccountVoucherService : IAccountVoucherService
 {
+    private static readonly HashSet<string> CashVoucherTypes = new(StringComparer.OrdinalIgnoreCase) { "CPV", "CRV" };
+
     private readonly AppDbContext _context;
     private readonly ISystemAccountResolver _systemAccounts;
 
@@ -123,6 +125,114 @@ public class AccountVoucherService : IAccountVoucherService
             VoucherType = voucherType,
             TotalAmount = totalAmount
         };
+    }
+
+    public async Task UpdateVoucherLineAsync(
+        int detailId,
+        UpdateVoucherLineRequestDto request,
+        CancellationToken cancellationToken = default)
+    {
+        var detail = await _context.TransactionDetails
+            .FirstOrDefaultAsync(x => x.ID == detailId, cancellationToken)
+            ?? throw new KeyNotFoundException("Entry not found.");
+
+        await EnsureEditableCashLineAsync(detail, cancellationToken);
+
+        if (request.Amount <= 0)
+            throw new ArgumentException("Amount must be greater than zero.");
+
+        var date = request.Date.Date;
+        var isPayment = string.Equals(detail.VoucherType, "CPV", StringComparison.OrdinalIgnoreCase);
+
+        detail.Date = date;
+        detail.Month = date.Month;
+        detail.Year = date.Year;
+        detail.Narration = string.IsNullOrWhiteSpace(request.Narration) ? null : request.Narration.Trim();
+        detail.Debit = isPayment ? request.Amount : 0;
+        detail.Credit = isPayment ? 0 : request.Amount;
+
+        await RecalculateMasterAsync(detail.VoucherNumber, detail.VoucherType, cancellationToken);
+        await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task DeleteVoucherLineAsync(int detailId, CancellationToken cancellationToken = default)
+    {
+        var detail = await _context.TransactionDetails
+            .FirstOrDefaultAsync(x => x.ID == detailId, cancellationToken)
+            ?? throw new KeyNotFoundException("Entry not found.");
+
+        await EnsureEditableCashLineAsync(detail, cancellationToken);
+
+        var voucherNo = detail.VoucherNumber;
+        var voucherType = detail.VoucherType;
+
+        _context.TransactionDetails.Remove(detail);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        var remaining = await _context.TransactionDetails
+            .CountAsync(x => x.VoucherNumber == voucherNo, cancellationToken);
+
+        if (remaining == 0)
+        {
+            var master = await _context.TransactionMasters
+                .FirstOrDefaultAsync(x => x.VoucherNo == voucherNo, cancellationToken);
+            if (master is not null)
+                _context.TransactionMasters.Remove(master);
+        }
+        else
+        {
+            await RecalculateMasterAsync(voucherNo, voucherType, cancellationToken);
+        }
+
+        await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task EnsureEditableCashLineAsync(
+        TransactionDetail detail,
+        CancellationToken cancellationToken)
+    {
+        await _systemAccounts.EnsureSystemAccountsAsync(cancellationToken);
+
+        if (!CashVoucherTypes.Contains(detail.VoucherType ?? string.Empty))
+            throw new InvalidOperationException("This entry cannot be changed here.");
+
+        var cashAccountId = await _systemAccounts.GetCashInHandAccountIdAsync(cancellationToken);
+        if (cashAccountId is not null
+            && string.Equals(detail.AccountID, cashAccountId, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("This entry cannot be changed here.");
+        }
+    }
+
+    private async Task RecalculateMasterAsync(
+        string? voucherNo,
+        string? voucherType,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(voucherNo))
+            return;
+
+        var master = await _context.TransactionMasters
+            .FirstOrDefaultAsync(x => x.VoucherNo == voucherNo, cancellationToken);
+        if (master is null)
+            return;
+
+        var details = await _context.TransactionDetails
+            .Where(x => x.VoucherNumber == voucherNo)
+            .ToListAsync(cancellationToken);
+        if (details.Count == 0)
+            return;
+
+        var isPayment = string.Equals(voucherType, "CPV", StringComparison.OrdinalIgnoreCase);
+        master.TotalAmount = isPayment
+            ? details.Sum(x => x.Debit ?? 0)
+            : details.Sum(x => x.Credit ?? 0);
+        var fallback = master.TransactionDate?.Date ?? PakistanTime.Today.ToDateTime(TimeOnly.MinValue);
+        master.TransactionDate = details
+            .Where(x => x.Date.HasValue)
+            .Select(x => x.Date!.Value.Date)
+            .DefaultIfEmpty(fallback)
+            .Max();
     }
 
     private async Task<string> GenerateVoucherCodeAsync(

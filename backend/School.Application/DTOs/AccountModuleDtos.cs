@@ -161,11 +161,24 @@ public class CashBookLineDto
 {
     public int Id { get; set; }
     public string? VoucherNo { get; set; }
+    public string? VoucherType { get; set; }
+    public DateTime Date { get; set; }
     public string AccountId { get; set; } = string.Empty;
     public string AccountTitle { get; set; } = string.Empty;
     public string? Narration { get; set; }
     public decimal Received { get; set; }
     public decimal Payment { get; set; }
+    public bool CanEdit { get; set; }
+}
+
+public class UpdateVoucherLineRequestDto
+{
+    public DateTime Date { get; set; }
+
+    [Range(0.01, double.MaxValue)]
+    public decimal Amount { get; set; }
+
+    public string? Narration { get; set; }
 }
 
 public class CashBookDayDto

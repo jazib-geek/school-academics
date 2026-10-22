@@ -106,6 +106,14 @@ namespace School.Infrastructure.Data.Migrations
                         },
                         new
                         {
+                            Id = 8,
+                            IsActive = true,
+                            IsSystem = true,
+                            Name = "Call not answered",
+                            SortOrder = 65
+                        },
+                        new
+                        {
                             Id = 7,
                             IsActive = true,
                             IsSystem = true,
@@ -678,6 +686,11 @@ namespace School.Infrastructure.Data.Migrations
                     b.Property<TimeSpan>("FridayCheckOutTime")
                         .HasColumnType("time");
 
+                    b.Property<bool>("IsFranchise")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
                     b.Property<string>("Landline")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
@@ -693,6 +706,9 @@ namespace School.Infrastructure.Data.Migrations
                     b.Property<string>("ReceiptFooterNote")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
+
+                    b.Property<decimal?>("RoyaltySharePercent")
+                        .HasColumnType("decimal(5, 2)");
 
                     b.Property<string>("SchoolLogo")
                         .HasColumnType("varchar(max)");
@@ -3965,6 +3981,59 @@ namespace School.Infrastructure.Data.Migrations
                     b.ToTable("tblFileDownloads", "dbo");
                 });
 
+            modelBuilder.Entity("School.Infrastructure.Entities.FranchiseRoyaltyClosing", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CalendarMonth")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CalendarYear")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("ClosedAtPkt")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<int?>("ClosedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ClosedByUserName")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreatedAtPkt")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("EntryUser")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<decimal>("RoyaltyAmount")
+                        .HasColumnType("decimal(18, 2)");
+
+                    b.Property<decimal>("RoyaltySharePercent")
+                        .HasColumnType("decimal(5, 2)");
+
+                    b.Property<decimal>("TotalFeeCollected")
+                        .HasColumnType("decimal(18, 2)");
+
+                    b.Property<string>("VoucherNo")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CalendarYear", "CalendarMonth")
+                        .IsUnique()
+                        .HasDatabaseName("UQ_FranchiseRoyaltyClosing_YearMonth");
+
+                    b.ToTable("tblFranchiseRoyaltyClosing", "dbo");
+                });
+
             modelBuilder.Entity("School.Infrastructure.Entities.FundCharge", b =>
                 {
                     b.Property<int>("ID")
@@ -5590,6 +5659,24 @@ namespace School.Infrastructure.Data.Migrations
                             ModuleHead = "General",
                             Name = "Assign Reminders / Tasks to Other Users",
                             SortOrder = 1470
+                        },
+                        new
+                        {
+                            Id = 148,
+                            Code = "edit_voucher",
+                            IsActive = true,
+                            ModuleHead = "Accounts",
+                            Name = "Edit Voucher",
+                            SortOrder = 1480
+                        },
+                        new
+                        {
+                            Id = 149,
+                            Code = "delete_voucher",
+                            IsActive = true,
+                            ModuleHead = "Accounts",
+                            Name = "Delete Voucher",
+                            SortOrder = 1490
                         });
                 });
 

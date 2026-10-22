@@ -23,6 +23,7 @@ public class SystemAccountResolver : ISystemAccountResolver
             SystemAccountTitles.SecurityDepositRefunds,
             SystemAccountPlacement.Expense,
             cancellationToken);
+        await EnsureFranchiseRoyaltyAccountAsync(cancellationToken);
         await SyncReservedSystemFlagsAsync(cancellationToken);
     }
 
@@ -42,6 +43,18 @@ public class SystemAccountResolver : ISystemAccountResolver
     {
         var account = await FindByTitleAsync(SystemAccountTitles.SecurityDepositRefunds, cancellationToken);
         return account?.AccountID;
+    }
+
+    public async Task<string?> GetFranchiseRoyaltyAccountIdAsync(CancellationToken cancellationToken = default)
+    {
+        var account = await FindRoyaltyShareAccountAsync(cancellationToken);
+        return account?.AccountID;
+    }
+
+    private async Task<Account?> FindRoyaltyShareAccountAsync(CancellationToken cancellationToken)
+    {
+        return await FindByTitleAsync(SystemAccountTitles.FranchiseRoyalty, cancellationToken)
+            ?? await FindByTitleAsync(SystemAccountTitles.LegacyFranchiseRoyalty, cancellationToken);
     }
 
     public async Task<AccountLookupDto?> GetCashInHandAsync(CancellationToken cancellationToken = default)
@@ -150,6 +163,89 @@ public class SystemAccountResolver : ISystemAccountResolver
             .Where(x => x.SubGroupID != null)
             .OrderBy(x => x.SubGroupID)
             .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    private async Task EnsureFranchiseRoyaltyAccountAsync(CancellationToken cancellationToken)
+    {
+        if (await FindRoyaltyShareAccountAsync(cancellationToken) is not null)
+            return;
+
+        var subGroup = await EnsureFranchiseRoyaltySubGroupAsync(cancellationToken);
+        if (subGroup?.SubGroupID is null)
+            throw new InvalidOperationException(
+                $"Cannot create system account '{SystemAccountTitles.FranchiseRoyalty}' because no expense group exists.");
+
+        var siblings = await _context.Accounts
+            .Where(x => x.SubGroupID == subGroup.SubGroupID)
+            .ToListAsync(cancellationToken);
+
+        var postFix = siblings.Count + 1;
+        var accountId = postFix > 9
+            ? $"{subGroup.SubGroupID}-00{postFix}"
+            : $"{subGroup.SubGroupID}-000{postFix}";
+
+        _context.Accounts.Add(new Account
+        {
+            MasterID = subGroup.MasterID,
+            GroupID = subGroup.GroupID,
+            SubGroupID = subGroup.SubGroupID,
+            AccountID = accountId,
+            AccountTitle = SystemAccountTitles.FranchiseRoyalty,
+            EntryUser = "System",
+            CreationDate = PakistanTime.Today.ToDateTime(TimeOnly.MinValue),
+            OpeningBalance = 0,
+            IsSystem = true
+        });
+
+        await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task<AccountSubGroup?> EnsureFranchiseRoyaltySubGroupAsync(CancellationToken cancellationToken)
+    {
+        var groups = await _context.AccountGroups
+            .AsNoTracking()
+            .Where(x => x.MasterID == 3)
+            .ToListAsync(cancellationToken);
+
+        var directGroup = groups.FirstOrDefault(x =>
+                x.GroupTitle != null
+                && x.GroupTitle.Contains("DIRECT", StringComparison.OrdinalIgnoreCase)
+                && x.GroupTitle.Contains("EXPENSE", StringComparison.OrdinalIgnoreCase))
+            ?? groups.OrderBy(x => x.GroupID).FirstOrDefault();
+
+        if (directGroup?.GroupID is null || directGroup.MasterID is null)
+            return null;
+
+        var subGroups = await _context.AccountSubGroups
+            .Where(x => x.GroupID == directGroup.GroupID)
+            .ToListAsync(cancellationToken);
+
+        var existing = subGroups.FirstOrDefault(x =>
+        {
+            var name = x.SubGroupName?.Trim();
+            return string.Equals(name, SystemAccountTitles.FranchiseRoyaltySubGroupName, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(name, SystemAccountTitles.LegacyFranchiseRoyaltySubGroupName, StringComparison.OrdinalIgnoreCase);
+        });
+
+        if (existing is not null)
+            return existing;
+
+        var postFix = subGroups.Count + 1;
+        var subGroupId = postFix > 9
+            ? $"{directGroup.GroupID}-0{postFix}"
+            : $"{directGroup.GroupID}-00{postFix}";
+
+        var entity = new AccountSubGroup
+        {
+            MasterID = directGroup.MasterID.Value,
+            GroupID = directGroup.GroupID,
+            SubGroupID = subGroupId,
+            SubGroupName = SystemAccountTitles.FranchiseRoyaltySubGroupName
+        };
+
+        _context.AccountSubGroups.Add(entity);
+        await _context.SaveChangesAsync(cancellationToken);
+        return entity;
     }
 
     private async Task SyncReservedSystemFlagsAsync(CancellationToken cancellationToken)

@@ -33,4 +33,8 @@ public class CampusProfile
     public TimeSpan FridayCheckOutTime { get; set; } = new(12, 30, 0);
 
     public bool ShowCreditStudent { get; set; }
+
+    public bool IsFranchise { get; set; }
+
+    public decimal? RoyaltySharePercent { get; set; }
 }

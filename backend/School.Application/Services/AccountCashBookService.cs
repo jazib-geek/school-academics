@@ -7,11 +7,15 @@ namespace School.Application.Services;
 
 public class AccountCashBookService : IAccountCashBookService
 {
-    private readonly AppDbContext _context;
+    private static readonly HashSet<string> CashVoucherTypes = new(StringComparer.OrdinalIgnoreCase) { "CPV", "CRV" };
 
-    public AccountCashBookService(AppDbContext context)
+    private readonly AppDbContext _context;
+    private readonly ISystemAccountResolver _systemAccounts;
+
+    public AccountCashBookService(AppDbContext context, ISystemAccountResolver systemAccounts)
     {
         _context = context;
+        _systemAccounts = systemAccounts;
     }
 
     public async Task<CashBookResultDto> GetCashBookAsync(
@@ -23,6 +27,9 @@ public class AccountCashBookService : IAccountCashBookService
         var toDate = to.Date;
         if (toDate < fromDate)
             throw new ArgumentException("End date must be on or after the start date.");
+
+        await _systemAccounts.EnsureSystemAccountsAsync(cancellationToken);
+        var cashAccountId = await _systemAccounts.GetCashInHandAccountIdAsync(cancellationToken);
 
         var details = await (
             from d in _context.TransactionDetails.AsNoTracking()
@@ -38,6 +45,7 @@ public class AccountCashBookService : IAccountCashBookService
                 d.Narration,
                 d.Debit,
                 d.Credit,
+                d.VoucherType,
                 Date = d.Date!.Value.Date
             }).ToListAsync(cancellationToken);
 
@@ -47,15 +55,26 @@ public class AccountCashBookService : IAccountCashBookService
             .Select(g => new CashBookDayDto
             {
                 Date = g.Key,
-                Lines = g.Select(item => new CashBookLineDto
+                Lines = g.Select(item =>
                 {
-                    Id = item.ID,
-                    VoucherNo = item.VoucherNumber,
-                    AccountId = item.AccountID ?? string.Empty,
-                    AccountTitle = item.AccountTitle ?? string.Empty,
-                    Narration = item.Narration,
-                    Received = item.Credit ?? 0,
-                    Payment = item.Debit ?? 0
+                    var voucherType = item.VoucherType ?? string.Empty;
+                    var accountId = item.AccountID ?? string.Empty;
+                    var isCashVoucher = CashVoucherTypes.Contains(voucherType);
+                    var isCashAccount = cashAccountId is not null
+                        && string.Equals(accountId, cashAccountId, StringComparison.OrdinalIgnoreCase);
+                    return new CashBookLineDto
+                    {
+                        Id = item.ID,
+                        VoucherNo = item.VoucherNumber,
+                        VoucherType = voucherType,
+                        Date = item.Date,
+                        AccountId = accountId,
+                        AccountTitle = item.AccountTitle ?? string.Empty,
+                        Narration = item.Narration,
+                        Received = item.Credit ?? 0,
+                        Payment = item.Debit ?? 0,
+                        CanEdit = isCashVoucher && !isCashAccount,
+                    };
                 }).ToList()
             })
             .ToList();

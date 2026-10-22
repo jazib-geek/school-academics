@@ -193,6 +193,8 @@ public static class PermissionCatalog
         Add("refund_security_deposit", "Refund Security Deposit", "Fee");
         Add("allow_short_leave", "Allow Short Leave", "Attendance");
         Add("assign_user_reminders", "Assign Reminders / Tasks to Other Users", "General");
+        Add("edit_voucher", "Edit Voucher", "Accounts");
+        Add("delete_voucher", "Delete Voucher", "Accounts");
 
         return items
             .Select((item, index) => new Permission
