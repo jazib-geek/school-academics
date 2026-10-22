@@ -2157,6 +2157,7 @@ function StudentsPage() {
                           <th className="px-3 py-2">Father</th>
                           {showCreditStudent ? <th className="px-3 py-2">Credit</th> : null}
                           <th className="px-3 py-2">Contact</th>
+                          <th className="px-3 py-2 text-right">Tuition Fee</th>
                           <th className="relative px-3 py-2 text-right">Actions</th>
                         </tr>
                       </thead>
@@ -2191,6 +2192,9 @@ function StudentsPage() {
                                 onSelect={openWhatsAppConfirm}
                               />
                             </td>
+                            <td className="px-3 py-1.5 text-right tabular-nums text-slate-800">
+                              {formatAmount(student.tuitionFee)}
+                            </td>
                             <td className="px-3 py-1.5 text-right">
                               <div className="inline-flex items-center justify-end gap-1">
                                 <PermissionControl allowed={canReceiveFee}>
@@ -2219,7 +2223,10 @@ function StudentsPage() {
                         ))}
                         {result.items.length === 0 ? (
                           <tr>
-                            <td colSpan={7} className="px-4 py-6 text-center text-slate-500">
+                            <td
+                              colSpan={8 + (showCreditStudent ? 1 : 0)}
+                              className="px-4 py-6 text-center text-slate-500"
+                            >
                               No students found.
                             </td>
                           </tr>
@@ -2290,6 +2297,9 @@ function StudentsPage() {
                             <p>Class: {student.className || '-'}</p>
                             <p>Family ID: {student.familyID || '-'}</p>
                             <p>Father: {student.fatherName || '-'}</p>
+                            <p className="tabular-nums">
+                              Tuition: {formatAmount(student.tuitionFee)}
+                            </p>
                             {showCreditStudent ? (
                               <p>
                                 Credit:{' '}
