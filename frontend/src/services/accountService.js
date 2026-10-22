@@ -89,6 +89,16 @@ export const getCashBook = async ({ from, to }) => {
   return response?.data?.data
 }
 
+export const updateVoucherLine = async (id, payload) => {
+  const response = await api.post(`${BASE}/voucher-lines/${id}/update`, payload)
+  return response?.data
+}
+
+export const deleteVoucherLine = async (id) => {
+  const response = await api.post(`${BASE}/voucher-lines/${id}/delete`)
+  return response?.data
+}
+
 export const getAccountSummary = async ({ from, to }) => {
   const response = await api.get(`${BASE}/summary`, {
     params: { from, to },

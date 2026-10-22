@@ -159,6 +159,7 @@ export const CAMPUS_ROUTE_PERMISSIONS = [
   { prefix: '/campus/accounts/summary', permission: 'view_account_summary' },
   { prefix: '/campus/accounts/cash-book', permission: 'cash_book' },
   { prefix: '/campus/accounts/day-closing', permission: 'day_closing' },
+  { prefix: '/campus/accounts/royalty-share', permission: 'rpt_fee' },
   { prefix: '/campus/accounts/settings', permission: 'acct_settings' },
   { prefix: '/campus/stationery', permission: 'manage_stationery' },
   { prefix: '/campus/reports/students', permission: 'rpt_std' },

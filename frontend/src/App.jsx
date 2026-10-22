@@ -116,6 +116,7 @@ import CampusAccountLedgerPage from './pages/Campus/accounts/CampusAccountLedger
 import CampusAccountSummaryPage from './pages/Campus/accounts/CampusAccountSummaryPage.jsx'
 import CampusCashBookPage from './pages/Campus/accounts/CampusCashBookPage.jsx'
 import CampusDayClosingPage from './pages/Campus/accounts/CampusDayClosingPage.jsx'
+import CampusRoyaltyShareReportPage from './pages/Campus/accounts/CampusRoyaltyShareReportPage.jsx'
 import CampusAccountSettingsPage from './pages/Campus/accounts/CampusAccountSettingsPage.jsx'
 
 function App() {
@@ -821,6 +822,14 @@ function App() {
         element={
           <ProtectedRoute>
             <CampusDayClosingPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/campus/accounts/royalty-share"
+        element={
+          <ProtectedRoute>
+            <CampusRoyaltyShareReportPage />
           </ProtectedRoute>
         }
       />

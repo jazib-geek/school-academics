@@ -1,9 +1,12 @@
 import { useCallback, useState } from 'react'
-import { BookMarked, ChevronDown, ChevronRight, Loader2, Printer } from 'lucide-react'
+import { BookMarked, ChevronDown, ChevronRight, Loader2, Pencil, Printer, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import CampusShell from '../../../components/campus/CampusShell.jsx'
 import CampusReportPrintHeader from '../../../components/campus/CampusReportPrintHeader.jsx'
-import { getCashBook } from '../../../services/accountService'
+import ConfirmDialog from '../../../components/campus/ConfirmDialog.jsx'
+import { deleteVoucherLine, getCashBook, updateVoucherLine } from '../../../services/accountService'
+import { hasCampusPermission } from '../../../services/authService'
+import { INTEGER_INPUT_ATTRS, readIntegerInput } from '../../../utils/numericInput.js'
 import {
   CAMPUS_REPORT_PRINT_STYLES,
   formatReportPrintDate,
@@ -22,34 +25,118 @@ function todayInput() {
   return getPakistanTodayIso()
 }
 
+function lineDateInput(line) {
+  if (!line?.date) return ''
+  return String(line.date).slice(0, 10)
+}
+
+function lineAmountValue(line) {
+  const payment = Number(line?.payment || 0)
+  const received = Number(line?.received || 0)
+  if (payment > 0) return payment
+  if (received > 0) return received
+  return ''
+}
+
 export default function CampusCashBookPage() {
+  const canEditVoucher = hasCampusPermission('edit_voucher')
+  const canDeleteVoucher = hasCampusPermission('delete_voucher')
+  const showActions = canEditVoucher || canDeleteVoucher
+
   const [from, setFrom] = useState(monthStartInput())
   const [to, setTo] = useState(todayInput())
   const [result, setResult] = useState(null)
   const [collapsed, setCollapsed] = useState({})
   const [isLoading, setIsLoading] = useState(false)
+  const [editLine, setEditLine] = useState(null)
+  const [editDate, setEditDate] = useState('')
+  const [editAmount, setEditAmount] = useState('')
+  const [editNarration, setEditNarration] = useState('')
+  const [editSaving, setEditSaving] = useState(false)
+  const [deleteLine, setDeleteLine] = useState(null)
+  const [deleteBusy, setDeleteBusy] = useState(false)
+
+  const loadCashBook = useCallback(async () => {
+    setIsLoading(true)
+    try {
+      const data = await getCashBook({ from, to })
+      setResult(data)
+      const next = {}
+      ;(data?.days || []).forEach((day) => {
+        next[day.date] = false
+      })
+      setCollapsed(next)
+    } catch (error) {
+      toast.error(error?.response?.data?.message || 'Could not load cash book.')
+      setResult(null)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [from, to])
 
   const search = useCallback(
     async (event) => {
       event?.preventDefault?.()
-      setIsLoading(true)
-      try {
-        const data = await getCashBook({ from, to })
-        setResult(data)
-        const next = {}
-        ;(data?.days || []).forEach((day) => {
-          next[day.date] = false
-        })
-        setCollapsed(next)
-      } catch (error) {
-        toast.error(error?.response?.data?.message || 'Could not load cash book.')
-        setResult(null)
-      } finally {
-        setIsLoading(false)
-      }
+      await loadCashBook()
     },
-    [from, to],
+    [loadCashBook],
   )
+
+  const openEdit = (line) => {
+    setEditLine(line)
+    setEditDate(lineDateInput(line))
+    setEditAmount(String(lineAmountValue(line) ?? ''))
+    setEditNarration(line.narration || '')
+  }
+
+  const closeEdit = () => {
+    if (editSaving) return
+    setEditLine(null)
+  }
+
+  const saveEdit = async (event) => {
+    event?.preventDefault?.()
+    if (!editLine) return
+    const amount = Number.parseInt(String(editAmount).replace(/\D/g, ''), 10)
+    if (!editDate) {
+      toast.error('Choose a date.')
+      return
+    }
+    if (!amount || amount <= 0) {
+      toast.error('Enter an amount greater than zero.')
+      return
+    }
+    setEditSaving(true)
+    try {
+      await updateVoucherLine(editLine.id, {
+        date: editDate,
+        amount,
+        narration: editNarration.trim() || null,
+      })
+      toast.success('Entry updated.')
+      setEditLine(null)
+      await loadCashBook()
+    } catch (error) {
+      toast.error(error?.response?.data?.message || 'Could not update this entry.')
+    } finally {
+      setEditSaving(false)
+    }
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteLine) return
+    setDeleteBusy(true)
+    try {
+      await deleteVoucherLine(deleteLine.id)
+      toast.success('Entry removed.')
+      setDeleteLine(null)
+      await loadCashBook()
+    } catch (error) {
+      toast.error(error?.response?.data?.message || 'Could not remove this entry.')
+    } finally {
+      setDeleteBusy(false)
+    }
+  }
 
   const reset = () => {
     setFrom(monthStartInput())
@@ -146,12 +233,13 @@ export default function CampusCashBookPage() {
                       <th className="px-3 py-2">Narration</th>
                       <th className="px-3 py-2 text-right">Received</th>
                       <th className="px-3 py-2 text-right">Payment</th>
+                      {showActions ? <th className="no-print px-3 py-2 text-right">Action</th> : null}
                     </tr>
                   </thead>
                   <tbody>
                     {!result || result.days?.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="px-3 py-8 text-center text-sm text-slate-500">
+                        <td colSpan={showActions ? 6 : 5} className="px-3 py-8 text-center text-sm text-slate-500">
                           {result ? 'No cash book entries in this period.' : 'Choose dates and apply.'}
                         </td>
                       </tr>
@@ -164,6 +252,11 @@ export default function CampusCashBookPage() {
                             day={day}
                             isCollapsed={isCollapsed}
                             onToggle={() => toggleDay(day.date)}
+                            showActions={showActions}
+                            canEditVoucher={canEditVoucher}
+                            canDeleteVoucher={canDeleteVoucher}
+                            onEdit={openEdit}
+                            onDelete={setDeleteLine}
                           />
                         )
                       })
@@ -298,17 +391,123 @@ export default function CampusCashBookPage() {
               </table>
             </div>
           ) : null}
+
+          <ConfirmDialog
+            open={Boolean(deleteLine)}
+            title="Remove entry?"
+            description={
+              deleteLine
+                ? `Remove voucher ${deleteLine.voucherNo || ''} (${deleteLine.accountTitle || 'account'}) from the cash book? This cannot be undone.`
+                : ''
+            }
+            confirmLabel="Remove"
+            cancelLabel="Cancel"
+            confirmClass="inline-flex items-center gap-2 rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700 disabled:opacity-60"
+            busy={deleteBusy}
+            onCancel={() => {
+              if (!deleteBusy) setDeleteLine(null)
+            }}
+            onConfirm={confirmDelete}
+          />
+
+          {editLine ? (
+            <div
+              role="presentation"
+              className="no-print fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm"
+              onClick={closeEdit}
+            >
+              <form
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="cash-book-edit-title"
+                className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-200"
+                onClick={(event) => event.stopPropagation()}
+                onSubmit={saveEdit}
+              >
+                <div className="border-b border-slate-100 px-5 py-4">
+                  <h3 id="cash-book-edit-title" className="text-base font-semibold text-slate-900">
+                    Edit entry
+                  </h3>
+                  <p className="mt-1 text-[13px] text-slate-500">
+                    Voucher {editLine.voucherNo} · {editLine.accountTitle}
+                  </p>
+                </div>
+                <div className="space-y-3 px-5 py-4">
+                  <label className="block text-[13px] font-medium text-slate-700">
+                    Date
+                    <input
+                      type="date"
+                      className={inputClass}
+                      value={editDate}
+                      onChange={(e) => setEditDate(e.target.value)}
+                      disabled={editSaving}
+                      required
+                    />
+                  </label>
+                  <label className="block text-[13px] font-medium text-slate-700">
+                    Amount
+                    <input
+                      {...INTEGER_INPUT_ATTRS}
+                      className={inputClass}
+                      value={editAmount}
+                      onChange={(e) => setEditAmount(readIntegerInput(e))}
+                      disabled={editSaving}
+                      required
+                    />
+                  </label>
+                  <label className="block text-[13px] font-medium text-slate-700">
+                    Narration
+                    <textarea
+                      className="mt-1 min-h-[72px] w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-[13px] text-slate-800 outline-none transition focus:border-[var(--campus-primary)] focus:ring-2 focus:ring-indigo-100"
+                      value={editNarration}
+                      onChange={(e) => setEditNarration(e.target.value)}
+                      disabled={editSaving}
+                      rows={3}
+                    />
+                  </label>
+                </div>
+                <div className="flex justify-end gap-2 bg-slate-50 px-5 py-4">
+                  <button
+                    type="button"
+                    disabled={editSaving}
+                    onClick={closeEdit}
+                    className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={editSaving}
+                    className="inline-flex items-center gap-2 rounded-lg bg-[var(--campus-primary)] px-4 py-2 text-sm font-semibold text-white hover:bg-[#364574] disabled:opacity-60"
+                  >
+                    {editSaving ? <Loader2 size={16} className="animate-spin" /> : null}
+                    Save
+                  </button>
+                </div>
+              </form>
+            </div>
+          ) : null}
         </div>
       </CampusShell>
     </div>
   )
 }
 
-function FragmentDay({ day, isCollapsed, onToggle }) {
+function FragmentDay({
+  day,
+  isCollapsed,
+  onToggle,
+  showActions,
+  canEditVoucher,
+  canDeleteVoucher,
+  onEdit,
+  onDelete,
+}) {
+  const colSpan = showActions ? 6 : 5
   return (
     <>
       <tr className="border-t border-slate-200 bg-slate-50">
-        <td colSpan={5} className="px-3 py-2">
+        <td colSpan={colSpan} className="px-3 py-2">
           <button
             type="button"
             onClick={onToggle}
@@ -320,15 +519,49 @@ function FragmentDay({ day, isCollapsed, onToggle }) {
         </td>
       </tr>
       {!isCollapsed &&
-        (day.lines || []).map((line) => (
-          <tr key={line.id} className="border-t border-slate-100 hover:bg-slate-50">
-            <td className="px-3 py-1.5 whitespace-nowrap tabular-nums">{line.voucherNo}</td>
-            <td className="px-3 py-1.5 font-semibold text-slate-900">{line.accountTitle}</td>
-            <td className="px-3 py-1.5 text-slate-600">{line.narration || '—'}</td>
-            <td className="px-3 py-1.5 text-right tabular-nums">{formatReportPrintMoney(line.received)}</td>
-            <td className="px-3 py-1.5 text-right tabular-nums">{formatReportPrintMoney(line.payment)}</td>
-          </tr>
-        ))}
+        (day.lines || []).map((line) => {
+          const editable = line.canEdit
+          const showRowActions = showActions && editable
+          return (
+            <tr key={line.id} className="border-t border-slate-100 hover:bg-slate-50">
+              <td className="px-3 py-1.5 whitespace-nowrap tabular-nums">{line.voucherNo}</td>
+              <td className="px-3 py-1.5 font-semibold text-slate-900">{line.accountTitle}</td>
+              <td className="px-3 py-1.5 text-slate-600">{line.narration || '—'}</td>
+              <td className="px-3 py-1.5 text-right tabular-nums">{formatReportPrintMoney(line.received)}</td>
+              <td className="px-3 py-1.5 text-right tabular-nums">{formatReportPrintMoney(line.payment)}</td>
+              {showActions ? (
+                <td className="no-print px-3 py-1.5">
+                  {showRowActions ? (
+                    <div className="flex justify-end gap-1">
+                      {canEditVoucher ? (
+                        <button
+                          type="button"
+                          title="Edit"
+                          onClick={() => onEdit(line)}
+                          className="btn-icon-soft btn-table-action inline-flex h-7 w-7 items-center justify-center rounded-md text-[var(--campus-primary)] hover:bg-indigo-50"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                      ) : null}
+                      {canDeleteVoucher ? (
+                        <button
+                          type="button"
+                          title="Remove"
+                          onClick={() => onDelete(line)}
+                          className="btn-icon-soft btn-table-action inline-flex h-7 w-7 items-center justify-center rounded-md text-rose-700 hover:bg-rose-50"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <span className="block text-right text-slate-300">—</span>
+                  )}
+                </td>
+              ) : null}
+            </tr>
+          )
+        })}
     </>
   )
 }

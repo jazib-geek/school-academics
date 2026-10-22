@@ -3,7 +3,12 @@ import { getCampusPrintMeta } from '../../utils/campusProfile'
 /**
  * Print-only header matching Fee / Student report sheets.
  */
-export default function CampusReportPrintHeader({ title, subtitle, showPhones = true }) {
+export default function CampusReportPrintHeader({
+  title,
+  subtitle,
+  showPhones = true,
+  showSession = true,
+}) {
   const { schoolName, campusLabel, phonesDisplay, sessionLabel, logoSrc } = getCampusPrintMeta()
 
   return (
@@ -29,7 +34,9 @@ export default function CampusReportPrintHeader({ title, subtitle, showPhones = 
           {schoolName}
         </div>
         <div style={{ fontSize: 11, marginTop: 2 }}>{campusLabel}</div>
-        {sessionLabel ? <div style={{ fontSize: 11 }}>Session: {sessionLabel}</div> : null}
+        {showSession && sessionLabel ? (
+          <div style={{ fontSize: 11 }}>Session: {sessionLabel}</div>
+        ) : null}
         {showPhones && phonesDisplay ? (
           <div style={{ fontSize: 11 }}>Tel. {phonesDisplay}</div>
         ) : null}

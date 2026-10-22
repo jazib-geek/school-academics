@@ -651,7 +651,6 @@ function CampusStudentUpdateFeePage() {
               </button>
               {monthFee ? (
                 <button
-                  ref={confirmButtonRef}
                   type="button"
                   disabled={isSaving}
                   onClick={() => performUpdate(false)}
@@ -661,7 +660,7 @@ function CampusStudentUpdateFeePage() {
                 </button>
               ) : null}
               <button
-                ref={monthFee ? undefined : confirmButtonRef}
+                ref={confirmButtonRef}
                 type="button"
                 disabled={isSaving || monthChargeBlocked}
                 onClick={() => performUpdate(Boolean(monthFee))}

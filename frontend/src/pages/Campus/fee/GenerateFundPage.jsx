@@ -37,21 +37,6 @@ function focusAndSelect(el) {
   el.select?.()
 }
 
-function fundGridColumns() {
-  if (typeof window === 'undefined') return 2
-  return window.matchMedia('(min-width: 640px)').matches ? 2 : 1
-}
-
-function adjacentFundIndex(index, key, count) {
-  const cols = fundGridColumns()
-  const col = index % cols
-  if (key === 'ArrowLeft') return col > 0 ? index - 1 : null
-  if (key === 'ArrowRight') return col < cols - 1 && index + 1 < count ? index + 1 : null
-  if (key === 'ArrowUp') return index - cols >= 0 ? index - cols : null
-  if (key === 'ArrowDown') return index + cols < count ? index + cols : null
-  return null
-}
-
 const embeddedSelectStyles = {
   control: (base) => ({
     ...base,
@@ -399,14 +384,7 @@ export default function GenerateFundPage() {
     if (event.key === 'Enter' && index === PRIMARY_FUND_INDEX) {
       event.preventDefault()
       openConfirm(event)
-      return
     }
-    const next = adjacentFundIndex(index, event.key, fundTypes.length)
-    if (next == null) return
-    const target = fundInputRefs.current[next]
-    if (!target || target.disabled) return
-    event.preventDefault()
-    focusAndSelect(target)
   }
 
   if (!canAll && !canSingle) {

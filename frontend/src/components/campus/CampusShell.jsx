@@ -10,7 +10,6 @@ import {
   CalendarCheck2,
   ChevronDown,
   ClipboardCheck,
-  ClipboardList,
   FileBarChart,
   HandCoins,
   History,
@@ -21,7 +20,6 @@ import {
   LogOut,
   Mail,
   Menu,
-  NotebookPen,
   Palette,
   Receipt,
   School,
@@ -51,6 +49,7 @@ import softelligentLogo from '../../assets/softelligent-transparent.png'
 import { THEME_SETTINGS_NOTICE_LINK, useCampusNotifications } from '../../hooks/useCampusNotifications.jsx'
 import CampusNotificationsDrawer from './CampusNotificationsDrawer.jsx'
 import { useCampusRealtime } from '../../contexts/CampusRealtimeContext.jsx'
+import { getRoyaltyShareMeta } from '../../services/royaltyShareService'
 
 const FORBIDDEN_ACCESS_MESSAGE = "You don't have access to this."
 
@@ -133,15 +132,6 @@ function navItemAllowed(item) {
 /** Single source of truth for campus (per-campus DB) shell navigation. */
 export const CAMPUS_SHELL_NAV = [
   { id: 'dashboard', label: 'Dashboard', icon: Home, iconClass: 'text-sky-300', to: '/campus/dashboard', permission: 'stats_home' },
-  { id: 'reminders', label: 'Reminders & Notes', icon: NotebookPen, iconClass: 'text-amber-300', to: '/campus/reminders' },
-  {
-    id: 'daily',
-    label: 'Coordinator Reporting',
-    icon: ClipboardList,
-    iconClass: 'text-fuchsia-300',
-    to: '/campus/daily-reporting',
-    permission: 'view_coordinator_reporting',
-  },
   {
     id: 'students',
     label: 'Students',
@@ -222,6 +212,11 @@ export const CAMPUS_SHELL_NAV = [
     icon: BookOpen,
     iconClass: 'text-violet-300',
     children: [
+      {
+        label: 'Coordinator Reporting',
+        to: '/campus/daily-reporting',
+        permission: 'view_coordinator_reporting',
+      },
       { label: 'Subject Allocation', to: '/campus/teacher-assignments', permission: 'subject_allocation' },
       { label: 'Timetables', to: '/campus/timetables', permission: 'view_timetable' },
       { label: 'Datesheets', to: '/campus/datesheets', permission: 'view_datesheet' },
@@ -279,6 +274,12 @@ export const CAMPUS_SHELL_NAV = [
       { label: 'Accounts Summary', to: '/campus/accounts/summary', permission: 'view_account_summary' },
       { label: 'Cash Book', to: '/campus/accounts/cash-book', permission: 'cash_book' },
       { label: 'Day Closing', to: '/campus/accounts/day-closing', permission: 'day_closing' },
+      {
+        label: 'Royalty Share',
+        to: '/campus/accounts/royalty-share',
+        permission: 'rpt_fee',
+        requiresFranchise: true,
+      },
       { label: 'Profit Loss Statement', to: '/campus/reports/income', permission: 'view_profit_loss' },
       { label: 'Settings', to: '/campus/accounts/settings', permission: 'acct_settings' },
     ],
@@ -435,6 +436,7 @@ export default function CampusShell({
   const [attendanceType, setAttendanceType] = useState(() =>
     normalizeBiometricAttendanceType(getStoredCampusProfile()?.biometricAttendanceType),
   )
+  const [isFranchiseCampus, setIsFranchiseCampus] = useState(false)
   const [instituteBranding, setInstituteBranding] = useState(() => {
     const profile = getStoredCampusProfile()
     return {
@@ -450,12 +452,14 @@ export default function CampusShell({
         if (!item.children?.length) return item
         return {
           ...item,
-          children: item.children.filter(
-            (child) => !child.attendanceType || child.attendanceType === attendanceType,
-          ),
+          children: item.children.filter((child) => {
+            if (child.requiresFranchise && !isFranchiseCampus) return false
+            if (child.attendanceType && child.attendanceType !== attendanceType) return false
+            return true
+          }),
         }
       }),
-    [attendanceType],
+    [attendanceType, isFranchiseCampus],
   )
   const [openMenus, setOpenMenus] = useState(() => buildInitialOpenMenus(CAMPUS_SHELL_NAV))
 
@@ -487,6 +491,20 @@ export default function CampusShell({
       window.removeEventListener('storage', syncProfile)
     }
   }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    getRoyaltyShareMeta()
+      .then((meta) => {
+        if (!cancelled) setIsFranchiseCampus(Boolean(meta?.isFranchise))
+      })
+      .catch(() => {
+        if (!cancelled) setIsFranchiseCampus(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [campus])
 
   useEffect(() => {
     setIsQuickLinksOpen(false)
