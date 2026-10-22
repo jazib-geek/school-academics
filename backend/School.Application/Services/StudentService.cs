@@ -141,7 +141,8 @@ public class StudentService : IStudentService
                 Gender = x.Gender,
                 IsActive = x.IsActive,
                 RegDate = x.RegDate,
-                IsCreditStudent = x.IsCreditStudent
+                IsCreditStudent = x.IsCreditStudent,
+                TuitionFee = x.TutionFee ?? Math.Max(0m, (x.Fee ?? 0) - (x.FeeConcession ?? 0m))
             })
             .ToListAsync();
 

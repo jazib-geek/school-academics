@@ -14,4 +14,5 @@ public class StudentListItemDto
     public bool? IsActive { get; set; }
     public DateTime? RegDate { get; set; }
     public bool IsCreditStudent { get; set; }
+    public decimal TuitionFee { get; set; }
 }
