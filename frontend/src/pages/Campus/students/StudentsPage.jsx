@@ -1680,10 +1680,8 @@ function StudentsPage() {
 
   useEffect(() => {
     if (!receiveFeeModal) return
-    setReceiveDate((current) =>
-      canReceiveFeePrevDate ? clampToPakistanToday(current) : getTodayIso(),
-    )
-  }, [receiveFeeModal, canReceiveFeePrevDate])
+    setReceiveDate(getTodayIso())
+  }, [receiveFeeModal])
 
   useEffect(() => {
     if (!profileModal) return
