@@ -50,6 +50,8 @@ export const EXAM_REPORT_PERMISSIONS = {
 /** Smart fee report id → permission code. */
 export const FEE_REPORT_PERMISSIONS = {
   'tuition-defaulters': 'rpt_fee_due',
+  'tuition-pending-months': 'rpt_fee_due',
+  'last-payment': 'rpt_fee_due',
   'fund-defaulters': 'rpt_fee_fund_due',
   'overall-receivable': 'rpt_fee_recv',
   'overall-receivable-class-wise': 'rpt_fee_recv',
@@ -149,6 +151,7 @@ export const CAMPUS_ROUTE_PERMISSIONS = [
   { prefix: '/campus/attendance/short-leave', permission: 'allow_short_leave' },
   { prefix: '/campus/attendance/absent-followup', permission: 'mark_attnd' },
   { prefix: '/campus/student-conduct', permission: 'view_student_conduct' },
+  { prefix: '/campus/teacher-conduct', permission: 'view_teacher_conduct' },
   { prefix: '/campus/family-portal/announcements', permission: 'manage_family_announcements' },
   { prefix: '/campus/family-portal/accounts', permission: 'manage_family_accounts' },
   { prefix: '/campus/leave-applications', permission: 'view_leave_applications' },

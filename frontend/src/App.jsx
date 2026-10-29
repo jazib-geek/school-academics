@@ -48,6 +48,7 @@ import CampusShortLeavePage from './pages/Campus/attendance/CampusShortLeavePage
 import RemindersPage from './pages/Campus/reminders/RemindersPage.jsx'
 import CampusAbsentFollowupPage from './pages/Campus/attendance/CampusAbsentFollowupPage.jsx'
 import CampusStudentConductPage from './pages/Campus/conduct/CampusStudentConductPage.jsx'
+import CampusTeacherConductPage from './pages/Campus/conduct/CampusTeacherConductPage.jsx'
 import CampusAnnouncementsPage from './pages/Campus/family-portal/CampusAnnouncementsPage.jsx'
 import CampusFamilyAccountsPage from './pages/Campus/family-portal/CampusFamilyAccountsPage.jsx'
 import CampusLeaveApplicationsPage from './pages/Campus/leave/CampusLeaveApplicationsPage.jsx'
@@ -89,6 +90,8 @@ import EmployeeAttendanceReportPage from './pages/Employee/EmployeeAttendanceRep
 import EmployeeStudentAttendancePage from './pages/Employee/EmployeeStudentAttendancePage.jsx'
 import EmployeeConductPage from './pages/Employee/EmployeeConductPage.jsx'
 import EmployeeStudentConductPage from './pages/Employee/EmployeeStudentConductPage.jsx'
+import EmployeeTeacherConductPage from './pages/Employee/EmployeeTeacherConductPage.jsx'
+import EmployeeMyConductPage from './pages/Employee/EmployeeMyConductPage.jsx'
 import EmployeeConductReportPage from './pages/Employee/EmployeeConductReportPage.jsx'
 import EmployeeMyAttendancePage from './pages/Employee/EmployeeMyAttendancePage.jsx'
 import EmployeeMySalaryAdjustmentsPage from './pages/Employee/EmployeeMySalaryAdjustmentsPage.jsx'
@@ -227,6 +230,22 @@ function App() {
           <EmployeeAppAccessRoute anyOf={['canViewStudentConduct']}>
             <EmployeeConductReportPage />
           </EmployeeAppAccessRoute>
+        }
+      />
+      <Route
+        path="/employee/conduct-teacher"
+        element={
+          <EmployeeAppAccessRoute anyOf={['canRecordTeacherConduct', 'canViewTeacherConduct']}>
+            <EmployeeTeacherConductPage />
+          </EmployeeAppAccessRoute>
+        }
+      />
+      <Route
+        path="/employee/my-conduct"
+        element={
+          <EmployeeProtectedRoute>
+            <EmployeeMyConductPage />
+          </EmployeeProtectedRoute>
         }
       />
       <Route
@@ -558,6 +577,14 @@ function App() {
         element={
           <ProtectedRoute>
             <CampusStudentConductPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/campus/teacher-conduct"
+        element={
+          <ProtectedRoute>
+            <CampusTeacherConductPage />
           </ProtectedRoute>
         }
       />

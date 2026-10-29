@@ -92,6 +92,8 @@ public class SmartFeeReportService : ISmartFeeReportService
         {
             "tuition-defaulters" => await TuitionDefaultersAsync(catalog, parameters),
             "fund-defaulters" => await FundDefaultersAsync(catalog, parameters),
+            "tuition-pending-months" => await TuitionPendingMonthsAsync(catalog, parameters),
+            "last-payment" => await LastPaymentAsync(catalog, parameters),
             "overall-receivable" => await OverallReceivableAsync(catalog, parameters),
             "overall-receivable-class-wise" => await OverallReceivableClassWiseAsync(catalog, parameters),
             "top-defaulters" => await TopDefaultersAsync(catalog, parameters),
@@ -141,11 +143,41 @@ public class SmartFeeReportService : ISmartFeeReportService
             // Risk
             Item("tuition-defaulters", "Tuition Defaulters", "Students with outstanding tuition for a month/year.", "risk",
                 "Who still owes this month's fee?", true,
-                P(Param("month", "Month", "month", true, month), Param("year", "Year", "year", true, year), ClassOpt()),
-                new() { ["month"] = month, ["year"] = year }),
+                P(Param("month", "Month", "month", true, month), Param("year", "Year", "year", true, year), ClassOpt(), BalanceOp(), BalanceAmt()),
+                new() { ["month"] = month, ["year"] = year, ["balanceOp"] = "gte" }),
             Item("fund-defaulters", "Fund Defaulters", "Outstanding by a specific fund type.", "risk",
                 "Who owes admission, transport, or other funds?", true,
-                P(Param("fundTypeId", "Fund Type", "fundType", true, null, "fundTypes"), ClassOpt())),
+                P(Param("fundTypeId", "Fund Type", "fundType", true, null, "fundTypes"), ClassOpt(), BalanceOp(), BalanceAmt()),
+                new() { ["balanceOp"] = "gte" }),
+            Item("tuition-pending-months", "Tuition Months Pending", "Active students with unpaid tuition for a chosen number of months.", "risk",
+                "Students who still owe 3 months of fee.", true,
+                P(
+                    Param("pendingMonths", "Pending months", "int", true, 3),
+                    Param("pendingMatch", "Count", "select", false, "eq", null,
+                    [
+                        new() { Value = "eq", Label = "Exactly" },
+                        new() { Value = "gte", Label = "At least" },
+                        new() { Value = "lte", Label = "At most" }
+                    ]),
+                    ClassOpt()),
+                new() { ["pendingMonths"] = 3, ["pendingMatch"] = "eq" }),
+            Item("last-payment", "No Receipt Since", "Students whose last receipt is older than the days or months you choose.", "risk",
+                "Last payment is older than the period you choose.", true,
+                P(
+                    Param("silentFor", "No payment in", "int", true, 30),
+                    Param("silentUnit", "Period", "select", false, "days", null,
+                    [
+                        new() { Value = "days", Label = "Days" },
+                        new() { Value = "months", Label = "Months" }
+                    ]),
+                    Param("who", "Students", "select", false, "owing", null,
+                    [
+                        new() { Value = "owing", Label = "Still owing" },
+                        new() { Value = "everyone", Label = "Everyone" }
+                    ]),
+                    FundScopeOpt(),
+                    ClassOpt()),
+                new() { ["silentFor"] = 30, ["silentUnit"] = "days", ["who"] = "owing", ["fundScope"] = "all" }),
             Item("overall-receivable", "Overall Receivable", "Every active student with any outstanding balance.", "risk",
                 "Full dues list for follow-up calls.", true,
                 P(ClassOpt(), MinAmt("minOutstanding", 0)),
@@ -320,6 +352,19 @@ public class SmartFeeReportService : ISmartFeeReportService
     private static SmartFeeReportParamDefDto MinAmt(string key, decimal def) =>
         Param(key, key.Contains("Concession", StringComparison.OrdinalIgnoreCase) ? "Min concession" : "Min outstanding", "decimal", false, def);
 
+    private static SmartFeeReportParamDefDto BalanceOp() =>
+        Param("balanceOp", "Balance", "select", false, "gte", null,
+        [
+            new() { Value = "gte", Label = "Greater than or equal to" },
+            new() { Value = "lte", Label = "Less than or equal to" },
+            new() { Value = "gt", Label = "Greater than" },
+            new() { Value = "lt", Label = "Less than" },
+            new() { Value = "eq", Label = "Equal to" },
+        ]);
+
+    private static SmartFeeReportParamDefDto BalanceAmt() =>
+        Param("balanceAmount", "Amount", "decimal", false, null);
+
     // ——— Handlers: Risk ———
 
     private async Task<SmartFeeReportResultDto> TuitionDefaultersAsync(SmartFeeReportCatalogItemDto cat, Dictionary<string, object?> p)
@@ -327,9 +372,11 @@ public class SmartFeeReportService : ISmartFeeReportService
         var month = RequireMonth(p);
         var year = RequireYear(p);
         var className = GetString(p, "className");
+        var balanceOp = GetString(p, "balanceOp");
+        var balanceAmount = GetDecimal(p, "balanceAmount");
         var data = await _feeReports.GetFeeDefaultersAsync(month, year);
         var rows = data.Items
-            .Where(x => MatchClass(x.ClassName, className))
+            .Where(x => MatchClass(x.ClassName, className) && MatchBalance(x.OutstandingAmount, balanceOp, balanceAmount))
             .Select(x => Row(
                 ("studentId", x.StudentId),
                 ("studentName", x.StudentName),
@@ -352,9 +399,11 @@ public class SmartFeeReportService : ISmartFeeReportService
         var fundTypeId = RequireInt(p, "fundTypeId");
         if (fundTypeId <= 1) throw new ArgumentException("fundTypeId must be greater than 1.");
         var className = GetString(p, "className");
+        var balanceOp = GetString(p, "balanceOp");
+        var balanceAmount = GetDecimal(p, "balanceAmount");
         var data = await _feeReports.GetFundDefaultersAsync(fundTypeId);
         var rows = data.Items
-            .Where(x => MatchClass(x.ClassName, className))
+            .Where(x => MatchClass(x.ClassName, className) && MatchBalance(x.OutstandingAmount, balanceOp, balanceAmount))
             .Select(x => Row(
                 ("studentId", x.StudentId),
                 ("studentName", x.StudentName),
@@ -369,6 +418,187 @@ public class SmartFeeReportService : ISmartFeeReportService
             ("fundTypeName", "Fund", "text"),
             ("outstandingAmount", "Outstanding", "money")), "className", rows.Sum(r => Dec(r, "outstandingAmount")));
     }
+
+    private async Task<SmartFeeReportResultDto> TuitionPendingMonthsAsync(SmartFeeReportCatalogItemDto cat, Dictionary<string, object?> p)
+    {
+        var pendingMonths = Math.Clamp(GetInt(p, "pendingMonths") ?? 3, 1, 36);
+        var match = (GetString(p, "pendingMatch") ?? "eq").Trim().ToLowerInvariant();
+        var className = GetString(p, "className");
+
+        var buckets = await ActiveStudentLedger()
+            .Where(x => x.FundTypeID == 1 && x.Month >= 1 && x.Month <= 12 && x.Year != null)
+            .GroupBy(x => new
+            {
+                StudentId = x.StudentID ?? 0,
+                StudentName = x.Student!.FullName,
+                ClassName = x.Student.Section != null ? x.Student.Section.ClassName : null,
+                FatherMobile = x.Student.Family != null ? x.Student.Family.FatherMobileNo : null,
+                x.Month,
+                x.Year
+            })
+            .Select(g => new
+            {
+                g.Key.StudentId,
+                g.Key.StudentName,
+                g.Key.ClassName,
+                g.Key.FatherMobile,
+                Month = g.Key.Month!.Value,
+                Year = g.Key.Year!.Value,
+                Outstanding = g.Sum(x => (x.Payment ?? 0) - ((x.Recieved ?? 0) + (x.Discount ?? 0)))
+            })
+            .Where(x => x.Outstanding > 0)
+            .ToListAsync();
+
+        var students = buckets
+            .Where(x => MatchClass(x.ClassName, className))
+            .GroupBy(x => x.StudentId)
+            .Select(g =>
+            {
+                var months = g.OrderBy(x => x.Year).ThenBy(x => x.Month).ToList();
+                var first = months[0];
+                return new
+                {
+                    first.StudentId,
+                    first.StudentName,
+                    first.ClassName,
+                    first.FatherMobile,
+                    PendingCount = months.Count,
+                    Outstanding = months.Sum(x => x.Outstanding),
+                    UnpaidMonths = string.Join(", ", months.Select(x => $"{MonthLabel(x.Month)} {x.Year}"))
+                };
+            })
+            .Where(x => match switch
+            {
+                "gte" => x.PendingCount >= pendingMonths,
+                "lte" or "le" => x.PendingCount <= pendingMonths,
+                _ => x.PendingCount == pendingMonths
+            })
+            .OrderByDescending(x => x.PendingCount)
+            .ThenByDescending(x => x.Outstanding)
+            .ToList();
+
+        var rows = students.Select(x => Row(
+            ("studentId", x.StudentId),
+            ("studentName", x.StudentName ?? "N/A"),
+            ("className", x.ClassName),
+            ("pendingCount", x.PendingCount),
+            ("unpaidMonths", x.UnpaidMonths),
+            ("outstandingAmount", x.Outstanding),
+            ("fatherMobile", string.IsNullOrWhiteSpace(x.FatherMobile) ? "-" : x.FatherMobile.Trim()))).ToList();
+
+        return Result(cat, rows, Cols(
+            ("studentId", "Reg #", "number"),
+            ("studentName", "Student", "text"),
+            ("className", "Class", "text"),
+            ("pendingCount", "Months", "number"),
+            ("unpaidMonths", "Unpaid months", "text"),
+            ("outstandingAmount", "Outstanding", "money"),
+            ("fatherMobile", "Father mobile", "text")), "className", rows.Sum(r => Dec(r, "outstandingAmount")));
+    }
+
+    private async Task<SmartFeeReportResultDto> LastPaymentAsync(SmartFeeReportCatalogItemDto cat, Dictionary<string, object?> p)
+    {
+        var unit = (GetString(p, "silentUnit") ?? "days").Trim().ToLowerInvariant();
+        var silentFor = unit == "months"
+            ? Math.Clamp(GetInt(p, "silentFor") ?? 3, 1, 36)
+            : Math.Clamp(GetInt(p, "silentFor") ?? 30, 1, 3650);
+        var who = (GetString(p, "who") ?? "owing").Trim().ToLowerInvariant();
+        var scope = GetFundScope(p);
+        var className = GetString(p, "className");
+        var today = PakistanTime.Today.ToDateTime(TimeOnly.MinValue);
+        var cutoff = unit == "months" ? today.AddMonths(-silentFor) : today.AddDays(-silentFor);
+
+        var students = await _context.Students
+            .Where(s => s.IsActive == true)
+            .Select(s => new
+            {
+                StudentId = s.Reg_Id,
+                StudentName = s.FullName,
+                ClassName = s.Section != null ? s.Section.ClassName : null,
+                FatherMobile = s.Family != null ? s.Family.FatherMobileNo : null
+            })
+            .ToListAsync();
+
+        var ledger = ApplyFundScope(ActiveStudentLedger(), scope);
+        var balances = await ledger
+            .GroupBy(x => x.StudentID ?? 0)
+            .Select(g => new
+            {
+                StudentId = g.Key,
+                Outstanding = g.Sum(x => (x.Payment ?? 0) - ((x.Recieved ?? 0) + (x.Discount ?? 0)))
+            })
+            .ToListAsync();
+        var dayTotals = await ledger
+            .Where(x => (x.Recieved ?? 0) > 0 && x.Date != null)
+            .GroupBy(x => new { StudentId = x.StudentID ?? 0, Day = x.Date!.Value.Date })
+            .Select(g => new
+            {
+                g.Key.StudentId,
+                g.Key.Day,
+                Amount = g.Sum(x => x.Recieved ?? 0)
+            })
+            .ToListAsync();
+
+        var balanceByStudent = balances.ToDictionary(x => x.StudentId, x => x.Outstanding);
+        var lastByStudent = dayTotals
+            .GroupBy(x => x.StudentId)
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.Day).First());
+
+        var matched = students
+            .Where(s => MatchClass(s.ClassName, className))
+            .Select(s =>
+            {
+                balanceByStudent.TryGetValue(s.StudentId, out var outstanding);
+                lastByStudent.TryGetValue(s.StudentId, out var last);
+                return new
+                {
+                    s.StudentId,
+                    s.StudentName,
+                    s.ClassName,
+                    s.FatherMobile,
+                    Outstanding = outstanding,
+                    LastDay = last?.Day,
+                    LastAmount = last == null ? (decimal?)null : last.Amount
+                };
+            })
+            .Where(x => who == "everyone" || x.Outstanding > 0)
+            .Where(x => x.LastDay == null || x.LastDay.Value.Date <= cutoff)
+            .OrderBy(x => x.LastDay.HasValue ? 1 : 0)
+            .ThenBy(x => x.LastDay ?? DateTime.MaxValue)
+            .ThenByDescending(x => x.Outstanding)
+            .ToList();
+
+        var rows = matched.Select(x =>
+        {
+            var daysSince = x.LastDay.HasValue ? (today - x.LastDay.Value.Date).Days : (int?)null;
+            return Row(
+                ("studentId", x.StudentId),
+                ("studentName", x.StudentName ?? "N/A"),
+                ("className", x.ClassName),
+                ("lastPaid", x.LastDay.HasValue ? x.LastDay.Value.ToString("dd/MM/yyyy", Invariant) : "Never"),
+                ("daysSince", daysSince.HasValue ? daysSince.Value.ToString(Invariant) : "Never"),
+                ("lastAmount", x.LastAmount),
+                ("outstandingAmount", x.Outstanding),
+                ("fatherMobile", string.IsNullOrWhiteSpace(x.FatherMobile) ? "-" : x.FatherMobile.Trim()));
+        }).ToList();
+
+        var neverPaid = matched.Count(x => x.LastDay == null);
+        return Result(cat, rows, Cols(
+            ("studentId", "Reg #", "number"),
+            ("studentName", "Student", "text"),
+            ("className", "Class", "text"),
+            ("lastPaid", "Last paid", "text"),
+            ("daysSince", "Days since", "text"),
+            ("lastAmount", "Last amount", "money"),
+            ("outstandingAmount", "Outstanding", "money"),
+            ("fatherMobile", "Father mobile", "text")), "className", rows.Sum(r => Dec(r, "outstandingAmount")),
+            Extra(("neverPaid", "Never paid", neverPaid.ToString(Invariant), "number")));
+    }
+
+    private static string MonthLabel(int month) =>
+        month is >= 1 and <= 12
+            ? System.Globalization.DateTimeFormatInfo.InvariantInfo.MonthNames[month - 1]
+            : month.ToString(Invariant);
 
     private async Task<SmartFeeReportResultDto> OverallReceivableAsync(SmartFeeReportCatalogItemDto cat, Dictionary<string, object?> p)
     {
@@ -1741,6 +1971,21 @@ public class SmartFeeReportService : ISmartFeeReportService
     private static bool MatchClass(string? className, string? filter) =>
         string.IsNullOrWhiteSpace(filter) ||
         string.Equals((className ?? string.Empty).Trim(), filter.Trim(), StringComparison.OrdinalIgnoreCase);
+
+    private static bool MatchBalance(decimal amount, string? op, decimal? threshold)
+    {
+        if (threshold is null) return true;
+        var value = decimal.Round(amount, 2, MidpointRounding.AwayFromZero);
+        var limit = decimal.Round(threshold.Value, 2, MidpointRounding.AwayFromZero);
+        return (op ?? "gte").Trim().ToLowerInvariant() switch
+        {
+            "gt" => value > limit,
+            "lt" => value < limit,
+            "lte" or "le" => value <= limit,
+            "eq" or "=" => value == limit,
+            _ => value >= limit,
+        };
+    }
 
     // ——— Param helpers ———
 

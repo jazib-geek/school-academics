@@ -72,6 +72,30 @@ public class ChatController : ControllerBase
         }
     }
 
+    [HttpPost("messages/{messageId:long}/react")]
+    public async Task<IActionResult> React(
+        long messageId,
+        [FromBody] ReactToChatMessageRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        if (!CampusUserAccess.TryGetCampusUserId(User, out var userId))
+            return Unauthorized();
+
+        try
+        {
+            var result = await _chatService.ReactAsync(userId, messageId, request?.Emoji, cancellationToken);
+            var evt = new CampusChatEventDto { Type = "chat-reaction", Data = result };
+            _sink.Publish(_tenantContext.Campus, result.SenderUserId, evt);
+            if (result.RecipientUserId != result.SenderUserId)
+                _sink.Publish(_tenantContext.Campus, result.RecipientUserId, evt);
+            return Ok(ApiResponse<ChatReactionEventDto>.SuccessResponse(result));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ApiResponse<object>.FailureResponse(ex.Message));
+        }
+    }
+
     [HttpPost("conversation/{otherUserId:int}/read")]
     public async Task<IActionResult> MarkRead(int otherUserId, CancellationToken cancellationToken)
     {

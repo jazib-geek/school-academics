@@ -11,19 +11,26 @@ import {
   Info,
   Loader2,
   Lock,
+  Printer,
   Receipt,
   RefreshCw,
   Save,
   Scale,
   Search,
+  Smartphone,
   UserRound,
   Wallet,
   X,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import CampusShell from '../../../components/campus/CampusShell.jsx'
+import CampusReportPrintHeader from '../../../components/campus/CampusReportPrintHeader.jsx'
 import { closeDay, getDayClosingPreview } from '../../../services/accountService'
-import { formatReportPrintMoney } from '../../../utils/campusReportPrint'
+import {
+  CAMPUS_REPORT_PRINT_STYLES,
+  formatReportPrintDate,
+  formatReportPrintMoney,
+} from '../../../utils/campusReportPrint'
 import { INTEGER_INPUT_ATTRS, readIntegerInput } from '../../../utils/numericInput.js'
 import { getPakistanTodayIso } from '../../../utils/pakistanDate.js'
 
@@ -123,12 +130,43 @@ export default function CampusDayClosingPage() {
 
   const readOnly = !preview?.canClose
   const confirmAmount = formatReportPrintMoney(remainingCash)
+  const printSubtitle = preview ? formatReportPrintDate(`${date}T00:00:00`, 'long') : ''
+  const printHandover =
+    preview?.closing != null
+      ? Math.round(Number(preview.closing.remainingCash || 0))
+      : Math.round(Number(remainingCash || 0))
+  const printNarration =
+    preview?.closing?.narration?.trim() || narration.trim() || 'Day closing – cash to owner'
+  const printClosedBy = preview?.closing?.entryUser || null
+  const printLines = preview
+    ? [
+        { label: 'Tuition fee', cash: preview.tuitionFee, online: preview.tuitionFeeOnline },
+        { label: 'Admission fee', cash: preview.admissionFee, online: preview.admissionFeeOnline, hideIfZero: true },
+        { label: 'Misc charges', cash: preview.miscCharges, online: preview.miscChargesOnline },
+        { label: 'Previous balance', cash: preview.prevBalance, online: preview.prevBalanceOnline, hideIfZero: true },
+        { label: 'Fine', cash: preview.fine, online: preview.fineOnline, hideIfZero: true },
+        { label: 'Ledger payments', cash: preview.glDebits, online: 0 },
+      ].filter((line) => {
+        if (!line.hideIfZero) return true
+        const cash = Number(line.cash)
+        const online = Number(line.online)
+        return (Number.isFinite(cash) && cash !== 0) || (Number.isFinite(online) && online !== 0)
+      })
+    : []
+  const printHasOnline = printLines.some((line) => Number(line.online) > 0)
 
   return (
-    <CampusShell headerContext="Accounts">
-      <div className="min-h-screen bg-slate-100 p-4 pt-[4.25rem] md:p-6 md:pt-[4.5rem]">
+    <div className="print-page-root min-h-screen bg-slate-100 text-slate-700">
+      <style>{CAMPUS_REPORT_PRINT_STYLES}</style>
+      <CampusShell
+        headerContext="Accounts"
+        rowClassName="print-main-wrap flex min-h-screen w-full"
+        asideClassName="no-print"
+        headerClassName="no-print"
+      >
+      <div className="print-content-wrap min-h-screen w-full p-4 pt-[4.25rem] md:p-6 md:pt-[4.5rem]">
         <div className="mx-auto max-w-5xl space-y-4">
-          <section className="space-y-3 rounded-2xl bg-white p-4 shadow-sm">
+          <section className="no-print space-y-3 rounded-2xl bg-white p-4 shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="flex items-start gap-3">
                 <div className="grid h-10 w-10 place-items-center rounded-xl bg-[var(--campus-primary)] text-white">
@@ -153,6 +191,16 @@ export default function CampusDayClosingPage() {
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700">
                   <RefreshCw size={12} /> Open for today
                 </span>
+              ) : null}
+              {preview && !isLoading ? (
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                >
+                  <Printer size={16} />
+                  Print
+                </button>
               ) : null}
             </div>
 
@@ -182,7 +230,7 @@ export default function CampusDayClosingPage() {
             </div>
           </section>
 
-          <section className="rounded-2xl bg-white p-4 shadow-sm">
+          <section className="no-print rounded-2xl bg-white p-4 shadow-sm">
             {isLoading || !preview ? (
               <div className="flex items-center justify-center gap-3 p-10 text-slate-500">
                 <Loader2 size={22} className="animate-spin text-[var(--campus-primary)]" />
@@ -212,16 +260,20 @@ export default function CampusDayClosingPage() {
                 </div>
 
                 <div>
-                  <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
                     <Scale size={13} className="text-slate-400" />
                     Day breakdown
                   </div>
+                  <p className="mb-2 text-xs text-slate-500">
+                    Fee lines are cash receipts only. Online fee is shown separately and is not part of cash handover.
+                  </p>
                   <div className="grid gap-2 sm:grid-cols-2">
-                    <DetailRow icon={GraduationCap} label="Tuition fee" value={preview.tuitionFee} tone="sky" />
-                    <DetailRow icon={UserRound} label="Admission fee" value={preview.admissionFee} tone="sky" />
-                    <DetailRow icon={CircleDollarSign} label="Misc charges" value={preview.miscCharges} tone="violet" />
-                    <DetailRow icon={Wallet} label="Prev balance" value={preview.prevBalance} tone="slate" />
-                    <DetailRow icon={AlertTriangle} label="Fine" value={preview.fine} tone="amber" />
+                    <DetailRow icon={GraduationCap} label="Tuition fee (cash)" value={preview.tuitionFee} tone="sky" />
+                    <DetailRow icon={UserRound} label="Admission fee (cash)" value={preview.admissionFee} tone="sky" />
+                    <DetailRow icon={CircleDollarSign} label="Misc charges (cash)" value={preview.miscCharges} tone="violet" />
+                    <DetailRow icon={Wallet} label="Prev balance (cash)" value={preview.prevBalance} tone="slate" />
+                    <DetailRow icon={AlertTriangle} label="Fine (cash)" value={preview.fine} tone="amber" />
+                    <DetailRow icon={Smartphone} label="Online fee" value={preview.onlineFee} tone="indigo" />
                     <DetailRow icon={Banknote} label="Other receipts (ledger)" value={preview.glCredits} tone="emerald" />
                     <DetailRow icon={Receipt} label="Ledger payments" value={preview.glDebits} tone="rose" />
                   </div>
@@ -305,7 +357,7 @@ export default function CampusDayClosingPage() {
             )}
           </section>
 
-          <section className="overflow-hidden rounded-2xl bg-white shadow-sm">
+          <section className="no-print overflow-hidden rounded-2xl bg-white shadow-sm">
             <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-3">
               <div className="grid h-7 w-7 place-items-center rounded-lg bg-slate-100 text-slate-600">
                 <History size={14} />
@@ -361,6 +413,105 @@ export default function CampusDayClosingPage() {
             </div>
           </section>
         </div>
+
+          {preview ? (
+            <div className="print-only print-sheet print-area">
+              <CampusReportPrintHeader title="DAY CLOSING" subtitle={printSubtitle} showSession={false} />
+              {!preview.isClosed ? (
+                <p style={{ fontSize: 11, marginBottom: 8, fontStyle: 'italic' }}>
+                  {preview.isToday
+                    ? 'Open day — figures update until the day is closed.'
+                    : 'Historical view — day was not closed on this date.'}
+                </p>
+              ) : null}
+              <table className="legacy-print-summary" style={{ marginBottom: 12 }}>
+                <thead>
+                  <tr>
+                    <th>Total cash</th>
+                    <th>Total online</th>
+                    <th>Total expenses</th>
+                    <th>Cash to owner</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>{formatReportPrintMoney(preview.totalCashCollected)}</td>
+                    <td>{formatReportPrintMoney(preview.onlineFee)}</td>
+                    <td>{formatReportPrintMoney(preview.totalExpenses)}</td>
+                    <td>{formatReportPrintMoney(printHandover)}</td>
+                  </tr>
+                </tbody>
+              </table>
+              <table className="legacy-print-table">
+                <thead>
+                  <tr>
+                    <th style={{ textAlign: 'left' }}>Payment type</th>
+                    {printHasOnline ? (
+                      <>
+                        <th style={{ textAlign: 'right' }}>Cash</th>
+                        <th style={{ textAlign: 'right' }}>Online</th>
+                      </>
+                    ) : (
+                      <th style={{ textAlign: 'right' }}>Amount</th>
+                    )}
+                  </tr>
+                </thead>
+                <tbody>
+                  {printLines.map((line) => (
+                    <tr key={line.label}>
+                      <td>{line.label}</td>
+                      {printHasOnline ? (
+                        <>
+                          <td style={{ textAlign: 'center' }}>{formatReportPrintMoney(line.cash)}</td>
+                          <td style={{ textAlign: 'center' }}>{formatReportPrintMoney(line.online)}</td>
+                        </>
+                      ) : (
+                        <td style={{ textAlign: 'right' }}>{formatReportPrintMoney(line.cash)}</td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <table className="legacy-print-table" style={{ marginTop: 10 }}>
+                <tbody>
+                  <tr>
+                    <td style={{ width: '40%' }}>Narration</td>
+                    <td>{printNarration}</td>
+                  </tr>
+                  {printClosedBy ? (
+                    <tr>
+                      <td>Closed by</td>
+                      <td>{printClosedBy}</td>
+                    </tr>
+                  ) : null}
+                  {preview.isClosed && preview.closing?.createdAtPkt ? (
+                    <tr>
+                      <td>Closed at</td>
+                      <td>{formatReportPrintDate(preview.closing.createdAtPkt, 'long')}</td>
+                    </tr>
+                  ) : null}
+                </tbody>
+              </table>
+              <table className="legacy-print-table" style={{ marginTop: 28 }}>
+                <tbody>
+                  <tr>
+                    <td style={{ width: '50%', height: 72, verticalAlign: 'bottom' }}>
+                      Prepared by (accounts)
+                      <div style={{ borderTop: '1px solid #000', marginTop: 40, paddingTop: 4 }}>
+                        Signature &amp; date
+                      </div>
+                    </td>
+                    <td style={{ width: '50%', height: 72, verticalAlign: 'bottom' }}>
+                      Owner / recipient
+                      <div style={{ borderTop: '1px solid #000', marginTop: 40, paddingTop: 4 }}>
+                        Signature &amp; date
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          ) : null}
       </div>
 
       {isConfirmOpen ? (
@@ -435,7 +586,8 @@ export default function CampusDayClosingPage() {
           </div>
         </div>
       ) : null}
-    </CampusShell>
+      </CampusShell>
+    </div>
   )
 }
 
@@ -484,6 +636,7 @@ const DETAIL_TONES = {
   amber: 'bg-amber-50 text-amber-700',
   emerald: 'bg-emerald-50 text-emerald-700',
   rose: 'bg-rose-50 text-rose-700',
+  indigo: 'bg-indigo-50 text-indigo-700',
 }
 
 function DetailRow({ icon: Icon, label, value, tone = 'slate' }) {

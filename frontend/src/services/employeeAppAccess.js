@@ -15,6 +15,8 @@ const EMPTY_ACCESS = Object.freeze({
   canViewStudentExamDetail: false,
   canRecordStudentConduct: false,
   canViewStudentConduct: false,
+  canRecordTeacherConduct: false,
+  canViewTeacherConduct: false,
 })
 
 const FULL_ACCESS = Object.freeze(
@@ -38,6 +40,8 @@ const normalizeAccess = (raw) => {
     canViewStudentExamDetail: Boolean(raw.canViewStudentExamDetail),
     canRecordStudentConduct: Boolean(raw.canRecordStudentConduct),
     canViewStudentConduct: Boolean(raw.canViewStudentConduct),
+    canRecordTeacherConduct: Boolean(raw.canRecordTeacherConduct),
+    canViewTeacherConduct: Boolean(raw.canViewTeacherConduct),
   }
 }
 

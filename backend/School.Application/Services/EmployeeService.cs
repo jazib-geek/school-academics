@@ -385,6 +385,8 @@ public class EmployeeService : IEmployeeService
         t.CanViewStudentExamDetail = s.CanViewStudentExamDetail;
         t.CanRecordStudentConduct = s.CanRecordStudentConduct;
         t.CanViewStudentConduct = s.CanViewStudentConduct;
+        t.CanRecordTeacherConduct = s.CanRecordTeacherConduct;
+        t.CanViewTeacherConduct = s.CanViewTeacherConduct;
         t.WingCode = ParseWingCode(s.WingCode);
         t.IsAcademicHead = s.IsAcademicHead;
     }
@@ -437,6 +439,8 @@ public class EmployeeService : IEmployeeService
         CanViewStudentExamDetail = x.CanViewStudentExamDetail,
         CanRecordStudentConduct = x.CanRecordStudentConduct,
         CanViewStudentConduct = x.CanViewStudentConduct,
+        CanRecordTeacherConduct = x.CanRecordTeacherConduct,
+        CanViewTeacherConduct = x.CanViewTeacherConduct,
         WingCode = x.WingCode?.ToString(),
         IsAcademicHead = x.IsAcademicHead,
         Qualifications = x.Qualifications.OrderBy(y => y.ID).Select(y => new EmployeeQualificationDto

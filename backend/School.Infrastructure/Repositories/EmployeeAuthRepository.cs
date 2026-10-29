@@ -48,6 +48,8 @@ public class EmployeeAuthRepository : IEmployeeAuthRepository
                 CanViewStudentExamDetail = employee.CanViewStudentExamDetail,
                 CanRecordStudentConduct = employee.CanRecordStudentConduct,
                 CanViewStudentConduct = employee.CanViewStudentConduct,
+                CanRecordTeacherConduct = employee.CanRecordTeacherConduct,
+                CanViewTeacherConduct = employee.CanViewTeacherConduct,
                 WingCode = employee.WingCode,
                 IsAcademicHead = employee.IsAcademicHead,
             })
@@ -83,6 +85,8 @@ public class EmployeeAuthRepository : IEmployeeAuthRepository
                 CanViewStudentExamDetail = employee.CanViewStudentExamDetail,
                 CanRecordStudentConduct = employee.CanRecordStudentConduct,
                 CanViewStudentConduct = employee.CanViewStudentConduct,
+                CanRecordTeacherConduct = employee.CanRecordTeacherConduct,
+                CanViewTeacherConduct = employee.CanViewTeacherConduct,
                 WingCode = employee.WingCode,
                 IsAcademicHead = employee.IsAcademicHead,
             })

@@ -37,6 +37,31 @@ public class ChatMessageDto
     public DateTime SentAtUtc { get; set; }
 
     public DateTime? ReadAtUtc { get; set; }
+
+    public List<ChatReactionDto> Reactions { get; set; } = [];
+}
+
+public class ChatReactionDto
+{
+    public int UserId { get; set; }
+
+    public string Emoji { get; set; } = string.Empty;
+}
+
+public class ReactToChatMessageRequestDto
+{
+    public string? Emoji { get; set; }
+}
+
+public class ChatReactionEventDto
+{
+    public long MessageId { get; set; }
+
+    public int SenderUserId { get; set; }
+
+    public int RecipientUserId { get; set; }
+
+    public List<ChatReactionDto> Reactions { get; set; } = [];
 }
 
 public class SendChatMessageRequestDto

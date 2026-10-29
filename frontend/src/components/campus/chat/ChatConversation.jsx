@@ -1,11 +1,32 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { ArrowLeft, Check, CheckCheck, Loader2, SendHorizontal } from 'lucide-react'
-import { getChatConversation, sendChatMessage } from '../../../services/chatService'
+import { getChatConversation, reactToChatMessage, sendChatMessage } from '../../../services/chatService'
 import { formatPkDayHeading, formatPkTime, pkDateKey } from '../../../utils/pakistanTime'
 import ChatAvatar from './ChatAvatar.jsx'
 import ChatEmojiPicker from './ChatEmojiPicker.jsx'
 
 const MAX_LENGTH = 1000
+
+const CHAT_REACTIONS = [
+  { emoji: '\u{1F44D}', label: 'Like' },
+  { emoji: '\u2764\uFE0F', label: 'Love' },
+  { emoji: '\u{1F606}', label: 'Haha' },
+  { emoji: '\u{1F62E}', label: 'Wow' },
+  { emoji: '\u{1F622}', label: 'Sad' },
+  { emoji: '\u{1F620}', label: 'Angry' },
+]
+
+function reactionSummary(reactions) {
+  const counts = new Map()
+  for (const row of reactions || []) counts.set(row.emoji, (counts.get(row.emoji) || 0) + 1)
+  return [...counts.entries()]
+}
+
+function reactionCaption(reactions, myUserId, otherName) {
+  return (reactions || [])
+    .map((row) => (row.userId === myUserId ? `You ${row.emoji}` : `${otherName} ${row.emoji}`))
+    .join(' · ')
+}
 
 function isEmojiOnly(text) {
   const compact = String(text || '').replace(/\s/g, '')
@@ -20,8 +41,11 @@ export default function ChatConversation({ user, myUserId, subscribe, onRead, on
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
+  const [pickerId, setPickerId] = useState(null)
   const scrollRef = useRef(null)
   const inputRef = useRef(null)
+  const holdTimer = useRef(null)
+  const holdFired = useRef(false)
 
   const upsertMessages = useCallback((incoming) => {
     setMessages((prev) => {
@@ -36,6 +60,7 @@ export default function ChatConversation({ user, myUserId, subscribe, onRead, on
     setLoading(true)
     setMessages([])
     setError('')
+    setPickerId(null)
     getChatConversation(otherId)
       .then((rows) => {
         if (!cancelled) setMessages(rows)
@@ -61,6 +86,15 @@ export default function ChatConversation({ user, myUserId, subscribe, onRead, on
             (data.senderUserId === otherId && data.recipientUserId === myUserId) ||
             (data.senderUserId === myUserId && data.recipientUserId === otherId)
           if (inThread) upsertMessages([data])
+        } else if (type === 'chat-reaction' && data?.messageId) {
+          const inThread =
+            (data.senderUserId === otherId && data.recipientUserId === myUserId) ||
+            (data.senderUserId === myUserId && data.recipientUserId === otherId)
+          if (inThread) {
+            setMessages((prev) =>
+              prev.map((m) => (m.id === data.messageId ? { ...m, reactions: data.reactions || [] } : m)),
+            )
+          }
         } else if (type === 'chat-read' && data.readerUserId === otherId) {
           setMessages((prev) =>
             prev.map((m) =>
@@ -71,6 +105,23 @@ export default function ChatConversation({ user, myUserId, subscribe, onRead, on
       }),
     [subscribe, otherId, myUserId, upsertMessages],
   )
+
+  useEffect(() => {
+    if (pickerId == null) return undefined
+    const onPointer = (event) => {
+      if (event.target?.closest?.('[data-reaction-root]')) return
+      setPickerId(null)
+    }
+    const onKey = (event) => {
+      if (event.key === 'Escape') setPickerId(null)
+    }
+    document.addEventListener('pointerdown', onPointer)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('pointerdown', onPointer)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [pickerId])
 
   useLayoutEffect(() => {
     const el = scrollRef.current
@@ -103,6 +154,26 @@ export default function ChatConversation({ user, myUserId, subscribe, onRead, on
       el?.focus()
       el?.setSelectionRange(caret, caret)
     })
+  }
+
+  const react = async (message, emoji) => {
+    const previous = message.reactions || []
+    const mine = previous.find((row) => row.userId === myUserId)
+    const rest = previous.filter((row) => row.userId !== myUserId)
+    const next = !mine || mine.emoji !== emoji ? [...rest, { userId: myUserId, emoji }] : rest
+    setMessages((prev) => prev.map((m) => (m.id === message.id ? { ...m, reactions: next } : m)))
+    setPickerId(null)
+    try {
+      const saved = await reactToChatMessage(message.id, emoji)
+      if (saved?.messageId) {
+        setMessages((prev) =>
+          prev.map((m) => (m.id === saved.messageId ? { ...m, reactions: saved.reactions || [] } : m)),
+        )
+      }
+    } catch (err) {
+      setMessages((prev) => prev.map((m) => (m.id === message.id ? { ...m, reactions: previous } : m)))
+      setError(err?.response?.data?.message || 'Could not add that reaction.')
+    }
   }
 
   const send = async () => {
@@ -168,32 +239,102 @@ export default function ChatConversation({ user, myUserId, subscribe, onRead, on
               }
               const m = row.message
               const mine = m.senderUserId === myUserId
+              const reactions = m.reactions || []
+              const pickerOpen = pickerId === m.id
               return (
-                <li key={row.key} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-                  <div
-                    className={`max-w-[80%] rounded-2xl px-3 py-1.5 text-[13px] leading-snug shadow-sm ${
-                      mine
-                        ? 'rounded-br-md bg-indigo-600 text-white'
-                        : 'rounded-bl-md bg-white text-slate-800 ring-1 ring-slate-100'
-                    }`}
-                  >
-                    <p className={`whitespace-pre-wrap break-words ${isEmojiOnly(m.body) ? 'text-2xl leading-snug' : ''}`}>
-                      {m.body}
-                    </p>
-                    <p
-                      className={`mt-0.5 flex items-center justify-end gap-1 text-[10px] ${
-                        mine ? 'text-indigo-200' : 'text-slate-400'
+                <li
+                  key={row.key}
+                  data-reaction-root={pickerOpen ? '' : undefined}
+                  className={`group relative flex ${mine ? 'justify-end' : 'justify-start'} ${
+                    reactions.length ? 'mb-2.5' : ''
+                  }`}
+                >
+                  <div className="relative max-w-[80%]">
+                    <div
+                      className={`absolute bottom-full z-20 pb-1 ${mine ? 'right-0' : 'left-0'} ${
+                        pickerOpen ? 'flex' : 'hidden group-hover:flex'
                       }`}
                     >
-                      {formatPkTime(m.sentAtUtc)}
-                      {mine ? (
-                        m.readAtUtc ? (
-                          <CheckCheck size={13} className="text-sky-300" aria-label="Seen" />
-                        ) : (
-                          <Check size={13} aria-label="Sent" />
-                        )
-                      ) : null}
-                    </p>
+                      <div className="flex items-center gap-0.5 rounded-full bg-white px-1 py-1 shadow-md ring-1 ring-slate-200">
+                        {CHAT_REACTIONS.map((item) => {
+                          const selected = reactions.some((row) => row.userId === myUserId && row.emoji === item.emoji)
+                          return (
+                            <button
+                              key={item.label}
+                              type="button"
+                              aria-label={item.label}
+                              aria-pressed={selected}
+                              onClick={() => react(m, item.emoji)}
+                              className={`grid h-7 w-7 place-items-center rounded-full text-base leading-none transition hover:scale-110 hover:bg-slate-100 ${
+                                selected ? 'bg-indigo-50 ring-1 ring-indigo-200' : ''
+                              }`}
+                            >
+                              {item.emoji}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                    <div
+                      className={`rounded-2xl px-3 py-1.5 text-[13px] leading-snug shadow-sm ${
+                        mine
+                          ? 'rounded-br-md bg-indigo-600 text-white'
+                          : 'rounded-bl-md bg-white text-slate-800 ring-1 ring-slate-100'
+                      }`}
+                      onPointerDown={(event) => {
+                        if (event.pointerType === 'mouse') return
+                        holdFired.current = false
+                        holdTimer.current = window.setTimeout(() => {
+                          holdFired.current = true
+                          setPickerId(m.id)
+                        }, 450)
+                      }}
+                      onPointerUp={() => {
+                        if (holdTimer.current) window.clearTimeout(holdTimer.current)
+                      }}
+                      onPointerCancel={() => {
+                        if (holdTimer.current) window.clearTimeout(holdTimer.current)
+                      }}
+                      onContextMenu={(event) => {
+                        event.preventDefault()
+                        setPickerId(m.id)
+                      }}
+                    >
+                      <p className={`whitespace-pre-wrap break-words ${isEmojiOnly(m.body) ? 'text-2xl leading-snug' : ''}`}>
+                        {m.body}
+                      </p>
+                      <p
+                        className={`mt-0.5 flex items-center justify-end gap-1 text-[10px] ${
+                          mine ? 'text-indigo-200' : 'text-slate-400'
+                        }`}
+                      >
+                        {formatPkTime(m.sentAtUtc)}
+                        {mine ? (
+                          m.readAtUtc ? (
+                            <CheckCheck size={13} className="text-sky-300" aria-label="Seen" />
+                          ) : (
+                            <Check size={13} aria-label="Sent" />
+                          )
+                        ) : null}
+                      </p>
+                    </div>
+                    {reactions.length ? (
+                      <div
+                        className={`pointer-events-none absolute -bottom-2.5 z-[1] flex items-center rounded-full bg-white px-1 py-0.5 text-sm leading-none shadow-sm ring-1 ring-slate-200 ${
+                          mine ? 'left-1' : 'right-1'
+                        }`}
+                        title={reactionCaption(reactions, myUserId, user.username)}
+                      >
+                        {reactionSummary(reactions).map(([emoji, count]) => (
+                          <span key={emoji} className="inline-flex items-center px-0.5">
+                            {emoji}
+                            {count > 1 ? (
+                              <span className="ml-0.5 text-[10px] font-semibold text-slate-500">{count}</span>
+                            ) : null}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
                   </div>
                 </li>
               )

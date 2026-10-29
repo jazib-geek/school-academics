@@ -157,10 +157,15 @@ public class AppDbContext : DbContext
     public DbSet<StudentShortLeaveStudent> StudentShortLeaveStudents => Set<StudentShortLeaveStudent>();
     public DbSet<UserReminder> UserReminders => Set<UserReminder>();
     public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
+    public DbSet<ChatReaction> ChatReactions => Set<ChatReaction>();
     public DbSet<EmployeeAttendanceChangeRequest> EmployeeAttendanceChangeRequests =>
         Set<EmployeeAttendanceChangeRequest>();
     public DbSet<StudentConductNoteTag> StudentConductNoteTags => Set<StudentConductNoteTag>();
     public DbSet<StudentConductParentAck> StudentConductParentAcks => Set<StudentConductParentAck>();
+    public DbSet<TeacherConductType> TeacherConductTypes => Set<TeacherConductType>();
+    public DbSet<TeacherConductTag> TeacherConductTags => Set<TeacherConductTag>();
+    public DbSet<TeacherConductNote> TeacherConductNotes => Set<TeacherConductNote>();
+    public DbSet<TeacherConductNoteTag> TeacherConductNoteTags => Set<TeacherConductNoteTag>();
     public DbSet<AbsentStudentFollowup> AbsentStudentFollowups => Set<AbsentStudentFollowup>();
     public DbSet<AbsentFollowupReason> AbsentFollowupReasons => Set<AbsentFollowupReason>();
     public DbSet<FeeReminderNoticeTemplate> FeeReminderNoticeTemplates => Set<FeeReminderNoticeTemplate>();
@@ -695,6 +700,8 @@ public class AppDbContext : DbContext
             entity.Property(e => e.CanViewStudentExamDetail).HasDefaultValue(false);
             entity.Property(e => e.CanRecordStudentConduct).HasDefaultValue(false);
             entity.Property(e => e.CanViewStudentConduct).HasDefaultValue(false);
+            entity.Property(e => e.CanRecordTeacherConduct).HasDefaultValue(false);
+            entity.Property(e => e.CanViewTeacherConduct).HasDefaultValue(false);
             entity.Property(e => e.WingCode).HasConversion<string>().HasMaxLength(64).IsUnicode(false);
             entity.Property(e => e.IsAcademicHead).HasDefaultValue(false);
             entity.ToTable("tblEmployee", "dbo", t => t.HasCheckConstraint(
@@ -1147,11 +1154,16 @@ public class AppDbContext : DbContext
         modelBuilder.ApplyConfiguration(new StudentConductNoteConfiguration());
         modelBuilder.ApplyConfiguration(new StudentConductNoteTagConfiguration());
         modelBuilder.ApplyConfiguration(new StudentConductParentAckConfiguration());
+        modelBuilder.ApplyConfiguration(new TeacherConductTypeConfiguration());
+        modelBuilder.ApplyConfiguration(new TeacherConductTagConfiguration());
+        modelBuilder.ApplyConfiguration(new TeacherConductNoteConfiguration());
+        modelBuilder.ApplyConfiguration(new TeacherConductNoteTagConfiguration());
         modelBuilder.ApplyConfiguration(new StudentLeaveApplicationConfiguration());
         modelBuilder.ApplyConfiguration(new StudentShortLeaveConfiguration());
         modelBuilder.ApplyConfiguration(new StudentShortLeaveStudentConfiguration());
         modelBuilder.ApplyConfiguration(new UserReminderConfiguration());
         modelBuilder.ApplyConfiguration(new ChatMessageConfiguration());
+        modelBuilder.ApplyConfiguration(new ChatReactionConfiguration());
         modelBuilder.ApplyConfiguration(new EmployeeAttendanceChangeRequestConfiguration());
         modelBuilder.ApplyConfiguration(new AbsentFollowupReasonConfiguration());
         modelBuilder.ApplyConfiguration(new FeeReminderNoticeTemplateConfiguration());

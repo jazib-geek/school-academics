@@ -17,4 +17,6 @@ public class EmployeeAppAccessDto
     public bool CanViewStudentExamDetail { get; set; }
     public bool CanRecordStudentConduct { get; set; }
     public bool CanViewStudentConduct { get; set; }
+    public bool CanRecordTeacherConduct { get; set; }
+    public bool CanViewTeacherConduct { get; set; }
 }

@@ -17,11 +17,12 @@ const TYPE_ACCENT = {
   fee_received: 'campus-realtime-toast--fee',
   day_closed: 'campus-realtime-toast--day-close',
   student_conduct: 'campus-realtime-toast--conduct',
+  teacher_conduct: 'campus-realtime-toast--conduct',
   leave_application: 'campus-realtime-toast--info',
 }
 
 function accentClass(type, severity) {
-  if (type === 'student_conduct') {
+  if (type === 'student_conduct' || type === 'teacher_conduct') {
     if (severity === 'success') return 'campus-realtime-toast--check-in'
     if (severity === 'warning') return 'campus-realtime-toast--check-out'
     return 'campus-realtime-toast--conduct'

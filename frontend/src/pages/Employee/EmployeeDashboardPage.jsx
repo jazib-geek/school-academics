@@ -5,6 +5,7 @@ import {
   CalendarClock,
   CalendarDays,
   ChevronRight,
+  ClipboardList,
   Clock3,
   NotebookPen,
   PenLine,
@@ -92,6 +93,14 @@ const HOME_TILES = [
     icon: CalendarDays,
     path: '/employee/my-timetable',
     color: '#e37400',
+  },
+  {
+    id: 'my-conduct',
+    title: 'My conduct',
+    description: 'Notes about you',
+    icon: ClipboardList,
+    path: '/employee/my-conduct',
+    color: '#c62828',
   },
   {
     id: 'datesheets',

@@ -118,6 +118,11 @@ export default function useCampusChat({ active, token, myUserId, onIncomingMessa
 
       source.addEventListener('chat-message', (event) => applyMessage(parse(event)))
 
+      source.addEventListener('chat-reaction', (event) => {
+        const data = parse(event)
+        if (data) emit('chat-reaction', data)
+      })
+
       source.addEventListener('chat-read', (event) => {
         const data = parse(event)
         if (data) emit('chat-read', data)

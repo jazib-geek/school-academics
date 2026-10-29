@@ -195,6 +195,7 @@ public static class PermissionCatalog
         Add("assign_user_reminders", "Assign Reminders / Tasks to Other Users", "General");
         Add("edit_voucher", "Edit Voucher", "Accounts");
         Add("delete_voucher", "Delete Voucher", "Accounts");
+        Add("view_teacher_conduct", "View Teacher Conduct", "Employee");
 
         return items
             .Select((item, index) => new Permission

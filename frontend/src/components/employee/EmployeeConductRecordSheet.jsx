@@ -5,6 +5,7 @@ const noteDateKey = (value) => String(value || '').slice(0, 10)
 
 function EmployeeConductRecordSheet({
   studentName,
+  subjectName,
   date,
   types,
   existingNotes,
@@ -14,6 +15,7 @@ function EmployeeConductRecordSheet({
   onDelete,
   onClose,
 }) {
+  const displayName = subjectName || studentName || ''
   const activeTypes = types || []
   const [typeId, setTypeId] = useState(() => initialTypeId || activeTypes[0]?.id || 0)
   const [tagIds, setTagIds] = useState([])
@@ -72,7 +74,7 @@ function EmployeeConductRecordSheet({
       <div className="emp-modal-card flex max-h-[92vh] w-full max-w-lg flex-col rounded-t-3xl bg-white shadow-2xl ring-1 ring-slate-200 sm:rounded-2xl">
         <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-4 py-3">
           <div className="min-w-0">
-            <p className="truncate text-base font-semibold text-slate-900">{studentName}</p>
+            <p className="truncate text-base font-semibold text-slate-900">{displayName}</p>
             <p className="mt-0.5 text-xs text-slate-500">{noteDateKey(date)}</p>
           </div>
           <button

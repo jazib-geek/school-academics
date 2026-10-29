@@ -13,6 +13,17 @@ public class ChatService : IChatService
     public const int MaxBodyLength = 1000;
     private const int MaxConversationMessages = 300;
 
+    /// <summary>Messenger-style quick reactions. Compared exactly, including variation selectors.</summary>
+    private static readonly HashSet<string> AllowedReactions = new(StringComparer.Ordinal)
+    {
+        "\U0001F44D",
+        "\u2764\uFE0F",
+        "\U0001F606",
+        "\U0001F62E",
+        "\U0001F622",
+        "\U0001F620",
+    };
+
     private static readonly ConcurrentDictionary<string, DateTime> LastPurgeUtcByCampus =
         new(StringComparer.OrdinalIgnoreCase);
 
@@ -90,7 +101,9 @@ public class ChatService : IChatService
             .Take(MaxConversationMessages)
             .ToListAsync(cancellationToken);
 
-        return rows.OrderBy(x => x.Id).Select(Map).ToList();
+        var ordered = rows.OrderBy(x => x.Id).ToList();
+        var reactions = await LoadReactionsAsync(ordered.Select(x => x.Id).ToList(), cancellationToken);
+        return ordered.Select(x => Map(x, reactions.GetValueOrDefault(x.Id))).ToList();
     }
 
     public async Task<ChatMessageDto> SendAsync(
@@ -151,6 +164,63 @@ public class ChatService : IChatService
         return new ChatReadEventDto { ReaderUserId = userId, UpToId = upToId.Value, ReadAtUtc = AsUtc(now) };
     }
 
+    public async Task<ChatReactionEventDto> ReactAsync(
+        int userId,
+        long messageId,
+        string? emoji,
+        CancellationToken cancellationToken = default)
+    {
+        var normalized = string.IsNullOrWhiteSpace(emoji) ? null : emoji.Trim();
+        if (normalized is not null && !AllowedReactions.Contains(normalized))
+            throw new ArgumentException("Choose a reaction.");
+
+        var cutoff = CutoffUtc;
+        var message = await _context.ChatMessages
+            .FirstOrDefaultAsync(x => x.Id == messageId && x.SentAtUtc >= cutoff, cancellationToken);
+        if (message is null || (message.SenderUserId != userId && message.RecipientUserId != userId))
+            throw new ArgumentException("That message is no longer available.");
+
+        var existing = await _context.ChatReactions
+            .FirstOrDefaultAsync(x => x.MessageId == messageId && x.UserId == userId, cancellationToken);
+
+        if (normalized is null || (existing is not null && existing.Emoji == normalized))
+        {
+            if (existing is not null)
+                _context.ChatReactions.Remove(existing);
+        }
+        else if (existing is not null)
+        {
+            existing.Emoji = normalized;
+            existing.CreatedAtUtc = DateTime.UtcNow;
+        }
+        else
+        {
+            _context.ChatReactions.Add(new ChatReaction
+            {
+                MessageId = messageId,
+                UserId = userId,
+                Emoji = normalized,
+                CreatedAtUtc = DateTime.UtcNow,
+            });
+        }
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        var reactions = await _context.ChatReactions.AsNoTracking()
+            .Where(x => x.MessageId == messageId)
+            .OrderBy(x => x.Id)
+            .Select(x => new ChatReactionDto { UserId = x.UserId, Emoji = x.Emoji })
+            .ToListAsync(cancellationToken);
+
+        return new ChatReactionEventDto
+        {
+            MessageId = messageId,
+            SenderUserId = message.SenderUserId,
+            RecipientUserId = message.RecipientUserId,
+            Reactions = reactions,
+        };
+    }
+
     public Task<int> GetUnreadCountAsync(int userId, CancellationToken cancellationToken = default)
     {
         var cutoff = CutoffUtc;
@@ -161,10 +231,13 @@ public class ChatService : IChatService
     }
 
     /// <summary>Deletes chat rows older than the retention window on the given context.</summary>
-    public static Task<int> PurgeExpiredAsync(AppDbContext context, CancellationToken cancellationToken = default)
+    public static async Task<int> PurgeExpiredAsync(AppDbContext context, CancellationToken cancellationToken = default)
     {
         var cutoff = CutoffUtc;
-        return context.ChatMessages
+        await context.ChatReactions
+            .Where(x => context.ChatMessages.Any(m => m.Id == x.MessageId && m.SentAtUtc < cutoff))
+            .ExecuteDeleteAsync(cancellationToken);
+        return await context.ChatMessages
             .Where(x => x.SentAtUtc < cutoff)
             .ExecuteDeleteAsync(cancellationToken);
     }
@@ -187,7 +260,27 @@ public class ChatService : IChatService
         }
     }
 
-    private static ChatMessageDto Map(ChatMessage x) => new()
+    private async Task<Dictionary<long, List<ChatReactionDto>>> LoadReactionsAsync(
+        List<long> messageIds,
+        CancellationToken cancellationToken)
+    {
+        if (messageIds.Count == 0)
+            return [];
+
+        var rows = await _context.ChatReactions.AsNoTracking()
+            .Where(x => messageIds.Contains(x.MessageId))
+            .OrderBy(x => x.Id)
+            .Select(x => new { x.MessageId, x.UserId, x.Emoji })
+            .ToListAsync(cancellationToken);
+
+        return rows
+            .GroupBy(x => x.MessageId)
+            .ToDictionary(
+                g => g.Key,
+                g => g.Select(x => new ChatReactionDto { UserId = x.UserId, Emoji = x.Emoji }).ToList());
+    }
+
+    private static ChatMessageDto Map(ChatMessage x, IReadOnlyList<ChatReactionDto>? reactions = null) => new()
     {
         Id = x.Id,
         SenderUserId = x.SenderUserId,
@@ -195,6 +288,7 @@ public class ChatService : IChatService
         Body = x.Body,
         SentAtUtc = AsUtc(x.SentAtUtc),
         ReadAtUtc = x.ReadAtUtc is null ? null : AsUtc(x.ReadAtUtc.Value),
+        Reactions = reactions is null ? [] : [.. reactions],
     };
 
     private static DateTime AsUtc(DateTime value) => DateTime.SpecifyKind(value, DateTimeKind.Utc);

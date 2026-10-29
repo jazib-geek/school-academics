@@ -10,6 +10,7 @@ import {
   Building2,
   CalendarClock,
   CalendarDays,
+  History,
   CalendarRange,
   CalendarX,
   CheckCircle2,
@@ -60,6 +61,8 @@ const FREQUENT_REPORT_IDS = [
   'collection-by-date',
   'collection-by-interval',
   'tuition-defaulters',
+  'tuition-pending-months',
+  'last-payment',
   'fund-defaulters',
   'overall-receivable',
   'overall-receivable-class-wise',
@@ -74,13 +77,52 @@ const CATEGORIES = [
 ]
 
 const REPORT_NATURE_BADGE = {
-  risk: 'bg-rose-500',
-  cash: 'bg-emerald-500',
-  portfolio: 'bg-sky-500',
+  risk: 'bg-[#db2777]',
+  cash: 'bg-[#059669]',
+  portfolio: 'bg-[#4f46e5]',
+}
+
+const REPORT_BADGE_COLOR = {
+  'tuition-defaulters': 'bg-[#db2777]',
+  'tuition-pending-months': 'bg-[#7c3aed]',
+  'last-payment': 'bg-[#e11d74]',
+  'fund-defaulters': 'bg-[#5b21b6]',
+  'overall-receivable': 'bg-[#be185d]',
+  'overall-receivable-class-wise': 'bg-[#6d28d9]',
+  'top-defaulters': 'bg-[#be185d]',
+  'chronic-defaulters': 'bg-[#7e22ce]',
+  'aging-receivable': 'bg-[#a21caf]',
+  'never-paid-period': 'bg-[#5b21b6]',
+  'partial-payers': 'bg-[#db2777]',
+  'family-receivable': 'bg-[#86198f]',
+  'inactive-with-dues': 'bg-[#6b21a8]',
+  'dues-above-threshold': 'bg-[#c026d3]',
+  'collection-by-date': 'bg-[#059669]',
+  'collection-by-interval': 'bg-[#4f46e5]',
+  'collection-by-fund': 'bg-[#047857]',
+  'collection-by-class': 'bg-[#6366f1]',
+  'collection-trend': 'bg-[#065f46]',
+  'collection-mom-compare': 'bg-[#4338ca]',
+  'largest-receipts': 'bg-[#059669]',
+  'collector-performance': 'bg-[#3730a3]',
+  'discount-given': 'bg-[#047857]',
+  'voids-adjustments': 'bg-[#4f46e5]',
+  'zero-collection-days': 'bg-[#065f46]',
+  'class-wise-receivable': 'bg-[#6366f1]',
+  'recovery-rate': 'bg-[#059669]',
+  'tuition-month-matrix': 'bg-[#4f46e5]',
+  'expected-income': 'bg-[#6366f1]',
+  'concession-impact': 'bg-[#7c3aed]',
+  'session-fee-snapshot': 'bg-[#4338ca]',
+  'fund-mix-outstanding': 'bg-[#047857]',
+  'students-fully-cleared': 'bg-[#059669]',
+  'new-charges-vs-receipts': 'bg-[#4f46e5]',
 }
 
 const REPORT_ICONS = {
   'tuition-defaulters': AlertTriangle,
+  'tuition-pending-months': CalendarClock,
+  'last-payment': History,
   'fund-defaulters': CircleDollarSign,
   'overall-receivable': Wallet,
   'overall-receivable-class-wise': LayoutList,
@@ -116,6 +158,9 @@ const REPORT_ICONS = {
 
 const getReportNatureKey = (item) =>
   item?.category && REPORT_NATURE_BADGE[item.category] ? item.category : 'cash'
+
+const getReportBadge = (item) =>
+  REPORT_BADGE_COLOR[item?.id] || REPORT_NATURE_BADGE[getReportNatureKey(item)]
 
 const getReportIcon = (item) => REPORT_ICONS[item?.id] || Wallet
 
@@ -238,6 +283,11 @@ const formatMonthName = (monthValue) => {
 const normalizeCollectionResult = (data) => {
   if (!data?.columns?.length) return data
 
+  const hasPeriod =
+    data.columns.some((c) => c.key === 'month' || c.key === 'year' || c.key === 'monthLabel') ||
+    (data.rows || []).some((row) => row.month != null || row.year != null || row.monthLabel)
+  if (!hasPeriod) return data
+
   let nextColumns = data.columns.filter((c) => c.key !== 'monthLabel')
   const hasMonth = nextColumns.some((c) => c.key === 'month')
   const hasYear = nextColumns.some((c) => c.key === 'year')
@@ -286,6 +336,76 @@ const normalizeCollectionResult = (data) => {
 }
 
 const ATTENDANCE_REPORT_IDS = new Set(['tuition-defaulters', 'fund-defaulters'])
+
+const BALANCE_FILTER_REPORT_IDS = new Set(['tuition-defaulters', 'fund-defaulters'])
+
+const BALANCE_OP_OPTIONS = [
+  { value: 'gte', label: 'Greater than or equal to' },
+  { value: 'lte', label: 'Less than or equal to' },
+  { value: 'gt', label: 'Greater than' },
+  { value: 'lt', label: 'Less than' },
+  { value: 'eq', label: 'Equal to' },
+]
+
+const BALANCE_OP_PRINT = {
+  gte: 'greater than or equal to',
+  lte: 'less than or equal to',
+  gt: 'greater than',
+  lt: 'less than',
+  eq: 'equal to',
+}
+
+function roundMoney(value) {
+  return Math.round(Number(value || 0) * 100) / 100
+}
+
+function matchesBalance(amount, op, limit) {
+  const value = roundMoney(amount)
+  const threshold = roundMoney(limit)
+  if (op === 'gt') return value > threshold
+  if (op === 'lt') return value < threshold
+  if (op === 'lte') return value <= threshold
+  if (op === 'eq') return value === threshold
+  return value >= threshold
+}
+
+function withBalanceFilterParams(report) {
+  if (!report || !BALANCE_FILTER_REPORT_IDS.has(report.id)) return report
+  if ((report.parameters || []).some((def) => def.key === 'balanceOp')) return report
+  return {
+    ...report,
+    parameters: [
+      ...(report.parameters || []),
+      {
+        key: 'balanceOp',
+        label: 'Balance',
+        type: 'select',
+        required: false,
+        defaultValue: 'gte',
+        options: BALANCE_OP_OPTIONS,
+      },
+      {
+        key: 'balanceAmount',
+        label: 'Amount',
+        type: 'decimal',
+        required: false,
+      },
+    ],
+  }
+}
+
+function applyBalanceFilter(data, params) {
+  if (!data || !BALANCE_FILTER_REPORT_IDS.has(data.reportId)) return data
+  const raw = params?.balanceAmount
+  if (raw === '' || raw == null) return data
+  const limit = Number(raw)
+  if (!Number.isFinite(limit)) return data
+  const rows = (data.rows || []).filter((row) =>
+    matchesBalance(row.outstandingAmount, params.balanceOp, limit),
+  )
+  const totalAmount = rows.reduce((sum, row) => sum + Number(row.outstandingAmount || 0), 0)
+  return { ...data, rows, totalRecords: rows.length, totalAmount }
+}
 
 const ATTENDANCE_CHIP_STYLE = {
   P: { background: '#d1fae5', color: '#047857' },
@@ -422,7 +542,7 @@ const matchSummaryColumn = (row, column) => {
 
 /** Print column sizing: keep IDs/counts/amounts narrow; give names the rest. */
 const PRINT_NARROW_KEYS =
-  /^(rcptid|manualrcptno|transactionid|studentid|familycode|fundtypeid|month|year|silentmonths|receipts|lines|receiptlines|studentcount|children|topn|paidpercent|recoverypercent)$/i
+  /^(rcptid|manualrcptno|transactionid|studentid|familycode|fundtypeid|month|year|silentmonths|pendingcount|dayssince|receipts|lines|receiptlines|studentcount|children|topn|paidpercent|recoverypercent)$/i
 
 const PRINT_MEDIUM_KEYS =
   /^(classname|class|classes|fundtypename|fund|type|period|role|transactiondate|date|voiddate|voidby|collector|agingbucket|monthlabel|lastreceiptdate|fathermobile|fathercontact)$/i
@@ -684,9 +804,24 @@ function FeeReportsPage() {
   const attendanceRequestRef = useRef(0)
 
   const selectedReport = useMemo(
-    () => catalog.find((item) => item.id === reportId) || null,
+    () => withBalanceFilterParams(catalog.find((item) => item.id === reportId) || null),
     [catalog, reportId],
   )
+
+  useEffect(() => {
+    if (!selectedReport) return
+    setParams((prev) => {
+      let changed = false
+      const next = { ...prev }
+      for (const def of selectedReport.parameters || []) {
+        if (next[def.key] == null && def.defaultValue != null && def.defaultValue !== '') {
+          next[def.key] = String(def.defaultValue)
+          changed = true
+        }
+      }
+      return changed ? next : prev
+    })
+  }, [selectedReport])
 
   const catalogFiltered = useMemo(() => {
     if (category === 'frequent') {
@@ -825,7 +960,7 @@ function FeeReportsPage() {
           getClasses().catch(() => []),
         ])
         if (cancelled) return
-        const allowedCatalog = filterFeeCatalogByPermission(catalogData)
+        const allowedCatalog = filterFeeCatalogByPermission(catalogData).map(withBalanceFilterParams)
         setCatalog(allowedCatalog)
         setSnapshot(snapshotData)
         setFundTypes(funds || [])
@@ -839,7 +974,7 @@ function FeeReportsPage() {
         const presetFromUrl = searchParams.get('preset')
         const initial =
           allowedCatalog.find((item) => item.id === presetFromUrl) ||
-          allowedCatalog.find((item) => item.id === 'top-defaulters') ||
+          allowedCatalog.find((item) => item.id === 'tuition-defaulters') ||
           allowedCatalog.find((item) => item.id === 'collection-by-date') ||
           allowedCatalog[0]
         if (initial) {
@@ -866,7 +1001,7 @@ function FeeReportsPage() {
               }
               const data = await runSmartFeeReport(initial.id, cleaned)
               if (!cancelled) {
-                const normalized = normalizeCollectionResult(data)
+                const normalized = applyBalanceFilter(normalizeCollectionResult(data), cleaned)
                 setIncludeAttendanceOnPrint(false)
                 setResult(normalized)
                 loadRecentAttendance(normalized)
@@ -897,6 +1032,7 @@ function FeeReportsPage() {
   }, [])
 
   const selectReport = (report, withPresetParams = true) => {
+    report = withBalanceFilterParams(report)
     let nextParams = withPresetParams && report.presetParameters
       ? {
           ...buildDefaultParams(report, fundTypes),
@@ -948,7 +1084,7 @@ function FeeReportsPage() {
       }
       const data = await runSmartFeeReport(reportId, cleaned)
       if (requestId !== attendanceRequestRef.current) return
-      const normalized = normalizeCollectionResult(data)
+      const normalized = applyBalanceFilter(normalizeCollectionResult(data), cleaned)
       setResult(normalized)
       loadRecentAttendance(normalized)
     } catch (requestError) {
@@ -1000,7 +1136,7 @@ function FeeReportsPage() {
     URL.revokeObjectURL(url)
   }
 
-  const renderParamInput = (def) => {
+  const renderParamInput = (def, extra = {}) => {
     const value = params[def.key] ?? ''
     const onChange = (next) => setParams((prev) => ({ ...prev, [def.key]: next }))
 
@@ -1111,6 +1247,15 @@ function FeeReportsPage() {
     return (
       <input
         type={def.type === 'decimal' || def.type === 'int' ? 'number' : 'text'}
+        step={def.type === 'decimal' ? 'any' : undefined}
+        min={
+          def.key === 'balanceAmount'
+            ? '0'
+            : def.key === 'pendingMonths' || def.key === 'silentFor'
+              ? '1'
+              : undefined
+        }
+        placeholder={extra.placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
@@ -1151,7 +1296,30 @@ function FeeReportsPage() {
     }
     if (params.className) bits.push(`Class: ${params.className}`)
     if (params.fundScope && params.fundScope !== 'all') bits.push(`Scope: ${params.fundScope}`)
-    return bits.join('  |  ') || `Generated: ${formatPrintDate(result.generatedAt)}`
+    const head = bits.join('  |  ')
+    let balanceLine = ''
+    if (
+      BALANCE_FILTER_REPORT_IDS.has(result.reportId) &&
+      params.balanceAmount !== '' &&
+      params.balanceAmount != null
+    ) {
+      const opLabel = BALANCE_OP_PRINT[params.balanceOp] || BALANCE_OP_PRINT.gte
+      balanceLine = `Balance ${opLabel} ${params.balanceAmount}`
+    }
+    const extraLines = []
+    if (balanceLine) extraLines.push(balanceLine)
+    if (result.reportId === 'tuition-pending-months' && params.pendingMonths) {
+      const matchLabel = { gte: 'at least', eq: 'exactly', lte: 'at most' }[params.pendingMatch] || 'exactly'
+      extraLines.push(`Pending months ${matchLabel} ${params.pendingMonths}`)
+    }
+    if (result.reportId === 'last-payment' && params.silentFor) {
+      const unit = params.silentUnit === 'months' ? 'months' : 'days'
+      const who = params.who === 'everyone' ? 'Everyone' : 'Still owing'
+      extraLines.push(`No payment in ${params.silentFor} ${unit} · ${who}`)
+    }
+    if (extraLines.length && head) return `${head}\n${extraLines.join('\n')}`
+    if (extraLines.length) return extraLines.join('\n')
+    return head || `Generated: ${formatPrintDate(result.generatedAt)}`
   }, [params, result, isClassWisePrint, isReceivableReport])
 
   const collectionSummary = useMemo(() => {
@@ -1538,7 +1706,7 @@ function FeeReportsPage() {
                     ) : (
                       catalogFiltered.map((item) => {
                         const Icon = getReportIcon(item)
-                        const badge = REPORT_NATURE_BADGE[getReportNatureKey(item)]
+                        const badge = getReportBadge(item)
                         const isSelected = reportId === item.id
                         return (
                           <button
@@ -1582,15 +1750,73 @@ function FeeReportsPage() {
 
                       {(selectedReport.parameters || []).length > 0 ? (
                         <div className="grid gap-3">
-                          {(selectedReport.parameters || []).map((def) => (
-                            <label key={def.key} className="block text-sm">
-                              <span className="mb-1 block font-medium text-slate-600">
-                                {def.label}
-                                {def.required ? ' *' : ''}
-                              </span>
-                              {renderParamInput(def)}
-                            </label>
-                          ))}
+                          {(selectedReport.parameters || []).map((def) => {
+                            const all = selectedReport.parameters || []
+                            if (def.key === 'balanceAmount') return null
+                            const halfPairs = {
+                              month: 'year',
+                              pendingMonths: 'pendingMatch',
+                              silentFor: 'silentUnit',
+                            }
+                            const partnerKey = halfPairs[def.key]
+                            if (
+                              ['year', 'pendingMatch', 'silentUnit'].includes(def.key) &&
+                              all.some((item) => halfPairs[item.key] === def.key)
+                            ) {
+                              return null
+                            }
+                            if (partnerKey && all.some((item) => item.key === partnerKey)) {
+                              const partner = all.find((item) => item.key === partnerKey)
+                              return (
+                                <div key={`${def.key}-${partnerKey}`} className="grid grid-cols-2 gap-3">
+                                  <label className="block min-w-0 text-sm">
+                                    <span className="mb-1 block font-medium text-slate-600">
+                                      {def.label}
+                                      {def.required ? ' *' : ''}
+                                    </span>
+                                    {renderParamInput(def)}
+                                  </label>
+                                  <label className="block min-w-0 text-sm">
+                                    <span className="mb-1 block font-medium text-slate-600">
+                                      {partner.label}
+                                      {partner.required ? ' *' : ''}
+                                    </span>
+                                    {renderParamInput(partner)}
+                                  </label>
+                                </div>
+                              )
+                            }
+                            if (def.key === 'balanceOp') {
+                              const amountDef = (selectedReport.parameters || []).find(
+                                (item) => item.key === 'balanceAmount',
+                              )
+                              return (
+                                <div key={def.key} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                  <label className="block text-sm">
+                                    <span className="mb-1 block font-medium text-slate-600">{def.label}</span>
+                                    {renderParamInput(def)}
+                                  </label>
+                                  {amountDef ? (
+                                    <label className="block text-sm">
+                                      <span className="mb-1 block font-medium text-slate-600">
+                                        {amountDef.label}
+                                      </span>
+                                      {renderParamInput(amountDef, { placeholder: 'All' })}
+                                    </label>
+                                  ) : null}
+                                </div>
+                              )
+                            }
+                            return (
+                              <label key={def.key} className="block text-sm">
+                                <span className="mb-1 block font-medium text-slate-600">
+                                  {def.label}
+                                  {def.required ? ' *' : ''}
+                                </span>
+                                {renderParamInput(def)}
+                              </label>
+                            )
+                          })}
                         </div>
                       ) : (
                         <p className="mb-3 text-sm text-slate-500">

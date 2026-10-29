@@ -55,6 +55,10 @@ public class Employee
     public bool CanRecordStudentConduct { get; set; }
     /// <summary>Employee portal: view a student's conduct history.</summary>
     public bool CanViewStudentConduct { get; set; }
+    /// <summary>Employee portal: record teacher conduct notes.</summary>
+    public bool CanRecordTeacherConduct { get; set; }
+    /// <summary>Employee portal: view another teacher's conduct history.</summary>
+    public bool CanViewTeacherConduct { get; set; }
 
     /// <summary>Default wing for coordinator daily proforma (nullable when not assigned).</summary>
     public ProformaWingCode? WingCode { get; set; }

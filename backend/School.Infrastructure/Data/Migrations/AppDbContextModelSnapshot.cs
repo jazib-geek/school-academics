@@ -1062,6 +1062,37 @@ namespace School.Infrastructure.Data.Migrations
                     b.ToTable("tblChatMessage", "dbo");
                 });
 
+            modelBuilder.Entity("School.Infrastructure.Entities.ChatReaction", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("Emoji")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)");
+
+                    b.Property<long>("MessageId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MessageId", "UserId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ChatReaction_Message_User");
+
+                    b.ToTable("tblChatReaction", "dbo");
+                });
+
             modelBuilder.Entity("School.Infrastructure.Entities.Class", b =>
                 {
                     b.Property<int>("Class_ID")
@@ -3021,6 +3052,11 @@ namespace School.Infrastructure.Data.Migrations
                         .HasColumnType("bit")
                         .HasDefaultValue(false);
 
+                    b.Property<bool>("CanRecordTeacherConduct")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
                     b.Property<bool>("CanViewDatesheet")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
@@ -3047,6 +3083,11 @@ namespace School.Infrastructure.Data.Migrations
                         .HasDefaultValue(false);
 
                     b.Property<bool>("CanViewSubjectAllocation")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<bool>("CanViewTeacherConduct")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
                         .HasDefaultValue(false);
@@ -5677,6 +5718,15 @@ namespace School.Infrastructure.Data.Migrations
                             ModuleHead = "Accounts",
                             Name = "Delete Voucher",
                             SortOrder = 1490
+                        },
+                        new
+                        {
+                            Id = 150,
+                            Code = "view_teacher_conduct",
+                            IsActive = true,
+                            ModuleHead = "Employee",
+                            Name = "View Teacher Conduct",
+                            SortOrder = 1500
                         });
                 });
 
@@ -7065,6 +7115,420 @@ namespace School.Infrastructure.Data.Migrations
                     b.ToTable("tblTeacher_Attendance_InOut", "dbo");
                 });
 
+            modelBuilder.Entity("School.Infrastructure.Entities.TeacherConductNote", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ConductTypeId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAtPkt")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<DateOnly>("NoteDate")
+                        .HasColumnType("date");
+
+                    b.Property<int?>("RecordedByEmployeeId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("RecordedByName")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("Remarks")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("SubjectEmployeeId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAtPkt")
+                        .HasColumnType("datetime2(3)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ConductTypeId");
+
+                    b.HasIndex("RecordedByEmployeeId");
+
+                    b.HasIndex("SubjectEmployeeId", "NoteDate")
+                        .HasDatabaseName("IX_TeacherConductNote_Employee_Date");
+
+                    b.HasIndex("SubjectEmployeeId", "NoteDate", "ConductTypeId")
+                        .IsUnique()
+                        .HasDatabaseName("UQ_TeacherConductNote_Employee_Date_Type");
+
+                    b.ToTable("tblTeacherConductNote", "dbo");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.TeacherConductNoteTag", b =>
+                {
+                    b.Property<int>("NoteId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TagId")
+                        .HasColumnType("int");
+
+                    b.HasKey("NoteId", "TagId");
+
+                    b.HasIndex("TagId")
+                        .HasDatabaseName("IX_TeacherConductNoteTag_Tag");
+
+                    b.ToTable("tblTeacherConductNoteTag", "dbo");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.TeacherConductTag", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ConductTypeId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<bool>("IsGood")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsSystem")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ConductTypeId", "Name")
+                        .IsUnique()
+                        .HasDatabaseName("UQ_TeacherConductTag_Type_Name");
+
+                    b.ToTable("tblTeacherConductTag", "dbo");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 101,
+                            ConductTypeId = 1,
+                            IsActive = true,
+                            IsGood = true,
+                            IsSystem = true,
+                            Name = "Started class on time",
+                            SortOrder = 10
+                        },
+                        new
+                        {
+                            Id = 102,
+                            ConductTypeId = 1,
+                            IsActive = true,
+                            IsGood = false,
+                            IsSystem = true,
+                            Name = "Late start",
+                            SortOrder = 20
+                        },
+                        new
+                        {
+                            Id = 103,
+                            ConductTypeId = 1,
+                            IsActive = true,
+                            IsGood = false,
+                            IsSystem = true,
+                            Name = "Continuous absence",
+                            SortOrder = 30
+                        },
+                        new
+                        {
+                            Id = 104,
+                            ConductTypeId = 1,
+                            IsActive = true,
+                            IsGood = false,
+                            IsSystem = true,
+                            Name = "Too many short leaves",
+                            SortOrder = 40
+                        },
+                        new
+                        {
+                            Id = 105,
+                            ConductTypeId = 1,
+                            IsActive = true,
+                            IsGood = false,
+                            IsSystem = true,
+                            Name = "Left early without permission",
+                            SortOrder = 50
+                        },
+                        new
+                        {
+                            Id = 106,
+                            ConductTypeId = 1,
+                            IsActive = true,
+                            IsGood = true,
+                            IsSystem = true,
+                            Name = "Full attendance this month",
+                            SortOrder = 60
+                        },
+                        new
+                        {
+                            Id = 201,
+                            ConductTypeId = 2,
+                            IsActive = true,
+                            IsGood = true,
+                            IsSystem = true,
+                            Name = "Lesson prepared",
+                            SortOrder = 10
+                        },
+                        new
+                        {
+                            Id = 202,
+                            ConductTypeId = 2,
+                            IsActive = true,
+                            IsGood = false,
+                            IsSystem = true,
+                            Name = "Lesson not prepared",
+                            SortOrder = 20
+                        },
+                        new
+                        {
+                            Id = 203,
+                            ConductTypeId = 2,
+                            IsActive = true,
+                            IsGood = false,
+                            IsSystem = true,
+                            Name = "Syllabus behind schedule",
+                            SortOrder = 30
+                        },
+                        new
+                        {
+                            Id = 204,
+                            ConductTypeId = 2,
+                            IsActive = true,
+                            IsGood = true,
+                            IsSystem = true,
+                            Name = "Good class control",
+                            SortOrder = 40
+                        },
+                        new
+                        {
+                            Id = 205,
+                            ConductTypeId = 2,
+                            IsActive = true,
+                            IsGood = false,
+                            IsSystem = true,
+                            Name = "Weak class control",
+                            SortOrder = 50
+                        },
+                        new
+                        {
+                            Id = 206,
+                            ConductTypeId = 2,
+                            IsActive = true,
+                            IsGood = false,
+                            IsSystem = true,
+                            Name = "Did not follow timetable",
+                            SortOrder = 60
+                        },
+                        new
+                        {
+                            Id = 301,
+                            ConductTypeId = 3,
+                            IsActive = true,
+                            IsGood = false,
+                            IsSystem = true,
+                            Name = "Dress code issue",
+                            SortOrder = 10
+                        },
+                        new
+                        {
+                            Id = 302,
+                            ConductTypeId = 3,
+                            IsActive = true,
+                            IsGood = false,
+                            IsSystem = true,
+                            Name = "Behaviour issue",
+                            SortOrder = 20
+                        },
+                        new
+                        {
+                            Id = 303,
+                            ConductTypeId = 3,
+                            IsActive = true,
+                            IsGood = false,
+                            IsSystem = true,
+                            Name = "Policy breach",
+                            SortOrder = 30
+                        },
+                        new
+                        {
+                            Id = 304,
+                            ConductTypeId = 3,
+                            IsActive = true,
+                            IsGood = true,
+                            IsSystem = true,
+                            Name = "Positive feedback",
+                            SortOrder = 40
+                        },
+                        new
+                        {
+                            Id = 305,
+                            ConductTypeId = 3,
+                            IsActive = true,
+                            IsGood = false,
+                            IsSystem = true,
+                            Name = "Unprofessional with staff",
+                            SortOrder = 50
+                        },
+                        new
+                        {
+                            Id = 306,
+                            ConductTypeId = 3,
+                            IsActive = true,
+                            IsGood = false,
+                            IsSystem = true,
+                            Name = "Mobile phone misuse in class",
+                            SortOrder = 60
+                        },
+                        new
+                        {
+                            Id = 401,
+                            ConductTypeId = 4,
+                            IsActive = true,
+                            IsGood = false,
+                            IsSystem = true,
+                            Name = "Parent complaint",
+                            SortOrder = 10
+                        },
+                        new
+                        {
+                            Id = 402,
+                            ConductTypeId = 4,
+                            IsActive = true,
+                            IsGood = false,
+                            IsSystem = true,
+                            Name = "Did not respond to parent",
+                            SortOrder = 20
+                        },
+                        new
+                        {
+                            Id = 403,
+                            ConductTypeId = 4,
+                            IsActive = true,
+                            IsGood = true,
+                            IsSystem = true,
+                            Name = "Handled concern well",
+                            SortOrder = 30
+                        },
+                        new
+                        {
+                            Id = 404,
+                            ConductTypeId = 4,
+                            IsActive = true,
+                            IsGood = false,
+                            IsSystem = true,
+                            Name = "Diary not updated",
+                            SortOrder = 40
+                        },
+                        new
+                        {
+                            Id = 405,
+                            ConductTypeId = 4,
+                            IsActive = true,
+                            IsGood = false,
+                            IsSystem = true,
+                            Name = "Miscommunication with parents",
+                            SortOrder = 50
+                        },
+                        new
+                        {
+                            Id = 406,
+                            ConductTypeId = 4,
+                            IsActive = true,
+                            IsGood = true,
+                            IsSystem = true,
+                            Name = "Good parent meeting",
+                            SortOrder = 60
+                        });
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.TeacherConductType", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<bool>("IsSystem")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique()
+                        .HasDatabaseName("UQ_TeacherConductType_Name");
+
+                    b.ToTable("tblTeacherConductType", "dbo");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            IsActive = true,
+                            IsSystem = true,
+                            Name = "Attendance & punctuality",
+                            SortOrder = 10
+                        },
+                        new
+                        {
+                            Id = 2,
+                            IsActive = true,
+                            IsSystem = true,
+                            Name = "Class delivery",
+                            SortOrder = 20
+                        },
+                        new
+                        {
+                            Id = 3,
+                            IsActive = true,
+                            IsSystem = true,
+                            Name = "Professional conduct",
+                            SortOrder = 30
+                        },
+                        new
+                        {
+                            Id = 4,
+                            IsActive = true,
+                            IsSystem = true,
+                            Name = "Parents & communication",
+                            SortOrder = 40
+                        });
+                });
+
             modelBuilder.Entity("School.Infrastructure.Entities.TeacherQualification", b =>
                 {
                     b.Property<int>("ID")
@@ -7611,6 +8075,15 @@ namespace School.Infrastructure.Data.Migrations
                     b.Navigation("Subject");
 
                     b.Navigation("TimeTable");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.ChatReaction", b =>
+                {
+                    b.HasOne("School.Infrastructure.Entities.ChatMessage", null)
+                        .WithMany()
+                        .HasForeignKey("MessageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("School.Infrastructure.Entities.ClassDiary", b =>
@@ -8570,6 +9043,62 @@ namespace School.Infrastructure.Data.Migrations
                     b.Navigation("Subject");
                 });
 
+            modelBuilder.Entity("School.Infrastructure.Entities.TeacherConductNote", b =>
+                {
+                    b.HasOne("School.Infrastructure.Entities.TeacherConductType", "ConductType")
+                        .WithMany("Notes")
+                        .HasForeignKey("ConductTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("School.Infrastructure.Entities.Employee", "RecordedByEmployee")
+                        .WithMany()
+                        .HasForeignKey("RecordedByEmployeeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("School.Infrastructure.Entities.Employee", "SubjectEmployee")
+                        .WithMany()
+                        .HasForeignKey("SubjectEmployeeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ConductType");
+
+                    b.Navigation("RecordedByEmployee");
+
+                    b.Navigation("SubjectEmployee");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.TeacherConductNoteTag", b =>
+                {
+                    b.HasOne("School.Infrastructure.Entities.TeacherConductNote", "Note")
+                        .WithMany("NoteTags")
+                        .HasForeignKey("NoteId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("School.Infrastructure.Entities.TeacherConductTag", "Tag")
+                        .WithMany("NoteTags")
+                        .HasForeignKey("TagId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Note");
+
+                    b.Navigation("Tag");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.TeacherConductTag", b =>
+                {
+                    b.HasOne("School.Infrastructure.Entities.TeacherConductType", "ConductType")
+                        .WithMany("Tags")
+                        .HasForeignKey("ConductTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ConductType");
+                });
+
             modelBuilder.Entity("School.Infrastructure.Entities.AbsentFollowupReason", b =>
                 {
                     b.Navigation("Followups");
@@ -8727,6 +9256,23 @@ namespace School.Infrastructure.Data.Migrations
                     b.Navigation("ClassAssignments");
 
                     b.Navigation("Exams");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.TeacherConductNote", b =>
+                {
+                    b.Navigation("NoteTags");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.TeacherConductTag", b =>
+                {
+                    b.Navigation("NoteTags");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.TeacherConductType", b =>
+                {
+                    b.Navigation("Notes");
+
+                    b.Navigation("Tags");
                 });
 #pragma warning restore 612, 618
         }

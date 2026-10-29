@@ -120,6 +120,8 @@ const makeEmptyForm = () => ({
   canViewStudentExamDetail: false,
   canRecordStudentConduct: false,
   canViewStudentConduct: false,
+  canRecordTeacherConduct: false,
+  canViewTeacherConduct: false,
   wingCode: '',
   isAcademicHead: false,
   qualifications: [],
@@ -227,6 +229,8 @@ function EmployeeForm({ employeeId, lookups, onClose, onSaved }) {
           canViewStudentExamDetail: Boolean(data.canViewStudentExamDetail),
           canRecordStudentConduct: Boolean(data.canRecordStudentConduct),
           canViewStudentConduct: Boolean(data.canViewStudentConduct),
+          canRecordTeacherConduct: Boolean(data.canRecordTeacherConduct),
+          canViewTeacherConduct: Boolean(data.canViewTeacherConduct),
           wingCode: data.wingCode ?? data.WingCode ?? '',
           isAcademicHead: Boolean(data.isAcademicHead ?? data.IsAcademicHead),
           qualifications: (data.qualifications || []).map((x) => ({ ...x, year: x.year ?? '' })),
@@ -674,6 +678,8 @@ function EmployeeForm({ employeeId, lookups, onClose, onSaved }) {
               {[
                 ['canRecordStudentConduct', 'Record class conduct'],
                 ['canViewStudentConduct', 'View student conduct'],
+                ['canRecordTeacherConduct', 'Record teacher conduct'],
+                ['canViewTeacherConduct', 'View teacher conduct'],
               ].map(([name, label]) => (
                 <label
                   key={name}

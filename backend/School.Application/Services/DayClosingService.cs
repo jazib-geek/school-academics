@@ -47,14 +47,23 @@ public class DayClosingService : IDayClosingService
         var glCredits = gl?.Credits ?? 0;
         var glDebits = gl?.Debits ?? 0;
 
-        var tuition = await SumFeeAsync(from, to, 1, cancellationToken);
-        var admission = await SumFeeAsync(from, to, 2, cancellationToken);
-        var misc = await SumFeeAsync(from, to, 3, cancellationToken);
-        var prev = await SumFeeAsync(from, to, 4, cancellationToken);
-        var fine = await SumFeeAsync(from, to, 6, cancellationToken);
+        var cashByFund = await SumFeesByFundAsync(from, to, onlineOnly: false, cancellationToken);
+        var onlineByFund = await SumFeesByFundAsync(from, to, onlineOnly: true, cancellationToken);
 
-        var feeTotal = tuition + admission + misc + prev + fine;
-        var totalCashCollected = feeTotal + glCredits;
+        var tuition = Pick(cashByFund, 1);
+        var admission = Pick(cashByFund, 2);
+        var misc = Pick(cashByFund, 3);
+        var prev = Pick(cashByFund, 4);
+        var fine = Pick(cashByFund, 6);
+        var tuitionOnline = Pick(onlineByFund, 1);
+        var admissionOnline = Pick(onlineByFund, 2);
+        var miscOnline = Pick(onlineByFund, 3);
+        var prevOnline = Pick(onlineByFund, 4);
+        var fineOnline = Pick(onlineByFund, 6);
+        var onlineFee = tuitionOnline + admissionOnline + miscOnline + prevOnline + fineOnline;
+
+        var feeCashTotal = tuition + admission + misc + prev + fine;
+        var totalCashCollected = feeCashTotal + glCredits;
         var totalExpenses = glDebits;
         var suggested = Math.Max(0, totalCashCollected - totalExpenses);
 
@@ -82,6 +91,12 @@ public class DayClosingService : IDayClosingService
             MiscCharges = misc,
             PrevBalance = prev,
             Fine = fine,
+            TuitionFeeOnline = tuitionOnline,
+            AdmissionFeeOnline = admissionOnline,
+            MiscChargesOnline = miscOnline,
+            PrevBalanceOnline = prevOnline,
+            FineOnline = fineOnline,
+            OnlineFee = onlineFee,
             GlCredits = glCredits,
             GlDebits = glDebits,
             Closing = existing is null ? null : Map(existing),
@@ -143,21 +158,39 @@ public class DayClosingService : IDayClosingService
         return Map(entity);
     }
 
-    private async Task<decimal> SumFeeAsync(
+    private static readonly int[] DayClosingFundTypeIds = [1, 2, 3, 4, 6];
+
+    private static decimal Pick(IReadOnlyDictionary<int, decimal> amounts, int fundTypeId) =>
+        amounts.TryGetValue(fundTypeId, out var amount) ? amount : 0;
+
+    private async Task<Dictionary<int, decimal>> SumFeesByFundAsync(
         DateTime from,
         DateTime to,
-        int fundTypeId,
+        bool onlineOnly,
         CancellationToken cancellationToken)
     {
-        return await _context.FeeAndFundCollections
-            .Where(x => (x.VoidAmount ?? 0) == 0)
+        var query = _context.FeeAndFundCollections
             .AsNoTracking()
+            .Where(x => (x.VoidAmount ?? 0) == 0)
             .Where(x =>
-                x.FundTypeID == fundTypeId &&
+                x.FundTypeID != null &&
+                DayClosingFundTypeIds.Contains(x.FundTypeID.Value) &&
                 x.Date != null &&
                 x.Date.Value.Date >= from.Date &&
-                x.Date.Value.Date <= to.Date)
-            .SumAsync(x => x.Recieved ?? 0, cancellationToken);
+                x.Date.Value.Date <= to.Date);
+
+        query = onlineOnly
+            ? query.Where(x => x.PaymentMode != null && x.PaymentMode.ToLower() == "online")
+            : query.Where(x => x.PaymentMode == null || x.PaymentMode.ToLower() != "online");
+
+        var rows = await query
+            .GroupBy(x => x.FundTypeID)
+            .Select(g => new { FundTypeId = g.Key, Amount = g.Sum(x => x.Recieved ?? 0) })
+            .ToListAsync(cancellationToken);
+
+        return rows
+            .Where(x => x.FundTypeId.HasValue)
+            .ToDictionary(x => x.FundTypeId!.Value, x => x.Amount);
     }
 
     private static DayClosingDto Map(DayClosing x) => new()

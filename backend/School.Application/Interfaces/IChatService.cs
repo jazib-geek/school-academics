@@ -23,5 +23,11 @@ public interface IChatService
 
     Task<ChatReadEventDto?> MarkReadAsync(int userId, int otherUserId, CancellationToken cancellationToken = default);
 
+    Task<ChatReactionEventDto> ReactAsync(
+        int userId,
+        long messageId,
+        string? emoji,
+        CancellationToken cancellationToken = default);
+
     Task<int> GetUnreadCountAsync(int userId, CancellationToken cancellationToken = default);
 }

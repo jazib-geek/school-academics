@@ -18,6 +18,7 @@ function groupTitle(type, count) {
     case 'day_closed':
       return `${count} day closings`
     case 'student_conduct':
+    case 'teacher_conduct':
       return `${count} conduct notes`
     case 'leave_application':
       return `${count} leave requests`

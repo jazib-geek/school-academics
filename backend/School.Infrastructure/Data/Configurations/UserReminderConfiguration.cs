@@ -48,3 +48,24 @@ public class ChatMessageConfiguration : IEntityTypeConfiguration<ChatMessage>
             .HasDatabaseName("IX_ChatMessage_SentAt");
     }
 }
+
+public class ChatReactionConfiguration : IEntityTypeConfiguration<ChatReaction>
+{
+    public void Configure(EntityTypeBuilder<ChatReaction> entity)
+    {
+        entity.ToTable("tblChatReaction", "dbo");
+        entity.HasKey(e => e.Id);
+
+        entity.Property(e => e.Emoji).HasMaxLength(16).IsRequired();
+        entity.Property(e => e.CreatedAtUtc).HasColumnType("datetime2(3)");
+
+        entity.HasIndex(e => new { e.MessageId, e.UserId })
+            .IsUnique()
+            .HasDatabaseName("IX_ChatReaction_Message_User");
+
+        entity.HasOne<ChatMessage>()
+            .WithMany()
+            .HasForeignKey(e => e.MessageId)
+            .OnDelete(DeleteBehavior.Cascade);
+    }
+}

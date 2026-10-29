@@ -1410,6 +1410,25 @@ html[dir="ltr"] {
   padding: 0.7rem 0.75rem 0.7rem 0.9rem;
 }
 
+.campus-realtime-toast__icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  height: 2.15rem;
+  width: 2.15rem;
+  border-radius: 0.55rem;
+  background: rgb(241 245 249);
+  color: var(--campus-realtime-accent, #64748b);
+  box-shadow: inset 0 0 0 1px rgb(148 163 184 / 0.35);
+}
+
+.campus-realtime-toast--chat .campus-realtime-toast__icon {
+  background: rgb(209 250 229);
+  color: #047857;
+  box-shadow: inset 0 0 0 1px rgb(16 185 129 / 0.4);
+}
+
 .campus-realtime-toast__text {
   min-width: 0;
   flex: 1;
@@ -1542,6 +1561,72 @@ html[dir="ltr"] {
 
 .campus-realtime-toast--info {
   --campus-realtime-accent: #64748b;
+}
+
+.campus-realtime-toast--chat {
+  --campus-realtime-accent: #059669;
+  border-color: rgb(110 231 183 / 0.65);
+  box-shadow:
+    inset 4px 0 0 var(--campus-realtime-accent, #059669),
+    0 2px 4px rgb(5 150 105 / 0.08),
+    0 10px 28px rgb(5 150 105 / 0.14),
+    0 22px 44px rgb(15 23 42 / 0.08);
+}
+
+@keyframes campus-mail-unread-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.28);
+  }
+}
+
+@keyframes campus-mail-btn-unread-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(16 185 129 / 0.55);
+    border-color: rgb(110 231 183);
+    background-color: rgb(236 253 245);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgb(16 185 129 / 0.22), 0 0 14px rgb(5 150 105 / 0.35);
+    border-color: rgb(16 185 129);
+    background-color: rgb(167 243 208);
+  }
+}
+
+@keyframes campus-mail-badge-unread-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.15);
+  }
+}
+
+.campus-mail-unread-pulse {
+  transform-origin: center;
+  animation: campus-mail-unread-pulse 1.1s ease-in-out infinite;
+}
+
+.campus-mail-btn-unread-pulse {
+  animation: campus-mail-btn-unread-pulse 1.1s ease-in-out infinite;
+}
+
+.campus-mail-badge-unread-pulse {
+  transform-origin: center;
+  animation: campus-mail-badge-unread-pulse 1.1s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .campus-mail-unread-pulse,
+  .campus-mail-btn-unread-pulse,
+  .campus-mail-badge-unread-pulse {
+    animation: none;
+  }
 }
 
 @keyframes fee-txn-row-pulse {

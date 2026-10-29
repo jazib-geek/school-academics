@@ -1,7 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
+import { Mail, X } from 'lucide-react'
 import { toast } from 'sonner'
 import useCampusChat from '../hooks/useCampusChat.jsx'
+import { CAMPUS_REALTIME_TOASTER_ID } from '../hooks/useCampusNotifications.jsx'
 import useReminderAlarms from '../hooks/useReminderAlarms.jsx'
 import useTabTitleBadge from '../hooks/useTabTitleBadge.js'
 import CampusChatDrawer from '../components/campus/chat/CampusChatDrawer.jsx'
@@ -50,12 +52,50 @@ export function CampusRealtimeProvider({ children }) {
       playMessagePing()
       if (chatOpenRef.current) return
       const sender = usersRef.current.find((u) => u.userId === message.senderUserId)
-      toast(sender?.username || 'New message', {
-        id: `chat-${message.senderUserId}`,
-        description: message.body.length > 120 ? `${message.body.slice(0, 120)}…` : message.body,
-        action: { label: 'Reply', onClick: () => openChat(message.senderUserId) },
-        duration: 6000,
-      })
+      const title = sender?.username || 'New message'
+      const body = message.body || ''
+      const preview = body.length > 120 ? `${body.slice(0, 120)}…` : body
+
+      toast.custom(
+        (t) => (
+          <div className="campus-realtime-toast campus-realtime-toast--chat">
+            <div className="campus-realtime-toast__body">
+              <div className="campus-realtime-toast__icon" aria-hidden>
+                <Mail className="h-4 w-4" strokeWidth={2.25} />
+              </div>
+              <div className="campus-realtime-toast__text">
+                <p className="campus-realtime-toast__title">{title}</p>
+                {preview ? <p className="campus-realtime-toast__message">{preview}</p> : null}
+              </div>
+              <div className="campus-realtime-toast__actions">
+                <button
+                  type="button"
+                  className="campus-realtime-toast__detail"
+                  onClick={() => {
+                    toast.dismiss(t)
+                    openChat(message.senderUserId)
+                  }}
+                >
+                  Reply
+                </button>
+                <button
+                  type="button"
+                  className="campus-realtime-toast__close"
+                  aria-label="Dismiss"
+                  onClick={() => toast.dismiss(t)}
+                >
+                  <X className="h-3.5 w-3.5" strokeWidth={2} />
+                </button>
+              </div>
+            </div>
+          </div>
+        ),
+        {
+          id: `chat-${message.senderUserId}`,
+          toasterId: CAMPUS_REALTIME_TOASTER_ID,
+          duration: 6000,
+        },
+      )
     },
     [openChat],
   )

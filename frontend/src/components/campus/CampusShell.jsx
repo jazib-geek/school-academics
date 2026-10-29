@@ -221,7 +221,7 @@ export const CAMPUS_SHELL_NAV = [
       { label: 'Timetables', to: '/campus/timetables', permission: 'view_timetable' },
       { label: 'Datesheets', to: '/campus/datesheets', permission: 'view_datesheet' },
       { label: 'Diary Management', to: '/campus/daily-diary/list', permission: 'view_daily_diary' },
-      { label: 'Teacher Analysis', to: '/campus/exams/teacher-analysis', permission: 'view_teacher_analysis' },
+      { label: 'Teacher Conduct', to: '/campus/teacher-conduct', permission: 'view_teacher_conduct' },
       { label: 'Teacher Performance', to: '/campus/exams/teacher-performance', permission: 'view_teacher_performance' },
     ],
   },
@@ -861,17 +861,33 @@ export default function CampusShell({
                     realtime.openChat()
                   }}
                   className={`relative flex cursor-pointer items-center justify-center rounded-lg border p-2 transition sm:px-2.5 sm:py-1.5 ${
-                    realtime.chatOpen || realtime.chatUnread > 0
-                      ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-                      : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-800'
+                    realtime.chatUnread > 0 && !realtime.chatOpen
+                      ? 'campus-mail-btn-unread-pulse text-emerald-800 hover:bg-emerald-100'
+                      : realtime.chatOpen || realtime.chatUnread > 0
+                        ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                        : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-800'
                   }`}
                   title="Messages"
-                  aria-label="Messages"
+                  aria-label={
+                    realtime.chatUnread > 0
+                      ? `${realtime.chatUnread} unread message${realtime.chatUnread === 1 ? '' : 's'}`
+                      : 'Messages'
+                  }
                   aria-expanded={realtime.chatOpen}
                 >
-                  <Mail size={16} className="shrink-0" strokeWidth={2.25} />
+                  <Mail
+                    size={16}
+                    className={`shrink-0 ${
+                      realtime.chatUnread > 0 && !realtime.chatOpen ? 'campus-mail-unread-pulse' : ''
+                    }`}
+                    strokeWidth={2.25}
+                  />
                   {realtime.chatUnread > 0 ? (
-                    <span className="absolute -right-1.5 -top-1.5 grid h-[1.1rem] min-w-[1.1rem] place-items-center rounded-full bg-emerald-600 px-1 text-[10px] font-bold leading-none text-white shadow-sm ring-2 ring-white">
+                    <span
+                      className={`absolute -right-1.5 -top-1.5 grid h-[1.1rem] min-w-[1.1rem] place-items-center rounded-full bg-emerald-600 px-1 text-[10px] font-bold leading-none text-white shadow-sm ring-2 ring-white ${
+                        !realtime.chatOpen ? 'campus-mail-badge-unread-pulse' : ''
+                      }`}
+                    >
                       {realtime.chatUnread > 9 ? '9+' : realtime.chatUnread}
                     </span>
                   ) : null}

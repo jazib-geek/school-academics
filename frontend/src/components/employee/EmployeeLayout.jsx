@@ -357,6 +357,16 @@ function EmployeeLayout({
         path: '/employee/conduct-report',
       })
     }
+    if (access.canRecordTeacherConduct || access.canViewTeacherConduct) {
+      conductSubmenu.push({
+        id: 'teacher-conduct',
+        label: 'Teacher Conduct',
+        description: 'Look up a teacher’s notes',
+        icon: Search,
+        iconBadgeClass: 'text-indigo-700',
+        path: '/employee/conduct-teacher',
+      })
+    }
 
     const attendanceItem = {
       id: 'attendance',

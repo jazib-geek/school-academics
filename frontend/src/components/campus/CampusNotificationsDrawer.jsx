@@ -47,10 +47,17 @@ function iconForNotification(item) {
   const type = item?.type || ''
   const severity = item?.severity || 'info'
 
-  if (type === 'attendance_check_in' || type === 'day_closed' || (type === 'student_conduct' && severity === 'success')) {
+  if (
+    type === 'attendance_check_in' ||
+    type === 'day_closed' ||
+    ((type === 'student_conduct' || type === 'teacher_conduct') && severity === 'success')
+  ) {
     return { Icon: Check, wrap: 'bg-emerald-100 text-emerald-600' }
   }
-  if (type === 'attendance_check_out' || (type === 'student_conduct' && severity === 'warning')) {
+  if (
+    type === 'attendance_check_out' ||
+    ((type === 'student_conduct' || type === 'teacher_conduct') && severity === 'warning')
+  ) {
     return { Icon: Clock3, wrap: 'bg-amber-100 text-amber-600' }
   }
   if (type === 'diary_upload') {
@@ -62,7 +69,7 @@ function iconForNotification(item) {
   if (type === 'fee_received') {
     return { Icon: HandCoins, wrap: 'bg-violet-100 text-violet-700' }
   }
-  if (type === 'student_conduct') {
+  if (type === 'student_conduct' || type === 'teacher_conduct') {
     return { Icon: AlertTriangle, wrap: 'bg-rose-100 text-rose-600' }
   }
   if (type === 'leave_application') {

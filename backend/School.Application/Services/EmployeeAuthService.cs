@@ -76,6 +76,8 @@ public class EmployeeAuthService : IEmployeeAuthService
                 CanViewStudentExamDetail = employee.CanViewStudentExamDetail,
                 CanRecordStudentConduct = employee.CanRecordStudentConduct,
                 CanViewStudentConduct = employee.CanViewStudentConduct,
+                CanRecordTeacherConduct = employee.CanRecordTeacherConduct,
+                CanViewTeacherConduct = employee.CanViewTeacherConduct,
             },
         };
     }

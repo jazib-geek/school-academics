@@ -20,3 +20,8 @@ export const sendChatMessage = async (recipientUserId, body) => {
 export const markChatRead = async (otherUserId) => {
   await api.post(`/api/chat/conversation/${otherUserId}/read`)
 }
+
+export const reactToChatMessage = async (messageId, emoji) => {
+  const response = await api.post(`/api/chat/messages/${messageId}/react`, { emoji })
+  return response?.data?.data
+}
