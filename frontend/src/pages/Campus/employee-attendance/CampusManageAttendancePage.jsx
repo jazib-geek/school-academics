@@ -293,6 +293,12 @@ function CampusManageAttendancePage() {
   const [rejectRequestRow, setRejectRequestRow] = useState(null)
   const [rejectNote, setRejectNote] = useState('')
   const [approveRequestRow, setApproveRequestRow] = useState(null)
+  const [selectedRequestIds, setSelectedRequestIds] = useState(() => new Set())
+  const [bulkApproveRows, setBulkApproveRows] = useState(null)
+  const [bulkApproveErrors, setBulkApproveErrors] = useState([])
+  const [isBulkApproving, setIsBulkApproving] = useState(false)
+  const [bulkApproveDone, setBulkApproveDone] = useState(0)
+  const reviewSelectAllRef = useRef(null)
 
   const [requestRow, setRequestRow] = useState(null)
   const [requestCheckIn, setRequestCheckIn] = useState('')
@@ -333,15 +339,34 @@ function CampusManageAttendancePage() {
         status: 'pending',
       })
       setReviewRows(items)
+      setSelectedRequestIds((current) => {
+        if (current.size === 0) return current
+        const allowed = new Set(items.map((row) => row.id))
+        let changed = false
+        const next = new Set()
+        current.forEach((id) => {
+          if (allowed.has(id)) next.add(id)
+          else changed = true
+        })
+        return changed ? next : current
+      })
       return items
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Could not load change requests.')
       setReviewRows([])
+      setSelectedRequestIds(new Set())
       return []
     } finally {
       setIsLoadingReview(false)
     }
   }, [canEdit, canRequest, dateValue])
+
+  useEffect(() => {
+    const input = reviewSelectAllRef.current
+    if (!input) return
+    const selectedVisible = reviewRows.filter((row) => selectedRequestIds.has(row.id)).length
+    input.indeterminate = selectedVisible > 0 && selectedVisible < reviewRows.length
+  }, [reviewRows, selectedRequestIds, reviewOpen, isLoadingReview])
 
   useEffect(() => {
     if (canView) void loadDay()
@@ -485,6 +510,9 @@ function CampusManageAttendancePage() {
 
   const openReview = () => {
     if (!canEdit) return
+    setSelectedRequestIds(new Set())
+    setBulkApproveRows(null)
+    setBulkApproveErrors([])
     setReviewOpen(true)
     void loadPendingChangeRequests()
   }
@@ -492,6 +520,9 @@ function CampusManageAttendancePage() {
   const openReviewForEntry = async (entry) => {
     if (!canEdit || !entry?.pendingChangeRequestId) return
     const requestId = entry.pendingChangeRequestId
+    setSelectedRequestIds(new Set())
+    setBulkApproveRows(null)
+    setBulkApproveErrors([])
     setReviewOpen(true)
     const items = await loadPendingChangeRequests()
     const match = items.find((row) => row.id === requestId)
@@ -504,11 +535,49 @@ function CampusManageAttendancePage() {
   }
 
   const closeReview = () => {
-    if (actingRequestId) return
+    if (actingRequestId || isBulkApproving) return
     setReviewOpen(false)
     setRejectRequestRow(null)
     setApproveRequestRow(null)
     setRejectNote('')
+    setSelectedRequestIds(new Set())
+    setBulkApproveRows(null)
+    setBulkApproveErrors([])
+  }
+
+  const toggleReviewRequest = (id) => {
+    if (isBulkApproving || actingRequestId) return
+    setSelectedRequestIds((current) => {
+      const next = new Set(current)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const toggleReviewSelectAll = () => {
+    if (isBulkApproving || actingRequestId) return
+    setSelectedRequestIds((current) => {
+      const allSelected = reviewRows.length > 0 && reviewRows.every((row) => current.has(row.id))
+      if (allSelected) return new Set()
+      return new Set(reviewRows.map((row) => row.id))
+    })
+  }
+
+  const openBulkApproveProof = () => {
+    if (!canEdit || isBulkApproving || actingRequestId) return
+    const rows = reviewRows.filter((row) => selectedRequestIds.has(row.id))
+    if (rows.length === 0) return
+    setBulkApproveErrors([])
+    setBulkApproveDone(0)
+    setBulkApproveRows(rows)
+  }
+
+  const closeBulkApproveProof = () => {
+    if (isBulkApproving) return
+    setBulkApproveRows(null)
+    setBulkApproveErrors([])
+    setBulkApproveDone(0)
   }
 
   const runApproveRequest = async (row) => {
@@ -527,6 +596,56 @@ function CampusManageAttendancePage() {
       decisionInFlightRef.current = false
       setActingRequestId(null)
     }
+  }
+
+  const runBulkApprove = async () => {
+    if (!canEdit || !bulkApproveRows?.length || decisionInFlightRef.current) return
+    const rows = bulkApproveRows
+    decisionInFlightRef.current = true
+    setIsBulkApproving(true)
+    setBulkApproveDone(0)
+    setBulkApproveErrors([])
+    const failures = []
+    let approved = 0
+    for (const row of rows) {
+      try {
+        await approveEmployeeAttendanceChangeRequest(row.id)
+        approved += 1
+      } catch (err) {
+        failures.push({
+          id: row.id,
+          name: row.employeeName,
+          message: err?.response?.data?.message || 'Could not approve this request.',
+        })
+      }
+      setBulkApproveDone(approved + failures.length)
+    }
+    try {
+      await loadDay()
+      await loadPendingChangeRequests()
+    } finally {
+      decisionInFlightRef.current = false
+      setIsBulkApproving(false)
+    }
+    if (failures.length === 0) {
+      toast.success(
+        approved === 1 ? 'Change request approved.' : `${approved} change requests approved.`,
+      )
+      setBulkApproveRows(null)
+      setBulkApproveErrors([])
+      setSelectedRequestIds(new Set())
+      setBulkApproveDone(0)
+      return
+    }
+    const failedIds = new Set(failures.map((item) => item.id))
+    setBulkApproveErrors(failures)
+    setBulkApproveRows(rows.filter((row) => failedIds.has(row.id)))
+    setSelectedRequestIds(failedIds)
+    toast.error(
+      approved > 0
+        ? `Approved ${approved}. ${failures.length} could not be approved.`
+        : 'Could not approve the selected requests.',
+    )
   }
 
   const runRejectRequest = async () => {
@@ -1180,6 +1299,13 @@ function CampusManageAttendancePage() {
     }
   }
 
+  const selectedReviewCount = reviewRows.reduce(
+    (count, row) => count + (selectedRequestIds.has(row.id) ? 1 : 0),
+    0,
+  )
+  const allReviewSelected = reviewRows.length > 0 && selectedReviewCount === reviewRows.length
+  const reviewLocked = Boolean(actingRequestId) || isBulkApproving
+
   if (!canView) {
     return <CampusAccessDenied />
   }
@@ -1705,9 +1831,20 @@ function CampusManageAttendancePage() {
               ) : reviewRows.length === 0 ? (
                 <p className="py-12 text-center text-sm text-slate-500">No pending change requests for this date.</p>
               ) : (
-                <table className="w-full min-w-[720px] text-left text-[13px] leading-snug">
+                <table className="w-full min-w-[760px] text-left text-[13px] leading-snug">
                   <thead className="text-xs uppercase text-slate-500">
                     <tr>
+                      <th className="w-10 px-3 py-2 font-medium">
+                        <input
+                          ref={reviewSelectAllRef}
+                          type="checkbox"
+                          checked={allReviewSelected}
+                          onChange={toggleReviewSelectAll}
+                          disabled={reviewLocked}
+                          aria-label="Select all requests"
+                          className="h-3.5 w-3.5 rounded border-white/40 accent-white"
+                        />
+                      </th>
                       <th className="px-3 py-2 font-medium">Employee</th>
                       <th className="px-3 py-2 font-medium">Current</th>
                       <th className="px-3 py-2 font-medium">Proposed</th>
@@ -1724,6 +1861,16 @@ function CampusManageAttendancePage() {
                           highlightRequestId === row.id ? 'bg-violet-50' : 'bg-white'
                         }`}
                       >
+                        <td className="px-3 py-1.5">
+                          <input
+                            type="checkbox"
+                            checked={selectedRequestIds.has(row.id)}
+                            onChange={() => toggleReviewRequest(row.id)}
+                            disabled={reviewLocked}
+                            aria-label={`Select ${row.employeeName}`}
+                            className="h-3.5 w-3.5 rounded border-slate-300 accent-[var(--campus-primary)]"
+                          />
+                        </td>
                         <td className="px-3 py-1.5">
                           <p className="font-semibold text-slate-900">{row.employeeName}</p>
                           <p className="text-[11px] text-slate-500">#{row.employeeId}</p>
@@ -1767,7 +1914,7 @@ function CampusManageAttendancePage() {
                             <button
                               type="button"
                               title="Approve"
-                              disabled={actingRequestId === row.id}
+                              disabled={reviewLocked}
                               onClick={() => setApproveRequestRow(row)}
                               className="btn-icon-soft text-emerald-700"
                             >
@@ -1776,7 +1923,7 @@ function CampusManageAttendancePage() {
                             <button
                               type="button"
                               title="Reject"
-                              disabled={actingRequestId === row.id}
+                              disabled={reviewLocked}
                               onClick={() => {
                                 setRejectRequestRow(row)
                                 setRejectNote('')
@@ -1793,6 +1940,24 @@ function CampusManageAttendancePage() {
                 </table>
               )}
             </div>
+            {!isLoadingReview && reviewRows.length > 0 ? (
+              <div className="flex items-center justify-between gap-3 border-t border-slate-100 bg-slate-50 px-5 py-3">
+                <p className="text-sm text-slate-600">
+                  {selectedReviewCount === 0
+                    ? 'Select requests to approve together.'
+                    : `${selectedReviewCount} selected`}
+                </p>
+                <button
+                  type="button"
+                  disabled={selectedReviewCount === 0 || reviewLocked}
+                  onClick={openBulkApproveProof}
+                  className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                >
+                  <Check size={16} />
+                  Approve selected
+                </button>
+              </div>
+            ) : null}
           </div>
         </div>
       ) : null}
@@ -1841,6 +2006,110 @@ function CampusManageAttendancePage() {
                   <Check size={16} />
                 )}
                 Approve
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {bulkApproveRows ? (
+        <div className="fixed inset-0 z-[95] grid place-items-center bg-slate-950/45 p-4 backdrop-blur-sm">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="bulk-approve-requests-title"
+            className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+          >
+            <div className="border-b border-slate-100 px-5 py-4">
+              <h3 id="bulk-approve-requests-title" className="text-lg font-bold text-slate-900">
+                Review before approving
+              </h3>
+              <p className="mt-1 text-sm text-slate-500">
+                {bulkApproveRows.length === 1
+                  ? `Check this request for ${dateValue}, then approve.`
+                  : `Check these ${bulkApproveRows.length} requests for ${dateValue}, then approve.`}
+              </p>
+            </div>
+            <div className="flex-1 overflow-auto px-5 py-4">
+              <table className="w-full min-w-[560px] text-left text-[13px] leading-snug">
+                <thead className="text-xs uppercase text-slate-500">
+                  <tr>
+                    <th className="px-3 py-2 font-medium">Employee</th>
+                    <th className="px-3 py-2 font-medium">Current</th>
+                    <th className="px-3 py-2 font-medium">Proposed</th>
+                    <th className="px-3 py-2 font-medium">Reason</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {bulkApproveRows.map((row) => {
+                    const failure = bulkApproveErrors.find((item) => item.id === row.id)
+                    return (
+                      <tr
+                        key={row.id}
+                        className={`border-t border-slate-100 ${failure ? 'bg-rose-50' : 'bg-white'}`}
+                      >
+                        <td className="px-3 py-1.5">
+                          <p className="font-semibold text-slate-900">{row.employeeName}</p>
+                          <p className="text-[11px] text-slate-500">#{row.employeeId}</p>
+                          {isMarkPresentRequestKind(row.requestKind) ? (
+                            <span className="mt-1 inline-block rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-emerald-800">
+                              Mark present
+                            </span>
+                          ) : null}
+                          {failure ? (
+                            <p className="mt-1 text-[11px] font-medium text-rose-700">{failure.message}</p>
+                          ) : null}
+                        </td>
+                        <td className="px-3 py-1.5 font-mono text-xs text-slate-700">
+                          <div>
+                            IN{' '}
+                            {isMarkPresentRequestKind(row.requestKind) && !row.currentCheckInTime
+                              ? '—'
+                              : formatTime12Hour(row.currentCheckInTime)}
+                          </div>
+                          <div>
+                            OUT{' '}
+                            {isMarkPresentRequestKind(row.requestKind) && !row.currentCheckOutTime
+                              ? '—'
+                              : formatTime12Hour(row.currentCheckOutTime)}
+                          </div>
+                        </td>
+                        <td className="px-3 py-1.5 font-mono text-xs font-semibold text-slate-900">
+                          <div>IN {formatTime12Hour(row.proposedCheckInTime)}</div>
+                          <div>OUT {formatTime12Hour(row.proposedCheckOutTime)}</div>
+                        </td>
+                        <td className="max-w-[220px] px-3 py-1.5 text-slate-700">{row.reason}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex justify-end gap-2 border-t border-slate-100 bg-slate-50 px-5 py-4">
+              <button
+                type="button"
+                disabled={isBulkApproving}
+                onClick={closeBulkApproveProof}
+                className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium disabled:opacity-50"
+              >
+                Back
+              </button>
+              <button
+                type="button"
+                disabled={isBulkApproving}
+                onClick={() => void runBulkApprove()}
+                className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+              >
+                {isBulkApproving ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <Check size={16} />
+                )}
+                {isBulkApproving
+                  ? `Approving ${bulkApproveDone} of ${bulkApproveRows.length}`
+                  : bulkApproveRows.length === 1
+                    ? 'Approve'
+                    : `Approve ${bulkApproveRows.length}`}
               </button>
             </div>
           </div>

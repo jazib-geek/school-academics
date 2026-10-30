@@ -34,6 +34,7 @@ import CampusDateSheetsPage from './pages/Campus/datesheets/CampusDateSheetsPage
 import CampusDateSheetEditorPage from './pages/Campus/datesheets/CampusDateSheetEditorPage.jsx'
 import FeeReportsPage from './pages/Campus/fee/FeeReportsPage.jsx'
 import BalanceSheetPage from './pages/Campus/fee/BalanceSheetPage.jsx'
+import FeeDashboardPage from './pages/Campus/fee/FeeDashboardPage.jsx'
 import FeeReminderNoticePage from './pages/Campus/fee/FeeReminderNoticePage.jsx'
 import GenerateFeePage from './pages/Campus/fee/GenerateFeePage.jsx'
 import FeeTransactionHistoryPage from './pages/Campus/fee/FeeTransactionHistoryPage.jsx'
@@ -457,6 +458,14 @@ function App() {
         element={
           <ProtectedRoute>
             <FeeReportsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/campus/fee/dashboard"
+        element={
+          <ProtectedRoute>
+            <FeeDashboardPage />
           </ProtectedRoute>
         }
       />

@@ -151,6 +151,7 @@ export const CAMPUS_SHELL_NAV = [
     icon: HandCoins,
     iconClass: 'text-amber-300',
     children: [
+      { label: 'Fee Dashboard', to: '/campus/fee/dashboard', permission: 'view_fee_dashboard' },
       {
         label: 'Generate Fee',
         to: '/campus/fee/generate',

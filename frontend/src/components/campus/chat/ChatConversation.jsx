@@ -240,7 +240,19 @@ export default function ChatConversation({ user, myUserId, subscribe, onRead, on
               const m = row.message
               const mine = m.senderUserId === myUserId
               const reactions = m.reactions || []
+              const myReaction = reactions.find((row) => row.userId === myUserId)
               const pickerOpen = pickerId === m.id
+              const reactionChips = reactionSummary(reactions).map(([emoji, count]) => (
+                <span key={emoji} className="inline-flex items-center px-0.5">
+                  {emoji}
+                  {count > 1 ? (
+                    <span className="ml-0.5 text-[10px] font-semibold text-slate-500">{count}</span>
+                  ) : null}
+                </span>
+              ))
+              const pillClass = `absolute -bottom-2.5 z-[1] flex items-center rounded-full bg-white px-1 py-0.5 text-sm leading-none shadow-sm ring-1 ring-slate-200 ${
+                mine ? 'left-1' : 'right-1'
+              }`
               return (
                 <li
                   key={row.key}
@@ -319,21 +331,24 @@ export default function ChatConversation({ user, myUserId, subscribe, onRead, on
                       </p>
                     </div>
                     {reactions.length ? (
-                      <div
-                        className={`pointer-events-none absolute -bottom-2.5 z-[1] flex items-center rounded-full bg-white px-1 py-0.5 text-sm leading-none shadow-sm ring-1 ring-slate-200 ${
-                          mine ? 'left-1' : 'right-1'
-                        }`}
-                        title={reactionCaption(reactions, myUserId, user.username)}
-                      >
-                        {reactionSummary(reactions).map(([emoji, count]) => (
-                          <span key={emoji} className="inline-flex items-center px-0.5">
-                            {emoji}
-                            {count > 1 ? (
-                              <span className="ml-0.5 text-[10px] font-semibold text-slate-500">{count}</span>
-                            ) : null}
-                          </span>
-                        ))}
-                      </div>
+                      myReaction ? (
+                        <button
+                          type="button"
+                          onClick={() => react(m, myReaction.emoji)}
+                          className={`${pillClass} cursor-pointer transition hover:bg-slate-50`}
+                          title={reactionCaption(reactions, myUserId, user.username)}
+                          aria-label="Remove your reaction"
+                        >
+                          {reactionChips}
+                        </button>
+                      ) : (
+                        <div
+                          className={`${pillClass} pointer-events-none`}
+                          title={reactionCaption(reactions, myUserId, user.username)}
+                        >
+                          {reactionChips}
+                        </div>
+                      )
                     ) : null}
                   </div>
                 </li>

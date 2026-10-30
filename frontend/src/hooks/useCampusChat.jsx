@@ -15,7 +15,7 @@ function parse(event) {
  * One live connection per campus session: chat messages, read receipts, online presence,
  * plus reminder events (forwarded to `onReminderEvent`).
  */
-export default function useCampusChat({ active, token, myUserId, onIncomingMessage, onReminderEvent }) {
+export default function useCampusChat({ active, token, myUserId, onIncomingMessage, onIncomingReaction, onReminderEvent }) {
   const [users, setUsers] = useState([])
   const usersRef = useRef(users)
   usersRef.current = users
@@ -23,8 +23,10 @@ export default function useCampusChat({ active, token, myUserId, onIncomingMessa
   const listenersRef = useRef(new Set())
   const viewingUserIdRef = useRef(null)
   const incomingRef = useRef(onIncomingMessage)
+  const reactionRef = useRef(onIncomingReaction)
   const reminderRef = useRef(onReminderEvent)
   incomingRef.current = onIncomingMessage
+  reactionRef.current = onIncomingReaction
   reminderRef.current = onReminderEvent
 
   const refreshUsers = useCallback(async () => {
@@ -120,7 +122,12 @@ export default function useCampusChat({ active, token, myUserId, onIncomingMessa
 
       source.addEventListener('chat-reaction', (event) => {
         const data = parse(event)
-        if (data) emit('chat-reaction', data)
+        if (!data) return
+        emit('chat-reaction', data)
+        const mine = data.senderUserId === myUserId
+        const fromOther = data.actorUserId && data.actorUserId !== myUserId && data.emoji
+        const isViewing = viewingUserIdRef.current === data.actorUserId && !document.hidden
+        if (mine && fromOther && !isViewing) reactionRef.current?.(data)
       })
 
       source.addEventListener('chat-read', (event) => {

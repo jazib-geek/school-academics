@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { Eye, History, Loader2, Pencil, Printer, Search, X } from 'lucide-react'
 import { toast } from 'sonner'
 import CampusShell from '../../../components/campus/CampusShell.jsx'
+import FeeCollectionPrintSheet from '../../../components/campus/fee/FeeCollectionPrintSheet.jsx'
 import { AccessForbiddenPanel } from '../../../components/campus/CampusPermissionUi.jsx'
 import { hasCampusPermission } from '../../../services/authService'
 import {
@@ -11,6 +12,7 @@ import {
   getVoidedFeeReceiptForPrint,
   searchFeeReceipts,
 } from '../../../services/feeReceiptHistoryService'
+import { runSmartFeeReport } from '../../../services/feeReportService'
 import { buildVoidReceiptPreviewHtml, printFeeReceipts } from '../../../utils/feeReceiptPrint'
 import { FILTER_INPUT_AUTOCOMPLETE_PROPS } from '../../../utils/filterInputProps'
 import { INTEGER_INPUT_ATTRS, readIntegerInput } from '../../../utils/numericInput.js'
@@ -72,6 +74,14 @@ export default function FeeTransactionHistoryPage() {
   const [isSavingEdit, setIsSavingEdit] = useState(false)
   const [voidPreview, setVoidPreview] = useState(null)
   const [highlightTxnId, setHighlightTxnId] = useState(null)
+  const [collectionPrint, setCollectionPrint] = useState(null)
+  const [isPrintingCollection, setIsPrintingCollection] = useState(false)
+
+  const sameDay = Boolean(dateFrom && dateTo && dateFrom === dateTo)
+  const canPrintCollection =
+    searchMode === 'date' &&
+    Boolean(dateFrom && dateTo && dateFrom <= dateTo) &&
+    hasCampusPermission(sameDay ? 'rpt_fee_coll_date' : 'rpt_fee_coll_interval')
 
   const canSearch = useMemo(() => {
     if (searchMode === 'name') return studentName.trim().length >= 2
@@ -169,6 +179,60 @@ export default function FeeTransactionHistoryPage() {
     }
   }, [canAccess, searchParams, setSearchParams, runSearch])
 
+  const receiptSummary = useMemo(() => {
+    const voided = rows.filter((row) => row.isVoided).length
+    const total = rows.reduce(
+      (sum, row) => sum + (row.isVoided ? 0 : Number(row.totalReceived || 0)),
+      0,
+    )
+    return { count: rows.length, voided, total }
+  }, [rows])
+
+  const printCollection = async () => {
+    if (!dateFrom || !dateTo) {
+      toast.error('Select both from and to dates.')
+      return
+    }
+    if (dateFrom > dateTo) {
+      toast.error('From date cannot be after to date.')
+      return
+    }
+    const oneDay = dateFrom === dateTo
+    setIsPrintingCollection(true)
+    try {
+      const data = await runSmartFeeReport(
+        oneDay ? 'collection-by-date' : 'collection-by-interval',
+        oneDay ? { date: dateFrom } : { dateFrom, dateTo },
+      )
+      if (!data) {
+        toast.error('Could not prepare the collection print.')
+        setIsPrintingCollection(false)
+        return
+      }
+      setCollectionPrint({
+        result: data,
+        date: oneDay ? dateFrom : '',
+        dateFrom: oneDay ? '' : dateFrom,
+        dateTo: oneDay ? '' : dateTo,
+        token: Date.now(),
+      })
+    } catch (error) {
+      toast.error(error?.response?.data?.message || 'Could not prepare the collection print.')
+      setIsPrintingCollection(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!collectionPrint) return undefined
+    const finish = () => setIsPrintingCollection(false)
+    window.addEventListener('afterprint', finish)
+    const timer = window.setTimeout(() => window.print(), 80)
+    return () => {
+      window.clearTimeout(timer)
+      window.removeEventListener('afterprint', finish)
+    }
+  }, [collectionPrint])
+
   const onReprint = async (receiptId) => {
     setReprintingId(receiptId)
     try {
@@ -264,8 +328,12 @@ export default function FeeTransactionHistoryPage() {
   }
 
   return (
-    <CampusShell headerContext="Transaction History">
-      <div className="min-h-screen bg-slate-100 p-4 pt-[4.25rem] md:p-6 md:pt-[4.5rem]">
+    <CampusShell
+      headerContext="Transaction History"
+      asideClassName="no-print"
+      headerClassName="no-print"
+    >
+      <div className="no-print min-h-screen bg-slate-100 p-4 pt-[4.25rem] md:p-6 md:pt-[4.5rem]">
         <div className="mx-auto max-w-6xl">
           <section className="overflow-hidden rounded-2xl bg-white shadow-sm">
             <div className="space-y-5 p-5">
@@ -358,6 +426,17 @@ export default function FeeTransactionHistoryPage() {
                   {isLoading ? <Loader2 className="animate-spin" size={16} /> : <Search size={16} />}
                   Search
                 </button>
+                {canPrintCollection ? (
+                  <button
+                    type="button"
+                    onClick={() => void printCollection()}
+                    disabled={isPrintingCollection}
+                    className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                  >
+                    {isPrintingCollection ? <Loader2 className="animate-spin" size={16} /> : <Printer size={16} />}
+                    {sameDay ? "Print day's collection" : 'Print period collection'}
+                  </button>
+                ) : null}
               </div>
             </div>
 
@@ -375,6 +454,19 @@ export default function FeeTransactionHistoryPage() {
                 <p className="px-5 py-10 text-center text-sm text-slate-500">No receipts found.</p>
               ) : (
                 <div className="overflow-x-auto">
+                  <div className="flex flex-wrap gap-2 border-b border-slate-100 px-3 py-2">
+                    <span className="rounded-md bg-slate-100 px-2.5 py-1 text-[13px] text-slate-600">
+                      Receipts <strong className="font-semibold text-slate-800">{receiptSummary.count}</strong>
+                    </span>
+                    {receiptSummary.voided ? (
+                      <span className="rounded-md bg-rose-50 px-2.5 py-1 text-[13px] text-rose-700">
+                        Voided <strong className="font-semibold">{receiptSummary.voided}</strong>
+                      </span>
+                    ) : null}
+                    <span className="rounded-md bg-emerald-50 px-2.5 py-1 text-[13px] text-emerald-800">
+                      Collected <strong className="font-semibold">Rs {money(receiptSummary.total)}</strong>
+                    </span>
+                  </div>
                   <table className="min-w-full text-left text-[13px] leading-snug">
                     <thead>
                       <tr>
@@ -425,7 +517,11 @@ export default function FeeTransactionHistoryPage() {
                             </td>
                             <td className="px-3 py-1.5 text-slate-700">{row.className || '—'}</td>
                             <td className="px-3 py-1.5 text-slate-700">{row.receivedBy || '—'}</td>
-                            <td className="px-3 py-1.5 text-right font-medium text-slate-900">
+                            <td
+                              className={`px-3 py-1.5 text-right font-medium text-slate-900 ${
+                                isVoided ? 'line-through' : ''
+                              }`}
+                            >
                               {money(row.totalReceived)}
                             </td>
                             <td className="px-3 py-1.5 text-right">
@@ -483,6 +579,17 @@ export default function FeeTransactionHistoryPage() {
                         )
                       })}
                     </tbody>
+                    <tfoot>
+                      <tr className="bg-slate-50">
+                        <td colSpan={5} className="px-3 py-2 text-right font-semibold text-slate-700">
+                          Total
+                        </td>
+                        <td className="px-3 py-2 text-right font-semibold text-slate-900">
+                          {money(receiptSummary.total)}
+                        </td>
+                        <td />
+                      </tr>
+                    </tfoot>
                   </table>
                 </div>
               )}
@@ -492,7 +599,7 @@ export default function FeeTransactionHistoryPage() {
       </div>
 
       {editState ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
+        <div className="no-print fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
           <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl">
             <div className="border-b border-slate-100 px-5 py-4">
               <h2 className="text-lg font-semibold text-slate-900">Edit receipt #{editState.receiptId}</h2>
@@ -559,7 +666,7 @@ export default function FeeTransactionHistoryPage() {
       ) : null}
 
       {voidPreview ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-3 sm:p-4">
+        <div className="no-print fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-3 sm:p-4">
           <div className="flex h-[94vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
             <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-5 py-3">
               <h2 className="text-base font-semibold text-slate-900">
@@ -581,6 +688,16 @@ export default function FeeTransactionHistoryPage() {
             />
           </div>
         </div>
+      ) : null}
+
+      {collectionPrint ? (
+        <FeeCollectionPrintSheet
+          key={collectionPrint.token}
+          result={collectionPrint.result}
+          date={collectionPrint.date}
+          dateFrom={collectionPrint.dateFrom}
+          dateTo={collectionPrint.dateTo}
+        />
       ) : null}
     </CampusShell>
   )

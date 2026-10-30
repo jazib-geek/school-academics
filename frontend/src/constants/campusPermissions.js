@@ -170,6 +170,7 @@ export const CAMPUS_ROUTE_PERMISSIONS = [
   { prefix: '/campus/fee/generate', anyOf: ['generate_fee_all', 'generate_fee_single'] },
   { prefix: '/campus/fee/transactions', permission: 'submit_fee' },
   { prefix: '/campus/fee/void-receipt', permission: 'void_rcpt' },
+  { prefix: '/campus/fee/dashboard', permission: 'view_fee_dashboard' },
   { prefix: '/campus/fee/reports', permission: 'rpt_fee' },
   { prefix: '/campus/fee/reminder-notices', permission: 'rpt_fee' },
   { prefix: '/campus/fee/balance-sheet', permission: 'rpt_fee_balance_sheet' },

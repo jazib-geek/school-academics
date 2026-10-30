@@ -390,7 +390,11 @@ export default function CampusDayClosingPage() {
                           {formatDateLabel(row.closingDate)}
                         </td>
                         <td className="px-3 py-1.5 text-right tabular-nums text-emerald-700">
-                          {formatReportPrintMoney(row.totalCashCollected)}
+                          {formatReportPrintMoney(
+                            String(row.closingDate).slice(0, 10) === String(preview.closingDate).slice(0, 10)
+                              ? Number(preview.totalCashCollected || 0) + Number(preview.onlineFee || 0)
+                              : row.totalCashCollected
+                          )}
                         </td>
                         <td className="px-3 py-1.5 text-right tabular-nums text-rose-700">
                           {formatReportPrintMoney(row.totalExpenses)}

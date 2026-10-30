@@ -41,8 +41,8 @@ import {
 import Select from 'react-select'
 import Chart from 'chart.js/auto'
 import CampusShell from '../../../components/campus/CampusShell.jsx'
+import FeeCollectionPrintSheet from '../../../components/campus/fee/FeeCollectionPrintSheet.jsx'
 import { FEE_REPORT_PERMISSIONS } from '../../../constants/campusPermissions.js'
-import { SECURITY_DEPOSIT_FUND_TYPE_ID } from '../../../constants/campusFundTypes.js'
 import { getCampusFundTypes, hasCampusPermission } from '../../../services/authService'
 import { getCampusPrintMeta } from '../../../utils/campusProfile'
 import { getPakistanDateParts, getPakistanTodayIso } from '../../../utils/pakistanDate.js'
@@ -232,19 +232,6 @@ const buildReceivableClassWiseSections = (rows) => {
     }
   })
 }
-
-const COLLECTION_SUMMARY_COLUMNS = [
-  { label: 'Tuition Fee', fundTypeIds: [1], nameMatchers: ['tuition', 'tution'] },
-  { label: 'Fine', fundTypeIds: [], nameMatchers: ['fine'] },
-  { label: 'Admission Fee', fundTypeIds: [], nameMatchers: ['admission'] },
-  { label: 'Misc Charges', fundTypeIds: [], nameMatchers: ['misc'] },
-  { label: 'Prev Balance', fundTypeIds: [], nameMatchers: ['prev', 'previous', 'balance'] },
-  {
-    label: 'Security Deposit',
-    fundTypeIds: [SECURITY_DEPOSIT_FUND_TYPE_ID],
-    nameMatchers: ['security deposit', 'security'],
-  },
-]
 
 const money = (value) =>
   Number(value || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })
@@ -531,15 +518,6 @@ const formatCell = (value, format, key) => {
   return String(value)
 }
 
-const matchSummaryColumn = (row, column) => {
-  const fundTypeId = Number(row.fundTypeId || 0)
-  if (column.fundTypeIds.includes(fundTypeId)) return true
-  const name = String(row.fundTypeName || '')
-    .trim()
-    .toLowerCase()
-  return column.nameMatchers.some((matcher) => name.includes(matcher))
-}
-
 /** Print column sizing: keep IDs/counts/amounts narrow; give names the rest. */
 const PRINT_NARROW_KEYS =
   /^(rcptid|manualrcptno|transactionid|studentid|familycode|fundtypeid|month|year|silentmonths|pendingcount|dayssince|receipts|lines|receiptlines|studentcount|children|topn|paidpercent|recoverypercent)$/i
@@ -615,30 +593,6 @@ const printCellStyle = (key, format, columnCount) => {
   }
 }
 
-/** Fee collection on date / interval — fixed layout so IDs and month names are not clipped. */
-const COLLECTION_PRINT_WIDTHS = {
-  rcptId: '5.5%',
-  manualRcptNo: '7%',
-  transactionId: '7.5%',
-  studentId: '6%',
-  studentName: '13%',
-  className: '11%',
-  fundTypeName: '14%',
-  month: '10.5%',
-  year: '5.5%',
-  paymentMode: '8%',
-  received: '11.5%',
-}
-
-function collectionRowsHaveManualRcpt(rows) {
-  return (rows || []).some((row) => {
-    const raw = row.manualRcptNo ?? row.ManualRcptNo
-    if (raw == null || raw === '') return false
-    const text = String(raw).trim()
-    return text.length > 0 && text !== '-'
-  })
-}
-
 function rowIsOnlinePayment(row) {
   const raw = row?.paymentMode ?? row?.PaymentMode
   return String(raw || '').trim().toLowerCase() === 'online'
@@ -646,23 +600,6 @@ function rowIsOnlinePayment(row) {
 
 function collectionRowsHaveOnline(rows) {
   return (rows || []).some(rowIsOnlinePayment)
-}
-
-const printCollectionCellStyle = (key) => {
-  const width = COLLECTION_PRINT_WIDTHS[key] || '8%'
-  const isMoney = key === 'received'
-  const leftAlign = key === 'studentName' || key === 'className' || key === 'fundTypeName'
-  const wrap = key === 'studentName' || key === 'className'
-  return {
-    width,
-    maxWidth: width,
-    textAlign: leftAlign ? 'left' : 'center',
-    verticalAlign: 'middle',
-    fontWeight: isMoney ? 700 : undefined,
-    whiteSpace: wrap ? 'normal' : 'nowrap',
-    lineHeight: 1.25,
-    padding: '3px 4px',
-  }
 }
 
 function SnapshotCard({ label, value, hint, icon: Icon, accent }) {
@@ -1322,26 +1259,6 @@ function FeeReportsPage() {
     return head || `Generated: ${formatPrintDate(result.generatedAt)}`
   }, [params, result, isClassWisePrint, isReceivableReport])
 
-  const collectionSummary = useMemo(() => {
-    const totals = new Map(COLLECTION_SUMMARY_COLUMNS.map((column) => [column.label, 0]))
-    for (const row of result?.rows || []) {
-      const amount = Number(row.received || 0)
-      if (!amount) continue
-      const column = COLLECTION_SUMMARY_COLUMNS.find((item) => matchSummaryColumn(row, item))
-      if (!column) continue
-      totals.set(column.label, (totals.get(column.label) || 0) + amount)
-    }
-    return COLLECTION_SUMMARY_COLUMNS.map((column) => ({
-      label: column.label,
-      amount: totals.get(column.label) || 0,
-    }))
-  }, [result])
-
-  const collectionShowManualRcpt = useMemo(
-    () => collectionRowsHaveManualRcpt(result?.rows),
-    [result?.rows],
-  )
-
   const collectionShowPaymentMode = useMemo(
     () => isCollectionPrint && collectionRowsHaveOnline(result?.rows),
     [isCollectionPrint, result?.rows],
@@ -1359,14 +1276,10 @@ function FeeReportsPage() {
     return { cash, online }
   }, [result?.rows])
 
-  const collectionPrintColumnCount =
-    9 + (collectionShowManualRcpt ? 1 : 0) + (collectionShowPaymentMode ? 1 : 0)
-
   const printTitle = useMemo(() => {
     if (isClassWisePrint && isReceivableReport) return 'Fee Receivables Class Wise'
-    if (isCollectionPrint) return 'FEE Collection'
     return result?.title || selectedReport?.title || 'Fee Report'
-  }, [isClassWisePrint, isReceivableReport, isCollectionPrint, result, selectedReport])
+  }, [isClassWisePrint, isReceivableReport, result, selectedReport])
 
   const showsRecentAttendance = ATTENDANCE_REPORT_IDS.has(result?.reportId)
 
@@ -2165,7 +2078,16 @@ function FeeReportsPage() {
                 </div>
               ) : null}
 
-              {result ? (
+              {isCollectionPrint && result ? (
+                <FeeCollectionPrintSheet
+                  result={result}
+                  date={params.date}
+                  dateFrom={params.dateFrom}
+                  dateTo={params.dateTo}
+                />
+              ) : null}
+
+              {result && !isCollectionPrint ? (
                 <>
                   {/* Print sheet — portrait legacy format */}
                   <div className="print-only print-sheet">
@@ -2613,127 +2535,6 @@ function FeeReportsPage() {
                           </div>
                         </div>
                       </div>
-                    ) : isCollectionPrint ? (
-                      <>
-                        <table className="legacy-print-table fee-collection-print-table">
-                          <thead>
-                            <tr>
-                              <th style={printCollectionCellStyle('rcptId')}>Rcpt ID</th>
-                              {collectionShowManualRcpt ? (
-                                <th style={printCollectionCellStyle('manualRcptNo')}>Manual Rcpt#</th>
-                              ) : null}
-                              <th style={printCollectionCellStyle('transactionId')}>Trx ID</th>
-                              <th style={printCollectionCellStyle('studentId')}>Std ID</th>
-                              <th className="col-student-name" style={printCollectionCellStyle('studentName')}>Name</th>
-                              <th className="col-class-name" style={printCollectionCellStyle('className')}>Class/Section</th>
-                              <th style={printCollectionCellStyle('fundTypeName')}>Type</th>
-                              <th style={printCollectionCellStyle('month')}>Month</th>
-                              <th style={printCollectionCellStyle('year')}>Year</th>
-                              {collectionShowPaymentMode ? (
-                                <th style={printCollectionCellStyle('paymentMode')}>Pay mode</th>
-                              ) : null}
-                              <th style={printCollectionCellStyle('received')}>Amount</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {(result.rows || []).map((row, index) => (
-                              <tr key={`pc-${index}`}>
-                                <td style={printCollectionCellStyle('rcptId')}>{dash(row.rcptId)}</td>
-                                {collectionShowManualRcpt ? (
-                                  <td style={printCollectionCellStyle('manualRcptNo')}>{dash(row.manualRcptNo)}</td>
-                                ) : null}
-                                <td style={printCollectionCellStyle('transactionId')}>{dash(row.transactionId)}</td>
-                                <td style={printCollectionCellStyle('studentId')}>{dash(row.studentId)}</td>
-                                <td className="col-student-name" style={printCollectionCellStyle('studentName')}>
-                                  {dash(row.studentName)}
-                                </td>
-                                <td className="col-class-name" style={printCollectionCellStyle('className')}>
-                                  {dash(row.className)}
-                                </td>
-                                <td style={printCollectionCellStyle('fundTypeName')}>{dash(row.fundTypeName)}</td>
-                                <td style={printCollectionCellStyle('month')}>
-                                  {dash(
-                                    typeof row.month === 'string' && /[a-zA-Z]/.test(row.month)
-                                      ? row.month
-                                      : formatMonthName(row.month),
-                                  )}
-                                </td>
-                                <td style={printCollectionCellStyle('year')}>
-                                  {dash(row.year != null && row.year !== '' ? String(row.year).replace(/,/g, '') : '')}
-                                </td>
-                                {collectionShowPaymentMode ? (
-                                  <td style={printCollectionCellStyle('paymentMode')}>
-                                    {rowIsOnlinePayment(row) ? 'Online' : 'Cash'}
-                                  </td>
-                                ) : null}
-                                <td style={printCollectionCellStyle('received')}>
-                                  {printAmount(row.received)}
-                                </td>
-                              </tr>
-                            ))}
-                            {(result.rows || []).length === 0 ? (
-                              <tr>
-                                <td colSpan={collectionPrintColumnCount} style={{ textAlign: 'center' }}>
-                                  No report rows found.
-                                </td>
-                              </tr>
-                            ) : (
-                              <tr className="total-row">
-                                <td
-                                  colSpan={collectionPrintColumnCount - 1}
-                                  style={{ fontWeight: 700, textAlign: 'right' }}
-                                >
-                                  Total
-                                </td>
-                                <td style={{ ...printCollectionCellStyle('received'), fontWeight: 700 }}>
-                                  {printAmount(result.totalAmount)}
-                                </td>
-                              </tr>
-                            )}
-                          </tbody>
-                        </table>
-
-                        <table className="legacy-print-summary">
-                          <thead>
-                            <tr>
-                              {collectionSummary.map((item) => (
-                                <th key={item.label}>{item.label}</th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <tr>
-                              {collectionSummary.map((item) => (
-                                <td key={`v-${item.label}`}>{printAmount(item.amount)}</td>
-                              ))}
-                            </tr>
-                          </tbody>
-                        </table>
-                        {collectionShowPaymentMode ? (
-                          <table className="payment-mode-summary">
-                            <thead>
-                              <tr>
-                                <th>Payment Mode</th>
-                                <th>Amount</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              <tr>
-                                <td>Cash</td>
-                                <td>{printAmount(collectionPaymentTotals.cash)}</td>
-                              </tr>
-                              <tr>
-                                <td>Online</td>
-                                <td>{printAmount(collectionPaymentTotals.online)}</td>
-                              </tr>
-                              <tr className="total-row">
-                                <td>Total</td>
-                                <td>{printAmount(result.totalAmount)}</td>
-                              </tr>
-                            </tbody>
-                          </table>
-                        ) : null}
-                      </>
                     ) : (
                       <table className="legacy-print-table">
                         <thead>

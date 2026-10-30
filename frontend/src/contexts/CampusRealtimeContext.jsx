@@ -100,11 +100,64 @@ export function CampusRealtimeProvider({ children }) {
     [openChat],
   )
 
+  const onIncomingReaction = useCallback(
+    (data) => {
+      playMessagePing()
+      const actor = usersRef.current.find((u) => u.userId === data.actorUserId)
+      const title = actor?.username || 'New reaction'
+      const detail = data.messagePreview
+        ? `Reacted ${data.emoji} to your message: “${data.messagePreview}”`
+        : `Reacted ${data.emoji} to your message`
+      toast.custom(
+        (t) => (
+          <div className="campus-realtime-toast campus-realtime-toast--chat">
+            <div className="campus-realtime-toast__body">
+              <div className="campus-realtime-toast__icon" aria-hidden>
+                <Mail className="h-4 w-4" strokeWidth={2.25} />
+              </div>
+              <div className="campus-realtime-toast__text">
+                <p className="campus-realtime-toast__title">{title}</p>
+                <p className="campus-realtime-toast__message">{detail}</p>
+              </div>
+              <div className="campus-realtime-toast__actions">
+                <button
+                  type="button"
+                  className="campus-realtime-toast__detail"
+                  onClick={() => {
+                    toast.dismiss(t)
+                    openChat(data.actorUserId)
+                  }}
+                >
+                  View
+                </button>
+                <button
+                  type="button"
+                  className="campus-realtime-toast__close"
+                  aria-label="Dismiss"
+                  onClick={() => toast.dismiss(t)}
+                >
+                  <X className="h-3.5 w-3.5" strokeWidth={2} />
+                </button>
+              </div>
+            </div>
+          </div>
+        ),
+        {
+          id: `chat-react-${data.actorUserId}`,
+          toasterId: CAMPUS_REALTIME_TOASTER_ID,
+          duration: 6000,
+        },
+      )
+    },
+    [openChat],
+  )
+
   const chat = useCampusChat({
     active,
     token,
     myUserId,
     onIncomingMessage,
+    onIncomingReaction,
     onReminderEvent: reminders.handleEvent,
   })
   usersRef.current = chat.users

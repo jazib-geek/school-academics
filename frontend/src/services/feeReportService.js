@@ -48,6 +48,14 @@ export const getIncomeStatement = async (month, year) => {
   return response?.data?.data
 }
 
+export const getFeeDashboard = async (months = 12) => {
+  const response = await api.get('/api/feereports/dashboard', {
+    params: { months },
+    timeout: 120000,
+  })
+  return response?.data?.data
+}
+
 export const getBalanceSheet = async () => {
   const response = await api.get('/api/feereports/balance-sheet')
   return response?.data?.data
