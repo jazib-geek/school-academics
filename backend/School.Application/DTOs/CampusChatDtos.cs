@@ -61,6 +61,13 @@ public class ChatReactionEventDto
 
     public int RecipientUserId { get; set; }
 
+    public int ActorUserId { get; set; }
+
+    /// <summary>Set when a reaction was added or changed. Null when it was removed.</summary>
+    public string? Emoji { get; set; }
+
+    public string? MessagePreview { get; set; }
+
     public List<ChatReactionDto> Reactions { get; set; } = [];
 }
 

@@ -178,3 +178,112 @@ public class BalanceSheetReportDto
     public List<BalanceSheetRowDto> Rows { get; set; } = [];
     public BalanceSheetTotalsDto Totals { get; set; } = new();
 }
+
+public class FeeDashboardKpisDto
+{
+    public decimal CollectedToday { get; set; }
+    public decimal CollectedMtd { get; set; }
+    public decimal CollectedLastMonthSamePeriod { get; set; }
+    public decimal CollectedSession { get; set; }
+    public decimal TotalOutstanding { get; set; }
+    public int DefaulterStudents { get; set; }
+    public int DefaulterFamilies { get; set; }
+    public int ActiveStudents { get; set; }
+    public decimal CurrentMonthTuitionBilled { get; set; }
+    public decimal CurrentMonthTuitionRecovered { get; set; }
+    public decimal CurrentMonthCollectionRate { get; set; }
+    public decimal OverallRecoveryPercent { get; set; }
+    public decimal DiscountMtd { get; set; }
+    public decimal ExpensesMtd { get; set; }
+    public decimal NetProfitMtd { get; set; }
+}
+
+public class FeeDashboardTrendPointDto
+{
+    public int Month { get; set; }
+    public int Year { get; set; }
+    public string Label { get; set; } = string.Empty;
+    public decimal TuitionBilled { get; set; }
+    public decimal TuitionRecovered { get; set; }
+    public decimal Received { get; set; }
+    public decimal Discount { get; set; }
+    public decimal Expenses { get; set; }
+    public decimal NetProfit { get; set; }
+    public decimal MarginPercent { get; set; }
+}
+
+public class FeeDashboardAgingBucketDto
+{
+    public string Key { get; set; } = string.Empty;
+    public string Label { get; set; } = string.Empty;
+    public decimal Amount { get; set; }
+    public int Students { get; set; }
+}
+
+public class FeeDashboardFundDto
+{
+    public int FundTypeId { get; set; }
+    public string FundTypeName { get; set; } = string.Empty;
+    public decimal Outstanding { get; set; }
+    public int Students { get; set; }
+}
+
+public class FeeDashboardClassDto
+{
+    public string ClassName { get; set; } = string.Empty;
+    public int ActiveStudents { get; set; }
+    public int DefaulterStudents { get; set; }
+    public decimal Charged { get; set; }
+    public decimal Recovered { get; set; }
+    public decimal Outstanding { get; set; }
+    public decimal RecoveryPercent { get; set; }
+}
+
+public class FeeDashboardFamilyDto
+{
+    public int FamilyCode { get; set; }
+    public string FatherName { get; set; } = string.Empty;
+    public string FatherMobile { get; set; } = string.Empty;
+    public string Students { get; set; } = string.Empty;
+    public int Children { get; set; }
+    public decimal Outstanding { get; set; }
+    public int TuitionMonthsPending { get; set; }
+    public DateTime? LastReceiptDate { get; set; }
+}
+
+public class FeeDashboardExpenseHeadDto
+{
+    public string HeadName { get; set; } = string.Empty;
+    public decimal CurrentMonth { get; set; }
+    public decimal PreviousMonth { get; set; }
+}
+
+public class FeeDashboardForecastDto
+{
+    public int DaysElapsed { get; set; }
+    public int DaysInMonth { get; set; }
+    public decimal ProjectedMonthEndCollection { get; set; }
+    public decimal CurrentMonthRemainingDue { get; set; }
+    public decimal MonthlyRosterTuition { get; set; }
+    public string SessionLabel { get; set; } = string.Empty;
+    public int SessionMonthsRemaining { get; set; }
+    public decimal ExpectedRemainingSessionBilling { get; set; }
+    public decimal SessionTuitionBilled { get; set; }
+    public decimal SessionTuitionRecovered { get; set; }
+    public decimal AvgMonthlyCollectionLast3 { get; set; }
+    public decimal AvgMonthlyExpensesLast3 { get; set; }
+}
+
+public class FeeDashboardDto
+{
+    public DateTime GeneratedAt { get; set; } = PakistanTime.Now;
+    public string MonthLabel { get; set; } = string.Empty;
+    public FeeDashboardKpisDto Kpis { get; set; } = new();
+    public List<FeeDashboardTrendPointDto> Trend { get; set; } = [];
+    public List<FeeDashboardAgingBucketDto> Aging { get; set; } = [];
+    public List<FeeDashboardFundDto> FundOutstanding { get; set; } = [];
+    public List<FeeDashboardClassDto> Classes { get; set; } = [];
+    public List<FeeDashboardFamilyDto> TopFamilies { get; set; } = [];
+    public List<FeeDashboardExpenseHeadDto> ExpenseHeads { get; set; } = [];
+    public FeeDashboardForecastDto Forecast { get; set; } = new();
+}

@@ -73,6 +73,10 @@ public class DayClosingService : IDayClosingService
             .Take(14)
             .ToListAsync(cancellationToken);
 
+        var collectedByDate = await SumCollectedByDateAsync(
+            recent.Select(x => x.ClosingDate).ToList(),
+            cancellationToken);
+
         var isToday = day == today;
         var isClosed = existing is not null;
 
@@ -100,7 +104,13 @@ public class DayClosingService : IDayClosingService
             GlCredits = glCredits,
             GlDebits = glDebits,
             Closing = existing is null ? null : Map(existing),
-            RecentClosings = recent.Select(Map).ToList()
+            RecentClosings = recent.Select(x =>
+            {
+                var dto = Map(x);
+                if (collectedByDate.TryGetValue(x.ClosingDate, out var collected))
+                    dto.TotalCashCollected = collected;
+                return dto;
+            }).ToList()
         };
     }
 
@@ -162,6 +172,57 @@ public class DayClosingService : IDayClosingService
 
     private static decimal Pick(IReadOnlyDictionary<int, decimal> amounts, int fundTypeId) =>
         amounts.TryGetValue(fundTypeId, out var amount) ? amount : 0;
+
+    private async Task<Dictionary<DateOnly, decimal>> SumCollectedByDateAsync(
+        IReadOnlyCollection<DateOnly> dates,
+        CancellationToken cancellationToken)
+    {
+        var map = dates.Distinct().ToDictionary(d => d, _ => 0m);
+        if (map.Count == 0)
+            return map;
+
+        var from = dates.Min().ToDateTime(TimeOnly.MinValue);
+        var to = dates.Max().ToDateTime(TimeOnly.MinValue);
+
+        var feeRows = await _context.FeeAndFundCollections
+            .AsNoTracking()
+            .Where(x => (x.VoidAmount ?? 0) == 0)
+            .Where(x =>
+                x.FundTypeID != null &&
+                DayClosingFundTypeIds.Contains(x.FundTypeID.Value) &&
+                x.Date != null &&
+                x.Date.Value.Date >= from.Date &&
+                x.Date.Value.Date <= to.Date)
+            .GroupBy(x => x.Date!.Value.Date)
+            .Select(g => new { Day = g.Key, Amount = g.Sum(x => x.Recieved ?? 0) })
+            .ToListAsync(cancellationToken);
+
+        var glRows = await _context.TransactionDetails
+            .AsNoTracking()
+            .Where(x =>
+                x.Date != null &&
+                x.Date.Value.Date >= from.Date &&
+                x.Date.Value.Date <= to.Date)
+            .GroupBy(x => x.Date!.Value.Date)
+            .Select(g => new { Day = g.Key, Amount = g.Sum(x => x.Credit ?? 0) })
+            .ToListAsync(cancellationToken);
+
+        foreach (var row in feeRows)
+        {
+            var day = DateOnly.FromDateTime(row.Day);
+            if (map.ContainsKey(day))
+                map[day] += row.Amount;
+        }
+
+        foreach (var row in glRows)
+        {
+            var day = DateOnly.FromDateTime(row.Day);
+            if (map.ContainsKey(day))
+                map[day] += row.Amount;
+        }
+
+        return map;
+    }
 
     private async Task<Dictionary<int, decimal>> SumFeesByFundAsync(
         DateTime from,

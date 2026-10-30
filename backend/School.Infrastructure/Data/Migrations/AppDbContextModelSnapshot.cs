@@ -5727,6 +5727,15 @@ namespace School.Infrastructure.Data.Migrations
                             ModuleHead = "Employee",
                             Name = "View Teacher Conduct",
                             SortOrder = 1500
+                        },
+                        new
+                        {
+                            Id = 151,
+                            Code = "view_fee_dashboard",
+                            IsActive = true,
+                            ModuleHead = "Fee",
+                            Name = "Fee Dashboard / Analysis",
+                            SortOrder = 1510
                         });
                 });
 

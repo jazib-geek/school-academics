@@ -160,6 +160,13 @@ public class FeeReportsController : ControllerBase
         return Ok(ApiResponse<object>.SuccessResponse(result));
     }
 
+    [HttpGet("dashboard")]
+    public async Task<IActionResult> GetDashboard([FromQuery] int? months)
+    {
+        var result = await _service.GetFeeDashboardAsync(months ?? 12);
+        return Ok(ApiResponse<object>.SuccessResponse(result));
+    }
+
     [HttpGet("balance-sheet")]
     public async Task<IActionResult> GetBalanceSheet()
     {
