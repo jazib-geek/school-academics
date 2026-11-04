@@ -61,6 +61,11 @@ export const getBalanceSheet = async () => {
   return response?.data?.data
 }
 
+export const getCollectionSheet = async () => {
+  const response = await api.get('/api/feereports/collection-sheet')
+  return response?.data?.data
+}
+
 export const getSmartFeeCatalog = async () => {
   const response = await api.get('/api/feereports/smart/catalog')
   return response?.data?.data || []

@@ -45,4 +45,18 @@ public interface IStationeryService
         DateTime from,
         DateTime to,
         CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<StationeryBudgetListItemDto>> GetBudgetsAsync(
+        int? year,
+        int? month,
+        CancellationToken cancellationToken = default);
+    Task<StationeryBudgetDetailDto> GetBudgetAsync(int id, CancellationToken cancellationToken = default);
+    Task<StationeryBudgetDetailDto> CreateBudgetAsync(
+        StationeryBudgetUpsertDto request,
+        string? entryUser,
+        CancellationToken cancellationToken = default);
+    Task<StationeryBudgetDetailDto> UpdateBudgetAsync(
+        int id,
+        StationeryBudgetUpsertDto request,
+        CancellationToken cancellationToken = default);
 }

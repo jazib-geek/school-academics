@@ -169,6 +169,7 @@ export const CAMPUS_SHELL_NAV = [
       { label: 'Fee Reports', to: '/campus/fee/reports', permission: 'rpt_fee' },
       { label: 'Fee Reminder Notice', to: '/campus/fee/reminder-notices', permission: 'rpt_fee' },
       { label: 'Balance Sheet', to: '/campus/fee/balance-sheet', permission: 'rpt_fee_balance_sheet' },
+      { label: 'Collection Sheet', to: '/campus/fee/collection-sheet', permission: 'rpt_fee_balance_sheet' },
     ],
   },
   {
@@ -305,6 +306,7 @@ export const CAMPUS_SHELL_NAV = [
     children: [
       { label: 'Items', to: '/campus/stationery/items', permission: 'manage_stationery' },
       { label: 'Purchases', to: '/campus/stationery/purchases', permission: 'manage_stationery' },
+      { label: 'Budget', to: '/campus/stationery/budget', permission: 'manage_stationery' },
       { label: 'Handovers', to: '/campus/stationery/handovers', permission: 'manage_stationery' },
       { label: 'Consumption report', to: '/campus/stationery/reports', permission: 'manage_stationery' },
       { label: 'Item History', to: '/campus/stationery/history', permission: 'manage_stationery' },

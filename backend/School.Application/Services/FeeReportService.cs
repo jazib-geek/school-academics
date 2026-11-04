@@ -1127,6 +1127,206 @@ public class FeeReportService : IFeeReportService
         };
     }
 
+    public async Task<BalanceSheetReportDto> GetCollectionSheetAsync()
+    {
+        const int tuitionFundTypeId = 1;
+        const int prevFundTypeId = 4;
+        const int miscFundTypeId = 3;
+
+        var profile = await _context.CampusProfiles
+            .AsNoTracking()
+            .OrderBy(x => x.ID)
+            .FirstOrDefaultAsync();
+
+        var session = profile is null
+            ? CampusProfileService.CoalesceSession(CampusProfileService.CreateDefault(PakistanTime.Now.Year))
+            : CampusProfileService.CoalesceSession(profile);
+
+        if (session.StartMonth is null
+            || session.StartYear is null
+            || session.EndMonth is null
+            || session.EndYear is null)
+        {
+            throw new InvalidOperationException("Session is not configured in institute settings.");
+        }
+
+        var startMonth = session.StartMonth.Value;
+        var startYear = session.StartYear.Value;
+        var endMonth = session.EndMonth.Value;
+        var endYear = session.EndYear.Value;
+        var startIndex = startYear * 12 + startMonth;
+        var endIndex = endYear * 12 + endMonth;
+
+        var monthSlots = BuildBalanceSheetMonths(startMonth, startYear, endMonth, endYear);
+        var monthColumns = monthSlots
+            .Select(slot => new BalanceSheetMonthColumnDto
+            {
+                Month = slot.Month,
+                Year = slot.Year,
+                Key = $"m{slot.Month}_{slot.Year}",
+                Label = new DateTime(slot.Year, slot.Month, 1).ToString("MMM", CultureInfo.InvariantCulture)
+            })
+            .ToList();
+
+        var tuitionPayerIds = _context.FeeAndFundCollections
+            .AsNoTracking()
+            .Where(x => (x.VoidAmount ?? 0) == 0)
+            .Where(x =>
+                x.FundTypeID == tuitionFundTypeId &&
+                x.StudentID != null &&
+                x.Month != null &&
+                x.Year != null &&
+                (x.Recieved ?? 0) > 0 &&
+                x.Year * 12 + x.Month >= startIndex &&
+                x.Year * 12 + x.Month <= endIndex)
+            .Select(x => x.StudentID!.Value);
+
+        var fundPayerIds = _context.FeeAndFundCollections
+            .AsNoTracking()
+            .Where(x => (x.VoidAmount ?? 0) == 0)
+            .Where(x =>
+                (x.FundTypeID == prevFundTypeId || x.FundTypeID == miscFundTypeId) &&
+                x.StudentID != null &&
+                (x.Recieved ?? 0) > 0)
+            .Select(x => x.StudentID!.Value);
+
+        var payerIds = tuitionPayerIds.Union(fundPayerIds);
+
+        var activePayerIds = _context.Students
+            .AsNoTracking()
+            .Where(x => x.IsActive == true && payerIds.Contains(x.Reg_Id))
+            .Select(x => x.Reg_Id);
+
+        var students = await _context.Students
+            .AsNoTracking()
+            .Where(x => activePayerIds.Contains(x.Reg_Id))
+            .Select(x => new
+            {
+                x.Reg_Id,
+                x.FullName,
+                ClassName = x.Section != null ? x.Section.ClassName : null,
+                TuitionFee = x.TutionFee ?? 0m
+            })
+            .OrderBy(x => x.Reg_Id)
+            .ToListAsync();
+
+        var tuitionRows = await _context.FeeAndFundCollections
+            .AsNoTracking()
+            .Where(x => (x.VoidAmount ?? 0) == 0)
+            .Where(x =>
+                x.FundTypeID == tuitionFundTypeId &&
+                x.StudentID != null &&
+                activePayerIds.Contains(x.StudentID.Value) &&
+                x.Month != null &&
+                x.Year != null &&
+                (x.Recieved ?? 0) > 0 &&
+                x.Year * 12 + x.Month >= startIndex &&
+                x.Year * 12 + x.Month <= endIndex)
+            .GroupBy(x => new
+            {
+                StudentId = x.StudentID!.Value,
+                Month = x.Month!.Value,
+                Year = x.Year!.Value
+            })
+            .Where(g => g.Sum(x => x.Recieved ?? 0) > 0)
+            .Select(g => new
+            {
+                g.Key.StudentId,
+                g.Key.Month,
+                g.Key.Year,
+                Collected = g.Sum(x => x.Recieved ?? 0)
+            })
+            .ToListAsync();
+
+        var tuitionLookup = tuitionRows.ToDictionary(
+            x => (x.StudentId, x.Month, x.Year),
+            x => x.Collected);
+
+        var fundRows = await _context.FeeAndFundCollections
+            .AsNoTracking()
+            .Where(x => (x.VoidAmount ?? 0) == 0)
+            .Where(x =>
+                (x.FundTypeID == prevFundTypeId || x.FundTypeID == miscFundTypeId) &&
+                x.StudentID != null &&
+                activePayerIds.Contains(x.StudentID.Value) &&
+                (x.Recieved ?? 0) > 0)
+            .GroupBy(x => new
+            {
+                StudentId = x.StudentID!.Value,
+                FundTypeId = x.FundTypeID ?? 0
+            })
+            .Where(g => g.Sum(x => x.Recieved ?? 0) > 0)
+            .Select(g => new
+            {
+                g.Key.StudentId,
+                g.Key.FundTypeId,
+                Collected = g.Sum(x => x.Recieved ?? 0)
+            })
+            .ToListAsync();
+
+        var fundLookup = fundRows.ToDictionary(x => (x.StudentId, x.FundTypeId), x => x.Collected);
+
+        var rows = new List<BalanceSheetRowDto>();
+        foreach (var student in students)
+        {
+            var monthBalances = new List<decimal>(monthSlots.Count);
+            decimal monthTotal = 0;
+            foreach (var slot in monthSlots)
+            {
+                tuitionLookup.TryGetValue((student.Reg_Id, slot.Month, slot.Year), out var collected);
+                if (collected < 0) collected = 0;
+                monthBalances.Add(collected);
+                monthTotal += collected;
+            }
+
+            fundLookup.TryGetValue((student.Reg_Id, prevFundTypeId), out var prev);
+            fundLookup.TryGetValue((student.Reg_Id, miscFundTypeId), out var misc);
+            if (prev < 0) prev = 0;
+            if (misc < 0) misc = 0;
+
+            var total = monthTotal + prev + misc;
+            if (total <= 0) continue;
+
+            rows.Add(new BalanceSheetRowDto
+            {
+                StudentId = student.Reg_Id,
+                StudentName = student.FullName ?? "N/A",
+                ClassName = student.ClassName,
+                TuitionFee = student.TuitionFee,
+                MonthBalances = monthBalances,
+                PrevBalance = prev,
+                MiscBalance = misc,
+                Total = total
+            });
+        }
+
+        var monthCount = monthColumns.Count;
+        var totals = new BalanceSheetTotalsDto
+        {
+            TuitionFee = rows.Sum(r => r.TuitionFee),
+            MonthBalances = Enumerable.Range(0, monthCount)
+                .Select(i => rows.Sum(r => r.MonthBalances[i]))
+                .ToList(),
+            PrevBalance = rows.Sum(r => r.PrevBalance),
+            MiscBalance = rows.Sum(r => r.MiscBalance),
+            Total = rows.Sum(r => r.Total)
+        };
+
+        return new BalanceSheetReportDto
+        {
+            SessionStartYear = startYear,
+            SessionEndYear = endYear,
+            SessionStartMonth = startMonth,
+            SessionEndMonth = endMonth,
+            SessionLabel = session.Label ?? $"{startYear}-{endYear}",
+            PrevFundTypeId = prevFundTypeId,
+            MiscFundTypeId = miscFundTypeId,
+            Months = monthColumns,
+            Rows = rows,
+            Totals = totals
+        };
+    }
+
     private static List<(int Month, int Year)> BuildBalanceSheetMonths(
         int startMonth,
         int startYear,

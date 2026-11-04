@@ -10,6 +10,8 @@ public static class SystemAccountTitles
     public const string SecurityDepositRefunds = "SECURITY DEPOSIT REFUNDS";
     public const string FranchiseRoyalty = "ROYALTY SHARE";
 
+    public const string CleanlinessExpenses = "CLEANLINESS EXPENSES";
+
     public const string LegacyFranchiseRoyalty = "FRANCHISE ROYALTY";
 
     public const string FranchiseRoyaltySubGroupName = "ROYALTY SHARE";
@@ -23,7 +25,8 @@ public static class SystemAccountTitles
         OwnerDrawings,
         SecurityDepositRefunds,
         FranchiseRoyalty,
-        LegacyFranchiseRoyalty
+        LegacyFranchiseRoyalty,
+        CleanlinessExpenses
     };
 
     public static bool IsReserved(string? title) =>

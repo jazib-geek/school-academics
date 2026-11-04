@@ -5863,6 +5863,82 @@ namespace School.Infrastructure.Data.Migrations
                     b.ToTable("tblSetup", "dbo");
                 });
 
+            modelBuilder.Entity("School.Infrastructure.Entities.StationeryBudget", b =>
+                {
+                    b.Property<int>("ID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ID"));
+
+                    b.Property<DateTime>("CreatedAtPkt")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("EntryUser")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<int>("Month")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Period")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<decimal>("TotalAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("int");
+
+                    b.HasKey("ID");
+
+                    b.HasIndex("Year", "Month", "Period")
+                        .IsUnique()
+                        .HasDatabaseName("IX_StationeryBudget_Period");
+
+                    b.ToTable("tblStationeryBudget", "dbo");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.StationeryBudgetLine", b =>
+                {
+                    b.Property<int>("ID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ID"));
+
+                    b.Property<int>("BudgetID")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ItemID")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("LineTotal")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("Quantity")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("UnitPrice")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("ID");
+
+                    b.HasIndex("BudgetID")
+                        .HasDatabaseName("IX_StationeryBudgetLine_Budget");
+
+                    b.HasIndex("ItemID")
+                        .HasDatabaseName("IX_StationeryBudgetLine_Item");
+
+                    b.ToTable("tblStationeryBudgetLine", "dbo");
+                });
+
             modelBuilder.Entity("School.Infrastructure.Entities.StationeryHandover", b =>
                 {
                     b.Property<int>("ID")
@@ -5956,6 +6032,11 @@ namespace School.Infrastructure.Data.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)")
                         .HasDefaultValue("pcs");
+
+                    b.Property<decimal>("UnitPrice")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("decimal(18,2)")
+                        .HasDefaultValue(0m);
 
                     b.HasKey("ID");
 
@@ -8863,6 +8944,25 @@ namespace School.Infrastructure.Data.Migrations
                     b.Navigation("Student");
                 });
 
+            modelBuilder.Entity("School.Infrastructure.Entities.StationeryBudgetLine", b =>
+                {
+                    b.HasOne("School.Infrastructure.Entities.StationeryBudget", "Budget")
+                        .WithMany("Lines")
+                        .HasForeignKey("BudgetID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("School.Infrastructure.Entities.StationeryItem", "Item")
+                        .WithMany()
+                        .HasForeignKey("ItemID")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Budget");
+
+                    b.Navigation("Item");
+                });
+
             modelBuilder.Entity("School.Infrastructure.Entities.StationeryHandover", b =>
                 {
                     b.HasOne("School.Infrastructure.Entities.Employee", "Employee")
@@ -9207,6 +9307,11 @@ namespace School.Infrastructure.Data.Migrations
                     b.Navigation("Students");
 
                     b.Navigation("SubjectAssignments");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.StationeryBudget", b =>
+                {
+                    b.Navigation("Lines");
                 });
 
             modelBuilder.Entity("School.Infrastructure.Entities.StationeryHandover", b =>

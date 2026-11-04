@@ -285,6 +285,93 @@ public class StationeryController : ControllerBase
         }
     }
 
+    [HttpGet("budgets")]
+    public async Task<IActionResult> GetBudgets(
+        [FromQuery] int? year,
+        [FromQuery] int? month,
+        CancellationToken cancellationToken)
+    {
+        var result = await _stationeryService.GetBudgetsAsync(year, month, cancellationToken);
+        return Ok(ApiResponse<IReadOnlyList<StationeryBudgetListItemDto>>.SuccessResponse(result));
+    }
+
+    [HttpGet("budgets/{id:int}")]
+    public async Task<IActionResult> GetBudget(int id, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _stationeryService.GetBudgetAsync(id, cancellationToken);
+            return Ok(ApiResponse<StationeryBudgetDetailDto>.SuccessResponse(result));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiResponse<object>.FailureResponse(ex.Message));
+        }
+    }
+
+    [HttpPost("budgets")]
+    public async Task<IActionResult> CreateBudget(
+        [FromBody] StationeryBudgetUpsertDto request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _stationeryService.CreateBudgetAsync(
+                request,
+                await ResolveEntryUserAsync(cancellationToken),
+                cancellationToken);
+            return CreatedAtAction(
+                nameof(GetBudget),
+                new { id = result.Id },
+                ApiResponse<StationeryBudgetDetailDto>.SuccessResponse(result, "Budget saved."));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiResponse<object>.FailureResponse(ex.Message));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ApiResponse<object>.FailureResponse(ex.Message));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<object>.FailureResponse(ex.Message));
+        }
+        catch (DbUpdateException)
+        {
+            return Conflict(ApiResponse<object>.FailureResponse("A budget already covers these dates."));
+        }
+    }
+
+    [HttpPost("budgets/{id:int}/update")]
+    public async Task<IActionResult> UpdateBudget(
+        int id,
+        [FromBody] StationeryBudgetUpsertDto request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _stationeryService.UpdateBudgetAsync(id, request, cancellationToken);
+            return Ok(ApiResponse<StationeryBudgetDetailDto>.SuccessResponse(result, "Budget saved."));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiResponse<object>.FailureResponse(ex.Message));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ApiResponse<object>.FailureResponse(ex.Message));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<object>.FailureResponse(ex.Message));
+        }
+        catch (DbUpdateException)
+        {
+            return Conflict(ApiResponse<object>.FailureResponse("A budget already covers these dates."));
+        }
+    }
+
     private int? ResolveUserId()
     {
         if (!int.TryParse(User.FindFirst("FamilyDbId")?.Value, out var userId) || userId <= 0)

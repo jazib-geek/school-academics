@@ -2749,24 +2749,28 @@ function StudentsPage() {
                 <p className="p-4 text-center text-sm text-slate-500">No ledger entries found.</p>
               ) : (
                 <>
-                  <table className="min-w-full text-[13px] leading-snug">
+                  <table className="min-w-full border-collapse text-[13px] leading-snug">
                     <thead className="text-left">
                       <tr>
                         <th className="px-3 py-2">Date</th>
                         <th className="px-3 py-2">Description</th>
-                        <th className="px-3 py-2 text-right">Debit</th>
-                        <th className="px-3 py-2 text-right">Credit</th>
+                        <th className="px-3 py-2">Rcpt #</th>
+                        <th className="px-3 py-2 text-right">Due</th>
+                        <th className="px-3 py-2 text-right">Received</th>
                         <th className="px-3 py-2 text-right">Balance</th>
                       </tr>
                     </thead>
                     <tbody>
                       {ledgerItems.map((entry) => (
-                        <tr key={entry.id} className="border-t border-slate-100">
-                          <td className="px-3 py-1.5">{formatDate(entry.date)}</td>
-                          <td className="px-3 py-1.5">{entry.description || '-'}</td>
-                          <td className="px-3 py-1.5 text-right">{formatAmount(entry.debit)}</td>
-                          <td className="px-3 py-1.5 text-right">{formatAmount(entry.credit)}</td>
-                          <td className="px-3 py-1.5 text-right font-semibold">
+                        <tr key={entry.id}>
+                          <td className="border-t border-slate-300 px-3 py-1.5">{formatDate(entry.date)}</td>
+                          <td className="border-t border-slate-300 px-3 py-1.5">{entry.description || '-'}</td>
+                          <td className="border-t border-slate-300 px-3 py-1.5">
+                            {entry.receiptNo || entry.ReceiptNo || '-'}
+                          </td>
+                          <td className="border-t border-slate-300 px-3 py-1.5 text-right">{formatAmount(entry.debit)}</td>
+                          <td className="border-t border-slate-300 px-3 py-1.5 text-right">{formatAmount(entry.credit)}</td>
+                          <td className="border-t border-slate-300 px-3 py-1.5 text-right font-semibold">
                             {formatAmount(entry.balance)}
                           </td>
                         </tr>

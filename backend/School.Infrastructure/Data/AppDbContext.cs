@@ -175,6 +175,8 @@ public class AppDbContext : DbContext
     public DbSet<StationeryPurchaseLine> StationeryPurchaseLines => Set<StationeryPurchaseLine>();
     public DbSet<StationeryHandover> StationeryHandovers => Set<StationeryHandover>();
     public DbSet<StationeryHandoverLine> StationeryHandoverLines => Set<StationeryHandoverLine>();
+    public DbSet<StationeryBudget> StationeryBudgets => Set<StationeryBudget>();
+    public DbSet<StationeryBudgetLine> StationeryBudgetLines => Set<StationeryBudgetLine>();
 
     public DbSet<DayClosing> DayClosings => Set<DayClosing>();
     public DbSet<FranchiseRoyaltyClosing> FranchiseRoyaltyClosings => Set<FranchiseRoyaltyClosing>();
@@ -1174,6 +1176,8 @@ public class AppDbContext : DbContext
         modelBuilder.ApplyConfiguration(new StationeryPurchaseLineConfiguration());
         modelBuilder.ApplyConfiguration(new StationeryHandoverConfiguration());
         modelBuilder.ApplyConfiguration(new StationeryHandoverLineConfiguration());
+        modelBuilder.ApplyConfiguration(new StationeryBudgetConfiguration());
+        modelBuilder.ApplyConfiguration(new StationeryBudgetLineConfiguration());
         modelBuilder.ApplyConfiguration(new CampusRealtimeNotificationConfiguration());
         modelBuilder.ApplyConfiguration(new CampusRealtimeNotificationReadConfiguration());
         modelBuilder.ApplyConfiguration(new EmployeeRealtimeNotificationConfiguration());

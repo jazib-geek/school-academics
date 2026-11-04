@@ -14,4 +14,5 @@ public interface IFeeReportService
     Task<IncomeStatementReportDto> GetIncomeStatementAsync(int month, int year);
     Task<FeeDashboardDto> GetFeeDashboardAsync(int months = 12);
     Task<BalanceSheetReportDto> GetBalanceSheetAsync();
+    Task<BalanceSheetReportDto> GetCollectionSheetAsync();
 }

@@ -23,6 +23,7 @@ import CampusProfileSettingsPage from './pages/Campus/settings/CampusProfileSett
 import CampusUsersPage from './pages/Campus/users/CampusUsersPage.jsx'
 import CampusLocalitiesPage from './pages/Campus/localities/CampusLocalitiesPage.jsx'
 import CampusStationeryItemsPage from './pages/Campus/stationery/CampusStationeryItemsPage.jsx'
+import CampusStationeryBudgetPage from './pages/Campus/stationery/CampusStationeryBudgetPage.jsx'
 import CampusStationeryPurchasesPage from './pages/Campus/stationery/CampusStationeryPurchasesPage.jsx'
 import CampusStationeryHandoversPage from './pages/Campus/stationery/CampusStationeryHandoversPage.jsx'
 import CampusStationeryReportsPage from './pages/Campus/stationery/CampusStationeryReportsPage.jsx'
@@ -34,6 +35,7 @@ import CampusDateSheetsPage from './pages/Campus/datesheets/CampusDateSheetsPage
 import CampusDateSheetEditorPage from './pages/Campus/datesheets/CampusDateSheetEditorPage.jsx'
 import FeeReportsPage from './pages/Campus/fee/FeeReportsPage.jsx'
 import BalanceSheetPage from './pages/Campus/fee/BalanceSheetPage.jsx'
+import CollectionSheetPage from './pages/Campus/fee/CollectionSheetPage.jsx'
 import FeeDashboardPage from './pages/Campus/fee/FeeDashboardPage.jsx'
 import FeeReminderNoticePage from './pages/Campus/fee/FeeReminderNoticePage.jsx'
 import GenerateFeePage from './pages/Campus/fee/GenerateFeePage.jsx'
@@ -478,6 +480,14 @@ function App() {
         }
       />
       <Route
+        path="/campus/fee/collection-sheet"
+        element={
+          <ProtectedRoute>
+            <CollectionSheetPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/campus/fee/reminder-notices"
         element={
           <ProtectedRoute>
@@ -770,6 +780,14 @@ function App() {
         element={
           <ProtectedRoute>
             <CampusStationeryItemsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/campus/stationery/budget"
+        element={
+          <ProtectedRoute>
+            <CampusStationeryBudgetPage />
           </ProtectedRoute>
         }
       />

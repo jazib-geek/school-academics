@@ -786,6 +786,14 @@ public class EmployeeAttendanceService : IEmployeeAttendanceService
 
         var before = SnapshotAttendance(row);
         var targetDate = row.Date.Value.Date;
+        var linkedRequests = await _context.EmployeeAttendanceChangeRequests
+            .Where(r => r.EmployeeAttendanceId == row.ID)
+            .ToListAsync(cancellationToken);
+
+        if (linkedRequests.Any(r => r.Status == EmployeeAttendanceChangeRequestStatuses.Pending))
+            throw new InvalidOperationException(
+                "Resolve the pending change request for this day before deleting attendance.");
+
         var result = new DeleteEmployeeAttendanceResultDto
         {
             AttendanceId = row.ID,
@@ -793,6 +801,14 @@ public class EmployeeAttendanceService : IEmployeeAttendanceService
             EmployeeName = employee.EmployeeName ?? string.Empty,
             Date = targetDate,
         };
+
+        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+
+        foreach (var request in linkedRequests)
+            request.EmployeeAttendanceId = null;
+
+        if (linkedRequests.Count > 0)
+            await _context.SaveChangesAsync(cancellationToken);
 
         await _activityLogService.WriteAsync(
             ActivityLogTypes.EmployeeAttendanceDelete,
@@ -807,11 +823,13 @@ public class EmployeeAttendanceService : IEmployeeAttendanceService
                 date = targetDate.ToString("yyyy-MM-dd"),
                 deletedBy = editedByUsername,
                 before,
+                unlinkedChangeRequestIds = linkedRequests.Select(r => r.Id).ToArray(),
             },
             cancellationToken);
 
         _context.EmployeeAttendances.Remove(row);
         await _context.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
         return result;
     }
 

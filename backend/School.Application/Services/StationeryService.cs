@@ -61,6 +61,7 @@ public class StationeryService : IStationeryService
             Name = name,
             Category = category,
             Unit = unit,
+            UnitPrice = NormalizeUnitPrice(request.UnitPrice),
             IsActive = request.IsActive
         };
         _context.StationeryItems.Add(entity);
@@ -85,6 +86,7 @@ public class StationeryService : IStationeryService
         entity.Name = name;
         entity.Category = category;
         entity.Unit = unit;
+        entity.UnitPrice = NormalizeUnitPrice(request.UnitPrice);
         entity.IsActive = request.IsActive;
         await _context.SaveChangesAsync(cancellationToken);
         return await GetItemAsync(id, cancellationToken);
@@ -197,30 +199,63 @@ public class StationeryService : IStationeryService
 
         if (request.PostToAccounts)
         {
-            if (string.IsNullOrWhiteSpace(request.ExpenseAccountId))
-                throw new ArgumentException("Choose an expense account to record this payment in Accounts.");
+            var cleaningLines = request.Lines
+                .Where(line => IsCleaningCategory(items[line.ItemId].Category))
+                .ToList();
+            var otherLines = request.Lines
+                .Where(line => !IsCleaningCategory(items[line.ItemId].Category))
+                .ToList();
+            var cleaningTotal = cleaningLines.Sum(line =>
+                Math.Round(line.Quantity * line.UnitPrice, 2, MidpointRounding.AwayFromZero));
+            var otherTotal = otherLines.Sum(line =>
+                Math.Round(line.Quantity * line.UnitPrice, 2, MidpointRounding.AwayFromZero));
 
-            var narration = BuildPurchaseNarration(request.Lines, items, totalAmount);
+            var voucherLines = new List<VoucherLineInputDto>();
+            string? cleanlinessAccountId = null;
+            if (cleaningTotal > 0)
+            {
+                cleanlinessAccountId = await FindAccountIdByTitleAsync(
+                    SystemAccountTitles.CleanlinessExpenses,
+                    cancellationToken);
+                if (string.IsNullOrWhiteSpace(cleanlinessAccountId))
+                    throw new InvalidOperationException(
+                        "Cleanliness expenses account is not set up. Contact your administrator.");
+
+                voucherLines.Add(new VoucherLineInputDto
+                {
+                    AccountId = cleanlinessAccountId,
+                    Amount = cleaningTotal,
+                    Narration = BuildPurchaseNarration(cleaningLines, items, cleaningTotal, "Cleaning purchase")
+                });
+            }
+
+            if (otherTotal > 0)
+            {
+                if (string.IsNullOrWhiteSpace(request.ExpenseAccountId))
+                    throw new ArgumentException("Choose an expense account to record this payment in Accounts.");
+
+                voucherLines.Add(new VoucherLineInputDto
+                {
+                    AccountId = request.ExpenseAccountId.Trim(),
+                    Amount = otherTotal,
+                    Narration = BuildPurchaseNarration(otherLines, items, otherTotal, "Stationery purchase")
+                });
+            }
+
             var voucher = await _voucherService.SaveCashPaymentAsync(
                 new SaveVoucherRequestDto
                 {
                     Date = purchaseDate,
-                    Lines =
-                    [
-                        new VoucherLineInputDto
-                        {
-                            AccountId = request.ExpenseAccountId.Trim(),
-                            Amount = totalAmount,
-                            Narration = narration
-                        }
-                    ]
+                    Lines = voucherLines
                 },
                 user,
                 cancellationToken);
 
             purchase.PostedToAccounts = true;
             purchase.VoucherNo = voucher.VoucherNo;
-            purchase.ExpenseAccountId = request.ExpenseAccountId.Trim();
+            purchase.ExpenseAccountId = otherTotal > 0
+                ? request.ExpenseAccountId!.Trim()
+                : cleanlinessAccountId;
             await _context.SaveChangesAsync(cancellationToken);
         }
 
@@ -751,6 +786,355 @@ public class StationeryService : IStationeryService
         };
     }
 
+    public async Task<IReadOnlyList<StationeryBudgetListItemDto>> GetBudgetsAsync(
+        int? year,
+        int? month,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _context.StationeryBudgets.AsNoTracking().AsQueryable();
+        if (year.HasValue)
+            query = query.Where(x => x.Year == year.Value);
+        if (month.HasValue)
+            query = query.Where(x => x.Month == month.Value);
+
+        var rows = await query
+            .OrderByDescending(x => x.Year)
+            .ThenByDescending(x => x.Month)
+            .ThenBy(x => x.Period)
+            .ToListAsync(cancellationToken);
+
+        if (rows.Count == 0)
+            return [];
+
+        var actuals = await LoadPurchaseActualsAsync(rows, cancellationToken);
+        return rows.Select(row =>
+        {
+            var window = BudgetWindow(row.Year, row.Month, row.Period);
+            var actual = actuals
+                .Where(x => x.Date >= window.From && x.Date <= window.To)
+                .Sum(x => x.Amount);
+            return MapBudgetListItem(row, window, actual);
+        }).ToList();
+    }
+
+    public async Task<StationeryBudgetDetailDto> GetBudgetAsync(int id, CancellationToken cancellationToken = default)
+    {
+        var row = await _context.StationeryBudgets
+            .AsNoTracking()
+            .Include(x => x.Lines)
+            .ThenInclude(x => x.Item)
+            .FirstOrDefaultAsync(x => x.ID == id, cancellationToken)
+            ?? throw new KeyNotFoundException("Budget not found.");
+
+        var actuals = await LoadPurchaseActualsAsync([row], cancellationToken);
+        return MapBudgetDetail(row, actuals);
+    }
+
+    public async Task<StationeryBudgetDetailDto> CreateBudgetAsync(
+        StationeryBudgetUpsertDto request,
+        string? entryUser,
+        CancellationToken cancellationToken = default)
+    {
+        var year = request.Year;
+        var month = request.Month;
+        var period = NormalizePeriod(request.Period);
+        ValidateBudgetMonth(year, month);
+        await EnsureBudgetPeriodAvailableAsync(year, month, period, null, cancellationToken);
+        var lineEntities = await BuildBudgetLinesAsync(request.Lines, cancellationToken);
+
+        var entity = new StationeryBudget
+        {
+            Year = year,
+            Month = month,
+            Period = period,
+            Notes = string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes.Trim(),
+            TotalAmount = lineEntities.Sum(x => x.LineTotal),
+            EntryUser = Truncate(entryUser, 50),
+            CreatedAtPkt = PakistanTime.Now,
+            Lines = lineEntities
+        };
+        _context.StationeryBudgets.Add(entity);
+        await _context.SaveChangesAsync(cancellationToken);
+        return await GetBudgetAsync(entity.ID, cancellationToken);
+    }
+
+    public async Task<StationeryBudgetDetailDto> UpdateBudgetAsync(
+        int id,
+        StationeryBudgetUpsertDto request,
+        CancellationToken cancellationToken = default)
+    {
+        var entity = await _context.StationeryBudgets
+            .Include(x => x.Lines)
+            .FirstOrDefaultAsync(x => x.ID == id, cancellationToken)
+            ?? throw new KeyNotFoundException("Budget not found.");
+
+        var year = request.Year;
+        var month = request.Month;
+        var period = NormalizePeriod(request.Period);
+        ValidateBudgetMonth(year, month);
+        await EnsureBudgetPeriodAvailableAsync(year, month, period, id, cancellationToken);
+        var lineEntities = await BuildBudgetLinesAsync(request.Lines, cancellationToken);
+
+        entity.Year = year;
+        entity.Month = month;
+        entity.Period = period;
+        entity.Notes = string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes.Trim();
+        entity.TotalAmount = lineEntities.Sum(x => x.LineTotal);
+        _context.StationeryBudgetLines.RemoveRange(entity.Lines);
+        entity.Lines.Clear();
+        foreach (var line in lineEntities)
+            entity.Lines.Add(line);
+
+        await _context.SaveChangesAsync(cancellationToken);
+        return await GetBudgetAsync(id, cancellationToken);
+    }
+
+    private async Task<List<StationeryBudgetLine>> BuildBudgetLinesAsync(
+        IReadOnlyList<StationeryBudgetLineInputDto> lines,
+        CancellationToken cancellationToken)
+    {
+        if (lines is null || lines.Count == 0)
+            throw new ArgumentException("Add at least one item with quantity and price.");
+
+        var itemIds = lines.Select(x => x.ItemId).ToList();
+        if (itemIds.Distinct().Count() != itemIds.Count)
+            throw new ArgumentException("Each item can only be added once.");
+
+        var items = await _context.StationeryItems
+            .AsNoTracking()
+            .Where(x => itemIds.Contains(x.ID))
+            .ToDictionaryAsync(x => x.ID, cancellationToken);
+
+        if (items.Count != itemIds.Count)
+            throw new KeyNotFoundException("One or more items were not found.");
+
+        foreach (var line in lines)
+        {
+            if (line.Quantity <= 0)
+                throw new ArgumentException("Quantity must be greater than zero.");
+            if (line.UnitPrice <= 0)
+                throw new ArgumentException("Unit price must be greater than zero.");
+            if (!items.TryGetValue(line.ItemId, out var item) || !item.IsActive)
+                throw new InvalidOperationException($"Item '{items.GetValueOrDefault(line.ItemId)?.Name ?? line.ItemId.ToString()}' is not available.");
+        }
+
+        return lines.Select(line =>
+        {
+            var lineTotal = Math.Round(line.Quantity * line.UnitPrice, 2, MidpointRounding.AwayFromZero);
+            return new StationeryBudgetLine
+            {
+                ItemID = line.ItemId,
+                Quantity = line.Quantity,
+                UnitPrice = line.UnitPrice,
+                LineTotal = lineTotal
+            };
+        }).ToList();
+    }
+
+    private async Task EnsureBudgetPeriodAvailableAsync(
+        int year,
+        int month,
+        string period,
+        int? excludingId,
+        CancellationToken cancellationToken)
+    {
+        var rows = await _context.StationeryBudgets
+            .AsNoTracking()
+            .Where(x => x.Year == year && x.Month == month && (!excludingId.HasValue || x.ID != excludingId.Value))
+            .Select(x => x.Period)
+            .ToListAsync(cancellationToken);
+
+        var blocked = rows.Any(existing =>
+            existing == BudgetPeriodMonth
+            || period == BudgetPeriodMonth
+            || existing == period);
+
+        if (blocked)
+            throw new InvalidOperationException("A budget already covers these dates.");
+    }
+
+    private async Task<List<PurchaseActualRow>> LoadPurchaseActualsAsync(
+        IReadOnlyList<StationeryBudget> budgets,
+        CancellationToken cancellationToken)
+    {
+        var windows = budgets.Select(x => BudgetWindow(x.Year, x.Month, x.Period)).ToList();
+        var min = windows.Min(x => x.From);
+        var max = windows.Max(x => x.To);
+        return await _context.StationeryPurchaseLines
+            .AsNoTracking()
+            .Where(x => x.Purchase.PurchaseDate >= min && x.Purchase.PurchaseDate <= max)
+            .Select(x => new PurchaseActualRow(
+                x.Purchase.PurchaseDate,
+                x.ItemID,
+                x.Item.Name,
+                x.Item.Category,
+                x.Item.Unit,
+                x.Quantity,
+                x.LineTotal))
+            .ToListAsync(cancellationToken);
+    }
+
+    private static StationeryBudgetDetailDto MapBudgetDetail(
+        StationeryBudget row,
+        IReadOnlyList<PurchaseActualRow> actuals)
+    {
+        var window = BudgetWindow(row.Year, row.Month, row.Period);
+        var inWindow = actuals
+            .Where(x => x.Date >= window.From && x.Date <= window.To)
+            .ToList();
+        var purchased = inWindow
+            .GroupBy(x => x.ItemId)
+            .ToDictionary(
+                g => g.Key,
+                g => (
+                    Qty: g.Sum(x => x.Qty),
+                    Amount: g.Sum(x => x.Amount),
+                    Name: g.First().Name,
+                    Category: g.First().Category,
+                    Unit: g.First().Unit));
+
+        var lines = new List<StationeryBudgetCompareLineDto>();
+        var budgetItemIds = new HashSet<int>();
+        foreach (var line in row.Lines.OrderBy(x => x.Item?.Category).ThenBy(x => x.Item?.Name).ThenBy(x => x.ID))
+        {
+            budgetItemIds.Add(line.ItemID);
+            purchased.TryGetValue(line.ItemID, out var spent);
+            lines.Add(new StationeryBudgetCompareLineDto
+            {
+                ItemId = line.ItemID,
+                ItemName = line.Item?.Name ?? string.Empty,
+                Category = line.Item?.Category ?? string.Empty,
+                Unit = line.Item?.Unit ?? string.Empty,
+                EstimatedQty = line.Quantity,
+                UnitPrice = line.UnitPrice,
+                EstimatedAmount = line.LineTotal,
+                PurchasedQty = spent.Qty,
+                PurchasedAmount = spent.Amount,
+                OnBudget = true
+            });
+        }
+
+        foreach (var extra in purchased
+            .Where(x => !budgetItemIds.Contains(x.Key))
+            .OrderBy(x => x.Value.Category)
+            .ThenBy(x => x.Value.Name))
+        {
+            lines.Add(new StationeryBudgetCompareLineDto
+            {
+                ItemId = extra.Key,
+                ItemName = extra.Value.Name,
+                Category = extra.Value.Category,
+                Unit = extra.Value.Unit,
+                PurchasedQty = extra.Value.Qty,
+                PurchasedAmount = extra.Value.Amount,
+                OnBudget = false
+            });
+        }
+
+        var actualTotal = inWindow.Sum(x => x.Amount);
+        return new StationeryBudgetDetailDto
+        {
+            Id = row.ID,
+            Year = row.Year,
+            Month = row.Month,
+            Period = row.Period,
+            PeriodLabel = BudgetPeriodLabel(row.Year, row.Month, row.Period),
+            From = window.From,
+            To = window.To,
+            Notes = row.Notes,
+            EntryUser = row.EntryUser,
+            EstimatedTotal = row.TotalAmount,
+            ActualTotal = actualTotal,
+            Difference = row.TotalAmount - actualTotal,
+            Lines = lines
+        };
+    }
+
+    private static StationeryBudgetListItemDto MapBudgetListItem(
+        StationeryBudget row,
+        (DateTime From, DateTime To) window,
+        decimal actual) => new()
+    {
+        Id = row.ID,
+        Year = row.Year,
+        Month = row.Month,
+        Period = row.Period,
+        PeriodLabel = BudgetPeriodLabel(row.Year, row.Month, row.Period),
+        From = window.From,
+        To = window.To,
+        EstimatedTotal = row.TotalAmount,
+        ActualTotal = actual,
+        Difference = row.TotalAmount - actual,
+        Notes = row.Notes,
+        EntryUser = row.EntryUser
+    };
+
+    private static void ValidateBudgetMonth(int year, int month)
+    {
+        if (month < 1 || month > 12 || year < 2000 || year > 2100)
+            throw new ArgumentException("Choose a valid month.");
+    }
+
+    private static (DateTime From, DateTime To) BudgetWindow(int year, int month, string period)
+    {
+        var start = new DateTime(year, month, 1);
+        var end = start.AddMonths(1).AddDays(-1);
+        if (period == BudgetPeriodFirstHalf)
+            return (start, new DateTime(year, month, 15));
+        if (period == BudgetPeriodSecondHalf)
+            return (new DateTime(year, month, 16), end);
+        return (start, end);
+    }
+
+    private static string BudgetPeriodLabel(int year, int month, string period)
+    {
+        var name = new DateTime(year, month, 1).ToString("MMMM yyyy", CultureInfo.InvariantCulture);
+        var half = period switch
+        {
+            BudgetPeriodFirstHalf => "1–15",
+            BudgetPeriodSecondHalf => "16–end",
+            _ => "Full month"
+        };
+        return $"{name} · {half}";
+    }
+
+    private static string NormalizePeriod(string? period)
+    {
+        var value = (period ?? string.Empty).Trim();
+        if (value.Equals(BudgetPeriodMonth, StringComparison.OrdinalIgnoreCase))
+            return BudgetPeriodMonth;
+        if (value.Equals(BudgetPeriodFirstHalf, StringComparison.OrdinalIgnoreCase))
+            return BudgetPeriodFirstHalf;
+        if (value.Equals(BudgetPeriodSecondHalf, StringComparison.OrdinalIgnoreCase))
+            return BudgetPeriodSecondHalf;
+        throw new ArgumentException("Choose a full month or a 15-day period.");
+    }
+
+    private async Task<string?> FindAccountIdByTitleAsync(string title, CancellationToken cancellationToken)
+    {
+        var rows = await _context.Accounts
+            .AsNoTracking()
+            .Where(x => x.AccountTitle != null && x.AccountID != null)
+            .Select(x => new { x.AccountID, x.AccountTitle })
+            .ToListAsync(cancellationToken);
+
+        return rows.FirstOrDefault(x =>
+            string.Equals(x.AccountTitle!.Trim(), title, StringComparison.OrdinalIgnoreCase))?.AccountID;
+    }
+
+    private sealed record PurchaseActualRow(
+        DateTime Date,
+        int ItemId,
+        string Name,
+        string Category,
+        string Unit,
+        decimal Qty,
+        decimal Amount);
+
+    private const string BudgetPeriodMonth = "Month";
+    private const string BudgetPeriodFirstHalf = "FirstHalf";
+    private const string BudgetPeriodSecondHalf = "SecondHalf";
+
     private async Task EnsureItemNameAvailableAsync(string name, int? excludingId, CancellationToken cancellationToken)
     {
         var taken = await _context.StationeryItems.AsNoTracking()
@@ -765,9 +1149,11 @@ public class StationeryService : IStationeryService
     private static string BuildPurchaseNarration(
         IReadOnlyList<StationeryPurchaseLineInputDto> lines,
         IReadOnlyDictionary<int, StationeryItem> items,
-        decimal totalAmount)
+        decimal totalAmount,
+        string prefix = "Stationery purchase")
     {
-        var sb = new StringBuilder("Stationery purchase: ");
+        var sb = new StringBuilder(prefix);
+        sb.Append(": ");
         for (var i = 0; i < lines.Count; i++)
         {
             var line = lines[i];
@@ -821,6 +1207,16 @@ public class StationeryService : IStationeryService
         return value;
     }
 
+    private static decimal NormalizeUnitPrice(decimal unitPrice)
+    {
+        if (unitPrice < 0)
+            throw new ArgumentException("Unit price cannot be negative.");
+        return Math.Round(unitPrice, 2, MidpointRounding.AwayFromZero);
+    }
+
+    private static bool IsCleaningCategory(string? category) =>
+        string.Equals(category?.Trim(), "Cleaning", StringComparison.OrdinalIgnoreCase);
+
     private static string? Truncate(string? value, int max)
     {
         if (string.IsNullOrWhiteSpace(value))
@@ -835,6 +1231,7 @@ public class StationeryService : IStationeryService
         Name = row.Name,
         Category = row.Category,
         Unit = row.Unit,
+        UnitPrice = row.UnitPrice,
         IsActive = row.IsActive
     };
 

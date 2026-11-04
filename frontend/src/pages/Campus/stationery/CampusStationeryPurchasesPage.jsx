@@ -68,6 +68,8 @@ function CampusStationeryPurchasesPage() {
           value: i.id,
           label: `${i.name} (${i.category})`,
           unit: i.unit,
+          unitPrice: i.unitPrice,
+          category: i.category,
         })),
     [items],
   )
@@ -80,6 +82,23 @@ function CampusStationeryPurchasesPage() {
       })),
     [accounts],
   )
+
+  const hasCleaningLine = useMemo(
+    () =>
+      lines.some((line) => {
+        const item = items.find((row) => row.id === line.itemId)
+        return item?.category === 'Cleaning'
+      }),
+    [items, lines],
+  )
+
+  const cleaningOnly = useMemo(() => {
+    const chosen = lines.filter((line) => line.itemId)
+    return (
+      chosen.length > 0 &&
+      chosen.every((line) => items.find((row) => row.id === line.itemId)?.category === 'Cleaning')
+    )
+  }, [items, lines])
 
   const liveTotal = useMemo(
     () =>
@@ -146,7 +165,11 @@ function CampusStationeryPurchasesPage() {
       toast.error('Add at least one item with quantity and price.')
       return
     }
-    if (postToAccounts && !expenseAccountId) {
+    const needsExpenseAccount = payloadLines.some((line) => {
+      const item = items.find((row) => row.id === line.itemId)
+      return item?.category !== 'Cleaning'
+    })
+    if (postToAccounts && needsExpenseAccount && !expenseAccountId) {
       toast.error('Choose an expense account to record this payment in Accounts.')
       return
     }
@@ -160,7 +183,7 @@ function CampusStationeryPurchasesPage() {
         notes: notes.trim() || null,
         lines: payloadLines,
         postToAccounts,
-        expenseAccountId: postToAccounts ? expenseAccountId : null,
+        expenseAccountId: postToAccounts && needsExpenseAccount ? expenseAccountId : null,
       })
       toast.success('Purchase saved.', { id: toastId })
       setIsEditorOpen(false)
@@ -281,7 +304,12 @@ function CampusStationeryPurchasesPage() {
                       styles={selectStyles}
                       options={itemOptions}
                       value={itemOptions.find((o) => o.value === line.itemId) || null}
-                      onChange={(opt) => updateLine(index, { itemId: opt?.value ?? null })}
+                      onChange={(opt) =>
+                        updateLine(index, {
+                          itemId: opt?.value ?? null,
+                          unitPrice: opt && Number(opt.unitPrice) > 0 ? String(opt.unitPrice) : '',
+                        })
+                      }
                       placeholder="Select item"
                       isClearable
                       menuPortalTarget={typeof document !== 'undefined' ? document.body : null}
@@ -326,8 +354,11 @@ function CampusStationeryPurchasesPage() {
                 </label>
                 <p className="text-sm font-semibold text-slate-900">Total: {formatMoney(liveTotal)}</p>
               </div>
+              {postToAccounts && hasCleaningLine ? (
+                <p className="text-xs text-slate-500">Cleaning items are recorded under cleanliness expenses.</p>
+              ) : null}
 
-              {postToAccounts ? (
+              {postToAccounts && !cleaningOnly ? (
                 <label className="block text-xs font-semibold uppercase text-slate-500">
                   Expense account
                   <div className="mt-1">

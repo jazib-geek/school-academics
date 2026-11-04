@@ -13,6 +13,7 @@ public class StationeryItemConfiguration : IEntityTypeConfiguration<StationeryIt
         entity.Property(e => e.Name).HasMaxLength(120).IsRequired();
         entity.Property(e => e.Category).HasMaxLength(50).IsRequired();
         entity.Property(e => e.Unit).HasMaxLength(20).IsRequired().HasDefaultValue("pcs");
+        entity.Property(e => e.UnitPrice).HasColumnType("decimal(18,2)").HasDefaultValue(0m);
         entity.Property(e => e.IsActive).HasDefaultValue(true);
         entity.HasIndex(e => e.Name).HasDatabaseName("IX_StationeryItem_Name");
         entity.HasIndex(e => e.Category).HasDatabaseName("IX_StationeryItem_Category");
@@ -79,6 +80,45 @@ public class StationeryHandoverConfiguration : IEntityTypeConfiguration<Statione
             .WithOne(e => e.Handover)
             .HasForeignKey(e => e.HandoverID)
             .OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public class StationeryBudgetConfiguration : IEntityTypeConfiguration<StationeryBudget>
+{
+    public void Configure(EntityTypeBuilder<StationeryBudget> entity)
+    {
+        entity.ToTable("tblStationeryBudget", "dbo");
+        entity.HasKey(e => e.ID);
+        entity.Property(e => e.Period).HasMaxLength(20).IsRequired();
+        entity.Property(e => e.Notes).HasMaxLength(500);
+        entity.Property(e => e.TotalAmount).HasColumnType("decimal(18,2)");
+        entity.Property(e => e.EntryUser).HasMaxLength(50);
+        entity.Property(e => e.CreatedAtPkt).HasColumnType("datetime2(3)");
+        entity.HasIndex(e => new { e.Year, e.Month, e.Period })
+            .IsUnique()
+            .HasDatabaseName("IX_StationeryBudget_Period");
+        entity.HasMany(e => e.Lines)
+            .WithOne(e => e.Budget)
+            .HasForeignKey(e => e.BudgetID)
+            .OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public class StationeryBudgetLineConfiguration : IEntityTypeConfiguration<StationeryBudgetLine>
+{
+    public void Configure(EntityTypeBuilder<StationeryBudgetLine> entity)
+    {
+        entity.ToTable("tblStationeryBudgetLine", "dbo");
+        entity.HasKey(e => e.ID);
+        entity.Property(e => e.Quantity).HasColumnType("decimal(18,2)");
+        entity.Property(e => e.UnitPrice).HasColumnType("decimal(18,2)");
+        entity.Property(e => e.LineTotal).HasColumnType("decimal(18,2)");
+        entity.HasIndex(e => e.BudgetID).HasDatabaseName("IX_StationeryBudgetLine_Budget");
+        entity.HasIndex(e => e.ItemID).HasDatabaseName("IX_StationeryBudgetLine_Item");
+        entity.HasOne(e => e.Item)
+            .WithMany()
+            .HasForeignKey(e => e.ItemID)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }
 

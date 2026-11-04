@@ -66,3 +66,23 @@ export const getStationeryItemReport = async (itemId, from, to) => {
   const response = await api.get(`${BASE}/reports/item`, { params: { itemId, from, to } })
   return response?.data?.data
 }
+
+export const getStationeryBudgets = async (params) => {
+  const response = await api.get(`${BASE}/budgets`, { params })
+  return response?.data?.data || []
+}
+
+export const getStationeryBudget = async (id) => {
+  const response = await api.get(`${BASE}/budgets/${id}`)
+  return response?.data?.data
+}
+
+export const createStationeryBudget = async (payload) => {
+  const response = await api.post(`${BASE}/budgets`, payload)
+  return response?.data?.data
+}
+
+export const updateStationeryBudget = async (id, payload) => {
+  const response = await api.post(`${BASE}/budgets/${id}/update`, payload)
+  return response?.data?.data
+}

@@ -8,6 +8,7 @@ public class StationeryItemDto
     public string Name { get; set; } = string.Empty;
     public string Category { get; set; } = string.Empty;
     public string Unit { get; set; } = "pcs";
+    public decimal UnitPrice { get; set; }
     public bool IsActive { get; set; }
 }
 
@@ -21,6 +22,9 @@ public class StationeryItemUpsertDto
 
     [StringLength(20)]
     public string Unit { get; set; } = "pcs";
+
+    [Range(0, double.MaxValue)]
+    public decimal UnitPrice { get; set; }
 
     public bool IsActive { get; set; } = true;
 }
@@ -237,4 +241,81 @@ public class StationeryItemConsumptionByEmployeeDto
     public string EmployeeName { get; set; } = string.Empty;
     public decimal Quantity { get; set; }
     public int HandoverCount { get; set; }
+}
+
+public class StationeryBudgetLineInputDto
+{
+    [Range(1, int.MaxValue)]
+    public int ItemId { get; set; }
+
+    [Range(0.01, double.MaxValue)]
+    public decimal Quantity { get; set; }
+
+    [Range(0.01, double.MaxValue)]
+    public decimal UnitPrice { get; set; }
+}
+
+public class StationeryBudgetUpsertDto
+{
+    [Range(2000, 2100)]
+    public int Year { get; set; }
+
+    [Range(1, 12)]
+    public int Month { get; set; }
+
+    [Required, StringLength(20)]
+    public string Period { get; set; } = "Month";
+
+    [StringLength(500)]
+    public string? Notes { get; set; }
+
+    [Required, MinLength(1)]
+    public List<StationeryBudgetLineInputDto> Lines { get; set; } = [];
+}
+
+public class StationeryBudgetListItemDto
+{
+    public int Id { get; set; }
+    public int Year { get; set; }
+    public int Month { get; set; }
+    public string Period { get; set; } = string.Empty;
+    public string PeriodLabel { get; set; } = string.Empty;
+    public DateTime From { get; set; }
+    public DateTime To { get; set; }
+    public decimal EstimatedTotal { get; set; }
+    public decimal ActualTotal { get; set; }
+    public decimal Difference { get; set; }
+    public string? Notes { get; set; }
+    public string? EntryUser { get; set; }
+}
+
+public class StationeryBudgetCompareLineDto
+{
+    public int ItemId { get; set; }
+    public string ItemName { get; set; } = string.Empty;
+    public string Category { get; set; } = string.Empty;
+    public string Unit { get; set; } = string.Empty;
+    public decimal EstimatedQty { get; set; }
+    public decimal UnitPrice { get; set; }
+    public decimal EstimatedAmount { get; set; }
+    public decimal PurchasedQty { get; set; }
+    public decimal PurchasedAmount { get; set; }
+    public bool OnBudget { get; set; }
+}
+
+public class StationeryBudgetDetailDto
+{
+    public int Id { get; set; }
+    public int Year { get; set; }
+    public int Month { get; set; }
+    public string Period { get; set; } = string.Empty;
+    public string PeriodLabel { get; set; } = string.Empty;
+    public DateTime From { get; set; }
+    public DateTime To { get; set; }
+    public string? Notes { get; set; }
+    public string? EntryUser { get; set; }
+    public decimal EstimatedTotal { get; set; }
+    public decimal ActualTotal { get; set; }
+    public decimal Difference { get; set; }
+    public List<StationeryBudgetCompareLineDto> Lines { get; set; } = [];
 }

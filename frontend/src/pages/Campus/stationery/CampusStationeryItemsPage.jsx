@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import CampusShell from '../../../components/campus/CampusShell.jsx'
 import { PermissionControl } from '../../../components/campus/CampusPermissionUi.jsx'
 import { hasCampusPermission } from '../../../services/authService'
+import { DECIMAL_INPUT_ATTRS, readDecimalInput } from '../../../utils/numericInput.js'
 import {
   createStationeryItem,
   getStationeryItems,
@@ -11,8 +12,15 @@ import {
   updateStationeryItem,
 } from '../../../services/stationeryService'
 
-const CATEGORIES = ['Paper', 'Adhesive', 'Writing', 'Craft', 'Tools', 'Misc']
-const emptyForm = { name: '', category: 'Misc', unit: 'pcs', isActive: true }
+const CATEGORIES = ['Paper', 'Adhesive', 'Writing', 'Craft', 'Tools', 'Cleaning', 'First aid', 'Misc']
+const emptyForm = { name: '', category: 'Misc', unit: 'pcs', unitPrice: '', isActive: true }
+
+function formatMoney(value) {
+  return Number(value || 0).toLocaleString(undefined, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  })
+}
 const inputClass =
   'h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-[var(--campus-primary)] focus:ring-2 focus:ring-indigo-100'
 
@@ -91,6 +99,7 @@ function CampusStationeryItemsPage() {
       name: row.name || '',
       category: row.category || 'Misc',
       unit: row.unit || 'pcs',
+      unitPrice: row.unitPrice === 0 || row.unitPrice ? String(row.unitPrice) : '',
       isActive: row.isActive ?? true,
     })
     setIsEditorOpen(true)
@@ -98,6 +107,10 @@ function CampusStationeryItemsPage() {
 
   const submit = async (event) => {
     event.preventDefault()
+    if (form.unitPrice === '' || Number(form.unitPrice) < 0) {
+      toast.error('Enter a unit price.')
+      return
+    }
     setIsSaving(true)
     const toastId = 'stationery-item-save'
     toast.loading(editingId ? 'Updating item...' : 'Creating item...', { id: toastId })
@@ -106,6 +119,7 @@ function CampusStationeryItemsPage() {
         name: form.name.trim(),
         category: form.category.trim(),
         unit: form.unit.trim() || 'pcs',
+        unitPrice: Number(form.unitPrice),
         isActive: Boolean(form.isActive),
       }
       if (editingId) await updateStationeryItem(editingId, payload)
@@ -178,6 +192,7 @@ function CampusStationeryItemsPage() {
                   <tr>
                     <th className="px-3 py-2 font-medium">Name</th>
                     <th className="px-3 py-2 font-medium">Unit</th>
+                    <th className="px-3 py-2 text-right font-medium">Unit price</th>
                     <th className="px-3 py-2 font-medium">Status</th>
                     <th className="px-3 py-2 text-right font-medium">Actions</th>
                   </tr>
@@ -186,7 +201,7 @@ function CampusStationeryItemsPage() {
                   {groupedRows.map((group) => (
                     <Fragment key={group.category}>
                       <tr className="bg-slate-50">
-                        <td colSpan={4} className="px-3 py-2.5 text-base font-bold tracking-wide text-[var(--campus-primary)]">
+                        <td colSpan={5} className="px-3 py-2.5 text-base font-bold tracking-wide text-[var(--campus-primary)]">
                           {group.category}
                           <span className="ml-2 text-sm font-medium text-slate-400">
                             {group.items.length}
@@ -197,6 +212,7 @@ function CampusStationeryItemsPage() {
                         <tr key={row.id} className="border-t border-slate-50 hover:bg-slate-50/70">
                           <td className="px-3 py-1.5 pl-6 font-medium text-slate-800">{row.name}</td>
                           <td className="px-3 py-1.5 text-slate-600">{row.unit}</td>
+                          <td className="px-3 py-1.5 text-right text-slate-700">{formatMoney(row.unitPrice)}</td>
                           <td className="px-3 py-1.5">
                             <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${row.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
                               {row.isActive ? 'Active' : 'Inactive'}
@@ -245,7 +261,7 @@ function CampusStationeryItemsPage() {
               <label className="block text-xs font-semibold uppercase text-slate-500">
                 Category
                 <select className={`${inputClass} mt-1`} value={form.category} onChange={(e) => setForm((c) => ({ ...c, category: e.target.value }))}>
-                  {CATEGORIES.map((c) => (
+                  {(CATEGORIES.includes(form.category) ? CATEGORIES : [...CATEGORIES, form.category]).map((c) => (
                     <option key={c} value={c}>{c}</option>
                   ))}
                 </select>
@@ -253,6 +269,16 @@ function CampusStationeryItemsPage() {
               <label className="block text-xs font-semibold uppercase text-slate-500">
                 Unit
                 <input className={`${inputClass} mt-1`} value={form.unit} onChange={(e) => setForm((c) => ({ ...c, unit: e.target.value }))} maxLength={20} />
+              </label>
+              <label className="block text-xs font-semibold uppercase text-slate-500">
+                Unit price
+                <input
+                  {...DECIMAL_INPUT_ATTRS}
+                  className={`${inputClass} mt-1`}
+                  value={form.unitPrice}
+                  onChange={(e) => setForm((c) => ({ ...c, unitPrice: readDecimalInput(e) }))}
+                  required
+                />
               </label>
               <label className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700">
                 <input type="checkbox" checked={Boolean(form.isActive)} onChange={(e) => setForm((c) => ({ ...c, isActive: e.target.checked }))} className="h-4 w-4 accent-[var(--campus-primary)]" />

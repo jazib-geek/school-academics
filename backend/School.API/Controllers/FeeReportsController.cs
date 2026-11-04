@@ -180,4 +180,18 @@ public class FeeReportsController : ControllerBase
             return BadRequest(ApiResponse<object>.FailureResponse(ex.Message));
         }
     }
+
+    [HttpGet("collection-sheet")]
+    public async Task<IActionResult> GetCollectionSheet()
+    {
+        try
+        {
+            var result = await _service.GetCollectionSheetAsync();
+            return Ok(ApiResponse<object>.SuccessResponse(result));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<object>.FailureResponse(ex.Message));
+        }
+    }
 }
