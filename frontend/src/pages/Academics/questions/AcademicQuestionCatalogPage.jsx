@@ -37,6 +37,7 @@ import {
   headingForKind,
   isLanguageProfile,
   kindsForProfile,
+  languageKindGroups,
   parseBody,
   structureLabel,
   summarizeBody,
@@ -509,6 +510,7 @@ function AcademicQuestionCatalogPage() {
   const catalogProfile = selectedSubjectRecord?.catalogProfile || 'standard'
   const isLanguageCatalog = isLanguageProfile(catalogProfile)
   const languageKindOptions = useMemo(() => kindsForProfile(catalogProfile), [catalogProfile])
+  const languageKindOptionGroups = useMemo(() => languageKindGroups(catalogProfile), [catalogProfile])
   const questionModalWide = isMcq && !isLanguageCatalog
   const questionModalMaxWidthClass = questionModalWide
     ? 'max-w-[min(1400px,calc(100vw-1.5rem))]'
@@ -1051,7 +1053,59 @@ function AcademicQuestionCatalogPage() {
       {filters.chapterId ? (
       <>
       <section className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 transition-opacity duration-300">
-        <span className="text-sm font-medium text-slate-700">{isLanguageCatalog ? 'Question shape' : 'Question type'}</span>
+        {isLanguageCatalog ? null : (
+          <span className="text-sm font-medium text-slate-700">Question type</span>
+        )}
+        {isLanguageCatalog ? (
+          <div className="flex min-w-0 flex-1 flex-col gap-2">
+            {languageKindOptionGroups.map((group, groupIndex) => (
+              <div key={group.id} className="flex flex-wrap items-center gap-1.5">
+                {groupIndex === 0 ? (
+                  <label
+                    className={`cursor-pointer rounded-full px-3 py-1 text-[13px] font-medium transition ${
+                      questionTypeFilter === ''
+                        ? 'bg-[#405189] text-white'
+                        : 'border border-slate-200 bg-white text-slate-600 hover:border-[#405189]/40 hover:text-[#405189]'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="questionTypeFilter"
+                      value=""
+                      checked={questionTypeFilter === ''}
+                      onChange={() => setQuestionTypeFilter('')}
+                      className="sr-only"
+                    />
+                    All
+                  </label>
+                ) : null}
+                <span className="mr-1 rounded-full bg-slate-200/70 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  {group.label}
+                </span>
+                {group.kinds.map((kind) => (
+                  <label
+                    key={kind.id}
+                    className={`cursor-pointer rounded-full px-3 py-1 text-[13px] font-medium transition ${
+                      questionTypeFilter === kind.id
+                        ? 'bg-[#405189] text-white'
+                        : 'border border-slate-200 bg-white text-slate-600 hover:border-[#405189]/40 hover:text-[#405189]'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="questionTypeFilter"
+                      value={kind.id}
+                      checked={questionTypeFilter === kind.id}
+                      onChange={() => setQuestionTypeFilter(kind.id)}
+                      className="sr-only"
+                    />
+                    {kind.label}
+                  </label>
+                ))}
+              </div>
+            ))}
+          </div>
+        ) : (
         <div className="flex flex-wrap gap-2">
           {typeFilterOptions.map((option) => (
             <label
@@ -1074,6 +1128,7 @@ function AcademicQuestionCatalogPage() {
             </label>
           ))}
         </div>
+        )}
       </section>
 
       <section className="max-h-[65vh] overflow-x-hidden overflow-y-auto rounded-xl border border-slate-200 [scrollbar-gutter:stable]">
@@ -1407,8 +1462,12 @@ function AcademicQuestionCatalogPage() {
                   }}
                   className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
                 >
-                  {languageKindOptions.map((item) => (
-                    <option key={item.id} value={item.id}>{item.label}</option>
+                  {languageKindOptionGroups.map((group) => (
+                    <optgroup key={group.id} label={group.label}>
+                      {group.kinds.map((item) => (
+                        <option key={item.id} value={item.id}>{item.label}</option>
+                      ))}
+                    </optgroup>
                   ))}
                 </select>
               ) : (
@@ -1508,6 +1567,7 @@ function AcademicQuestionCatalogPage() {
                   )}
                   {isLanguageCatalog ? (
                     <LanguageQuestionFields
+                      key={form.structureKind || 'language'}
                       kind={form.structureKind}
                       body={form.body}
                       disabled={isSaving}

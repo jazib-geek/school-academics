@@ -5,6 +5,18 @@ export const CATALOG_PROFILE = Object.freeze({
 })
 
 const choiceItem = () => ({ text: '', options: ['', '', '', ''] })
+
+function choiceStructure(id, label, defaultHeading, profiles = ['english']) {
+  return {
+    id,
+    label,
+    defaultHeading,
+    profiles,
+    coarseType: 'mcq',
+    editor: 'choice',
+    empty: () => ({ items: [choiceItem()] }),
+  }
+}
 const spellingRow = () => ({ options: ['', '', '', ''] })
 const lineItem = () => ({ text: '', marked: '' })
 const pairItem = () => ({ left: '', right: '' })
@@ -12,14 +24,14 @@ const passageItem = () => ({ label: '', text: '' })
 const questionItem = () => ({ text: '' })
 
 export const LANGUAGE_STRUCTURES = Object.freeze([
-  {
-    id: 'choice-set',
-    label: 'Choices',
-    defaultHeading: 'Choose the correct option.',
-    profiles: ['english', 'urdu'],
-    coarseType: 'mcq',
-    empty: () => ({ items: [choiceItem()] }),
-  },
+  choiceStructure('choice-set', 'Choices', 'Choose the correct option.', ['english', 'urdu']),
+  choiceStructure('verbs', 'Verbs', 'Choose the correct form of the verb.'),
+  choiceStructure('spelling', 'Spelling', 'Choose the correct spelling.'),
+  choiceStructure('synonyms-antonyms', 'Synonyms / Antonyms', 'Choose the correct synonym or antonym.'),
+  choiceStructure('grammar', 'Grammar', 'Choose the correct option.'),
+  choiceStructure('question-answer', 'Question / Answer', 'Choose the correct answer.'),
+  choiceStructure('summary', 'Summary', 'Choose the correct summary.'),
+  choiceStructure('words-phrases-idioms', 'Words / Phrase / Idioms', 'Choose the correct word, phrase, or idiom.'),
   {
     id: 'spelling-table',
     label: 'Spelling table',
@@ -94,6 +106,14 @@ export function kindsForProfile(profile) {
   return LANGUAGE_STRUCTURES.filter((item) => item.profiles.includes(profile))
 }
 
+export function languageKindGroups(profile) {
+  const kinds = kindsForProfile(profile)
+  return [
+    { id: 'options', label: 'Options', kinds: kinds.filter((item) => item.editor === 'choice') },
+    { id: 'other', label: 'Other', kinds: kinds.filter((item) => item.editor !== 'choice') },
+  ].filter((group) => group.kinds.length > 0)
+}
+
 export function findStructure(kind) {
   return LANGUAGE_STRUCTURES.find((item) => item.id === kind) || null
 }
@@ -115,6 +135,10 @@ export function headingForKind(kind, savedMap, profile) {
   if (typeof saved === 'string' && saved.trim()) return saved.trim()
   if (profile === CATALOG_PROFILE.URDU && URDU_HEADING_DEFAULTS[kind]) return URDU_HEADING_DEFAULTS[kind]
   return findStructure(kind)?.defaultHeading || ''
+}
+
+export function isChoiceBodyKind(kind) {
+  return findStructure(kind)?.editor === 'choice'
 }
 
 export function coarseTypeForKind(kind) {
@@ -146,19 +170,23 @@ export function defaultMarksForLanguageBlock(kind, bodyJson) {
 export function resolveLanguageBlockMarks(kind, bodyJson, storedMarks) {
   const fromItems = defaultMarksForLanguageBlock(kind, bodyJson)
   const stored = Number(storedMarks)
-  if (kind === 'choice-set' || kind === 'spelling-table') return fromItems
+  if (isChoiceBodyKind(kind) || kind === 'spelling-table') return fromItems
   if (fromItems > 1) return fromItems
   if (Number.isFinite(stored) && stored > 0) return Math.min(stored, 100)
   return fromItems
 }
 
+function countChoiceItems(body) {
+  const items = Array.isArray(body?.items) ? body.items : []
+  return items.filter((item) => `${item?.text ?? ''}`.trim().length > 0).length
+}
+
 export function countExamItems(kind, body) {
+  if (isChoiceBodyKind(kind)) return countChoiceItems(body)
   const value = body || {}
   const list = (name) => (Array.isArray(value[name]) ? value[name] : [])
   const filled = (text) => `${text ?? ''}`.trim().length > 0
   switch (kind) {
-    case 'choice-set':
-      return list('items').filter((item) => filled(item?.text)).length
     case 'spelling-table':
       return list('rows').filter((row) => (row?.options || []).some((option) => filled(option))).length
     case 'word-list':
@@ -209,11 +237,13 @@ function filled(value) {
 }
 
 export function summarizeBody(kind, body) {
+  if (isChoiceBodyKind(kind)) {
+    const count = Array.isArray(body?.items) ? body.items.length : 0
+    return `${count} choices`
+  }
   const value = body || {}
   const count = (list) => (Array.isArray(list) ? list.length : 0)
   switch (kind) {
-    case 'choice-set':
-      return `${count(value.items)} choices`
     case 'spelling-table':
       return `${count(value.rows)} rows`
     case 'word-list':
@@ -235,16 +265,20 @@ export function summarizeBody(kind, body) {
   }
 }
 
+function validateChoiceBody(body) {
+  const items = Array.isArray(body?.items) ? body.items : []
+  return items.some(
+    (item) => filled(item?.text) && (item?.options || []).filter((option) => filled(option)).length >= 2,
+  )
+    ? ''
+    : 'Add at least one choice with two options.'
+}
+
 export function validateLanguageBody(kind, body) {
+  if (isChoiceBodyKind(kind)) return validateChoiceBody(body)
   const value = body || {}
   const list = (name) => (Array.isArray(value[name]) ? value[name] : [])
   switch (kind) {
-    case 'choice-set':
-      return list('items').some(
-        (item) => filled(item?.text) && (item?.options || []).filter((option) => filled(option)).length >= 2,
-      )
-        ? ''
-        : 'Add at least one choice with two options.'
     case 'spelling-table':
       return list('rows').some((row) => (row?.options || []).filter((option) => filled(option)).length === 4)
         ? ''

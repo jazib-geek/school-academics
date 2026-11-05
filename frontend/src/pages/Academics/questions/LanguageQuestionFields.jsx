@@ -1,5 +1,5 @@
 import { Plus, Trash2 } from 'lucide-react'
-import { removeBodyItem, pushBodyItem, setBodyValue } from './languageQuestionStructures'
+import { findStructure, removeBodyItem, pushBodyItem, setBodyValue } from './languageQuestionStructures'
 
 const fieldClass = 'w-full rounded-lg border border-slate-300 px-3 py-1.5 text-sm'
 
@@ -39,7 +39,7 @@ export default function LanguageQuestionFields({ kind, body, onChange, disabled,
 
   const setPath = (path, nextValue) => onChange(setBodyValue(value, path, nextValue))
 
-  if (kind === 'choice-set') {
+  if (findStructure(kind)?.editor === 'choice') {
     const items = value.items || []
     return (
       <FieldList title="Choices" addLabel="Add choice" onAdd={() => onChange(pushBodyItem(value, 'items', kind))}>

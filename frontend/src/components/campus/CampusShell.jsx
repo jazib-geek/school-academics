@@ -300,7 +300,7 @@ export const CAMPUS_SHELL_NAV = [
   },
   {
     id: 'stationery',
-    label: 'Store',
+    label: 'Expense Management',
     icon: Warehouse,
     iconClass: 'text-teal-300',
     children: [

@@ -119,6 +119,7 @@ import {
   countExamItems,
   defaultMarksForLanguageBlock,
   isLanguageKindAllowedForExam,
+  isObjectiveLanguageKind,
   isLanguageProfile,
   kindsForProfile,
   parseBody,
@@ -1733,7 +1734,7 @@ function AcademicExamMakerMinimalPage() {
       if (!isLanguageKindAllowedForExam(form.examType, structureKind)) {
         setError(
           isObjectiveExamType(form.examType)
-            ? 'Objective papers can include choice and spelling blocks only.'
+            ? 'Objective papers can include option and spelling blocks only.'
             : 'Subjective papers cannot include objective language blocks.',
         )
         return
@@ -3299,7 +3300,7 @@ function AcademicExamMakerMinimalPage() {
                   const resolvedRowMarks = resolveCatalogRowMarks(item)
                   const languageMarksFromItems =
                     isLanguageExamSubject &&
-                    ['choice-set', 'spelling-table'].includes(item.question?.structureKind)
+                    isObjectiveLanguageKind(item.question?.structureKind)
                   return (
                   <div
                     key={item.questionId}
@@ -3658,7 +3659,7 @@ function AcademicExamMakerMinimalPage() {
                 >
                   <option value="all">All block types</option>
                   {languageKindFilterOptions.map((kind) => (
-                    <option key={kind} value={kind}>{structureLabel(kind)}</option>
+                    <option key={kind.id} value={kind.id}>{kind.label}</option>
                   ))}
                 </select>
               ) : null}

@@ -1,3 +1,5 @@
+import { isChoiceBodyKind } from './languageQuestionStructures'
+
 const englishOptionLabels = ['A', 'B', 'C', 'D']
 const urduOptionLabels = ['الف', 'ب', 'ج', 'د']
 
@@ -47,7 +49,7 @@ export default function LanguageQuestionPreview({
   const align = rtl ? 'text-right' : 'text-left'
   const isExam = variant === 'exam'
 
-  if (kind === 'choice-set') {
+  if (isChoiceBodyKind(kind)) {
     const items = (value.items || []).filter((item) => `${item?.text ?? ''}`.trim())
     let number = startNumber
     return (

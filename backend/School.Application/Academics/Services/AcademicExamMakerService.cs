@@ -78,17 +78,14 @@ public class AcademicExamMakerService : IAcademicExamMakerService
         {
             if (isLanguageSubject)
             {
+                var objectiveKinds = QuestionStructureCatalog.ObjectiveKinds;
                 if (normalizedType == "mcq")
                 {
-                    query = query.Where(x =>
-                        x.StructureKind == QuestionStructureCatalog.KindChoiceSet ||
-                        x.StructureKind == QuestionStructureCatalog.KindSpellingTable);
+                    query = query.Where(x => objectiveKinds.Contains(x.StructureKind));
                 }
                 else if (normalizedType is "saq" or "laq" or "numerical")
                 {
-                    query = query.Where(x =>
-                        x.StructureKind != QuestionStructureCatalog.KindChoiceSet &&
-                        x.StructureKind != QuestionStructureCatalog.KindSpellingTable);
+                    query = query.Where(x => !objectiveKinds.Contains(x.StructureKind));
                 }
             }
             else

@@ -868,6 +868,10 @@ public class StationeryService : IStationeryService
             .FirstOrDefaultAsync(x => x.ID == id, cancellationToken)
             ?? throw new KeyNotFoundException("Budget not found.");
 
+        var savedWindow = BudgetWindow(entity.Year, entity.Month, entity.Period);
+        if (PakistanTime.TodayStart.Date > savedWindow.To.Date)
+            throw new InvalidOperationException("This budget period has ended, so it can no longer be changed.");
+
         var year = request.Year;
         var month = request.Month;
         var period = NormalizePeriod(request.Period);

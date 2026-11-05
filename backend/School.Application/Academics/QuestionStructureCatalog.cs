@@ -10,6 +10,13 @@ public static class QuestionStructureCatalog
 
     public const string KindStandard = "standard";
     public const string KindChoiceSet = "choice-set";
+    public const string KindVerbs = "verbs";
+    public const string KindSpelling = "spelling";
+    public const string KindSynonymsAntonyms = "synonyms-antonyms";
+    public const string KindGrammar = "grammar";
+    public const string KindQuestionAnswer = "question-answer";
+    public const string KindSummary = "summary";
+    public const string KindWordsPhrasesIdioms = "words-phrases-idioms";
     public const string KindSpellingTable = "spelling-table";
     public const string KindWordList = "word-list";
     public const string KindFillBlanks = "fill-blanks";
@@ -28,7 +35,9 @@ public static class QuestionStructureCatalog
     {
         [ProfileEnglish] =
         [
-            KindChoiceSet, KindSpellingTable, KindWordList, KindFillBlanks,
+            KindChoiceSet, KindVerbs, KindSpelling, KindSynonymsAntonyms, KindGrammar,
+            KindQuestionAnswer, KindSummary, KindWordsPhrasesIdioms,
+            KindSpellingTable, KindWordList, KindFillBlanks,
             KindClassifyLine, KindSentencePair, KindPassageSet, KindPrompt
         ],
         [ProfileUrdu] =
@@ -55,6 +64,13 @@ public static class QuestionStructureCatalog
     private static readonly Dictionary<string, string> HeadingDefaults = new(StringComparer.OrdinalIgnoreCase)
     {
         [KindChoiceSet] = "Choose the correct option.",
+        [KindVerbs] = "Choose the correct form of the verb.",
+        [KindSpelling] = "Choose the correct spelling.",
+        [KindSynonymsAntonyms] = "Choose the correct synonym or antonym.",
+        [KindGrammar] = "Choose the correct option.",
+        [KindQuestionAnswer] = "Choose the correct answer.",
+        [KindSummary] = "Choose the correct summary.",
+        [KindWordsPhrasesIdioms] = "Choose the correct word, phrase, or idiom.",
         [KindSpellingTable] = "Choose the correct spelling.",
         [KindWordList] = "Write meanings of these words.",
         [KindFillBlanks] = "Fill in the blanks with suitable words.",
@@ -191,8 +207,23 @@ public static class QuestionStructureCatalog
                kinds.Contains(normalizedKind, StringComparer.OrdinalIgnoreCase);
     }
 
+    private static readonly HashSet<string> ChoiceBodyKinds = new(StringComparer.OrdinalIgnoreCase)
+    {
+        KindChoiceSet, KindVerbs, KindSpelling, KindSynonymsAntonyms, KindGrammar,
+        KindQuestionAnswer, KindSummary, KindWordsPhrasesIdioms
+    };
+
+    public static readonly string[] ObjectiveKinds =
+    [
+        KindChoiceSet, KindVerbs, KindSpelling, KindSynonymsAntonyms, KindGrammar,
+        KindQuestionAnswer, KindSummary, KindWordsPhrasesIdioms, KindSpellingTable
+    ];
+
+    public static bool IsChoiceBodyKind(string? kind) =>
+        ChoiceBodyKinds.Contains(NormalizeKind(kind));
+
     public static string CoarseType(string? kind) =>
-        NormalizeKind(kind) is KindChoiceSet or KindSpellingTable ? "mcq" : "laq";
+        ObjectiveKinds.Contains(NormalizeKind(kind), StringComparer.OrdinalIgnoreCase) ? "mcq" : "laq";
 
     public static string? ValidateBody(string? kind, string? bodyJson)
     {
@@ -230,11 +261,15 @@ public static class QuestionStructureCatalog
             }
 
             var root = document.RootElement;
+            if (IsChoiceBodyKind(normalizedKind))
+            {
+                return RequireItems(root, "items", static item =>
+                    Text(item, "text").Length > 0 &&
+                    Options(item).Count(static option => option.Length > 0) >= 2);
+            }
+
             return normalizedKind switch
             {
-                KindChoiceSet => RequireItems(root, "items", static item =>
-                    Text(item, "text").Length > 0 &&
-                    Options(item).Count(static option => option.Length > 0) >= 2),
                 KindSpellingTable => RequireItems(root, "rows", static row =>
                     Options(row).Count(static option => option.Length > 0) == 4),
                 KindWordList => RequireStrings(root, "words"),
