@@ -17,6 +17,7 @@ import {
   Save,
   Scale,
   Search,
+  Shield,
   Smartphone,
   UserRound,
   Wallet,
@@ -145,6 +146,7 @@ export default function CampusDayClosingPage() {
         { label: 'Misc charges', cash: preview.miscCharges, online: preview.miscChargesOnline },
         { label: 'Previous balance', cash: preview.prevBalance, online: preview.prevBalanceOnline, hideIfZero: true },
         { label: 'Fine', cash: preview.fine, online: preview.fineOnline, hideIfZero: true },
+        { label: 'Security deposit', cash: preview.securityDeposit, online: preview.securityDepositOnline },
         { label: 'Ledger payments', cash: preview.glDebits, online: 0 },
       ].filter((line) => {
         if (!line.hideIfZero) return true
@@ -273,6 +275,7 @@ export default function CampusDayClosingPage() {
                     <DetailRow icon={CircleDollarSign} label="Misc charges (cash)" value={preview.miscCharges} tone="violet" />
                     <DetailRow icon={Wallet} label="Prev balance (cash)" value={preview.prevBalance} tone="slate" />
                     <DetailRow icon={AlertTriangle} label="Fine (cash)" value={preview.fine} tone="amber" />
+                    <DetailRow icon={Shield} label="Security deposit (cash)" value={preview.securityDeposit} tone="teal" />
                     <DetailRow icon={Smartphone} label="Online fee" value={preview.onlineFee} tone="indigo" />
                     <DetailRow icon={Banknote} label="Other receipts (ledger)" value={preview.glCredits} tone="emerald" />
                     <DetailRow icon={Receipt} label="Ledger payments" value={preview.glDebits} tone="rose" />
@@ -641,6 +644,7 @@ const DETAIL_TONES = {
   emerald: 'bg-emerald-50 text-emerald-700',
   rose: 'bg-rose-50 text-rose-700',
   indigo: 'bg-indigo-50 text-indigo-700',
+  teal: 'bg-teal-50 text-teal-700',
 }
 
 function DetailRow({ icon: Icon, label, value, tone = 'slate' }) {

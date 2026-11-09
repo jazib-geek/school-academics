@@ -27,6 +27,9 @@ public class SmartExamReportService : ISmartExamReportService
     public Task<IReadOnlyList<ExamAwardListSubjectColumnDto>> GetClassSubjectsAsync(int sectionId) =>
         _examService.GetClassAwardListSubjectsAsync(sectionId);
 
+    public Task<AcademicProgressSubjectFlagsDto> GetAcademicProgressSubjectFlagsAsync(int? studentId, int? sectionId) =>
+        _examService.GetAcademicProgressSubjectFlagsAsync(studentId, sectionId);
+
     public async Task<ExamExecutiveSnapshotDto> GetExecutiveSnapshotAsync()
     {
         var activeStudentCount = await _context.Students.CountAsync(x => x.IsActive == true);
@@ -133,7 +136,7 @@ public class SmartExamReportService : ISmartExamReportService
         bool junior,
         bool multiple)
     {
-        var options = SeniorOrJunior(junior);
+        var options = junior ? SeniorOrJunior(true) : ProgressOptions(p);
         List<AcademicProgressCardDto> cards;
 
         if (multiple)
@@ -268,6 +271,12 @@ public class SmartExamReportService : ISmartExamReportService
         IncludeStempInTotals = false
     };
 
+    private static ExamAggregationOptions ProgressOptions(Dictionary<string, object?> p) => new()
+    {
+        IncludeDrawingInTotals = !OptBool(p, "markDrawingAsGrade", false),
+        IncludeStempInTotals = !OptBool(p, "markStempAsGrade", true)
+    };
+
     private static ExamAggregationOptions FancyOptions(string drawingMode) => new()
     {
         IncludeDrawingInTotals = drawingMode == "M",
@@ -355,6 +364,23 @@ public class SmartExamReportService : ISmartExamReportService
         }
 
         return int.TryParse(Convert.ToString(raw, Invariant), NumberStyles.Integer, Invariant, out var v) ? v : null;
+    }
+
+    private static bool OptBool(Dictionary<string, object?> p, string key, bool fallback)
+    {
+        if (!p.TryGetValue(key, out var raw) || raw is null)
+            return fallback;
+        if (raw is bool value)
+            return value;
+        if (raw is JsonElement je)
+        {
+            if (je.ValueKind == JsonValueKind.True) return true;
+            if (je.ValueKind == JsonValueKind.False) return false;
+            if (je.ValueKind == JsonValueKind.String && bool.TryParse(je.GetString(), out var parsed))
+                return parsed;
+        }
+
+        return bool.TryParse(Convert.ToString(raw, Invariant), out var text) ? text : fallback;
     }
 
     private static string? OptString(Dictionary<string, object?> p, string key)

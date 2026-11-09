@@ -24,6 +24,13 @@ public class EmployeeAttendanceImportDateRuleDto
     public string TeacherCheckOut { get; set; } = string.Empty;
 }
 
+public class EmployeeAttendanceImportSkippedEmployeeDto
+{
+    public string EmployeeCode { get; set; } = string.Empty;
+    public string EmployeeName { get; set; } = string.Empty;
+    public string DesignationName { get; set; } = string.Empty;
+}
+
 public class EmployeeAttendanceImportResultDto
 {
     public int CreatedCount { get; set; }
@@ -32,4 +39,5 @@ public class EmployeeAttendanceImportResultDto
     public int SkippedEmptyPunchCount { get; set; }
     public int SkippedNoDutyTimeCount { get; set; }
     public IReadOnlyList<string> UnknownEmployeeCodes { get; set; } = [];
+    public IReadOnlyList<EmployeeAttendanceImportSkippedEmployeeDto> SkippedNoDutyEmployees { get; set; } = [];
 }

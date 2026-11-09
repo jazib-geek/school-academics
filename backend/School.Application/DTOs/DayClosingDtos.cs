@@ -36,12 +36,14 @@ public class DayClosingPreviewDto
     public decimal MiscCharges { get; set; }
     public decimal PrevBalance { get; set; }
     public decimal Fine { get; set; }
+    public decimal SecurityDeposit { get; set; }
 
     public decimal TuitionFeeOnline { get; set; }
     public decimal AdmissionFeeOnline { get; set; }
     public decimal MiscChargesOnline { get; set; }
     public decimal PrevBalanceOnline { get; set; }
     public decimal FineOnline { get; set; }
+    public decimal SecurityDepositOnline { get; set; }
 
     /// <summary>All fee receipts marked Online for the day (excluded from cash handover).</summary>
     public decimal OnlineFee { get; set; }

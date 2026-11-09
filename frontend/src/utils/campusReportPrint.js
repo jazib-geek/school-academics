@@ -18,10 +18,14 @@ export const CAMPUS_REPORT_PRINT_STYLES = `
       -webkit-print-color-adjust: exact !important;
       print-color-adjust: exact !important;
     }
-    html, body, #root {
+    html, body, #root,
+    #root > div {
       background: #ffffff !important;
       margin: 0 !important;
       padding: 0 !important;
+    }
+    .bg-slate-100 {
+      background: #ffffff !important;
     }
     .no-print,
     .hide-in-print { display: none !important; }

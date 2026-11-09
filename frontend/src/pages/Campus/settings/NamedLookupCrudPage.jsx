@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Loader2, Pencil, Plus, Power, RefreshCw, Save, Trash2, X } from 'lucide-react'
+import { ChevronDown, ChevronUp, Loader2, Pencil, Plus, Power, RefreshCw, Save, Trash2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import CampusShell from '../../../components/campus/CampusShell.jsx'
 import { PermissionControl } from '../../../components/campus/CampusPermissionUi.jsx'
@@ -7,6 +7,8 @@ import { hasCampusPermission } from '../../../services/authService'
 
 const inputClass =
   'h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-[var(--campus-primary)] focus:ring-2 focus:ring-indigo-100'
+
+const SLIDE_MS = 280
 
 /**
  * Shared Active/Inactive named-lookup CRUD used by General Settings pages.
@@ -27,6 +29,10 @@ export default function NamedLookupCrudPage({
   mapFormFromRow,
   buildPayload,
   emptyForm = { name: '', isActive: true },
+  /** name (default) or priority */
+  sortBy = 'name',
+  /** (id, 'up' | 'down') => Promise — shows order arrows when set. */
+  moveRow,
   /** When set, create/edit/status/delete require this permission. */
   managePermission,
 }) {
@@ -37,24 +43,32 @@ export default function NamedLookupCrudPage({
   const [isEditorOpen, setIsEditorOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [movingId, setMovingId] = useState(null)
+  const [slide, setSlide] = useState(null)
   const [showActive, setShowActive] = useState(true)
 
-  const sortedRows = useMemo(
-    () =>
-      [...rows]
-        .filter((row) => Boolean(row.isActive) === showActive)
-        .sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''))),
-    [rows, showActive],
-  )
+  const sortedRows = useMemo(() => {
+    const filtered = rows.filter((row) => Boolean(row.isActive) === showActive)
+    if (sortBy === 'priority') {
+      return filtered.sort((a, b) => {
+        const ap = Number.isFinite(Number(a.priority)) ? Number(a.priority) : Number.MAX_SAFE_INTEGER
+        const bp = Number.isFinite(Number(b.priority)) ? Number(b.priority) : Number.MAX_SAFE_INTEGER
+        if (ap !== bp) return ap - bp
+        return (Number(a.id) || 0) - (Number(b.id) || 0)
+      })
+    }
+    return filtered.sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')))
+  }, [rows, showActive, sortBy])
 
-  const load = useCallback(async () => {
-    setIsLoading(true)
+  const load = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) setIsLoading(true)
     try {
-      setRows(await loadRows())
+      const data = await loadRows()
+      setRows(Array.isArray(data) ? data : [])
     } catch (error) {
       toast.error(error?.response?.data?.message || `Could not load ${title.toLowerCase()}.`)
     } finally {
-      setIsLoading(false)
+      if (!silent) setIsLoading(false)
     }
   }, [loadRows, title])
 
@@ -111,6 +125,61 @@ export default function NamedLookupCrudPage({
     }
   }
 
+  const shift = async (row, direction) => {
+    if (!moveRow || movingId != null) return
+    const index = sortedRows.findIndex((item) => item.id === row.id)
+    const nextIndex = index + (direction === 'up' ? -1 : 1)
+    const neighbor = sortedRows[nextIndex]
+    if (!neighbor || index < 0) return
+
+    const rowEl = document.querySelector(`tr[data-row-id="${row.id}"]`)
+    const offset = rowEl?.getBoundingClientRect().height || 34
+    setMovingId(row.id)
+    setSlide({ movingId: row.id, neighborId: neighbor.id, direction, offset })
+    await new Promise((resolve) => window.setTimeout(resolve, SLIDE_MS))
+
+    const visibleIds = sortedRows.map((item) => item.id)
+    const swappedVisible = [...visibleIds]
+    ;[swappedVisible[index], swappedVisible[nextIndex]] = [swappedVisible[nextIndex], swappedVisible[index]]
+    const visibleSet = new Set(visibleIds)
+    const full = [...rows].sort((a, b) => {
+      const ap = Number.isFinite(Number(a.priority)) ? Number(a.priority) : Number.MAX_SAFE_INTEGER
+      const bp = Number.isFinite(Number(b.priority)) ? Number(b.priority) : Number.MAX_SAFE_INTEGER
+      if (ap !== bp) return ap - bp
+      return (Number(a.id) || 0) - (Number(b.id) || 0)
+    })
+    let visibleCursor = 0
+    const orderedIds = full.map((item) => (visibleSet.has(item.id) ? swappedVisible[visibleCursor++] : item.id))
+    const rank = new Map(orderedIds.map((id, order) => [id, order + 1]))
+    setRows((current) => current.map((item) => (rank.has(item.id) ? { ...item, priority: rank.get(item.id) } : item)))
+    setSlide(null)
+
+    try {
+      const saved = await moveRow(row.id, direction, orderedIds)
+      if (Array.isArray(saved) && saved.length) setRows(saved)
+      else await load({ silent: true })
+    } catch (error) {
+      toast.error(error?.response?.data?.message || 'Could not change the order.')
+      await load({ silent: true })
+    } finally {
+      setMovingId(null)
+    }
+  }
+
+  const slideStyle = (rowId) => {
+    if (!slide) return undefined
+    const distance = slide.direction === 'down' ? slide.offset : -slide.offset
+    if (rowId !== slide.movingId && rowId !== slide.neighborId) return undefined
+    const delta = rowId === slide.movingId ? distance : -distance
+    return {
+      transform: `translateY(${delta}px)`,
+      transition: `transform ${SLIDE_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`,
+      position: 'relative',
+      zIndex: rowId === slide.movingId ? 2 : 1,
+      backgroundColor: rowId === slide.movingId ? '#eef2ff' : '#ffffff',
+    }
+  }
+
   const onDelete = async (row) => {
     if (!deleteRow) return
     if (!window.confirm(`Delete "${row.name}"?`)) return
@@ -156,7 +225,7 @@ export default function NamedLookupCrudPage({
             </div>
           </section>
 
-          <section className="overflow-hidden rounded-2xl bg-white shadow-sm">
+          <section className={`rounded-2xl bg-white shadow-sm ${slide ? 'overflow-visible' : 'overflow-hidden'}`}>
             <table className="w-full text-left text-[13px] leading-snug">
               <thead>
                 <tr>
@@ -170,20 +239,50 @@ export default function NamedLookupCrudPage({
                 </tr>
               </thead>
               <tbody>
-                {sortedRows.map((row, index) => (
-                  <tr key={row.id} className="border-t border-slate-100 hover:bg-slate-50">
-                    <td className="px-3 py-1.5 text-slate-500">{index + 1}</td>
-                    <td className="px-3 py-1.5 font-semibold text-slate-900">{row.name}</td>
+                {sortedRows.map((row, index) => {
+                  const motion = slideStyle(row.id)
+                  return (
+                  <tr key={row.id} data-row-id={row.id} className="border-t border-slate-100 hover:bg-slate-50">
+                    <td className="px-3 py-1.5 text-slate-500" style={motion}>{index + 1}</td>
+                    <td className="px-3 py-1.5 font-semibold text-slate-900" style={motion}>{row.name}</td>
                     {extraColumns?.map((col) => (
-                      <td key={col.key} className="px-3 py-1.5 text-slate-700">{col.render(row)}</td>
+                      <td key={col.key} className="px-3 py-1.5 text-slate-700" style={motion}>{col.render(row)}</td>
                     ))}
-                    <td className="px-3 py-1.5">
+                    <td className="px-3 py-1.5" style={motion}>
                       <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${row.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'}`}>
                         {row.isActive ? 'Active' : 'Inactive'}
                       </span>
                     </td>
-                    <td className="px-3 py-1.5">
+                    <td className="px-3 py-1.5" style={motion}>
                       <div className="flex justify-end gap-1">
+                        {moveRow ? (
+                          <>
+                            <PermissionControl allowed={canManage}>
+                              <button
+                                type="button"
+                                disabled={index === 0 || movingId != null}
+                                onClick={() => void shift(row, 'up')}
+                                className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 text-slate-600 disabled:cursor-not-allowed disabled:opacity-30"
+                                aria-label="Move up"
+                                title="Move up"
+                              >
+                                <ChevronUp size={15} />
+                              </button>
+                            </PermissionControl>
+                            <PermissionControl allowed={canManage}>
+                              <button
+                                type="button"
+                                disabled={index === sortedRows.length - 1 || movingId != null}
+                                onClick={() => void shift(row, 'down')}
+                                className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 text-slate-600 disabled:cursor-not-allowed disabled:opacity-30"
+                                aria-label="Move down"
+                                title="Move down"
+                              >
+                                <ChevronDown size={15} />
+                              </button>
+                            </PermissionControl>
+                          </>
+                        ) : null}
                         <PermissionControl allowed={canManage}>
                         <button type="button" onClick={() => startEdit(row)} className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 text-[var(--campus-primary)]" aria-label="Edit">
                           <Pencil size={15} />
@@ -204,7 +303,8 @@ export default function NamedLookupCrudPage({
                       </div>
                     </td>
                   </tr>
-                ))}
+                  )
+                })}
               </tbody>
             </table>
             {!isLoading && sortedRows.length === 0 ? (

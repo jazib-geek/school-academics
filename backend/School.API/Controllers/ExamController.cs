@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using School.API.Filters;
+using School.Application.Common;
 using School.Application.DTOs;
 using School.Application.Interfaces;
 
@@ -22,7 +23,80 @@ public class ExamController : ControllerBase
     public async Task<IActionResult> GetExamTypes()
     {
         var types = await _examService.GetExamTypesAsync();
+        if (IsParentLogin())
+            types = types.Take(5).ToList();
         return Ok(types);
+    }
+
+    private bool IsParentLogin()
+    {
+        if (!string.IsNullOrEmpty(User.FindFirst(AuthSourceClaims.ClaimType)?.Value))
+            return false;
+
+        return int.TryParse(User.FindFirst("FamilyID")?.Value, out var familyId) && familyId > 0;
+    }
+
+    [HttpGet("types/manage")]
+    public async Task<IActionResult> GetManageExamTypes(CancellationToken cancellationToken) =>
+        Ok(ApiResponse<IReadOnlyList<ExamTypeManageDto>>.SuccessResponse(
+            await _examService.GetManageExamTypesAsync(cancellationToken)));
+
+    [HttpPost("types")]
+    public Task<IActionResult> CreateExamType([FromBody] ExamTypeUpsertDto request, CancellationToken cancellationToken) =>
+        ExecuteExamTypeCreate(() => _examService.CreateExamTypeAsync(request, cancellationToken), "Exam type created.");
+
+    [HttpPost("types/{id:int}/update")]
+    public Task<IActionResult> UpdateExamType(int id, [FromBody] ExamTypeUpsertDto request, CancellationToken cancellationToken) =>
+        ExecuteExamTypeUpdate(() => _examService.UpdateExamTypeAsync(id, request, cancellationToken), "Exam type updated.");
+
+    [HttpPost("types/{id:int}/status")]
+    public async Task<IActionResult> SetExamTypeStatus(int id, [FromBody] StatusUpdateDto request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _examService.SetExamTypeStatusAsync(id, request.IsActive, cancellationToken);
+            return Ok(ApiResponse<object>.SuccessResponse(new { }, request.IsActive ? "Exam type activated." : "Exam type deactivated."));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiResponse<object>.FailureResponse(ex.Message));
+        }
+    }
+
+    [HttpPost("types/{id:int}/delete")]
+    public async Task<IActionResult> DeleteExamType(int id, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _examService.DeleteExamTypeAsync(id, cancellationToken);
+            return Ok(ApiResponse<object>.SuccessResponse(new { }, "Exam type deleted."));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiResponse<object>.FailureResponse(ex.Message));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(ApiResponse<object>.FailureResponse(ex.Message));
+        }
+    }
+
+    [HttpPost("types/{id:int}/move")]
+    public async Task<IActionResult> MoveExamType(int id, [FromBody] MoveExamTypeRequestDto request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var rows = await _examService.MoveExamTypeAsync(id, request?.Direction ?? string.Empty, request?.OrderedIds, cancellationToken);
+            return Ok(ApiResponse<IReadOnlyList<ExamTypeManageDto>>.SuccessResponse(rows, "Order updated."));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiResponse<object>.FailureResponse(ex.Message));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ApiResponse<object>.FailureResponse(ex.Message));
+        }
     }
 
     [HttpPost("entry/load")]
@@ -316,5 +390,41 @@ public class ExamController : ControllerBase
             return NotFound(new { message = "No exam result found for this student and exam type." });
 
         return Ok(result);
+    }
+
+    private async Task<IActionResult> ExecuteExamTypeCreate<T>(Func<Task<T>> action, string message)
+    {
+        try
+        {
+            return Ok(ApiResponse<T>.SuccessResponse(await action(), message));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ApiResponse<object>.FailureResponse(ex.Message));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(ApiResponse<object>.FailureResponse(ex.Message));
+        }
+    }
+
+    private async Task<IActionResult> ExecuteExamTypeUpdate<T>(Func<Task<T>> action, string message)
+    {
+        try
+        {
+            return Ok(ApiResponse<T>.SuccessResponse(await action(), message));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiResponse<object>.FailureResponse(ex.Message));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ApiResponse<object>.FailureResponse(ex.Message));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(ApiResponse<object>.FailureResponse(ex.Message));
+        }
     }
 }

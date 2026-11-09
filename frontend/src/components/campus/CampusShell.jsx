@@ -206,6 +206,7 @@ export const CAMPUS_SHELL_NAV = [
         ],
       },
       { label: 'Exam Mark Sheet', to: '/campus/exams/mark-sheet', permission: 'rpt_exam' },
+      { label: 'Exam Types', to: '/campus/exams/types', permission: 'exam_type' },
     ],
   },
   {

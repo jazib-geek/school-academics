@@ -58,6 +58,7 @@ import StudentActivityLogsModal from './StudentActivityLogsModal.jsx'
 import StudentAttendanceModal from './StudentAttendanceModal.jsx'
 import StudentConductModal from './StudentConductModal.jsx'
 import SecurityDepositRefundModal from './SecurityDepositRefundModal.jsx'
+import AcademicProgressPrintDialog from '../../../components/campus/exam-reports/AcademicProgressPrintDialog.jsx'
 
 const initialFilters = {
   class: '',
@@ -1204,6 +1205,7 @@ function StudentsPage() {
   const canViewLogs = hasCampusPermission('view_activity_logs')
   const canActivateStudent = hasCampusPermission('activate_std')
   const canViewProfile = hasCampusPermission('rpt_std_profile') || canListStudents
+  const canPrintResultCard = hasCampusPermission('rpt_exam_resultcard_single')
   const canViewConduct = hasCampusPermission('view_student_conduct')
   const [filters, setFilters] = useState(initialFilters)
   const filtersRef = useRef(filters)
@@ -1243,6 +1245,7 @@ function StudentsPage() {
   const [error, setError] = useState('')
   const [profileModal, setProfileModal] = useState(null)
   const [securityRefundStudent, setSecurityRefundStudent] = useState(null)
+  const [resultCardStudent, setResultCardStudent] = useState(null)
   const [isProfileLoading, setIsProfileLoading] = useState(false)
   const [isProfileLedgerLoading, setIsProfileLedgerLoading] = useState(false)
   const [activationModal, setActivationModal] = useState(null)
@@ -2417,6 +2420,20 @@ function StudentsPage() {
                 Profile
               </button>
             </PermissionControl>
+            <PermissionControl allowed={canPrintResultCard} className="block w-full">
+              <button
+                type="button"
+                role="menuitem"
+                className="flex w-full cursor-pointer items-center gap-2 whitespace-nowrap px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                onClick={() => {
+                  closeActionMenu()
+                  setResultCardStudent(openActionStudent)
+                }}
+              >
+                <Printer size={16} className="shrink-0 text-sky-700" />
+                Result card
+              </button>
+            </PermissionControl>
             <PermissionControl allowed={canReceiveFee} className="block w-full">
               <button
                 type="button"
@@ -2558,6 +2575,14 @@ function StudentsPage() {
 
       {conductModal ? (
         <StudentConductModal student={conductModal} onClose={closeConduct} />
+      ) : null}
+
+      {resultCardStudent ? (
+        <AcademicProgressPrintDialog
+          studentId={resultCardStudent.reg_Id}
+          studentName={resultCardStudent.fullName}
+          onClose={() => setResultCardStudent(null)}
+        />
       ) : null}
 
       {securityRefundStudent ? (

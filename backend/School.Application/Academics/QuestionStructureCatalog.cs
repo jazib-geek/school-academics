@@ -17,6 +17,7 @@ public static class QuestionStructureCatalog
     public const string KindQuestionAnswer = "question-answer";
     public const string KindSummary = "summary";
     public const string KindWordsPhrasesIdioms = "words-phrases-idioms";
+    public const string KindLettersApplications = "letters-applications";
     public const string KindSpellingTable = "spelling-table";
     public const string KindWordList = "word-list";
     public const string KindFillBlanks = "fill-blanks";
@@ -36,7 +37,7 @@ public static class QuestionStructureCatalog
         [ProfileEnglish] =
         [
             KindChoiceSet, KindVerbs, KindSpelling, KindSynonymsAntonyms, KindGrammar,
-            KindQuestionAnswer, KindSummary, KindWordsPhrasesIdioms,
+            KindQuestionAnswer, KindSummary, KindWordsPhrasesIdioms, KindLettersApplications,
             KindSpellingTable, KindWordList, KindFillBlanks,
             KindClassifyLine, KindSentencePair, KindPassageSet, KindPrompt
         ],
@@ -68,9 +69,10 @@ public static class QuestionStructureCatalog
         [KindSpelling] = "Choose the correct spelling.",
         [KindSynonymsAntonyms] = "Choose the correct synonym or antonym.",
         [KindGrammar] = "Choose the correct option.",
-        [KindQuestionAnswer] = "Choose the correct answer.",
-        [KindSummary] = "Choose the correct summary.",
-        [KindWordsPhrasesIdioms] = "Choose the correct word, phrase, or idiom.",
+        [KindQuestionAnswer] = "Answer the following questions.",
+        [KindSummary] = "Write a summary.",
+        [KindWordsPhrasesIdioms] = "Explain the following words, phrases, or idioms.",
+        [KindLettersApplications] = "Write a letter or an application.",
         [KindSpellingTable] = "Choose the correct spelling.",
         [KindWordList] = "Write meanings of these words.",
         [KindFillBlanks] = "Fill in the blanks with suitable words.",
@@ -209,14 +211,17 @@ public static class QuestionStructureCatalog
 
     private static readonly HashSet<string> ChoiceBodyKinds = new(StringComparer.OrdinalIgnoreCase)
     {
-        KindChoiceSet, KindVerbs, KindSpelling, KindSynonymsAntonyms, KindGrammar,
-        KindQuestionAnswer, KindSummary, KindWordsPhrasesIdioms
+        KindChoiceSet, KindVerbs, KindSpelling, KindSynonymsAntonyms, KindGrammar
+    };
+
+    private static readonly HashSet<string> LineBodyKinds = new(StringComparer.OrdinalIgnoreCase)
+    {
+        KindQuestionAnswer, KindSummary, KindWordsPhrasesIdioms, KindLettersApplications
     };
 
     public static readonly string[] ObjectiveKinds =
     [
-        KindChoiceSet, KindVerbs, KindSpelling, KindSynonymsAntonyms, KindGrammar,
-        KindQuestionAnswer, KindSummary, KindWordsPhrasesIdioms, KindSpellingTable
+        KindChoiceSet, KindVerbs, KindSpelling, KindSynonymsAntonyms, KindGrammar, KindSpellingTable
     ];
 
     public static bool IsChoiceBodyKind(string? kind) =>
@@ -266,6 +271,11 @@ public static class QuestionStructureCatalog
                 return RequireItems(root, "items", static item =>
                     Text(item, "text").Length > 0 &&
                     Options(item).Count(static option => option.Length > 0) >= 2);
+            }
+
+            if (LineBodyKinds.Contains(normalizedKind))
+            {
+                return RequireStrings(root, "lines");
             }
 
             return normalizedKind switch

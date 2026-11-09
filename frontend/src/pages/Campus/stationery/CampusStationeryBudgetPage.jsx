@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowLeft, Eye, Loader2, Pencil, Plus, RefreshCw, Save, Search, Trash2, Wallet, X } from 'lucide-react'
+import { ArrowLeft, Eye, Loader2, Pencil, Plus, Printer, RefreshCw, Save, Search, Trash2, Wallet, X } from 'lucide-react'
 import { toast } from 'sonner'
 import CampusShell from '../../../components/campus/CampusShell.jsx'
+import CampusReportPrintHeader from '../../../components/campus/CampusReportPrintHeader.jsx'
 import { PermissionControl } from '../../../components/campus/CampusPermissionUi.jsx'
 import { hasCampusPermission } from '../../../services/authService'
+import { CAMPUS_REPORT_PRINT_STYLES, formatReportPrintMoney } from '../../../utils/campusReportPrint.js'
 import {
   createStationeryBudget,
   getStationeryBudget,
@@ -45,6 +47,21 @@ function formatSigned(value) {
   return n < 0 ? `-${text}` : text
 }
 
+function monthLabel(value) {
+  const [yearText, monthText] = String(value || '').split('-')
+  const year = Number(yearText)
+  const month = Number(monthText)
+  if (!year || !month) return ''
+  return new Date(year, month - 1, 1).toLocaleString(undefined, { month: 'long', year: 'numeric' })
+}
+
+function lineAmount(line) {
+  const qty = Number(line.quantity)
+  const price = Number(line.unitPrice)
+  if (!(qty > 0) || !(price > 0)) return 0
+  return qty * price
+}
+
 function budgetEndIso(value) {
   const text = String(value || '')
   return text.length >= 10 ? text.slice(0, 10) : ''
@@ -73,6 +90,7 @@ function CampusStationeryBudgetPage() {
   const [notes, setNotes] = useState('')
   const [lines, setLines] = useState([])
   const [itemSearch, setItemSearch] = useState('')
+  const [lineSort, setLineSort] = useState('high')
   const [focusItemId, setFocusItemId] = useState(null)
   const qtyRefs = useRef(new Map())
 
@@ -89,6 +107,22 @@ function CampusStationeryBudgetPage() {
       `${item.name} ${item.category} ${item.unit}`.toLowerCase().includes(query),
     )
   }, [activeItems, itemSearch])
+
+  const sortedLines = useMemo(() => {
+    const copy = [...lines]
+    copy.sort((a, b) => {
+      const nameA = itemById.get(a.itemId)?.name || ''
+      const nameB = itemById.get(b.itemId)?.name || ''
+      if (lineSort === 'alpha') return nameA.localeCompare(nameB)
+      const diff = lineAmount(a) - lineAmount(b)
+      if (diff !== 0) return lineSort === 'low' ? diff : -diff
+      return nameA.localeCompare(nameB)
+    })
+    return copy
+  }, [itemById, lineSort, lines])
+
+  const periodLabel = PERIODS.find((option) => option.value === period)?.label || period
+  const printSubtitle = [monthLabel(monthValue), periodLabel, notes.trim()].filter(Boolean).join(' · ')
 
   const liveTotal = useMemo(
     () =>
@@ -269,9 +303,15 @@ function CampusStationeryBudgetPage() {
   }
 
   return (
-    <CampusShell headerContext="Store budget">
+    <CampusShell
+      headerContext="Store budget"
+      rowClassName="print-main-wrap flex min-h-screen w-full"
+      asideClassName="no-print"
+      headerClassName="no-print"
+    >
+      <style>{CAMPUS_REPORT_PRINT_STYLES}</style>
       {!isEditorOpen ? (
-        <div className="min-h-screen bg-slate-100 p-4 pt-[4.25rem] md:p-6 md:pt-[4.5rem]">
+        <div className="no-print min-h-screen bg-slate-100 p-4 pt-[4.25rem] md:p-6 md:pt-[4.5rem]">
         <div className="mx-auto max-w-6xl space-y-4">
           <section className="rounded-2xl bg-white p-4 shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-3">
@@ -346,7 +386,7 @@ function CampusStationeryBudgetPage() {
         </div>
       </div>
       ) : (
-      <form onSubmit={submit} className="flex h-screen flex-col bg-slate-100 pt-[4.25rem] md:pt-[4.5rem]">
+      <form onSubmit={submit} className="no-print flex h-screen flex-col bg-slate-100 pt-[4.25rem] md:pt-[4.5rem]">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3">
             <div className="flex items-center gap-3">
               <button type="button" onClick={() => setIsEditorOpen(false)} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700">
@@ -356,6 +396,13 @@ function CampusStationeryBudgetPage() {
             </div>
             <div className="flex items-center gap-3">
               <p className="text-sm font-semibold text-slate-900">Estimate {formatMoney(liveTotal)}</p>
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="inline-flex h-9 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700"
+              >
+                <Printer size={16} /> Print
+              </button>
               <button type="submit" disabled={isSaving} className="inline-flex h-9 items-center gap-2 rounded-lg bg-[var(--campus-primary)] px-4 text-sm font-semibold text-white">
                 {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
                 Save budget
@@ -424,8 +471,20 @@ function CampusStationeryBudgetPage() {
               </div>
             </section>
             <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white">
-              <div className="border-b border-slate-100 px-3 py-2 text-xs font-semibold uppercase text-slate-500">
-                Selected items
+              <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-3 py-2">
+                <span className="text-xs font-semibold uppercase text-slate-500">Selected items</span>
+                <label className="flex items-center gap-2 text-xs font-medium text-slate-600">
+                  Sort
+                  <select
+                    className="h-8 rounded-lg border border-slate-300 bg-white px-2 text-xs font-medium text-slate-700 outline-none focus:border-[var(--campus-primary)]"
+                    value={lineSort}
+                    onChange={(e) => setLineSort(e.target.value)}
+                  >
+                    <option value="high">High to low</option>
+                    <option value="low">Low to high</option>
+                    <option value="alpha">Alphabetically</option>
+                  </select>
+                </label>
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto">
                 {lines.length === 0 ? (
@@ -449,7 +508,7 @@ function CampusStationeryBudgetPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {lines.map((line) => {
+                      {sortedLines.map((line) => {
                         const item = itemById.get(line.itemId)
                         const amount = Number(line.quantity) > 0 && Number(line.unitPrice) > 0
                           ? Number(line.quantity) * Number(line.unitPrice)
@@ -506,8 +565,54 @@ function CampusStationeryBudgetPage() {
       </form>
       )}
 
+      {isEditorOpen ? (
+        <div className="print-only print-sheet">
+          <CampusReportPrintHeader title="STORE BUDGET" subtitle={printSubtitle} />
+          <table className="legacy-print-table">
+            <colgroup>
+              <col style={{ width: '34%' }} />
+              <col style={{ width: '18%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '16%' }} />
+              <col style={{ width: '20%' }} />
+            </colgroup>
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th>Category</th>
+                <th>Qty</th>
+                <th>Unit price</th>
+                <th>Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedLines.length === 0 ? (
+                <tr>
+                  <td colSpan={5}>No items yet.</td>
+                </tr>
+              ) : sortedLines.map((line) => {
+                const item = itemById.get(line.itemId)
+                return (
+                  <tr key={line.itemId}>
+                    <td>{item?.name || 'Item'}</td>
+                    <td>{item?.category || ''}</td>
+                    <td style={{ textAlign: 'right' }}>{line.quantity || '—'}</td>
+                    <td style={{ textAlign: 'right' }}>{line.unitPrice ? formatReportPrintMoney(line.unitPrice) : '—'}</td>
+                    <td style={{ textAlign: 'right' }}>{formatReportPrintMoney(lineAmount(line))}</td>
+                  </tr>
+                )
+              })}
+              <tr>
+                <td colSpan={4} style={{ fontWeight: 700, background: '#fff' }}>Estimate</td>
+                <td style={{ textAlign: 'right', fontWeight: 700, background: '#fff' }}>{formatReportPrintMoney(liveTotal)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+
       {detail || isDetailLoading ? (
-        <div className="fixed inset-0 z-[80] grid place-items-center bg-slate-950/45 p-4 backdrop-blur-sm">
+        <div className="no-print fixed inset-0 z-[80] grid place-items-center bg-slate-950/45 p-4 backdrop-blur-sm">
           <div role="dialog" aria-modal="true" className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
             <div className="flex items-start justify-between border-b border-slate-100 px-5 py-4">
               <div>

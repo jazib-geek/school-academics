@@ -100,6 +100,7 @@ export const CAMPUS_ROUTE_PERMISSIONS = [
   { prefix: '/campus/students/transfer', permission: 'trasnfer_std' },
   { prefix: '/campus/students/update-fee', permission: 'update_fee' },
   { prefix: '/campus/students/increment-fee', permission: 'update_fee' },
+  { prefix: '/campus/exams/types', permission: 'exam_type' },
   { prefix: '/campus/exams/entry', permission: 'create_exam' },
   { prefix: '/campus/exams/detailed-entry', permission: 'view_detailed_marks' },
   {

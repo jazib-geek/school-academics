@@ -1,5 +1,5 @@
 import { Plus, Trash2 } from 'lucide-react'
-import { findStructure, removeBodyItem, pushBodyItem, setBodyValue } from './languageQuestionStructures'
+import { findStructure, isLineBodyKind, removeBodyItem, pushBodyItem, setBodyValue } from './languageQuestionStructures'
 
 const fieldClass = 'w-full rounded-lg border border-slate-300 px-3 py-1.5 text-sm'
 
@@ -68,6 +68,26 @@ export default function LanguageQuestionFields({ kind, body, onChange, disabled,
                 </label>
               ))}
             </div>
+          </div>
+        ))}
+      </FieldList>
+    )
+  }
+
+  if (isLineBodyKind(kind)) {
+    const lines = value.lines || []
+    return (
+      <FieldList title="Lines" addLabel="Add line" onAdd={() => onChange(pushBodyItem(value, 'lines', kind))}>
+        {lines.map((line, index) => (
+          <div key={index} className="flex items-center gap-2">
+            <input
+              value={line || ''}
+              onChange={(event) => setPath(`lines.${index}`, event.target.value)}
+              placeholder="Question"
+              className={fieldClass}
+              {...bind(`lines.${index}`)}
+            />
+            <RemoveButton label="Remove line" onClick={() => onChange(removeBodyItem(value, 'lines', index))} />
           </div>
         ))}
       </FieldList>

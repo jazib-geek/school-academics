@@ -36,6 +36,7 @@ import {
   emptyBody,
   headingForKind,
   isLanguageProfile,
+  isLineBodyKind,
   kindsForProfile,
   languageKindGroups,
   parseBody,
@@ -746,7 +747,10 @@ function AcademicQuestionCatalogPage() {
     setError('')
     setFormError('')
     if (isLanguageProfile(catalogProfile) && item.structureKind && item.structureKind !== 'standard') {
-      const body = parseBody(item.bodyJson) || emptyBody(item.structureKind)
+      const parsed = parseBody(item.bodyJson)
+      const body = isLineBodyKind(item.structureKind) && !Array.isArray(parsed?.lines)
+        ? emptyBody(item.structureKind)
+        : parsed || emptyBody(item.structureKind)
       setForm({
         id: String(item.id),
         type: item.type,

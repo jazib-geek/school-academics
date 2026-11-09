@@ -44,7 +44,7 @@ function AcademicProgressCard({ card, isLast }) {
       </div>
 
       <div className="exam-ap-student">
-        <table>
+        <table className="legacy-print-table">
           <tbody>
             <tr>
               <td style={{ width: '10%' }}>Serial</td>
@@ -72,7 +72,18 @@ function AcademicProgressCard({ card, isLast }) {
       </div>
 
       <div className="exam-ap-marks">
-        <table>
+        <table className="legacy-print-table">
+          <colgroup>
+            <col style={{ width: '4%' }} />
+            <col style={{ width: '28%' }} />
+            {examTypes.flatMap((examType) => {
+              const width = `${68 / Math.max(examTypes.length * 2, 1)}%`
+              return [
+                <col key={`${examType.examTypeId}-tot`} style={{ width }} />,
+                <col key={`${examType.examTypeId}-obt`} style={{ width }} />,
+              ]
+            })}
+          </colgroup>
           <tbody>
             <tr className="exam-ap-bold">
               <td colSpan={2} rowSpan={2}>
@@ -141,7 +152,7 @@ function AcademicProgressCard({ card, isLast }) {
               ['Remarks', 'remarks', ''],
             ].map(([label, field, suffix]) => (
               <tr key={field}>
-                <td colSpan={2} className="exam-ap-bold exam-ap-right">
+                <td colSpan={2} className={`exam-ap-bold exam-ap-right${field === 'remarks' ? ' exam-ap-remarks-label' : ''}`}>
                   {label}
                 </td>
                 {examTypes.map((examType) => (
@@ -153,23 +164,32 @@ function AcademicProgressCard({ card, isLast }) {
             ))}
             <tr className="exam-ap-dossier-row">
               <td colSpan={2} className="exam-ap-dossier">
-                <i className="exam-ap-bold exam-ap-block">Personal Dossier</i>
-                <table>
+                <i className="exam-ap-dossier-title">Personal Dossier</i>
+                <table className="legacy-print-table exam-ap-dossier-grid">
+                  <colgroup>
+                    <col style={{ width: '34%' }} />
+                    <col style={{ width: '22%' }} />
+                    <col style={{ width: '16%' }} />
+                    <col style={{ width: '28%' }} />
+                  </colgroup>
                   <tbody>
                     <tr>
-                      <td className="exam-ap-left" style={{ width: '20%' }} />
+                      <td />
                       <td>Excellent</td>
                       <td>Good</td>
                       <td className="exam-ap-no-right">Satisfactory</td>
                     </tr>
-                    {DOSSIER_ROWS.map((label) => (
-                      <tr key={label}>
-                        <td className="exam-ap-left">{label}</td>
-                        <td />
-                        <td />
-                        <td className="exam-ap-no-right" />
-                      </tr>
-                    ))}
+                    {DOSSIER_ROWS.map((label, rowIndex) => {
+                      const last = rowIndex === DOSSIER_ROWS.length - 1
+                      return (
+                        <tr key={label}>
+                          <td className={`exam-ap-dossier-label${last ? ' exam-ap-no-bottom' : ''}`}>{label}</td>
+                          <td className={last ? 'exam-ap-no-bottom' : undefined} />
+                          <td className={last ? 'exam-ap-no-bottom' : undefined} />
+                          <td className={`exam-ap-no-right${last ? ' exam-ap-no-bottom' : ''}`} />
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               </td>

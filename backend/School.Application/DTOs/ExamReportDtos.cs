@@ -11,6 +11,12 @@ public class ExamExecutiveSnapshotDto
     public int ActiveClassCount { get; set; }
 }
 
+public class AcademicProgressSubjectFlagsDto
+{
+    public bool HasDrawing { get; set; }
+    public bool HasStemp { get; set; }
+}
+
 public class AcademicProgressCardDto
 {
     public int StudentId { get; set; }

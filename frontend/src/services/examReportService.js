@@ -15,6 +15,16 @@ export const runSmartExamReport = async (reportId, parameters = {}) => {
   return response?.data?.data
 }
 
+export const getAcademicProgressFlags = async ({ studentId, sectionId } = {}) => {
+  const response = await api.get('/api/examreports/smart/progress-flags', {
+    params: {
+      ...(studentId ? { studentId } : {}),
+      ...(sectionId ? { sectionId } : {}),
+    },
+  })
+  return response?.data?.data || { hasDrawing: false, hasStemp: false }
+}
+
 export const getExamReportClassSubjects = async (sectionId) => {
   const response = await api.get('/api/examreports/smart/class-subjects', {
     params: { sectionId },

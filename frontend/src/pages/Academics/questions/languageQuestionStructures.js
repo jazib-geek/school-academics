@@ -17,6 +17,18 @@ function choiceStructure(id, label, defaultHeading, profiles = ['english']) {
     empty: () => ({ items: [choiceItem()] }),
   }
 }
+
+function lineStructure(id, label, defaultHeading) {
+  return {
+    id,
+    label,
+    defaultHeading,
+    profiles: ['english'],
+    coarseType: 'laq',
+    editor: 'line',
+    empty: () => ({ lines: [''] }),
+  }
+}
 const spellingRow = () => ({ options: ['', '', '', ''] })
 const lineItem = () => ({ text: '', marked: '' })
 const pairItem = () => ({ left: '', right: '' })
@@ -29,9 +41,10 @@ export const LANGUAGE_STRUCTURES = Object.freeze([
   choiceStructure('spelling', 'Spelling', 'Choose the correct spelling.'),
   choiceStructure('synonyms-antonyms', 'Synonyms / Antonyms', 'Choose the correct synonym or antonym.'),
   choiceStructure('grammar', 'Grammar', 'Choose the correct option.'),
-  choiceStructure('question-answer', 'Question / Answer', 'Choose the correct answer.'),
-  choiceStructure('summary', 'Summary', 'Choose the correct summary.'),
-  choiceStructure('words-phrases-idioms', 'Words / Phrase / Idioms', 'Choose the correct word, phrase, or idiom.'),
+  lineStructure('question-answer', 'Question / Answer', 'Answer the following questions.'),
+  lineStructure('summary', 'Summary', 'Write a summary.'),
+  lineStructure('words-phrases-idioms', 'Words / Phrase / Idioms', 'Explain the following words, phrases, or idioms.'),
+  lineStructure('letters-applications', 'Letters / Applications', 'Write a letter or an application.'),
   {
     id: 'spelling-table',
     label: 'Spelling table',
@@ -110,7 +123,8 @@ export function languageKindGroups(profile) {
   const kinds = kindsForProfile(profile)
   return [
     { id: 'options', label: 'Options', kinds: kinds.filter((item) => item.editor === 'choice') },
-    { id: 'other', label: 'Other', kinds: kinds.filter((item) => item.editor !== 'choice') },
+    { id: 'lines', label: 'Written', kinds: kinds.filter((item) => item.editor === 'line') },
+    { id: 'other', label: 'Other', kinds: kinds.filter((item) => item.editor !== 'choice' && item.editor !== 'line') },
   ].filter((group) => group.kinds.length > 0)
 }
 
@@ -139,6 +153,10 @@ export function headingForKind(kind, savedMap, profile) {
 
 export function isChoiceBodyKind(kind) {
   return findStructure(kind)?.editor === 'choice'
+}
+
+export function isLineBodyKind(kind) {
+  return findStructure(kind)?.editor === 'line'
 }
 
 export function coarseTypeForKind(kind) {
@@ -181,8 +199,14 @@ function countChoiceItems(body) {
   return items.filter((item) => `${item?.text ?? ''}`.trim().length > 0).length
 }
 
+function countLines(body) {
+  const lines = Array.isArray(body?.lines) ? body.lines : []
+  return lines.filter((line) => `${line ?? ''}`.trim().length > 0).length
+}
+
 export function countExamItems(kind, body) {
   if (isChoiceBodyKind(kind)) return countChoiceItems(body)
+  if (isLineBodyKind(kind)) return countLines(body)
   const value = body || {}
   const list = (name) => (Array.isArray(value[name]) ? value[name] : [])
   const filled = (text) => `${text ?? ''}`.trim().length > 0
@@ -241,6 +265,10 @@ export function summarizeBody(kind, body) {
     const count = Array.isArray(body?.items) ? body.items.length : 0
     return `${count} choices`
   }
+  if (isLineBodyKind(kind)) {
+    const count = Array.isArray(body?.lines) ? body.lines.length : 0
+    return `${count} lines`
+  }
   const value = body || {}
   const count = (list) => (Array.isArray(list) ? list.length : 0)
   switch (kind) {
@@ -276,6 +304,10 @@ function validateChoiceBody(body) {
 
 export function validateLanguageBody(kind, body) {
   if (isChoiceBodyKind(kind)) return validateChoiceBody(body)
+  if (isLineBodyKind(kind)) {
+    const lines = Array.isArray(body?.lines) ? body.lines : []
+    return lines.some((line) => filled(line)) ? '' : 'Add at least one line.'
+  }
   const value = body || {}
   const list = (name) => (Array.isArray(value[name]) ? value[name] : [])
   switch (kind) {

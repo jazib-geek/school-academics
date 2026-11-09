@@ -32,6 +32,155 @@ public class ExamService : IExamService
             .ToListAsync();
     }
 
+    public async Task<IReadOnlyList<ExamTypeManageDto>> GetManageExamTypesAsync(CancellationToken cancellationToken = default)
+    {
+        var rows = await _context.ExamTypes.AsNoTracking()
+            .OrderBy(x => x.Priority == null)
+            .ThenBy(x => x.Priority)
+            .ThenBy(x => x.ID)
+            .ToListAsync(cancellationToken);
+        return rows.Select(MapExamType).ToList();
+    }
+
+    public async Task<ExamTypeManageDto> CreateExamTypeAsync(ExamTypeUpsertDto request, CancellationToken cancellationToken = default)
+    {
+        var name = RequireExamTypeName(request.Name);
+        await EnsureExamTypeNameAvailableAsync(name, null, cancellationToken);
+        var maxPriority = await _context.ExamTypes.MaxAsync(x => (int?)x.Priority, cancellationToken) ?? 0;
+        var entity = new ExamType
+        {
+            ExamTypeName = name,
+            IsActive = request.IsActive,
+            Priority = maxPriority + 1,
+            Exams = new List<Exam>()
+        };
+        _context.ExamTypes.Add(entity);
+        await _context.SaveChangesAsync(cancellationToken);
+        return MapExamType(entity);
+    }
+
+    public async Task<ExamTypeManageDto> UpdateExamTypeAsync(int id, ExamTypeUpsertDto request, CancellationToken cancellationToken = default)
+    {
+        var entity = await _context.ExamTypes.FirstOrDefaultAsync(x => x.ID == id, cancellationToken)
+            ?? throw new KeyNotFoundException("Exam type not found.");
+        var name = RequireExamTypeName(request.Name);
+        await EnsureExamTypeNameAvailableAsync(name, id, cancellationToken);
+        entity.ExamTypeName = name;
+        entity.IsActive = request.IsActive;
+        await _context.SaveChangesAsync(cancellationToken);
+        return MapExamType(entity);
+    }
+
+    public async Task SetExamTypeStatusAsync(int id, bool isActive, CancellationToken cancellationToken = default)
+    {
+        var entity = await _context.ExamTypes.FirstOrDefaultAsync(x => x.ID == id, cancellationToken)
+            ?? throw new KeyNotFoundException("Exam type not found.");
+        entity.IsActive = isActive;
+        await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task DeleteExamTypeAsync(int id, CancellationToken cancellationToken = default)
+    {
+        var usedOnExams = await _context.Exams.AsNoTracking().AnyAsync(x => x.ExamTypeID == id, cancellationToken);
+        var usedOnComponents = await _context.ExamSubjectComponentHeaders.AsNoTracking()
+            .AnyAsync(x => x.ExamTypeID == id, cancellationToken);
+        if (usedOnExams || usedOnComponents)
+            throw new InvalidOperationException("This exam type is already used and cannot be deleted.");
+
+        var entity = await _context.ExamTypes.FirstOrDefaultAsync(x => x.ID == id, cancellationToken)
+            ?? throw new KeyNotFoundException("Exam type not found.");
+        _context.ExamTypes.Remove(entity);
+        await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<ExamTypeManageDto>> MoveExamTypeAsync(
+        int id,
+        string direction,
+        IReadOnlyList<int>? orderedIds,
+        CancellationToken cancellationToken = default)
+    {
+        var rows = await _context.ExamTypes.ToListAsync(cancellationToken);
+        if (rows.All(x => x.ID != id))
+            throw new KeyNotFoundException("Exam type not found.");
+
+        var byId = rows.ToDictionary(x => x.ID);
+        var ordered = new List<ExamType>();
+        if (orderedIds is { Count: > 0 })
+        {
+            foreach (var orderedId in orderedIds.Distinct())
+            {
+                if (byId.TryGetValue(orderedId, out var row))
+                    ordered.Add(row);
+            }
+        }
+
+        if (ordered.Count != rows.Count)
+        {
+            var step = (direction ?? string.Empty).Trim().ToLowerInvariant() switch
+            {
+                "up" => -1,
+                "down" => 1,
+                _ => throw new ArgumentException("Choose up or down.")
+            };
+            var fallback = rows
+                .OrderBy(x => x.Priority ?? int.MaxValue)
+                .ThenBy(x => x.ID)
+                .ToList();
+            var moving = fallback.First(x => x.ID == id);
+            var sameStatus = moving.IsActive != false;
+            var groupIndexes = fallback
+                .Select((row, index) => (row, index))
+                .Where(x => (x.row.IsActive != false) == sameStatus)
+                .Select(x => x.index)
+                .ToList();
+            var position = groupIndexes.FindIndex(index => fallback[index].ID == id);
+            var target = position + step;
+            if (target >= 0 && target < groupIndexes.Count)
+            {
+                (fallback[groupIndexes[position]], fallback[groupIndexes[target]]) =
+                    (fallback[groupIndexes[target]], fallback[groupIndexes[position]]);
+            }
+            ordered = fallback;
+        }
+
+        for (var i = 0; i < ordered.Count; i++)
+        {
+            ordered[i].Priority = i + 1;
+            _context.Entry(ordered[i]).Property(x => x.Priority).IsModified = true;
+        }
+
+        await _context.SaveChangesAsync(cancellationToken);
+        return ordered.Select(MapExamType).ToList();
+    }
+
+    private static ExamTypeManageDto MapExamType(ExamType entity) => new()
+    {
+        Id = entity.ID,
+        Name = entity.ExamTypeName?.Trim() ?? string.Empty,
+        IsActive = entity.IsActive != false,
+        Priority = entity.Priority
+    };
+
+    private static string RequireExamTypeName(string? name)
+    {
+        var trimmed = (name ?? string.Empty).Trim();
+        if (trimmed.Length == 0)
+            throw new ArgumentException("Exam type name is required.");
+        if (trimmed.Length > 250)
+            throw new ArgumentException("Exam type name is too long.");
+        return trimmed;
+    }
+
+    private async Task EnsureExamTypeNameAvailableAsync(string name, int? excludeId, CancellationToken cancellationToken)
+    {
+        var names = await _context.ExamTypes.AsNoTracking()
+            .Where(x => excludeId == null || x.ID != excludeId.Value)
+            .Select(x => x.ExamTypeName)
+            .ToListAsync(cancellationToken);
+        if (names.Any(existing => string.Equals((existing ?? string.Empty).Trim(), name, StringComparison.OrdinalIgnoreCase)))
+            throw new InvalidOperationException("An exam type with this name already exists.");
+    }
+
     public async Task<ExamEntryMatrixDto?> LoadExamEntryMatrixAsync(
         int sectionId,
         int examTypeId)
@@ -782,6 +931,50 @@ public class ExamService : IExamService
     {
         options ??= ExamAggregationOptions.Default;
         return await BuildAcademicProgressCardsAsync(sectionId, options, null);
+    }
+
+    public async Task<AcademicProgressSubjectFlagsDto> GetAcademicProgressSubjectFlagsAsync(
+        int? studentId,
+        int? sectionId)
+    {
+        int? classId = sectionId is > 0 ? sectionId : null;
+        if (studentId is > 0)
+        {
+            classId = await _context.Students
+                .AsNoTracking()
+                .Where(x => x.Reg_Id == studentId.Value)
+                .Select(x => x.ClassCompositeID)
+                .FirstOrDefaultAsync();
+        }
+
+        if (classId is not > 0)
+            return new AcademicProgressSubjectFlagsDto();
+
+        var examTypeIds = (await GetExamTypesAsync()).Take(5).Select(x => x.Id).ToList();
+        if (examTypeIds.Count == 0)
+            return new AcademicProgressSubjectFlagsDto();
+
+        var specialSubjects = await GetSpecialSubjectIdsAsync();
+        var query = _context.Exams
+            .AsNoTracking()
+            .Where(x =>
+                x.ClassID == classId &&
+                x.SubjectID != null &&
+                examTypeIds.Contains(x.ExamTypeID ?? 0));
+
+        if (studentId is > 0)
+            query = query.Where(x => x.StudentID == studentId.Value);
+
+        var subjectIds = await query
+            .Select(x => x.SubjectID!.Value)
+            .Distinct()
+            .ToListAsync();
+
+        return new AcademicProgressSubjectFlagsDto
+        {
+            HasDrawing = subjectIds.Any(id => specialSubjects.IsDrawing(id)),
+            HasStemp = subjectIds.Any(id => specialSubjects.IsStemp(id))
+        };
     }
 
     public async Task<ExamTopPositionsDto?> GetTopPositionsAsync(
@@ -1794,7 +1987,7 @@ public class ExamService : IExamService
         Infrastructure.Entities.Exam? examRow,
         int subjectId,
         int totalMarks,
-        (int? DrawingId, int? StempId) specialSubjects,
+        SpecialSubjects specialSubjects,
         ExamAggregationOptions options)
     {
         var usesGradeDisplay = IsGradingSubject(subjectId, specialSubjects, options);
@@ -1929,35 +2122,56 @@ public class ExamService : IExamService
         return positions;
     }
 
-    private async Task<(int? DrawingId, int? StempId)> GetSpecialSubjectIdsAsync()
+    private sealed class SpecialSubjects
+    {
+        public int? DrawingId { get; init; }
+        public HashSet<int> StempIds { get; init; } = [];
+
+        public bool IsDrawing(int? subjectId) =>
+            subjectId.HasValue && DrawingId.HasValue && subjectId.Value == DrawingId.Value;
+
+        public bool IsStemp(int? subjectId) =>
+            subjectId.HasValue && StempIds.Contains(subjectId.Value);
+    }
+
+    private async Task<SpecialSubjects> GetSpecialSubjectIdsAsync()
     {
         var subjects = await _context.SubjectMasters
             .AsNoTracking()
             .Where(s => s.SubjectName != null &&
                         (s.SubjectName.ToLower() == "drawing" ||
-                         s.SubjectName.ToLower() == "stemp"))
+                         s.SubjectName.ToLower() == "stemp" ||
+                         s.SubjectName.ToLower() == "steam"))
             .Select(s => new { s.ID, s.SubjectName })
             .ToListAsync();
 
-        int? drawingId = subjects
-            .FirstOrDefault(s => s.SubjectName!.Equals("Drawing", StringComparison.OrdinalIgnoreCase))
-            ?.ID;
-        int? stempId = subjects
-            .FirstOrDefault(s => s.SubjectName!.Equals("Stemp", StringComparison.OrdinalIgnoreCase))
-            ?.ID;
+        var drawing = subjects.FirstOrDefault(s =>
+            s.SubjectName!.Equals("Drawing", StringComparison.OrdinalIgnoreCase));
 
-        return (drawingId, stempId);
+        var stempIds = subjects
+            .Where(s =>
+                s.SubjectName!.Equals("Stemp", StringComparison.OrdinalIgnoreCase) ||
+                s.SubjectName!.Equals("STEAM", StringComparison.OrdinalIgnoreCase) ||
+                s.SubjectName!.Equals("Steam", StringComparison.OrdinalIgnoreCase))
+            .Select(s => s.ID)
+            .ToHashSet();
+
+        return new SpecialSubjects
+        {
+            DrawingId = drawing?.ID,
+            StempIds = stempIds
+        };
     }
 
     private static bool IsGradingSubject(
         int subjectId,
-        (int? DrawingId, int? StempId) specialSubjects,
+        SpecialSubjects specialSubjects,
         ExamAggregationOptions options)
     {
-        if (specialSubjects.DrawingId.HasValue && subjectId == specialSubjects.DrawingId.Value)
+        if (specialSubjects.IsDrawing(subjectId))
             return !options.IncludeDrawingInTotals;
 
-        if (specialSubjects.StempId.HasValue && subjectId == specialSubjects.StempId.Value)
+        if (specialSubjects.IsStemp(subjectId))
             return !options.IncludeStempInTotals;
 
         return false;
@@ -1965,20 +2179,16 @@ public class ExamService : IExamService
 
     private static bool ShouldExcludeFromTotals(
         int? subjectId,
-        (int? DrawingId, int? StempId) specialSubjects,
+        SpecialSubjects specialSubjects,
         ExamAggregationOptions options)
     {
         if (!subjectId.HasValue)
             return false;
 
-        if (!options.IncludeStempInTotals &&
-            specialSubjects.StempId.HasValue &&
-            subjectId == specialSubjects.StempId)
+        if (!options.IncludeStempInTotals && specialSubjects.IsStemp(subjectId))
             return true;
 
-        if (!options.IncludeDrawingInTotals &&
-            specialSubjects.DrawingId.HasValue &&
-            subjectId == specialSubjects.DrawingId)
+        if (!options.IncludeDrawingInTotals && specialSubjects.IsDrawing(subjectId))
             return true;
 
         return false;
@@ -1988,7 +2198,7 @@ public class ExamService : IExamService
         int studentId,
         int examTypeId,
         int? classId,
-        (int? DrawingId, int? StempId) specialSubjects,
+        SpecialSubjects specialSubjects,
         ExamAggregationOptions options)
     {
         var studentIds = await _context.Students
@@ -2136,12 +2346,6 @@ public class ExamService : IExamService
         if (cardStudents.Count == 0)
             return [];
 
-        var classmates = await _context.Students
-            .AsNoTracking()
-            .Where(x => x.ClassCompositeID == sectionId && x.IsActive == true)
-            .Select(x => x.Reg_Id)
-            .ToListAsync();
-
         var classExams = await _context.Exams
             .AsNoTracking()
             .Include(x => x.Subject)
@@ -2152,56 +2356,30 @@ public class ExamService : IExamService
             .AsNoTracking()
             .Include(x => x.Subject)
             .Where(x => x.ClassID == sectionId && x.SubjectID != null)
+            .OrderBy(x => x.ID)
             .ToListAsync();
 
-        var subjectRows = classSubjects
-            .GroupBy(x => x.SubjectID!.Value)
-            .Select(g =>
-            {
-                var sample = g.First();
-                return new
-                {
-                    SubjectId = g.Key,
-                    SubjectName = sample.Subject?.SubjectName ?? sample.Subject?.ShortName ?? "Subject"
-                };
-            })
-            .ToList();
-
-        if (subjectRows.Count == 0)
+        var classOrderIndex = new Dictionary<int, int>();
+        var subjectNameById = new Dictionary<int, string>();
+        foreach (var row in classSubjects)
         {
-            subjectRows = classExams
-                .Where(x => x.SubjectID.HasValue)
-                .GroupBy(x => x.SubjectID!.Value)
-                .Select(g => new
-                {
-                    SubjectId = g.Key,
-                    SubjectName = g.First().Subject?.SubjectName ?? g.First().Subject?.ShortName ?? "Subject"
-                })
-                .ToList();
+            var subjectId = row.SubjectID!.Value;
+            if (!classOrderIndex.ContainsKey(subjectId))
+                classOrderIndex[subjectId] = classOrderIndex.Count;
+            subjectNameById[subjectId] = row.Subject?.SubjectName ?? row.Subject?.ShortName ?? "Subject";
         }
 
-        var orderedSubjects = subjectRows
-            .Where(x =>
-                x.SubjectId != specialSubjects.StempId &&
-                (!isJunior || x.SubjectId != specialSubjects.DrawingId))
-            .OrderBy(x => x.SubjectName)
-            .ToList();
-
-        if (isJunior && specialSubjects.DrawingId is int drawingId)
+        foreach (var exam in classExams)
         {
-            var drawing = subjectRows.FirstOrDefault(x => x.SubjectId == drawingId)
-                ?? new { SubjectId = drawingId, SubjectName = "Drawing" };
-            if (orderedSubjects.All(x => x.SubjectId != drawingId))
-                orderedSubjects.Add(drawing);
+            if (exam.SubjectID is not int subjectId || subjectNameById.ContainsKey(subjectId))
+                continue;
+            subjectNameById[subjectId] = exam.Subject?.SubjectName ?? exam.Subject?.ShortName ?? "Subject";
         }
 
-        if (specialSubjects.StempId is int stempId)
-        {
-            var stemp = subjectRows.FirstOrDefault(x => x.SubjectId == stempId)
-                ?? new { SubjectId = stempId, SubjectName = "Stemp" };
-            if (orderedSubjects.All(x => x.SubjectId != stempId))
-                orderedSubjects.Add(stemp);
-        }
+        var configuredTotals = classExams
+            .Where(x => x.ExamTypeID.HasValue && x.SubjectID.HasValue)
+            .GroupBy(x => (ExamTypeId: x.ExamTypeID!.Value, SubjectId: x.SubjectID!.Value))
+            .ToDictionary(g => g.Key, g => GetConfiguredMarks(g.Select(x => x.TotalMarks)));
 
         var examLookup = classExams
             .Where(x => x.StudentID.HasValue && x.ExamTypeID.HasValue && x.SubjectID.HasValue)
@@ -2211,8 +2389,13 @@ public class ExamService : IExamService
         var positionsByExamType = new Dictionary<int, Dictionary<int, int>>();
         foreach (var examType in examTypes)
         {
+            var rankedStudentIds = classExams
+                .Where(x => x.ExamTypeID == examType.Id && x.StudentID.HasValue)
+                .Select(x => x.StudentID!.Value)
+                .Distinct();
+
             var totals = new List<(int StudentId, int Total)>();
-            foreach (var classmateId in classmates)
+            foreach (var classmateId in rankedStudentIds)
             {
                 var rows = classExams
                     .Where(x =>
@@ -2240,33 +2423,34 @@ public class ExamService : IExamService
 
         foreach (var student in cardStudents)
         {
-            var subjects = orderedSubjects.Select(subject =>
+            var studentSubjectIds = classExams
+                .Where(x => x.StudentID == student.Reg_Id && x.SubjectID.HasValue)
+                .Select(x => x.SubjectID!.Value)
+                .Distinct()
+                .OrderBy(id => classOrderIndex.TryGetValue(id, out var index) ? index : int.MaxValue)
+                .ThenBy(id => subjectNameById.GetValueOrDefault(id, string.Empty), StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            var subjects = studentSubjectIds.Select(subjectId =>
             {
-                var usesGrade = IsGradingSubject(subject.SubjectId, specialSubjects, options);
+                var usesGrade = IsGradingSubject(subjectId, specialSubjects, options);
                 var cells = examTypes.Select(examType =>
                 {
-                    examLookup.TryGetValue(
-                        (student.Reg_Id, examType.Id, subject.SubjectId),
-                        out var examRow);
+                    examLookup.TryGetValue((student.Reg_Id, examType.Id, subjectId), out var examRow);
+                    configuredTotals.TryGetValue((examType.Id, subjectId), out var configuredTotal);
 
-                    var totalMarks = examRow?.TotalMarks ?? 0;
+                    var totalMarks = examRow == null
+                        ? 0
+                        : configuredTotal > 0 ? configuredTotal : examRow.TotalMarks ?? 0;
                     var obtained = examRow?.ObtainedMarks;
-                    var hasMarks = totalMarks > 0;
+                    var hasMarks = examRow != null && totalMarks > 0;
 
                     string? displayTotal = null;
                     string? displayObtained = null;
                     if (hasMarks)
                     {
-                        if (usesGrade)
-                        {
-                            displayTotal = "Grade";
-                            displayObtained = GetSubjectGrade(obtained, totalMarks);
-                        }
-                        else
-                        {
-                            displayTotal = totalMarks.ToString();
-                            displayObtained = obtained == -1 ? "A" : (obtained ?? 0).ToString();
-                        }
+                        displayTotal = usesGrade ? "Grade" : totalMarks.ToString();
+                        displayObtained = FormatMarkSheetCellValue(obtained, usesGrade, totalMarks);
                     }
 
                     return new AcademicProgressCellDto
@@ -2282,8 +2466,8 @@ public class ExamService : IExamService
 
                 return new AcademicProgressSubjectRowDto
                 {
-                    SubjectId = subject.SubjectId,
-                    SubjectName = subject.SubjectName,
+                    SubjectId = subjectId,
+                    SubjectName = subjectNameById.GetValueOrDefault(subjectId, "Subject"),
                     UsesGradeDisplay = usesGrade,
                     Cells = cells
                 };
@@ -2295,13 +2479,18 @@ public class ExamService : IExamService
                     .Where(x => x.StudentID == student.Reg_Id && x.ExamTypeID == examType.Id)
                     .ToList();
 
-                var counted = studentExams
-                    .Where(x => !ShouldExcludeFromTotals(x.SubjectID, specialSubjects, options))
+                var countedSubjectIds = studentExams
+                    .Where(x => x.SubjectID.HasValue && !ShouldExcludeFromTotals(x.SubjectID, specialSubjects, options))
+                    .Select(x => x.SubjectID!.Value)
+                    .Distinct()
                     .ToList();
 
-                var totalMarks = counted.Sum(x => x.TotalMarks ?? 0);
-                var totalObtained = counted
-                    .Where(x => x.ObtainedMarks != -1)
+                var totalMarks = countedSubjectIds.Sum(id =>
+                    configuredTotals.GetValueOrDefault((examType.Id, id)));
+                var totalObtained = studentExams
+                    .Where(x =>
+                        !ShouldExcludeFromTotals(x.SubjectID, specialSubjects, options) &&
+                        x.ObtainedMarks > 0)
                     .Sum(x => x.ObtainedMarks ?? 0);
                 var percentage = CalculatePercentage(totalObtained, totalMarks);
                 var grade = GetGrade(percentage);
@@ -2323,7 +2512,7 @@ public class ExamService : IExamService
                     PositionDisplay = hasResult ? FormatPosition(position) : "-",
                     AttendanceRatio = studentExams
                         .Select(x => x.AttendanceRatio)
-                        .FirstOrDefault(x => !string.IsNullOrWhiteSpace(x) && x != "-/-"),
+                        .FirstOrDefault(x => !string.IsNullOrWhiteSpace(x)),
                     HasResult = hasResult
                 };
             }).ToList();

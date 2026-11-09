@@ -65,6 +65,7 @@ import CampusDailyDiaryListPage from './pages/Campus/daily-diary/CampusDailyDiar
 import CampusStudentResultPage from './pages/Campus/exams/CampusStudentResultPage.jsx'
 import CampusExamMarkSheetPage from './pages/Campus/exams/CampusExamMarkSheetPage.jsx'
 import CampusExamEntryPage from './pages/Campus/exams/CampusExamEntryPage.jsx'
+import CampusExamTypesPage from './pages/Campus/exams/CampusExamTypesPage.jsx'
 import CampusSubjectComponentEntryPage from './pages/Campus/exams/CampusSubjectComponentEntryPage.jsx'
 import CampusTeacherExamAnalysisPage from './pages/Campus/exams/CampusTeacherExamAnalysisPage.jsx'
 import CampusTeacherPerformanceGridPage from './pages/Campus/exams/CampusTeacherPerformanceGridPage.jsx'
@@ -948,6 +949,14 @@ function App() {
         element={
           <ProtectedRoute>
             <CampusDailyDiaryPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/campus/exams/types"
+        element={
+          <ProtectedRoute>
+            <CampusExamTypesPage />
           </ProtectedRoute>
         }
       />

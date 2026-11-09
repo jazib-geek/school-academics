@@ -1,4 +1,4 @@
-import { isChoiceBodyKind } from './languageQuestionStructures'
+import { isChoiceBodyKind, isLineBodyKind } from './languageQuestionStructures'
 
 const englishOptionLabels = ['A', 'B', 'C', 'D']
 const urduOptionLabels = ['الف', 'ب', 'ج', 'د']
@@ -87,6 +87,10 @@ export default function LanguageQuestionPreview({
         })}
       </div>
     )
+  }
+
+  if (isLineBodyKind(kind)) {
+    return <Lines items={value.lines} rtl={rtl} textStyle={textStyle} variant={variant} startNumber={startNumber} />
   }
 
   if (kind === 'spelling-table') {

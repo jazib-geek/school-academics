@@ -11,6 +11,8 @@ namespace School.Application.Services;
 
 public class RoyaltyShareService : IRoyaltyShareService
 {
+    private const int SecurityDepositFundTypeId = 7;
+
     private readonly AppDbContext _context;
     private readonly IAccountVoucherService _voucherService;
     private readonly ISystemAccountResolver _systemAccounts;
@@ -212,6 +214,7 @@ public class RoyaltyShareService : IRoyaltyShareService
         var rows = await _context.FeeAndFundCollections
             .AsNoTracking()
             .Where(x => (x.VoidAmount ?? 0) == 0)
+            .Where(x => x.FundTypeID == null || x.FundTypeID != SecurityDepositFundTypeId)
             .Where(x =>
                 x.Date.HasValue
                 && x.Date.Value.Date >= from.Date

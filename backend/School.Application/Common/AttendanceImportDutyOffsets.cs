@@ -1,8 +1,9 @@
 namespace School.Application.Common;
 
 /// <summary>
-/// Minutes earlier than teacher duty times during ZKTeco sheet import.
-/// Campus profile stores the defaults; these constants are the fallback.
+/// How many minutes earlier than that date's teacher times a designation starts during ZKTeco import.
+/// Teacher uses the entered times. Co-ordinator uses the co-ordinator offset.
+/// Admin and every other designation, including a missing one, use the admin offset.
 /// </summary>
 public static class AttendanceImportDutyOffsets
 {
@@ -26,13 +27,10 @@ public static class AttendanceImportDutyOffsets
             return ClampMinutes(coordinatorMinutesBefore, CoordinatorMinutesBefore);
         }
 
-        if (EmployeeDesignations.IsAdminName(designationName) ||
-            NamesMatch(designationName, AdminName))
-        {
-            return ClampMinutes(adminMinutesBefore, AdminMinutesBefore);
-        }
+        if (NamesMatch(designationName, TeacherName))
+            return TeacherMinutesBefore;
 
-        return TeacherMinutesBefore;
+        return ClampMinutes(adminMinutesBefore, AdminMinutesBefore);
     }
 
     public static TimeSpan? ShiftEarlier(TimeSpan? teacherTime, int minutesBefore)

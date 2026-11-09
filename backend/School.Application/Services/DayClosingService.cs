@@ -55,14 +55,16 @@ public class DayClosingService : IDayClosingService
         var misc = Pick(cashByFund, 3);
         var prev = Pick(cashByFund, 4);
         var fine = Pick(cashByFund, 6);
+        var securityDeposit = Pick(cashByFund, 7);
         var tuitionOnline = Pick(onlineByFund, 1);
         var admissionOnline = Pick(onlineByFund, 2);
         var miscOnline = Pick(onlineByFund, 3);
         var prevOnline = Pick(onlineByFund, 4);
         var fineOnline = Pick(onlineByFund, 6);
-        var onlineFee = tuitionOnline + admissionOnline + miscOnline + prevOnline + fineOnline;
+        var securityDepositOnline = Pick(onlineByFund, 7);
+        var onlineFee = tuitionOnline + admissionOnline + miscOnline + prevOnline + fineOnline + securityDepositOnline;
 
-        var feeCashTotal = tuition + admission + misc + prev + fine;
+        var feeCashTotal = tuition + admission + misc + prev + fine + securityDeposit;
         var totalCashCollected = feeCashTotal + glCredits;
         var totalExpenses = glDebits;
         var suggested = Math.Max(0, totalCashCollected - totalExpenses);
@@ -95,11 +97,13 @@ public class DayClosingService : IDayClosingService
             MiscCharges = misc,
             PrevBalance = prev,
             Fine = fine,
+            SecurityDeposit = securityDeposit,
             TuitionFeeOnline = tuitionOnline,
             AdmissionFeeOnline = admissionOnline,
             MiscChargesOnline = miscOnline,
             PrevBalanceOnline = prevOnline,
             FineOnline = fineOnline,
+            SecurityDepositOnline = securityDepositOnline,
             OnlineFee = onlineFee,
             GlCredits = glCredits,
             GlDebits = glDebits,
@@ -168,7 +172,7 @@ public class DayClosingService : IDayClosingService
         return Map(entity);
     }
 
-    private static readonly int[] DayClosingFundTypeIds = [1, 2, 3, 4, 6];
+    private static readonly int[] DayClosingFundTypeIds = [1, 2, 3, 4, 6, 7];
 
     private static decimal Pick(IReadOnlyDictionary<int, decimal> amounts, int fundTypeId) =>
         amounts.TryGetValue(fundTypeId, out var amount) ? amount : 0;

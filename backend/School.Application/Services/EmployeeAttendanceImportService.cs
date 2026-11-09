@@ -59,7 +59,7 @@ public class EmployeeAttendanceImportService : IEmployeeAttendanceImportService
         var teacherCheckOutFallback = EmployeeAttendanceCalculator.FormatHhMm(profile?.TeacherCheckOutTime);
         var dateRules = BuildDateRules(rules, fridayCheckOut, teacherCheckInFallback, teacherCheckOutFallback);
         if (dateRules.Count == 0)
-            throw new ArgumentException("Select at least one date with teacher check-in and checkout times.");
+            throw new ArgumentException("Select at least one date with check-in and checkout times.");
 
         var importedBy = await ResolveUsernameAsync(importedByUserId, cancellationToken);
 
@@ -124,7 +124,7 @@ public class EmployeeAttendanceImportService : IEmployeeAttendanceImportService
                 coordinatorMinutes);
             var expectedCheckIn = AttendanceImportDutyOffsets.ShiftEarlier(teacherTimes.CheckIn, offset);
             var expectedCheckOut = AttendanceImportDutyOffsets.ShiftEarlier(teacherTimes.CheckOut, offset);
-            if (!expectedCheckIn.HasValue && !expectedCheckOut.HasValue)
+            if (!expectedCheckIn.HasValue || !expectedCheckOut.HasValue)
             {
                 skippedNoDuty++;
                 continue;
@@ -200,23 +200,24 @@ public class EmployeeAttendanceImportService : IEmployeeAttendanceImportService
         foreach (var item in rules.Dates)
         {
             var date = item.Date.Date;
+            var checkInText = string.IsNullOrWhiteSpace(item.TeacherCheckIn)
+                ? teacherCheckInFallback
+                : item.TeacherCheckIn;
             var checkOutText = string.IsNullOrWhiteSpace(item.TeacherCheckOut)
                 ? teacherCheckOutFallback
                 : item.TeacherCheckOut;
             if (date.DayOfWeek == DayOfWeek.Friday &&
+                string.IsNullOrWhiteSpace(item.TeacherCheckOut) &&
                 !string.IsNullOrWhiteSpace(fridayCheckOut))
             {
                 checkOutText = fridayCheckOut;
             }
 
-            var checkInText = string.IsNullOrWhiteSpace(item.TeacherCheckIn)
-                ? teacherCheckInFallback
-                : item.TeacherCheckIn;
             if (!EmployeeAttendanceCalculator.TryParseTimeOfDay(checkInText, out var checkIn) ||
                 !EmployeeAttendanceCalculator.TryParseTimeOfDay(checkOutText, out var checkOut))
             {
                 throw new ArgumentException(
-                    $"Enter teacher check-in and checkout times for {date:yyyy-MM-dd}.");
+                    $"Enter check-in and checkout times for {date:yyyy-MM-dd}.");
             }
 
             map[date] = (checkIn, checkOut);
@@ -246,6 +247,7 @@ public class EmployeeAttendanceImportService : IEmployeeAttendanceImportService
         row.ChangeJson = BuildImportChangeJson(
             importedBy,
             punch.EmployeeCode,
+            employee,
             teacherTimes.CheckIn,
             teacherTimes.CheckOut,
             expectedCheckIn,
@@ -290,6 +292,7 @@ public class EmployeeAttendanceImportService : IEmployeeAttendanceImportService
     private static string BuildImportChangeJson(
         string editedBy,
         string employeeCode,
+        Employee employee,
         TimeSpan teacherCheckIn,
         TimeSpan teacherCheckOut,
         TimeSpan? expectedCheckIn,
@@ -302,6 +305,8 @@ public class EmployeeAttendanceImportService : IEmployeeAttendanceImportService
             EditedBy = editedBy,
             EditedAt = PakistanTime.Now.ToString("o"),
             EmployeeCode = employeeCode,
+            DesignationId = employee.DesignationID,
+            DesignationName = employee.Designation?.DesignationName,
             TeacherCheckIn = EmployeeAttendanceCalculator.FormatHhMm(teacherCheckIn),
             TeacherCheckOut = EmployeeAttendanceCalculator.FormatHhMm(teacherCheckOut),
             ExpectedCheckIn = EmployeeAttendanceCalculator.FormatHhMm(expectedCheckIn),

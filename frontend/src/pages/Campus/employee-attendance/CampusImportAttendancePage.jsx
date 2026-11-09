@@ -39,18 +39,6 @@ const toDateKey = (value) => {
   return `${y}-${m}-${d}`
 }
 
-const formatTime12Hour = (value) => {
-  if (!value || typeof value !== 'string') return '—'
-  const short = value.length >= 5 ? value.slice(0, 5) : value
-  const [hStr, mStr = '00'] = short.split(':')
-  const h = Number.parseInt(hStr, 10)
-  const m = Number.parseInt(mStr, 10)
-  if (Number.isNaN(h) || Number.isNaN(m)) return value
-  const period = h >= 12 ? 'PM' : 'AM'
-  const h12 = h % 12 || 12
-  return `${h12}:${String(m).padStart(2, '0')} ${period}`
-}
-
 const isFriday = (dateKey) => {
   const [year, month, day] = dateKey.split('-').map(Number)
   return new Date(year, month - 1, day).getDay() === 5
@@ -164,7 +152,7 @@ export default function CampusImportAttendancePage() {
 
   const applyTimesToChecked = () => {
     if (!teacherCheckIn || !teacherCheckOut) {
-      toast.error('Enter teacher check-in and checkout times first.')
+      toast.error('Enter check-in and checkout times first.')
       return
     }
 
@@ -181,6 +169,12 @@ export default function CampusImportAttendancePage() {
     )
   }
 
+  const updateRowTime = (date, field, value) => {
+    setDateRows((current) =>
+      current.map((row) => (row.date === date ? { ...row, [field]: value } : row)),
+    )
+  }
+
   const toggleRow = (date) => {
     setDateRows((current) =>
       current.map((row) => (row.date === date ? { ...row, checked: !row.checked } : row)),
@@ -194,8 +188,12 @@ export default function CampusImportAttendancePage() {
   const submitImport = async (event) => {
     event.preventDefault()
     if (!canEdit || !file || isImporting) return
-    if (readyRows.length === 0) {
-      toast.error('Apply teacher times to the dates you want to import.')
+    if (checkedRows.length === 0) {
+      toast.error('Select at least one date.')
+      return
+    }
+    if (readyRows.length !== checkedRows.length) {
+      toast.error('Enter check-in and checkout for every selected date.')
       return
     }
 
@@ -214,9 +212,7 @@ export default function CampusImportAttendancePage() {
       })
       const unknown = result?.data?.unknownEmployeeCodes || []
       toast.success(result?.message || 'Attendance imported.')
-      if (unknown.length > 0) {
-        setUnknownCodes(unknown)
-      }
+      if (unknown.length > 0) setUnknownCodes(unknown)
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Could not import attendance.')
     } finally {
@@ -249,8 +245,8 @@ export default function CampusImportAttendancePage() {
               <div>
                 <h1 className="text-2xl font-bold text-slate-800">Import attendance</h1>
                 <p className="text-sm text-slate-500">
-                  Upload the monthly Excel sheet from the wall-mounted device. Late minutes are
-                  calculated here from the teacher times you enter.
+                  Upload the monthly Excel sheet from the wall-mounted device. Each date uses the
+                  check-in and checkout you enter. Those times start from Institute Settings.
                 </p>
               </div>
             </div>
@@ -298,12 +294,12 @@ export default function CampusImportAttendancePage() {
           {dateRows.length > 0 ? (
             <form onSubmit={submitImport} className="space-y-3 rounded-2xl bg-white p-4 shadow-sm">
               <div>
-                <h2 className="text-base font-semibold text-slate-800">Teacher duty times</h2>
+                <h2 className="text-base font-semibold text-slate-800">Duty times</h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  Teacher times come from the Teacher designation. Admin and Co-ordinator start
-                  earlier by the minutes you enter. Friday checkout is used only on Fridays. If
-                  times changed mid-month, uncheck the earlier dates, enter the new times, and apply
-                  again.
+                  Teachers use the check-in and checkout on each date. Co-ordinators arrive earlier
+                  by the co-ordinator minutes. Admin and every other designation arrive earlier by
+                  the admin minutes. Change one date in its row, or enter times above and apply them
+                  to the checked dates. Uncheck dates that should keep the earlier times.
                 </p>
               </div>
 
@@ -374,7 +370,7 @@ export default function CampusImportAttendancePage() {
                           onClick={() => toggleAll(checkedRows.length !== dateRows.length)}
                           className="inline-flex items-center gap-2 text-slate-600"
                         >
-                          {checkedRows.length === dateRows.length ? (
+                          {checkedRows.length === dateRows.length && dateRows.length > 0 ? (
                             <CheckSquare size={16} />
                           ) : (
                             <Square size={16} />
@@ -400,8 +396,22 @@ export default function CampusImportAttendancePage() {
                             {formatDateLabel(row.date)}
                           </label>
                         </td>
-                        <td className="px-3 py-1.5 text-slate-700">{formatTime12Hour(row.checkIn)}</td>
-                        <td className="px-3 py-1.5 text-slate-700">{formatTime12Hour(row.checkOut)}</td>
+                        <td className="px-3 py-1.5">
+                          <input
+                            type="time"
+                            className={inputClass}
+                            value={row.checkIn || ''}
+                            onChange={(event) => updateRowTime(row.date, 'checkIn', event.target.value)}
+                          />
+                        </td>
+                        <td className="px-3 py-1.5">
+                          <input
+                            type="time"
+                            className={inputClass}
+                            value={row.checkOut || ''}
+                            onChange={(event) => updateRowTime(row.date, 'checkOut', event.target.value)}
+                          />
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -454,8 +464,7 @@ export default function CampusImportAttendancePage() {
                   Staff not found
                 </h2>
                 <p className="mt-0.5 text-sm text-slate-500">
-                  These names from the sheet are not on this campus. Their attendance was not
-                  imported.
+                  These device codes are not on this campus. Their attendance was not imported.
                 </p>
               </div>
               <button

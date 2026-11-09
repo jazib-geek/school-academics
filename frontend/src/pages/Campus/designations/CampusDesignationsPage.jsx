@@ -11,7 +11,6 @@ import {
   setDesignationStatus,
   updateDesignation,
 } from '../../../services/designationService'
-import { getStoredCampusProfile, isZkTecoAttendance } from '../../../utils/campusProfile'
 import { INTEGER_INPUT_ATTRS, readIntegerInput } from '../../../utils/numericInput.js'
 
 const emptyForm = {
@@ -57,7 +56,6 @@ const formatTime = (value) => {
 
 function CampusDesignationsPage() {
   const canManage = hasCampusPermission('manage_designations')
-  const hideDutyTimes = isZkTecoAttendance(getStoredCampusProfile())
   const [rows, setRows] = useState([])
   const [form, setForm] = useState(emptyForm)
   const [editingId, setEditingId] = useState(null)
@@ -194,16 +192,12 @@ function CampusDesignationsPage() {
 
           <section className="overflow-hidden bg-white shadow-sm">
               <div className="overflow-x-auto">
-                <table className={`w-full text-left text-[13px] leading-snug ${hideDutyTimes ? 'min-w-[520px]' : 'min-w-[760px]'}`}>
+                <table className="w-full min-w-[760px] text-left text-[13px] leading-snug">
                   <thead className="bg-slate-50 text-xs uppercase text-slate-500">
                     <tr>
                       <th className="px-3 py-2 font-medium">Designation</th>
-                      {hideDutyTimes ? null : (
-                        <>
-                          <th className="px-3 py-2 font-medium">Check-in</th>
-                          <th className="px-3 py-2 font-medium">Checkout</th>
-                        </>
-                      )}
+                      <th className="px-3 py-2 font-medium">Check-in</th>
+                      <th className="px-3 py-2 font-medium">Checkout</th>
                       <th className="px-3 py-2 font-medium">Grace</th>
                       <th className="px-3 py-2 font-medium">Employees</th>
                       <th className="px-3 py-2 font-medium">Status</th>
@@ -221,12 +215,8 @@ function CampusDesignationsPage() {
                             <span className="font-semibold text-slate-900">{row.name || '-'}</span>
                           </div>
                         </td>
-                        {hideDutyTimes ? null : (
-                          <>
-                            <td className="px-3 py-1.5 font-mono text-xs text-slate-700">{formatTime(row.mustCheckinTime)}</td>
-                            <td className="px-3 py-1.5 font-mono text-xs text-slate-700">{formatTime(row.leavingTime)}</td>
-                          </>
-                        )}
+                        <td className="px-3 py-1.5 font-mono text-xs text-slate-700">{formatTime(row.mustCheckinTime)}</td>
+                        <td className="px-3 py-1.5 font-mono text-xs text-slate-700">{formatTime(row.leavingTime)}</td>
                         <td className="px-3 py-1.5">{row.mustCheckinMinutesDifference ?? '-'}</td>
                         <td className="px-3 py-1.5">{row.employeeCount || 0}</td>
                         <td className="px-3 py-1.5">
@@ -307,9 +297,7 @@ function CampusDesignationsPage() {
                     {editingId ? 'Edit designation' : 'Add designation'}
                   </h2>
                   <p className="text-sm text-slate-500">
-                    {hideDutyTimes
-                      ? 'Duty times come from Institute Settings when importing attendance.'
-                      : 'Set time-only values for attendance rules.'}
+                    Set check-in, checkout, and grace.
                   </p>
                 </div>
               </div>
@@ -330,7 +318,6 @@ function CampusDesignationsPage() {
                 />
               </label>
 
-              {hideDutyTimes ? null : (
               <div className="grid gap-3 sm:grid-cols-2">
                 <label className="block text-xs font-semibold uppercase text-slate-500">
                   Check-in
@@ -357,7 +344,6 @@ function CampusDesignationsPage() {
                   </div>
                 </label>
               </div>
-              )}
 
               <label className="block text-xs font-semibold uppercase text-slate-500">
                 Grace minutes

@@ -6,43 +6,86 @@ export const EXAM_REPORT_PRINT_CSS = `
 }
 .exam-print-break { page-break-after: always; }
 
-.exam-ap-sheet { width: 760px; margin: 0 auto; }
-.exam-ap-card { width: 760px; margin: 0 auto 24px; color: #000; }
+.exam-ap-sheet { width: 100%; max-width: 8.5in; margin: 0 auto; }
+.exam-ap-card {
+  width: 100%;
+  margin: 0 auto 16px;
+  color: #000;
+  font-family: Arial, Helvetica, sans-serif !important;
+  font-size: 13px;
+  line-height: 1.25;
+  page-break-after: always;
+  break-after: page;
+}
+.exam-ap-card:last-child { page-break-after: auto; break-after: auto; }
+.exam-ap-card table,
+.exam-ap-card td,
+.exam-ap-card th,
+.exam-ap-card h1,
+.exam-ap-card h3 { font-family: Arial, Helvetica, sans-serif !important; }
 .exam-ap-header { display: flex; align-items: flex-start; text-align: center; }
 .exam-ap-logo { width: 20%; }
-.exam-ap-logo img { width: 80%; max-width: 90px; }
+.exam-ap-logo img { width: 80%; }
 .exam-ap-header-text { width: 80%; }
-.exam-ap-header-text h1 { margin: 0; font-size: 26px; text-decoration: underline; letter-spacing: 0.3px; }
-.exam-ap-header-text h3 { margin: 6px 0 0; }
-.exam-ap-campus { font-size: 13px; }
-.exam-ap-issued { text-align: right; font-size: 13px; padding-right: 10px; margin-bottom: 8px; }
+.exam-ap-header-text h1 { margin: 0; font-size: 26px; font-weight: 700; text-decoration: underline; letter-spacing: 0; }
+.exam-ap-header-text h3 { margin: 2px 0 0; font-size: 18px; font-weight: 700; }
+.exam-ap-campus { font-size: 14px; }
+.exam-ap-issued { text-align: right; font-size: 13px; padding-right: 10px; margin: 4px 0 8px; }
 .exam-ap-student { border: 2px solid #000; border-radius: 10px; padding: 10px; }
 .exam-ap-student table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.exam-ap-student td { padding: 0 !important; border: 0 !important; font-size: 13px !important; line-height: 1.3 !important; }
 .exam-ap-bold { font-weight: 700; }
 .exam-ap-block { display: block; }
-.exam-ap-bottom td { padding-bottom: 10px; }
-.exam-ap-top td { padding-top: 10px; }
+.exam-ap-bottom td { padding-bottom: 10px !important; }
+.exam-ap-top td { padding-top: 10px !important; }
 .exam-ap-marks { border: 2px solid #000; border-radius: 10px; margin-top: 10px; overflow: hidden; }
-.exam-ap-marks > table { width: 100%; border-collapse: collapse; }
-.exam-ap-marks > table > tbody > tr > td { border: 2px solid #000; padding: 5px 4px; text-align: center; font-size: 12px; }
-.exam-ap-marks > table > tbody > tr:first-child > td { border-top: 0; }
+.exam-ap-marks > table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.exam-ap-marks > table > tbody > tr > td {
+  border: 2px solid #000;
+  padding: 4px 3px !important;
+  text-align: center;
+  font-size: 13px !important;
+  line-height: 1.2 !important;
+  vertical-align: middle;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+}
+.exam-ap-marks > table > tbody > tr:first-child > td { font-size: 13px !important; padding: 3px !important; border-top: 0; }
 .exam-ap-marks > table > tbody > tr > td:last-child { border-right: 0; }
 .exam-ap-marks > table > tbody > tr > td:first-child { border-left: 0; }
 .exam-ap-marks > table > tbody > tr:last-child > td { border-bottom: 0; }
-.exam-ap-subhead { font-size: 13px; }
-.exam-ap-serial { width: 5%; }
-.exam-ap-subject { width: 32%; text-align: left; }
+.exam-ap-subhead td { font-size: 12px !important; }
+.exam-ap-serial { text-align: center; }
+.exam-ap-subject { text-align: left !important; }
 .exam-ap-center { text-align: center !important; }
-.exam-ap-right { text-align: right !important; }
+.exam-ap-right { text-align: right !important; font-size: 13px !important; }
+.exam-ap-remarks-label { font-size: 16px !important; }
 .exam-ap-left { text-align: left !important; }
-.exam-ap-dossier { padding: 0 !important; text-align: center !important; font-size: 16px; }
-.exam-ap-dossier table { width: 100%; border-collapse: collapse; font-size: 10px; }
-.exam-ap-dossier td { border: 1px solid #000; padding: 4px; }
+.exam-ap-dossier { padding: 0 !important; text-align: center !important; vertical-align: top; }
+.exam-ap-dossier-title { display: block; padding: 8px 4px; font-size: 16px; font-style: italic; font-weight: 700; }
+.exam-ap-dossier table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.exam-ap-dossier td {
+  border: 1px solid #000 !important;
+  padding: 3px 2px !important;
+  font-size: 10px !important;
+  line-height: 1.15 !important;
+  text-align: center;
+}
+.exam-ap-dossier-label { font-size: 11px !important; text-align: left !important; }
 .exam-ap-no-right { border-right: none !important; }
-.exam-ap-long-remarks { text-align: center; padding-bottom: 6%; font-size: 11px; vertical-align: top; }
-.exam-ap-note { margin-top: 12px; font-size: 12px; }
-.exam-ap-signs { display: flex; justify-content: space-between; padding: 40px 0 0; }
-.exam-ap-signs > div { border-top: 2px solid #000; padding-top: 5px; font-size: 12px; }
+.exam-ap-no-bottom { border-bottom: none !important; }
+.exam-ap-long-remarks {
+  text-align: center !important;
+  vertical-align: middle !important;
+  padding: 8px 4px !important;
+  font-size: 12px !important;
+  line-height: 1.25 !important;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+}
+.exam-ap-note { margin-top: 12px; font-size: 13px; }
+.exam-ap-signs { display: flex; justify-content: space-between; padding: 36px 0 0; }
+.exam-ap-signs > div { border-top: 2px solid #000; padding-top: 5px; font-size: 13px; }
 
 .exam-fancy-sheet { width: 100%; }
 .exam-fancy-card { width: 100%; min-height: 240px; margin-bottom: 16px; }

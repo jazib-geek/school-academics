@@ -142,7 +142,7 @@ public static class ZkTecoExceptionStatParser
         return rows;
     }
 
-    private readonly record struct ColumnMap(int Id, int Date, int OnDuty, int OffDuty, int Name);
+    private readonly record struct ColumnMap(int ThumbId, int Date, int OnDuty, int OffDuty, int Name);
 
     private static bool TryFindHeaders(
         List<object?[]> rows,
@@ -188,7 +188,8 @@ public static class ZkTecoExceptionStatParser
         {
             var top = i < primary.Length ? CellText(primary[i]) : string.Empty;
             var bottom = secondary != null && i < secondary.Length ? CellText(secondary[i]) : string.Empty;
-            labels[i] = NormalizeHeader(string.IsNullOrEmpty(bottom) ? top : bottom);
+            var combined = string.Join(' ', new[] { top, bottom }.Where(part => !string.IsNullOrWhiteSpace(part)));
+            labels[i] = NormalizeHeader(combined);
         }
 
         return labels;
@@ -204,8 +205,8 @@ public static class ZkTecoExceptionStatParser
         if (name < 0 || date < 0 || onDuty < 0 || offDuty < 0)
             return false;
 
-        var id = IndexOfExact(headers, "id");
-        columns = new ColumnMap(id, date, onDuty, offDuty, name);
+        var thumbId = IndexOfAny(headers, "thumb id", "thumb_id", "thumb-id", "thumbid");
+        columns = new ColumnMap(thumbId, date, onDuty, offDuty, name);
         return true;
     }
 
@@ -214,6 +215,17 @@ public static class ZkTecoExceptionStatParser
         for (var i = 0; i < headers.Length; i++)
         {
             if (headers[i] == expected)
+                return i;
+        }
+
+        return -1;
+    }
+
+    private static int IndexOfAny(string[] headers, params string[] expected)
+    {
+        for (var i = 0; i < headers.Length; i++)
+        {
+            if (expected.Any(name => headers[i] == name))
                 return i;
         }
 
@@ -238,9 +250,9 @@ public static class ZkTecoExceptionStatParser
     private static bool TryReadPunch(object?[] row, ColumnMap columns, out ZkTecoPunchRow punch)
     {
         punch = null!;
-        var code = CellText(GetCell(row, columns.Name));
+        var code = ReadEmployeeCode(GetCell(row, columns.ThumbId));
         if (string.IsNullOrWhiteSpace(code))
-            code = ReadEmployeeCode(GetCell(row, columns.Id));
+            code = ReadEmployeeCode(GetCell(row, columns.Name));
         if (string.IsNullOrWhiteSpace(code))
             return false;
 

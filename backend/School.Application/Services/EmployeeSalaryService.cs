@@ -120,7 +120,6 @@ public class EmployeeSalaryService : IEmployeeSalaryService
             context,
             employee.ID,
             employee.Salary,
-            employee.EmployeeName,
             month,
             year,
             cancellationToken);
@@ -177,31 +176,6 @@ public class EmployeeSalaryService : IEmployeeSalaryService
             })
             .ToListAsync();
 
-        if (SalaryPeriodHelper.IsPastMonth(month, year))
-        {
-            var missing = new List<string>();
-            foreach (var emp in employees)
-            {
-                var hasBasic = await context.EmployeeSalaryComponents
-                    .AsNoTracking()
-                    .AnyAsync(c =>
-                        c.EmpID == emp.ID &&
-                        c.Month == month &&
-                        c.Year == year &&
-                        c.ComponentType == SalaryComponentTypes.BasicSalary);
-                if (!hasBasic)
-                    missing.Add(emp.EmployeeName ?? $"Employee #{emp.ID}");
-            }
-
-            if (missing.Count > 0)
-            {
-                var names = string.Join(", ", missing.Take(8));
-                var more = missing.Count > 8 ? $" and {missing.Count - 8} more" : string.Empty;
-                throw new InvalidOperationException(
-                    $"Month basic salary is missing for: {names}{more}. Set it on Salary Adjustments before calculating this past month.");
-            }
-        }
-
         var designationNames = await context.Designations
             .AsNoTracking()
             .ToDictionaryAsync(d => d.ID, d => d.DesignationName);
@@ -250,7 +224,6 @@ public class EmployeeSalaryService : IEmployeeSalaryService
                 context,
                 employee.ID,
                 employee.Salary,
-                employee.EmployeeName,
                 month,
                 year);
 
@@ -294,7 +267,6 @@ public class EmployeeSalaryService : IEmployeeSalaryService
         AppDbContext context,
         int employeeId,
         decimal? liveSalary,
-        string? employeeName,
         int month,
         int year,
         CancellationToken cancellationToken = default)
@@ -316,11 +288,7 @@ public class EmployeeSalaryService : IEmployeeSalaryService
                 .FirstOrDefaultAsync(cancellationToken);
 
             if (snapshot == null)
-            {
-                var label = string.IsNullOrWhiteSpace(employeeName) ? $"Employee #{employeeId}" : employeeName;
-                throw new InvalidOperationException(
-                    $"Month basic salary is missing for {label}. Set it on Salary Adjustments before calculating this past month.");
-            }
+                return RoundMoney(liveSalary ?? 0m);
 
             return RoundMoney(snapshot.Value);
         }

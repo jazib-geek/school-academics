@@ -31,11 +31,14 @@ import { hasCampusPermission } from '../../../services/authService'
 import { getClasses } from '../../../services/classService'
 import { getExamTypes } from '../../../services/examService'
 import {
+  getAcademicProgressFlags,
   getExamExecutiveSnapshot,
   getExamReportClassSubjects,
   getSmartExamCatalog,
   runSmartExamReport,
 } from '../../../services/examReportService'
+
+const PROGRESS_PROMPT_IDS = new Set(['result-card', 'result-card-multiple'])
 
 const FREQUENT_REPORT_IDS = [
   'result-card',
@@ -145,6 +148,7 @@ export default function CampusExamReportsPage() {
   const [isBooting, setIsBooting] = useState(true)
   const [error, setError] = useState('')
   const [runError, setRunError] = useState('')
+  const [gradePrompt, setGradePrompt] = useState(null)
   const [classSubjects, setClassSubjects] = useState([])
   const [selectedSubjectIds, setSelectedSubjectIds] = useState([])
   const [subjectsLoading, setSubjectsLoading] = useState(false)
@@ -181,7 +185,13 @@ export default function CampusExamReportsPage() {
     [examTypeOptions],
   )
 
-  const pageOrientation = EXAM_PRINT_LANDSCAPE_LAYOUTS.has(result?.layout) ? 'landscape' : 'portrait'
+  const isAcademicProgress = result?.layout === 'academic-progress'
+  const pageOrientation = isAcademicProgress
+    ? '8.5in 13.5in'
+    : EXAM_PRINT_LANDSCAPE_LAYOUTS.has(result?.layout)
+      ? 'landscape'
+      : 'portrait'
+  const pageMargin = isAcademicProgress ? '0.28in' : '12mm'
   const needsSubjectPicker = reportId === 'award-list-subjects'
 
   useEffect(() => {
@@ -233,6 +243,7 @@ export default function CampusExamReportsPage() {
     setResult(null)
     setRunError('')
     setIsResultOpen(false)
+    setGradePrompt(null)
     setClassSubjects([])
     setSelectedSubjectIds([])
     setSubjectsError('')
@@ -274,7 +285,44 @@ export default function CampusExamReportsPage() {
   }
 
   const runReport = async () => {
-    await executeReport(reportId, params)
+    if (!PROGRESS_PROMPT_IDS.has(reportId)) {
+      await executeReport(reportId, params)
+      return
+    }
+
+    const studentId = Number(params.studentId) || 0
+    const sectionId = Number(params.classCompositeId) || 0
+    const flags = await getAcademicProgressFlags({
+      studentId: reportId === 'result-card' ? studentId : undefined,
+      sectionId: reportId === 'result-card-multiple' ? sectionId : undefined,
+    }).catch(() => ({ hasDrawing: false, hasStemp: false }))
+
+    if (flags?.hasDrawing || flags?.hasStemp) {
+      setGradePrompt({
+        hasDrawing: !!flags.hasDrawing,
+        hasStemp: !!flags.hasStemp,
+        markDrawingAsGrade: true,
+        markStempAsGrade: true,
+      })
+      return
+    }
+
+    await executeReport(reportId, {
+      ...params,
+      markDrawingAsGrade: false,
+      markStempAsGrade: true,
+    })
+  }
+
+  const confirmGradePrompt = async () => {
+    if (!gradePrompt) return
+    const choices = gradePrompt
+    setGradePrompt(null)
+    await executeReport(reportId, {
+      ...params,
+      markDrawingAsGrade: choices.hasDrawing ? choices.markDrawingAsGrade : false,
+      markStempAsGrade: choices.hasStemp ? choices.markStempAsGrade : true,
+    })
   }
 
   useEffect(() => {
@@ -418,7 +466,7 @@ export default function CampusExamReportsPage() {
     <div className="print-page-root min-h-screen bg-slate-50">
       <style>{`
         ${EXAM_REPORT_PRINT_CSS}
-        @page { size: ${pageOrientation}; margin: 12mm; }
+        @page { size: ${pageOrientation}; margin: ${pageMargin}; }
         @media print {
           * { color: #000 !important; background: transparent !important; box-shadow: none !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
           html, body, #root { background: #ffffff !important; margin: 0 !important; padding: 0 !important; }
@@ -432,7 +480,7 @@ export default function CampusExamReportsPage() {
             min-height: auto !important;
           }
           .print-only.print-sheet {
-            padding: 6mm !important;
+            padding: ${isAcademicProgress ? '0' : '6mm'} !important;
             box-sizing: border-box !important;
           }
           table thead, table thead th {
@@ -679,6 +727,71 @@ export default function CampusExamReportsPage() {
                   )}
                 </div>
               </section>
+
+              {gradePrompt ? (
+                <div className="no-print fixed inset-0 z-[90] flex items-center justify-center p-4">
+                  <button
+                    type="button"
+                    aria-label="Close"
+                    className="absolute inset-0 bg-slate-900/40"
+                    onClick={() => setGradePrompt(null)}
+                  />
+                  <div className="relative z-10 w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl ring-1 ring-slate-200">
+                    <h2 className="text-lg font-semibold text-slate-900">Result card</h2>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Choose how these subjects should appear on the card.
+                    </p>
+                    <div className="mt-4 space-y-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+                      {gradePrompt.hasDrawing ? (
+                        <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                          <input
+                            type="checkbox"
+                            checked={gradePrompt.markDrawingAsGrade}
+                            onChange={(event) =>
+                              setGradePrompt((current) =>
+                                current ? { ...current, markDrawingAsGrade: event.target.checked } : current,
+                              )
+                            }
+                            className="h-4 w-4 rounded border-slate-300 text-indigo-600"
+                          />
+                          Mark Drawing as grade
+                        </label>
+                      ) : null}
+                      {gradePrompt.hasStemp ? (
+                        <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                          <input
+                            type="checkbox"
+                            checked={gradePrompt.markStempAsGrade}
+                            onChange={(event) =>
+                              setGradePrompt((current) =>
+                                current ? { ...current, markStempAsGrade: event.target.checked } : current,
+                              )
+                            }
+                            className="h-4 w-4 rounded border-slate-300 text-indigo-600"
+                          />
+                          Mark Stemp as grade
+                        </label>
+                      ) : null}
+                    </div>
+                    <div className="mt-4 flex justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setGradePrompt(null)}
+                        className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void confirmGradePrompt()}
+                        className="rounded-lg bg-[var(--campus-primary)] px-3 py-2 text-sm font-semibold text-white"
+                      >
+                        Generate
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
 
               {isResultOpen ? (
                 <div className="exam-result-modal no-print fixed inset-0 z-[80] flex items-start justify-center overflow-y-auto p-3 sm:p-6">

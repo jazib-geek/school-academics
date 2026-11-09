@@ -42,6 +42,16 @@ public class ExamReportsController : ControllerBase
         return Ok(ApiResponse<object>.SuccessResponse(subjects));
     }
 
+    [HttpGet("smart/progress-flags")]
+    public async Task<IActionResult> GetProgressFlags([FromQuery] int? studentId, [FromQuery] int? sectionId)
+    {
+        if (studentId is not > 0 && sectionId is not > 0)
+            return BadRequest(ApiResponse<object>.FailureResponse("Please choose a student or a class."));
+
+        var flags = await _smart.GetAcademicProgressSubjectFlagsAsync(studentId, sectionId);
+        return Ok(ApiResponse<object>.SuccessResponse(flags));
+    }
+
     [HttpPost("smart/run")]
     public async Task<IActionResult> RunSmartReport([FromBody] SmartStudentReportRunRequestDto? request)
     {

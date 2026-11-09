@@ -6,6 +6,22 @@ public interface IExamService
 {
     Task<IReadOnlyList<ExamTypeListItemDto>> GetExamTypesAsync();
 
+    Task<IReadOnlyList<ExamTypeManageDto>> GetManageExamTypesAsync(CancellationToken cancellationToken = default);
+
+    Task<ExamTypeManageDto> CreateExamTypeAsync(ExamTypeUpsertDto request, CancellationToken cancellationToken = default);
+
+    Task<ExamTypeManageDto> UpdateExamTypeAsync(int id, ExamTypeUpsertDto request, CancellationToken cancellationToken = default);
+
+    Task SetExamTypeStatusAsync(int id, bool isActive, CancellationToken cancellationToken = default);
+
+    Task DeleteExamTypeAsync(int id, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<ExamTypeManageDto>> MoveExamTypeAsync(
+        int id,
+        string direction,
+        IReadOnlyList<int>? orderedIds,
+        CancellationToken cancellationToken = default);
+
     Task<ExamEntryMatrixDto?> LoadExamEntryMatrixAsync(
         int sectionId,
         int examTypeId);
@@ -66,6 +82,10 @@ public interface IExamService
     Task<AcademicProgressCardDto?> GetAcademicProgressCardAsync(
         int studentId,
         ExamAggregationOptions? options = null);
+
+    Task<AcademicProgressSubjectFlagsDto> GetAcademicProgressSubjectFlagsAsync(
+        int? studentId,
+        int? sectionId);
 
     Task<IReadOnlyList<AcademicProgressCardDto>> GetAcademicProgressCardsForClassAsync(
         int sectionId,

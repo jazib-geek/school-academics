@@ -434,13 +434,13 @@ public class EmployeeAttendanceController : ControllerBase
     private static EmployeeAttendanceImportRulesDto ParseImportRules(string? rulesJson)
     {
         if (string.IsNullOrWhiteSpace(rulesJson))
-            throw new ArgumentException("Select dates and teacher times before importing.");
+            throw new ArgumentException("Select dates and enter check-in and checkout for each.");
 
         var rules = JsonSerializer.Deserialize<EmployeeAttendanceImportRulesDto>(
             rulesJson,
             new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
         if (rules?.Dates is null || rules.Dates.Count == 0)
-            throw new ArgumentException("Select dates and teacher times before importing.");
+            throw new ArgumentException("Select dates and enter check-in and checkout for each.");
 
         return rules;
     }

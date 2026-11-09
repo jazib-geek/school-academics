@@ -5,6 +5,28 @@ export const getExamTypes = async () => {
   return response?.data || []
 }
 
+const unwrapExamType = (response) => response?.data?.data
+
+const asExamTypeRow = (row) => ({
+  id: row?.id ?? row?.Id,
+  name: row?.name ?? row?.Name ?? '',
+  isActive: (row?.isActive ?? row?.IsActive) !== false,
+  priority: Number(row?.priority ?? row?.Priority ?? 0),
+})
+
+export const getManageExamTypes = async () => {
+  const rows = unwrapExamType(await api.get('/api/exam/types/manage')) || []
+  return (Array.isArray(rows) ? rows : []).map(asExamTypeRow)
+}
+export const createExamType = async (payload) => unwrapExamType(await api.post('/api/exam/types', payload))
+export const updateExamType = async (id, payload) => unwrapExamType(await api.post(`/api/exam/types/${id}/update`, payload))
+export const setExamTypeStatus = async (id, isActive) => api.post(`/api/exam/types/${id}/status`, { isActive })
+export const deleteExamType = async (id) => api.post(`/api/exam/types/${id}/delete`)
+export const moveExamType = async (id, direction, orderedIds) => {
+  const rows = unwrapExamType(await api.post(`/api/exam/types/${id}/move`, { direction, orderedIds })) || []
+  return (Array.isArray(rows) ? rows : []).map(asExamTypeRow)
+}
+
 export const loadExamEntryMatrix = async ({ sectionId, examTypeId }) => {
   const response = await api.post('/api/exam/entry/load', { sectionId, examTypeId })
   return response?.data
