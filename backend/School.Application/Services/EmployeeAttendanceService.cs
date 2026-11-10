@@ -68,6 +68,7 @@ public class EmployeeAttendanceService : IEmployeeAttendanceService
                 checkInTime = attendance.Time,
                 checkOutTime = attendance.CheckOutTime,
                 lateComings = attendance.LateComings,
+                dutyResult = attendance.DutyResult,
                 changeJson = attendance.ChangeJson,
                 mustCheckinTime = designation != null ? designation.MustCheckinTime : null,
                 leavingTime = designation != null ? designation.LeavingTime : null,
@@ -98,13 +99,14 @@ public class EmployeeAttendanceService : IEmployeeAttendanceService
                     CheckOutTime = FormatCheckOutTime(row.checkOutTime),
                     LateMinutes = penalty.Total,
                     LateComings = lateComings,
-                    IsLate = lateComings > 0,
+                    IsLate = ResolveIsLate(row.dutyResult, lateComings > 0),
                     Status = FormatDutyStatus(
                         null,
                         hasCheckIn: true,
                         penalty.LateMinutes,
                         penalty.EarlyMinutes,
-                        lateComings),
+                        lateComings,
+                        row.dutyResult),
                 };
             })
             .ToList();
@@ -350,8 +352,9 @@ public class EmployeeAttendanceService : IEmployeeAttendanceService
             hasCheckIn,
             penalty.LateMinutes,
             penalty.EarlyMinutes,
-            lateComings);
-        var isLate = hasCheckIn && penalty.LateMinutes > 0;
+            lateComings,
+            attendance.DutyResult);
+        var isLate = ResolveIsLate(attendance.DutyResult, hasCheckIn && penalty.LateMinutes > 0);
 
         return new EmployeeMyAttendanceDayDto
         {
@@ -382,11 +385,23 @@ public class EmployeeAttendanceService : IEmployeeAttendanceService
             .FirstOrDefaultAsync(e => e.Thumb_ID == code && e.IsActive == true, cancellationToken)
             ?? throw new KeyNotFoundException($"Employee with code '{code}' was not found.");
 
-        var defaultCheckIn = DesignationTimeHelper.ToTimeOfDay(employee.Designation?.MustCheckinTime);
-        var defaultCheckOut = DesignationTimeHelper.ToTimeOfDay(employee.Designation?.LeavingTime);
+        var isSaturday = today.DayOfWeek == DayOfWeek.Saturday;
+        var isFriday = today.DayOfWeek == DayOfWeek.Friday;
+        var checkInSource = isSaturday && employee.Designation?.SaturdayMustCheckinTime != null
+            ? employee.Designation.SaturdayMustCheckinTime
+            : isFriday && employee.Designation?.FridayMustCheckinTime != null
+                ? employee.Designation.FridayMustCheckinTime
+                : employee.Designation?.MustCheckinTime;
+        var checkOutSource = isSaturday && employee.Designation?.SaturdayLeavingTime != null
+            ? employee.Designation.SaturdayLeavingTime
+            : isFriday && employee.Designation?.FridayLeavingTime != null
+                ? employee.Designation.FridayLeavingTime
+                : employee.Designation?.LeavingTime;
+        var defaultCheckIn = DesignationTimeHelper.ToTimeOfDay(checkInSource);
+        var defaultCheckOut = DesignationTimeHelper.ToTimeOfDay(checkOutSource);
         var graceMinutes = employee.Designation?.MustCheckinMinutesDifference;
-        var mustCheckinDisplay = DesignationTimeHelper.FormatTime(employee.Designation?.MustCheckinTime);
-        var leavingDisplay = DesignationTimeHelper.FormatTime(employee.Designation?.LeavingTime);
+        var mustCheckinDisplay = DesignationTimeHelper.FormatTime(checkInSource);
+        var leavingDisplay = DesignationTimeHelper.FormatTime(checkOutSource);
 
         var row = await _context.EmployeeAttendances
             .FirstOrDefaultAsync(a =>
@@ -439,6 +454,7 @@ public class EmployeeAttendanceService : IEmployeeAttendanceService
             row.CurrentSalary = currentSalary;
             row.LateDeduction = lateDeduction;
             row.TodaySalary = todaySalary;
+            row.DutyResult = EmployeeDutyResults.FromMinutes(lateMinutes, earlyMinutes);
             row.UpdatedBy = "BiometricKiosk";
             row.ChangeJson = BuildChangeJson(
                 "BiometricCheckIn",
@@ -466,6 +482,7 @@ public class EmployeeAttendanceService : IEmployeeAttendanceService
             row.CurrentSalary = currentSalary;
             row.LateDeduction = lateDeduction;
             row.TodaySalary = todaySalary;
+            row.DutyResult = EmployeeDutyResults.FromMinutes(lateMinutes, earlyMinutes);
             row.UpdatedBy = "BiometricKiosk";
             row.ChangeJson = BuildChangeJson(
                 "BiometricCheckOut",
@@ -490,13 +507,14 @@ public class EmployeeAttendanceService : IEmployeeAttendanceService
             CheckInTime = row.Time,
             LateMinutes = lateMinutes + earlyMinutes,
             LateComings = row.LateComings ?? 0,
-            IsLate = (row.LateComings ?? 0) > 0,
+            IsLate = ResolveIsLate(row.DutyResult, (row.LateComings ?? 0) > 0),
             Status = FormatDutyStatus(
                 row.Status,
                 hasCheckIn: true,
                 lateMinutes,
                 earlyMinutes,
-                row.LateComings ?? 0),
+                row.LateComings ?? 0,
+                row.DutyResult),
         };
 
         await _liveUpdateSink.PublishAsync(_tenantContext.Campus, liveRow, cancellationToken);
@@ -567,6 +585,7 @@ public class EmployeeAttendanceService : IEmployeeAttendanceService
                 checkInTime = attendance.Time,
                 checkOutTime = attendance.CheckOutTime,
                 status = attendance.Status,
+                dutyResult = attendance.DutyResult,
                 lateComings = attendance.LateComings,
                 lateDeduction = attendance.LateDeduction,
                 todaySalary = attendance.TodaySalary,
@@ -682,13 +701,14 @@ public class EmployeeAttendanceService : IEmployeeAttendanceService
                     CheckOutTime = FormatCheckOutTime(row.checkOutTime),
                     LateMinutes = penalty.Total,
                     LateComings = lateComings,
-                    IsLate = lateComings > 0,
+                    IsLate = ResolveIsLate(row.dutyResult, lateComings > 0),
                     Status = FormatDutyStatus(
                         rawStatus,
                         hasCheckIn,
                         penalty.LateMinutes,
                         penalty.EarlyMinutes,
-                        lateComings),
+                        lateComings,
+                        row.dutyResult),
                     UpdatedBy = row.updatedBy,
                     IsManuallyAdjusted = IsManuallyAdjusted(row.changeJson),
                     PendingChangeRequestId = pendingRequest?.Id,
@@ -734,6 +754,7 @@ public class EmployeeAttendanceService : IEmployeeAttendanceService
         var before = SnapshotAttendance(row);
         ApplyManualTimes(row, row.Date.Value.Date, request.CheckInTime, request.CheckOutTime);
         var calc = RecalculateAndApply(row, employee, row.Date.Value.Date);
+        row.DutyResult = EmployeeDutyResults.FromMinutes(calc.LateMinutes, calc.EarlyMinutes);
 
         row.UpdatedBy = editedByUsername;
         row.ChangeJson = BuildManualChangeJson(
@@ -876,6 +897,7 @@ public class EmployeeAttendanceService : IEmployeeAttendanceService
         var before = SnapshotAttendance(row);
         ApplyManualTimes(row, targetDate, request.CheckInTime, request.CheckOutTime);
         var calc = RecalculateAndApply(row, employee, targetDate);
+        row.DutyResult = EmployeeDutyResults.FromMinutes(calc.LateMinutes, calc.EarlyMinutes);
 
         row.UpdatedBy = editedByUsername;
         row.ChangeJson = BuildManualChangeJson(
@@ -992,6 +1014,7 @@ public class EmployeeAttendanceService : IEmployeeAttendanceService
             var before = SnapshotAttendance(row);
             ApplyManualTimes(row, date, checkIn, checkOut);
             var calc = RecalculateAndApply(row, employee, date);
+            row.DutyResult = EmployeeDutyResults.FromMinutes(calc.LateMinutes, calc.EarlyMinutes);
             row.UpdatedBy = editedByUsername;
             row.ChangeJson = BuildManualChangeJson(
                 "ManualMarkPresent",
@@ -1507,7 +1530,14 @@ public class EmployeeAttendanceService : IEmployeeAttendanceService
         }
 
         var isHoliday = string.Equals(attendance.Status, "H", StringComparison.OrdinalIgnoreCase);
-        var isLate = !isHoliday && hasCheckIn && (lateComings > 0 || lateMinutes > 0);
+        var liveIsLate = !isHoliday && hasCheckIn && (lateComings > 0 || lateMinutes > 0);
+        var isLate = ResolveIsLate(attendance.DutyResult, liveIsLate);
+        string? dutyLabel = null;
+        if (!isHoliday && hasCheckIn &&
+            EmployeeDutyResults.TryGetLabel(attendance.DutyResult, out var storedDutyLabel))
+        {
+            dutyLabel = storedDutyLabel;
+        }
 
         return new()
         {
@@ -1522,9 +1552,7 @@ public class EmployeeAttendanceService : IEmployeeAttendanceService
                 ? "Holiday"
                 : !hasCheckIn
                     ? "Absent"
-                    : isLate
-                        ? "Late"
-                        : "On time",
+                    : dutyLabel ?? (isLate ? "Late" : "On time"),
         };
     }
 
@@ -1621,17 +1649,23 @@ public class EmployeeAttendanceService : IEmployeeAttendanceService
         }
     }
 
+    private static bool ResolveIsLate(string? dutyResult, bool liveIsLate) =>
+        EmployeeDutyResults.IsLateArrival(dutyResult) ?? liveIsLate;
+
     private static string FormatDutyStatus(
         string? rawStatus,
         bool hasCheckIn,
         int lateArrivalMinutes,
         int earlyMinutes,
-        int lateComings)
+        int lateComings,
+        string? dutyResult = null)
     {
         if (string.Equals(rawStatus, "H", StringComparison.OrdinalIgnoreCase))
             return "Holiday";
         if (!hasCheckIn)
             return "No check-in";
+        if (EmployeeDutyResults.TryGetLabel(dutyResult, out var storedLabel))
+            return storedLabel;
 
         var lateArrival = lateArrivalMinutes > 0;
         var leftEarly = earlyMinutes > 0;
@@ -1932,13 +1966,14 @@ public class EmployeeAttendanceService : IEmployeeAttendanceService
             CheckOutTime = FormatCheckOutTime(row.CheckOutTime),
             LateMinutes = CombinedPenaltyMinutes(calc),
             LateComings = lateComings,
-            IsLate = lateComings > 0,
+            IsLate = ResolveIsLate(row.DutyResult, lateComings > 0),
             Status = FormatDutyStatus(
                 row.Status,
                 hasCheckIn: true,
                 calc.LateMinutes,
                 calc.EarlyMinutes,
-                lateComings),
+                lateComings,
+                row.DutyResult),
         };
 
         await _liveUpdateSink.PublishAsync(_tenantContext.Campus, liveRow, cancellationToken);
@@ -1965,7 +2000,8 @@ public class EmployeeAttendanceService : IEmployeeAttendanceService
                 !string.IsNullOrWhiteSpace(row.Time),
                 calc.LateMinutes,
                 calc.EarlyMinutes,
-                lateComings),
+                lateComings,
+                row.DutyResult),
             IsManuallyAdjusted = true,
         };
     }

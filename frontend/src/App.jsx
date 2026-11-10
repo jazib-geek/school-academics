@@ -51,6 +51,7 @@ import CampusShortLeavePage from './pages/Campus/attendance/CampusShortLeavePage
 import RemindersPage from './pages/Campus/reminders/RemindersPage.jsx'
 import CampusAbsentFollowupPage from './pages/Campus/attendance/CampusAbsentFollowupPage.jsx'
 import CampusStudentConductPage from './pages/Campus/conduct/CampusStudentConductPage.jsx'
+import CampusDisciplinePage from './pages/Campus/conduct/CampusDisciplinePage.jsx'
 import CampusTeacherConductPage from './pages/Campus/conduct/CampusTeacherConductPage.jsx'
 import CampusAnnouncementsPage from './pages/Campus/family-portal/CampusAnnouncementsPage.jsx'
 import CampusFamilyAccountsPage from './pages/Campus/family-portal/CampusFamilyAccountsPage.jsx'
@@ -87,6 +88,7 @@ import EmployeeProtectedRoute from './components/EmployeeProtectedRoute.jsx'
 import EmployeeAcademicHeadRoute from './components/EmployeeAcademicHeadRoute.jsx'
 import EmployeeCoordinatorRoute from './components/EmployeeCoordinatorRoute.jsx'
 import EmployeeAppAccessRoute from './components/EmployeeAppAccessRoute.jsx'
+import EmployeeDisciplineRoute from './components/EmployeeDisciplineRoute.jsx'
 import EmployeeExamsPage from './pages/Employee/EmployeeExamsPage.jsx'
 import EmployeeDashboardPage from './pages/Employee/EmployeeDashboardPage.jsx'
 import EmployeeAttendancePage from './pages/Employee/EmployeeAttendancePage.jsx'
@@ -97,6 +99,7 @@ import EmployeeStudentConductPage from './pages/Employee/EmployeeStudentConductP
 import EmployeeTeacherConductPage from './pages/Employee/EmployeeTeacherConductPage.jsx'
 import EmployeeMyConductPage from './pages/Employee/EmployeeMyConductPage.jsx'
 import EmployeeConductReportPage from './pages/Employee/EmployeeConductReportPage.jsx'
+import EmployeeDisciplinePage from './pages/Employee/EmployeeDisciplinePage.jsx'
 import EmployeeMyAttendancePage from './pages/Employee/EmployeeMyAttendancePage.jsx'
 import EmployeeMySalaryAdjustmentsPage from './pages/Employee/EmployeeMySalaryAdjustmentsPage.jsx'
 import EmployeeMyAssignmentsPage from './pages/Employee/EmployeeMyAssignmentsPage.jsx'
@@ -242,6 +245,14 @@ function App() {
           <EmployeeAppAccessRoute anyOf={['canRecordTeacherConduct', 'canViewTeacherConduct']}>
             <EmployeeTeacherConductPage />
           </EmployeeAppAccessRoute>
+        }
+      />
+      <Route
+        path="/employee/discipline"
+        element={
+          <EmployeeDisciplineRoute>
+            <EmployeeDisciplinePage />
+          </EmployeeDisciplineRoute>
         }
       />
       <Route
@@ -597,6 +608,14 @@ function App() {
         element={
           <ProtectedRoute>
             <CampusStudentConductPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/campus/discipline"
+        element={
+          <ProtectedRoute>
+            <CampusDisciplinePage />
           </ProtectedRoute>
         }
       />

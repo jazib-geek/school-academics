@@ -15,6 +15,8 @@ public class EmployeeAttendanceImportRulesDto
     public int? AdminMinutesBefore { get; set; }
     public int? CoordinatorMinutesBefore { get; set; }
     public string? FridayCheckOut { get; set; }
+    public string? SaturdayCheckIn { get; set; }
+    public string? SaturdayCheckOut { get; set; }
 }
 
 public class EmployeeAttendanceImportDateRuleDto

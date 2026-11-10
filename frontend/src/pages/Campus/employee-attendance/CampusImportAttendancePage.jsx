@@ -39,10 +39,14 @@ const toDateKey = (value) => {
   return `${y}-${m}-${d}`
 }
 
-const isFriday = (dateKey) => {
+const weekdayOf = (dateKey) => {
   const [year, month, day] = dateKey.split('-').map(Number)
-  return new Date(year, month - 1, day).getDay() === 5
+  return new Date(year, month - 1, day).getDay()
 }
+
+const isFriday = (dateKey) => weekdayOf(dateKey) === 5
+
+const isSaturday = (dateKey) => weekdayOf(dateKey) === 6
 
 const formatDateLabel = (value) => {
   const key = toDateKey(value)
@@ -60,6 +64,20 @@ const formatDateLabel = (value) => {
 const checkoutForDate = (date, weekdayCheckOut, fridayOffTime) =>
   isFriday(date) && fridayOffTime ? fridayOffTime : weekdayCheckOut
 
+const dutyTimesForDate = (date, weekdayCheckIn, weekdayCheckOut, fridayOffTime, saturdayCheckIn, saturdayCheckOut) => {
+  if (isSaturday(date)) {
+    return {
+      checkIn: saturdayCheckIn || weekdayCheckIn,
+      checkOut: saturdayCheckOut || weekdayCheckOut,
+    }
+  }
+
+  return {
+    checkIn: weekdayCheckIn,
+    checkOut: checkoutForDate(date, weekdayCheckOut, fridayOffTime),
+  }
+}
+
 export default function CampusImportAttendancePage() {
   const canEdit = hasCampusPermission('edit_emp_attendance')
   const storedProfile = normalizeCampusProfile(getStoredCampusProfile() || {})
@@ -70,6 +88,8 @@ export default function CampusImportAttendancePage() {
   const [teacherCheckIn, setTeacherCheckIn] = useState(storedProfile.teacherCheckInTime || '07:15')
   const [teacherCheckOut, setTeacherCheckOut] = useState(storedProfile.teacherCheckOutTime || '13:30')
   const [fridayCheckOut, setFridayCheckOut] = useState(storedProfile.fridayCheckOutTime || '12:30')
+  const [saturdayCheckIn, setSaturdayCheckIn] = useState(storedProfile.saturdayCheckInTime || '07:15')
+  const [saturdayCheckOut, setSaturdayCheckOut] = useState(storedProfile.saturdayCheckOutTime || '13:30')
   const [adminMinutesBefore, setAdminMinutesBefore] = useState(storedProfile.adminEarlyMinutes)
   const [coordinatorMinutesBefore, setCoordinatorMinutesBefore] = useState(
     storedProfile.coordinatorEarlyMinutes,
@@ -94,6 +114,8 @@ export default function CampusImportAttendancePage() {
         setTeacherCheckIn(profile.teacherCheckInTime || '07:15')
         setTeacherCheckOut(profile.teacherCheckOutTime || '13:30')
         setFridayCheckOut(profile.fridayCheckOutTime || '12:30')
+        setSaturdayCheckIn(profile.saturdayCheckInTime || '07:15')
+        setSaturdayCheckOut(profile.saturdayCheckOutTime || '13:30')
         setAdminMinutesBefore(profile.adminEarlyMinutes)
         setCoordinatorMinutesBefore(profile.coordinatorEarlyMinutes)
       } catch {
@@ -138,8 +160,7 @@ export default function CampusImportAttendancePage() {
         dates.map((date) => ({
           date,
           checked: true,
-          checkIn: teacherCheckIn,
-          checkOut: checkoutForDate(date, teacherCheckOut, fridayCheckOut),
+          ...dutyTimesForDate(date, teacherCheckIn, teacherCheckOut, fridayCheckOut, saturdayCheckIn, saturdayCheckOut),
         })),
       )
     } catch (err) {
@@ -161,8 +182,7 @@ export default function CampusImportAttendancePage() {
         row.checked
           ? {
               ...row,
-              checkIn: teacherCheckIn,
-              checkOut: checkoutForDate(row.date, teacherCheckOut, fridayCheckOut),
+              ...dutyTimesForDate(row.date, teacherCheckIn, teacherCheckOut, fridayCheckOut, saturdayCheckIn, saturdayCheckOut),
             }
           : row,
       ),
@@ -209,6 +229,8 @@ export default function CampusImportAttendancePage() {
         adminMinutesBefore: Number(adminMinutesBefore) || 0,
         coordinatorMinutesBefore: Number(coordinatorMinutesBefore) || 0,
         fridayCheckOut: fridayCheckOut || null,
+        saturdayCheckIn: saturdayCheckIn || null,
+        saturdayCheckOut: saturdayCheckOut || null,
       })
       const unknown = result?.data?.unknownEmployeeCodes || []
       toast.success(result?.message || 'Attendance imported.')
@@ -329,6 +351,24 @@ export default function CampusImportAttendancePage() {
                     className={`${inputClass} mt-1`}
                     value={fridayCheckOut}
                     onChange={(event) => setFridayCheckOut(event.target.value)}
+                  />
+                </label>
+                <label className="text-xs font-semibold uppercase text-slate-500">
+                  Saturday check-in
+                  <input
+                    type="time"
+                    className={`${inputClass} mt-1`}
+                    value={saturdayCheckIn}
+                    onChange={(event) => setSaturdayCheckIn(event.target.value)}
+                  />
+                </label>
+                <label className="text-xs font-semibold uppercase text-slate-500">
+                  Saturday checkout
+                  <input
+                    type="time"
+                    className={`${inputClass} mt-1`}
+                    value={saturdayCheckOut}
+                    onChange={(event) => setSaturdayCheckOut(event.target.value)}
                   />
                 </label>
                 <label className="text-xs font-semibold uppercase text-slate-500">

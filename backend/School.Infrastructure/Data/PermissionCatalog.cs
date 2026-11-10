@@ -197,6 +197,7 @@ public static class PermissionCatalog
         Add("delete_voucher", "Delete Voucher", "Accounts");
         Add("view_teacher_conduct", "View Teacher Conduct", "Employee");
         Add("view_fee_dashboard", "Fee Dashboard / Analysis", "Fee");
+        Add("view_discipline", "View Discipline", "Student");
 
         return items
             .Select((item, index) => new Permission

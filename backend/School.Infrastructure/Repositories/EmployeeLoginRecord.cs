@@ -29,4 +29,5 @@ public class EmployeeLoginRecord
     public bool CanViewTeacherConduct { get; set; }
     public ProformaWingCode? WingCode { get; set; }
     public bool IsAcademicHead { get; set; }
+    public bool IsDisciplineIncharge { get; set; }
 }

@@ -55,9 +55,21 @@ public class EmployeeAttendanceImportService : IEmployeeAttendanceImportService
         var fridayCheckOut = !string.IsNullOrWhiteSpace(rules.FridayCheckOut)
             ? rules.FridayCheckOut
             : EmployeeAttendanceCalculator.FormatHhMm(profile?.FridayCheckOutTime);
+        var saturdayCheckIn = !string.IsNullOrWhiteSpace(rules.SaturdayCheckIn)
+            ? rules.SaturdayCheckIn
+            : EmployeeAttendanceCalculator.FormatHhMm(profile?.SaturdayCheckInTime);
+        var saturdayCheckOut = !string.IsNullOrWhiteSpace(rules.SaturdayCheckOut)
+            ? rules.SaturdayCheckOut
+            : EmployeeAttendanceCalculator.FormatHhMm(profile?.SaturdayCheckOutTime);
         var teacherCheckInFallback = EmployeeAttendanceCalculator.FormatHhMm(profile?.TeacherCheckInTime);
         var teacherCheckOutFallback = EmployeeAttendanceCalculator.FormatHhMm(profile?.TeacherCheckOutTime);
-        var dateRules = BuildDateRules(rules, fridayCheckOut, teacherCheckInFallback, teacherCheckOutFallback);
+        var dateRules = BuildDateRules(
+            rules,
+            fridayCheckOut,
+            saturdayCheckIn,
+            saturdayCheckOut,
+            teacherCheckInFallback,
+            teacherCheckOutFallback);
         if (dateRules.Count == 0)
             throw new ArgumentException("Select at least one date with check-in and checkout times.");
 
@@ -169,6 +181,8 @@ public class EmployeeAttendanceImportService : IEmployeeAttendanceImportService
                 adminMinutesBefore = adminMinutes,
                 coordinatorMinutesBefore = coordinatorMinutes,
                 fridayCheckOut,
+                saturdayCheckIn,
+                saturdayCheckOut,
                 dates = dateRules.Keys.OrderBy(d => d).Select(d => d.ToString("yyyy-MM-dd")).ToList(),
                 unknownEmployeeCodes = unknownCodes.OrderBy(c => c).Take(20).ToList(),
             },
@@ -190,6 +204,8 @@ public class EmployeeAttendanceImportService : IEmployeeAttendanceImportService
     private static Dictionary<DateTime, (TimeSpan CheckIn, TimeSpan CheckOut)> BuildDateRules(
         EmployeeAttendanceImportRulesDto rules,
         string? fridayCheckOut,
+        string? saturdayCheckIn,
+        string? saturdayCheckOut,
         string? teacherCheckInFallback,
         string? teacherCheckOutFallback)
     {
@@ -211,6 +227,21 @@ public class EmployeeAttendanceImportService : IEmployeeAttendanceImportService
                 !string.IsNullOrWhiteSpace(fridayCheckOut))
             {
                 checkOutText = fridayCheckOut;
+            }
+
+            if (date.DayOfWeek == DayOfWeek.Saturday)
+            {
+                if (string.IsNullOrWhiteSpace(item.TeacherCheckIn) &&
+                    !string.IsNullOrWhiteSpace(saturdayCheckIn))
+                {
+                    checkInText = saturdayCheckIn;
+                }
+
+                if (string.IsNullOrWhiteSpace(item.TeacherCheckOut) &&
+                    !string.IsNullOrWhiteSpace(saturdayCheckOut))
+                {
+                    checkOutText = saturdayCheckOut;
+                }
             }
 
             if (!EmployeeAttendanceCalculator.TryParseTimeOfDay(checkInText, out var checkIn) ||
@@ -243,6 +274,7 @@ public class EmployeeAttendanceImportService : IEmployeeAttendanceImportService
             punch.Date,
             expectedCheckIn,
             expectedCheckOut);
+        row.DutyResult = EmployeeDutyResults.FromMinutes(calc.LateMinutes, calc.EarlyMinutes);
         row.UpdatedBy = importedBy;
         row.ChangeJson = BuildImportChangeJson(
             importedBy,

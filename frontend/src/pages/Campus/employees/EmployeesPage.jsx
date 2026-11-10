@@ -124,6 +124,7 @@ const makeEmptyForm = () => ({
   canViewTeacherConduct: false,
   wingCode: '',
   isAcademicHead: false,
+  isDisciplineIncharge: false,
   qualifications: [],
   experiences: [],
   assets: [],
@@ -233,6 +234,7 @@ function EmployeeForm({ employeeId, lookups, onClose, onSaved }) {
           canViewTeacherConduct: Boolean(data.canViewTeacherConduct),
           wingCode: data.wingCode ?? data.WingCode ?? '',
           isAcademicHead: Boolean(data.isAcademicHead ?? data.IsAcademicHead),
+          isDisciplineIncharge: Boolean(data.isDisciplineIncharge ?? data.IsDisciplineIncharge),
           qualifications: (data.qualifications || []).map((x) => ({ ...x, year: x.year ?? '' })),
           experiences: (data.experiences || []).map((x) => ({
             ...x,
@@ -604,7 +606,7 @@ function EmployeeForm({ employeeId, lookups, onClose, onSaved }) {
             <input className={inputClass} value={form.approvedBy || ''} onChange={(e) => setValue('approvedBy', e.target.value)} />
           </Field>
           <div className="flex flex-wrap items-center gap-5 md:col-span-2 xl:col-span-3">
-            {[['isTrained', 'Professionally trained'], ['isActive', 'Active employee'], ['isAcademicHead', 'Academic head (proforma oversight)']].map(([name, label]) => (
+            {[['isTrained', 'Professionally trained'], ['isActive', 'Active employee'], ['isAcademicHead', 'Academic head (proforma oversight)'], ['isDisciplineIncharge', 'Discipline incharge']].map(([name, label]) => (
               <label key={name} className="flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700">
                 <input type="checkbox" checked={Boolean(form[name])} onChange={(e) => setValue(name, e.target.checked)} className="h-4 w-4 accent-indigo-600" />
                 {label}

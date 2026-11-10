@@ -18,6 +18,7 @@ import {
   NotebookPen,
   PenLine,
   Search,
+  ShieldAlert,
   ShieldCheck,
   Users,
   X,
@@ -29,6 +30,7 @@ import {
   changeEmployeePassword,
   employeeLogout,
   isEmployeeAcademicHead,
+  isEmployeeDisciplineIncharge,
 } from '../../services/employeeAuthService'
 import {
   getEmployeeAppAccess,
@@ -160,6 +162,7 @@ function EmployeeLayout({
 
   const isCoordinator = isEmployeeCoordinator()
   const isAcademicHead = isEmployeeAcademicHead()
+  const isDisciplineIncharge = isEmployeeDisciplineIncharge()
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
   const showEmployeeNotifications = isCoordinator || isAcademicHead
   const { notifications, unreadCount, markAllRead } = useEmployeeNotifications({ enabled: showEmployeeNotifications })
@@ -168,6 +171,10 @@ function EmployeeLayout({
   const isHome = location.pathname === '/employee/dashboard'
 
   const bottomNavItems = useMemo(() => {
+    const disciplineItem = isDisciplineIncharge
+      ? { id: 'discipline', label: 'Discipline', icon: ShieldAlert, path: '/employee/discipline' }
+      : null
+
     if (isAcademicHead) {
       return [
         { id: 'home', label: 'Home', icon: Home, path: '/employee/dashboard' },
@@ -177,6 +184,7 @@ function EmployeeLayout({
           icon: ShieldCheck,
           path: COORDINATOR_MONITORING_PATH,
         },
+        ...(disciplineItem ? [disciplineItem] : []),
         {
           id: 'attendance',
           label: 'Attendance',
@@ -403,13 +411,17 @@ function EmployeeLayout({
           submenuItems: [...personalTeachingItems, ...academicsSubmenu],
         })
         if (conductItem) items.push(conductItem)
+        if (disciplineItem) items.push(disciplineItem)
         if (examsItem) items.push(examsItem)
       } else {
         items.push(
           { id: 'assignments', label: 'Assignments', icon: BookMarked, path: '/employee/my-assignments' },
           { id: 'timetable', label: 'Time table', icon: CalendarDays, path: '/employee/my-timetable' },
-          { id: 'datesheets', label: 'Datesheets', icon: NotebookPen, path: '/employee/datesheets' },
         )
+        if (disciplineItem) items.push(disciplineItem)
+        else {
+          items.push({ id: 'datesheets', label: 'Datesheets', icon: NotebookPen, path: '/employee/datesheets' })
+        }
       }
 
       return items
@@ -428,10 +440,11 @@ function EmployeeLayout({
 
     items.push(attendanceItem)
     if (conductItem) items.push(conductItem)
+    if (disciplineItem) items.push(disciplineItem)
     if (examsItem) items.push(examsItem)
 
     return items
-  }, [access, isAcademicHead, isCoordinator, personalTeachingNav])
+  }, [access, isAcademicHead, isCoordinator, isDisciplineIncharge, personalTeachingNav])
 
   const resolveActiveNav = () => {
     if (
@@ -461,6 +474,7 @@ function EmployeeLayout({
       return bottomNavItems.some((item) => item.id === 'datesheets') ? 'datesheets' : 'academics'
     }
     if (location.pathname.startsWith('/employee/conduct')) return 'conduct'
+    if (location.pathname.startsWith('/employee/discipline')) return 'discipline'
     if (location.pathname.startsWith('/employee/academics')) return 'academics'
     if (location.pathname.startsWith('/employee/exams')) return 'exams'
     return 'home'

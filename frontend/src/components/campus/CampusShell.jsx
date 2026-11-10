@@ -297,6 +297,7 @@ export const CAMPUS_SHELL_NAV = [
       { label: 'Family Accounts', to: '/campus/family-portal/accounts', permission: 'manage_family_accounts' },
       { label: 'Leave applications', to: '/campus/leave-applications', permission: 'view_leave_applications' },
       { label: 'Student Conduct', to: '/campus/student-conduct', permission: 'view_student_conduct' },
+      { label: 'Discipline', to: '/campus/discipline', permission: 'view_discipline' },
     ],
   },
   {

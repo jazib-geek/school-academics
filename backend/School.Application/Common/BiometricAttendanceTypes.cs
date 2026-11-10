@@ -9,6 +9,8 @@ public static class BiometricAttendanceTypes
     public static readonly TimeSpan DefaultTeacherCheckIn = new(7, 15, 0);
     public static readonly TimeSpan DefaultTeacherCheckOut = new(13, 30, 0);
     public static readonly TimeSpan DefaultFridayCheckOut = new(12, 30, 0);
+    public static readonly TimeSpan DefaultSaturdayCheckIn = new(7, 15, 0);
+    public static readonly TimeSpan DefaultSaturdayCheckOut = new(13, 30, 0);
     public const int DefaultAdminEarlyMinutes = 30;
     public const int DefaultCoordinatorEarlyMinutes = 15;
 

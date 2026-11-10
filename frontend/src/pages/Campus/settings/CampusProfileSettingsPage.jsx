@@ -80,6 +80,8 @@ const emptyForm = () => {
     adminEarlyMinutes: 30,
     coordinatorEarlyMinutes: 15,
     fridayCheckOutTime: '12:30',
+    saturdayCheckInTime: '07:15',
+    saturdayCheckOutTime: '13:30',
     showCreditStudent: false,
   }
 }
@@ -114,6 +116,8 @@ const mapDtoToForm = (dto) => {
     adminEarlyMinutes: n.adminEarlyMinutes,
     coordinatorEarlyMinutes: n.coordinatorEarlyMinutes,
     fridayCheckOutTime: n.fridayCheckOutTime || '12:30',
+    saturdayCheckInTime: n.saturdayCheckInTime || '07:15',
+    saturdayCheckOutTime: n.saturdayCheckOutTime || '13:30',
     showCreditStudent: n.showCreditStudent,
   }
 }
@@ -284,6 +288,8 @@ function CampusProfileSettingsPage() {
         adminEarlyMinutes: Number(form.adminEarlyMinutes) || 0,
         coordinatorEarlyMinutes: Number(form.coordinatorEarlyMinutes) || 0,
         fridayCheckOutTime: form.fridayCheckOutTime || '12:30',
+        saturdayCheckInTime: form.saturdayCheckInTime || '07:15',
+        saturdayCheckOutTime: form.saturdayCheckOutTime || '13:30',
         showCreditStudent: form.showCreditStudent,
       }
       const saved = await updateCampusProfile(payload)
@@ -511,6 +517,12 @@ function CampusProfileSettingsPage() {
                 </SettingsField>
                 <SettingsField label="Friday checkout">
                   <input type="time" name="fridayCheckOutTime" className={inputClass} value={form.fridayCheckOutTime} disabled={dutyDisabled} onChange={onChange} />
+                </SettingsField>
+                <SettingsField label="Saturday check-in">
+                  <input type="time" name="saturdayCheckInTime" className={inputClass} value={form.saturdayCheckInTime} disabled={dutyDisabled} onChange={onChange} />
+                </SettingsField>
+                <SettingsField label="Saturday checkout">
+                  <input type="time" name="saturdayCheckOutTime" className={inputClass} value={form.saturdayCheckOutTime} disabled={dutyDisabled} onChange={onChange} />
                 </SettingsField>
                 <SettingsField label="Admin arrives earlier" hint="Minutes before teacher check-in">
                   <input {...INTEGER_INPUT_ATTRS} name="adminEarlyMinutes" className={inputClass} value={form.adminEarlyMinutes} disabled={dutyDisabled} onChange={onChange} />

@@ -25,7 +25,7 @@ public class DesignationService : IDesignationService
         var ids = rows.Select(x => x.ID).ToList();
         var employeeCounts = await _context.Employees
             .AsNoTracking()
-            .Where(x => x.DesignationID.HasValue && ids.Contains(x.DesignationID.Value))
+            .Where(x => x.IsActive != false && x.DesignationID.HasValue && ids.Contains(x.DesignationID.Value))
             .GroupBy(x => x.DesignationID!.Value)
             .Select(x => new { DesignationId = x.Key, Count = x.Count() })
             .ToDictionaryAsync(x => x.DesignationId, x => x.Count, cancellationToken);
@@ -42,7 +42,7 @@ public class DesignationService : IDesignationService
             ?? throw new KeyNotFoundException("Designation not found.");
 
         var employeeCount = await _context.Employees.AsNoTracking()
-            .CountAsync(x => x.DesignationID == id, cancellationToken);
+            .CountAsync(x => x.IsActive != false && x.DesignationID == id, cancellationToken);
 
         return Map(designation, employeeCount);
     }
@@ -114,6 +114,10 @@ public class DesignationService : IDesignationService
         request.Name = (request.Name ?? string.Empty).Trim();
         request.MustCheckinTime = Clean(request.MustCheckinTime);
         request.LeavingTime = Clean(request.LeavingTime);
+        request.SaturdayMustCheckinTime = Clean(request.SaturdayMustCheckinTime);
+        request.SaturdayLeavingTime = Clean(request.SaturdayLeavingTime);
+        request.FridayMustCheckinTime = Clean(request.FridayMustCheckinTime);
+        request.FridayLeavingTime = Clean(request.FridayLeavingTime);
 
         if (request.Name.Length == 0)
             throw new ArgumentException("Designation name is required.");
@@ -126,6 +130,18 @@ public class DesignationService : IDesignationService
 
         if (!TryParseTime(request.LeavingTime, out _) && request.LeavingTime != null)
             throw new ArgumentException("Checkout time must use HH:mm format.");
+
+        if (!TryParseTime(request.SaturdayMustCheckinTime, out _) && request.SaturdayMustCheckinTime != null)
+            throw new ArgumentException("Saturday check-in time must use HH:mm format.");
+
+        if (!TryParseTime(request.SaturdayLeavingTime, out _) && request.SaturdayLeavingTime != null)
+            throw new ArgumentException("Saturday checkout time must use HH:mm format.");
+
+        if (!TryParseTime(request.FridayMustCheckinTime, out _) && request.FridayMustCheckinTime != null)
+            throw new ArgumentException("Friday check-in time must use HH:mm format.");
+
+        if (!TryParseTime(request.FridayLeavingTime, out _) && request.FridayLeavingTime != null)
+            throw new ArgumentException("Friday checkout time must use HH:mm format.");
 
         var exists = await _context.Designations.AsNoTracking()
             .AnyAsync(x =>
@@ -145,6 +161,10 @@ public class DesignationService : IDesignationService
         target.IsActive = source.IsActive ?? true;
         target.MustCheckinTime = ToLegacyDateTime(source.MustCheckinTime);
         target.LeavingTime = ToLegacyDateTime(source.LeavingTime);
+        target.SaturdayMustCheckinTime = ToLegacyDateTime(source.SaturdayMustCheckinTime);
+        target.SaturdayLeavingTime = ToLegacyDateTime(source.SaturdayLeavingTime);
+        target.FridayMustCheckinTime = ToLegacyDateTime(source.FridayMustCheckinTime);
+        target.FridayLeavingTime = ToLegacyDateTime(source.FridayLeavingTime);
     }
 
     private static DateTime? ToLegacyDateTime(string? value) =>
@@ -172,6 +192,10 @@ public class DesignationService : IDesignationService
         IsActive = designation.IsActive != false,
         MustCheckinTime = FormatTimeInput(designation.MustCheckinTime),
         LeavingTime = FormatTimeInput(designation.LeavingTime),
+        SaturdayMustCheckinTime = FormatTimeInput(designation.SaturdayMustCheckinTime),
+        SaturdayLeavingTime = FormatTimeInput(designation.SaturdayLeavingTime),
+        FridayMustCheckinTime = FormatTimeInput(designation.FridayMustCheckinTime),
+        FridayLeavingTime = FormatTimeInput(designation.FridayLeavingTime),
         EmployeeCount = employeeCount,
     };
 

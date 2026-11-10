@@ -389,6 +389,7 @@ public class EmployeeService : IEmployeeService
         t.CanViewTeacherConduct = s.CanViewTeacherConduct;
         t.WingCode = ParseWingCode(s.WingCode);
         t.IsAcademicHead = s.IsAcademicHead;
+        t.IsDisciplineIncharge = s.IsDisciplineIncharge;
     }
 
     private static void ApplyChildren(EmployeeUpsertDto s, Employee employee)
@@ -443,6 +444,7 @@ public class EmployeeService : IEmployeeService
         CanViewTeacherConduct = x.CanViewTeacherConduct,
         WingCode = x.WingCode?.ToString(),
         IsAcademicHead = x.IsAcademicHead,
+        IsDisciplineIncharge = x.IsDisciplineIncharge,
         Qualifications = x.Qualifications.OrderBy(y => y.ID).Select(y => new EmployeeQualificationDto
         {
             ID = y.ID, Degree = y.Degree, Board = y.Board, Grade = y.Grade,

@@ -710,6 +710,12 @@ namespace School.Infrastructure.Data.Migrations
                     b.Property<decimal?>("RoyaltySharePercent")
                         .HasColumnType("decimal(5, 2)");
 
+                    b.Property<TimeSpan>("SaturdayCheckInTime")
+                        .HasColumnType("time");
+
+                    b.Property<TimeSpan>("SaturdayCheckOutTime")
+                        .HasColumnType("time");
+
                     b.Property<string>("SchoolLogo")
                         .HasColumnType("varchar(max)");
 
@@ -2951,6 +2957,12 @@ namespace School.Infrastructure.Data.Migrations
                         .HasColumnType("nvarchar(250)")
                         .HasColumnName("Designation");
 
+                    b.Property<DateTime?>("FridayLeavingTime")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("FridayMustCheckinTime")
+                        .HasColumnType("datetime2");
+
                     b.Property<bool?>("IsActive")
                         .HasColumnType("bit");
 
@@ -2961,6 +2973,12 @@ namespace School.Infrastructure.Data.Migrations
                         .HasColumnType("int");
 
                     b.Property<DateTime?>("MustCheckinTime")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("SaturdayLeavingTime")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("SaturdayMustCheckinTime")
                         .HasColumnType("datetime2");
 
                     b.HasKey("ID");
@@ -2979,6 +2997,278 @@ namespace School.Infrastructure.Data.Migrations
                     b.HasKey("ID");
 
                     b.ToTable("tblDesignationTimings", "dbo");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.DisciplineDayReport", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AnythingElse")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int>("EmployeeId")
+                        .HasColumnType("int");
+
+                    b.Property<DateOnly>("ReportDate")
+                        .HasColumnType("date");
+
+                    b.Property<DateTime>("SubmittedAtPkt")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("WhatWasDone")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmployeeId", "ReportDate")
+                        .IsUnique()
+                        .HasDatabaseName("UQ_DisciplineDayReport_Employee_Date");
+
+                    b.ToTable("tblDisciplineDayReport", "dbo");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.DisciplineDayRound", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("EmployeeId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<DateOnly>("RoundDate")
+                        .HasColumnType("date");
+
+                    b.Property<int>("RoundId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("UpdatedAtPkt")
+                        .HasColumnType("datetime2(3)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RoundId");
+
+                    b.HasIndex("EmployeeId", "RoundDate", "RoundId")
+                        .IsUnique()
+                        .HasDatabaseName("UQ_DisciplineDayRound_Employee_Date_Round");
+
+                    b.ToTable("tblDisciplineDayRound", "dbo", t =>
+                        {
+                            t.HasCheckConstraint("CK_DisciplineDayRound_Status", "[Status] IN ('Clear', 'Issue', 'Skipped')");
+                        });
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.DisciplineFinding", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAtPkt")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<int>("EmployeeId")
+                        .HasColumnType("int");
+
+                    b.Property<DateOnly>("FindingDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Place")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.Property<int?>("RoundId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAtPkt")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("WhatHappened")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("WhatWasDone")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RoundId");
+
+                    b.HasIndex("EmployeeId", "FindingDate")
+                        .HasDatabaseName("IX_DisciplineFinding_Employee_Date");
+
+                    b.ToTable("tblDisciplineFinding", "dbo", t =>
+                        {
+                            t.HasCheckConstraint("CK_DisciplineFinding_Kind", "[Kind] IN ('Concern', 'Praise', 'Note')");
+                        });
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.DisciplineFindingStudent", b =>
+                {
+                    b.Property<int>("FindingId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("StudentId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("ConductNoteId")
+                        .HasColumnType("int");
+
+                    b.HasKey("FindingId", "StudentId");
+
+                    b.HasIndex("ConductNoteId")
+                        .HasDatabaseName("IX_DisciplineFindingStudent_Note");
+
+                    b.HasIndex("StudentId")
+                        .HasDatabaseName("IX_DisciplineFindingStudent_Student");
+
+                    b.ToTable("tblDisciplineFindingStudent", "dbo");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.DisciplineRound", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique()
+                        .HasDatabaseName("UQ_DisciplineRound_Code");
+
+                    b.ToTable("tblDisciplineRound", "dbo");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Code = "GateLatecomers",
+                            IsActive = true,
+                            Name = "Gate and latecomers",
+                            SortOrder = 10
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Code = "BagCheck",
+                            IsActive = true,
+                            Name = "Bag check",
+                            SortOrder = 20
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Code = "Uniform",
+                            IsActive = true,
+                            Name = "Uniform and appearance",
+                            SortOrder = 30
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Code = "AssemblyHall",
+                            IsActive = true,
+                            Name = "Assembly and hall",
+                            SortOrder = 40
+                        },
+                        new
+                        {
+                            Id = 5,
+                            Code = "Classes",
+                            IsActive = true,
+                            Name = "Classes (spot check)",
+                            SortOrder = 50
+                        },
+                        new
+                        {
+                            Id = 6,
+                            Code = "CorridorsBuilding",
+                            IsActive = true,
+                            Name = "Corridors and building",
+                            SortOrder = 60
+                        },
+                        new
+                        {
+                            Id = 7,
+                            Code = "OutdoorGround",
+                            IsActive = true,
+                            Name = "Outdoor ground",
+                            SortOrder = 70
+                        },
+                        new
+                        {
+                            Id = 8,
+                            Code = "BreakSeparation",
+                            IsActive = true,
+                            Name = "Break — boys and girls kept apart",
+                            SortOrder = 80
+                        },
+                        new
+                        {
+                            Id = 9,
+                            Code = "ProhibitedItems",
+                            IsActive = true,
+                            Name = "Prohibited items",
+                            SortOrder = 90
+                        },
+                        new
+                        {
+                            Id = 10,
+                            Code = "HomeDispersal",
+                            IsActive = true,
+                            Name = "Home-time dispersal",
+                            SortOrder = 100
+                        });
                 });
 
             modelBuilder.Entity("School.Infrastructure.Entities.EmpAttendance", b =>
@@ -3153,6 +3443,11 @@ namespace School.Infrastructure.Data.Migrations
                     b.Property<bool?>("IsActive")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("IsDisciplineIncharge")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
                     b.Property<bool?>("IsMarried")
                         .HasColumnType("bit");
 
@@ -3288,6 +3583,10 @@ namespace School.Infrastructure.Data.Migrations
 
                     b.Property<DateTime?>("Date")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("DutyResult")
+                        .HasMaxLength(2)
+                        .HasColumnType("nvarchar(2)");
 
                     b.Property<int?>("EmpID")
                         .HasColumnType("int");
@@ -5736,6 +6035,15 @@ namespace School.Infrastructure.Data.Migrations
                             ModuleHead = "Fee",
                             Name = "Fee Dashboard / Analysis",
                             SortOrder = 1510
+                        },
+                        new
+                        {
+                            Id = 152,
+                            Code = "view_discipline",
+                            IsActive = true,
+                            ModuleHead = "Student",
+                            Name = "View Discipline",
+                            SortOrder = 1520
                         });
                 });
 
@@ -6727,6 +7035,14 @@ namespace School.Infrastructure.Data.Migrations
                             IsSystem = true,
                             Name = "Class Behaviour",
                             SortOrder = 40
+                        },
+                        new
+                        {
+                            Id = 5,
+                            IsActive = true,
+                            IsSystem = true,
+                            Name = "Discipline",
+                            SortOrder = 50
                         });
                 });
 
@@ -8784,6 +9100,80 @@ namespace School.Infrastructure.Data.Migrations
                     b.Navigation("DailyReport");
                 });
 
+            modelBuilder.Entity("School.Infrastructure.Entities.DisciplineDayReport", b =>
+                {
+                    b.HasOne("School.Infrastructure.Entities.Employee", "Employee")
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Employee");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.DisciplineDayRound", b =>
+                {
+                    b.HasOne("School.Infrastructure.Entities.Employee", "Employee")
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("School.Infrastructure.Entities.DisciplineRound", "Round")
+                        .WithMany()
+                        .HasForeignKey("RoundId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Employee");
+
+                    b.Navigation("Round");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.DisciplineFinding", b =>
+                {
+                    b.HasOne("School.Infrastructure.Entities.Employee", "Employee")
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("School.Infrastructure.Entities.DisciplineRound", "Round")
+                        .WithMany()
+                        .HasForeignKey("RoundId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Employee");
+
+                    b.Navigation("Round");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.DisciplineFindingStudent", b =>
+                {
+                    b.HasOne("School.Infrastructure.Entities.StudentConductNote", "ConductNote")
+                        .WithMany()
+                        .HasForeignKey("ConductNoteId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("School.Infrastructure.Entities.DisciplineFinding", "Finding")
+                        .WithMany("Students")
+                        .HasForeignKey("FindingId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("School.Infrastructure.Entities.Student", "Student")
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ConductNote");
+
+                    b.Navigation("Finding");
+
+                    b.Navigation("Student");
+                });
+
             modelBuilder.Entity("School.Infrastructure.Entities.Employee", b =>
                 {
                     b.HasOne("School.Infrastructure.Entities.Designation", "Designation")
@@ -9264,6 +9654,11 @@ namespace School.Infrastructure.Data.Migrations
             modelBuilder.Entity("School.Infrastructure.Entities.Designation", b =>
                 {
                     b.Navigation("Employees");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.DisciplineFinding", b =>
+                {
+                    b.Navigation("Students");
                 });
 
             modelBuilder.Entity("School.Infrastructure.Entities.Employee", b =>

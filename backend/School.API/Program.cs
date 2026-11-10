@@ -129,6 +129,7 @@ builder.Services.AddScoped<IStudentShortLeaveService, StudentShortLeaveService>(
 builder.Services.AddScoped<IAbsentFollowupService, AbsentFollowupService>();
 builder.Services.AddScoped<IStudentConductService, StudentConductService>();
 builder.Services.AddScoped<ITeacherConductService, TeacherConductService>();
+builder.Services.AddScoped<IDisciplineService, DisciplineService>();
 builder.Services.AddScoped<IParentConductService, ParentConductService>();
 builder.Services.AddScoped<IStudentLeaveApplicationService, StudentLeaveApplicationService>();
 builder.Services.AddScoped<IEmployeeAttendanceRepository, EmployeeAttendanceRepository>();

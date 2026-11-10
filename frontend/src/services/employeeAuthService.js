@@ -14,7 +14,7 @@ const readEmployeeUser = () => {
   }
 }
 
-export const persistEmployeeProfile = ({ id, name, gender, designation, isCoordinator, wingCode, isAcademicHead, appAccess } = {}) => {
+export const persistEmployeeProfile = ({ id, name, gender, designation, isCoordinator, wingCode, isAcademicHead, isDisciplineIncharge, appAccess } = {}) => {
   const prev = readEmployeeUser()
   const next = {
     ...prev,
@@ -25,6 +25,7 @@ export const persistEmployeeProfile = ({ id, name, gender, designation, isCoordi
     ...(isCoordinator != null ? { isCoordinator } : {}),
     ...(wingCode != null && wingCode !== '' ? { wingCode } : {}),
     ...(isAcademicHead != null ? { isAcademicHead } : {}),
+    ...(isDisciplineIncharge != null ? { isDisciplineIncharge } : {}),
     ...(appAccess != null ? { appAccess } : {}),
   }
 
@@ -45,6 +46,8 @@ export const getEmployeeWingCode = () =>
   readEmployeeUser().wingCode || DEFAULT_MOCK_COORDINATOR_WING
 
 export const isEmployeeAcademicHead = () => Boolean(readEmployeeUser().isAcademicHead)
+
+export const isEmployeeDisciplineIncharge = () => Boolean(readEmployeeUser().isDisciplineIncharge)
 
 export const ACADEMIC_HEAD_DESIGNATION_LABEL = 'Academic Head'
 
@@ -72,6 +75,7 @@ const mapEmployeeLoginResponse = (data) => {
       isCoordinator: Boolean(payload?.isCoordinator),
       wingCode: payload?.wingCode || payload?.WingCode || '',
       isAcademicHead: Boolean(payload?.isAcademicHead ?? payload?.IsAcademicHead),
+      isDisciplineIncharge: Boolean(payload?.isDisciplineIncharge ?? payload?.IsDisciplineIncharge),
       appAccess: normalizeAccess(payload?.appAccess),
     },
     campusProfile: payload?.campusProfile || payload?.CampusProfile || null,
@@ -102,6 +106,7 @@ export const employeeLoginWithCampus = async ({ campus, username, password }) =>
     id: mapped.employee.id,
     wingCode: mapped.employee.wingCode,
     isAcademicHead: mapped.employee.isAcademicHead,
+    isDisciplineIncharge: mapped.employee.isDisciplineIncharge,
     name: mapped.employee.name,
     gender: mapped.employee.gender,
     designation: mapped.employee.designation,
@@ -136,6 +141,7 @@ export const ensureEmployeeProfile = async () => {
       designation: designationFromAuthPayload(payload),
       wingCode: payload.wingCode ?? payload.WingCode ?? '',
       isAcademicHead: Boolean(payload.isAcademicHead ?? payload.IsAcademicHead),
+      isDisciplineIncharge: Boolean(payload.isDisciplineIncharge ?? payload.IsDisciplineIncharge),
     })
 
     return {

@@ -77,6 +77,12 @@ public class CampusProfileService : ICampusProfileService
         row.FridayCheckOutTime = ParseTimeOrDefault(
             request.FridayCheckOutTime,
             BiometricAttendanceTypes.DefaultFridayCheckOut);
+        row.SaturdayCheckInTime = ParseTimeOrDefault(
+            request.SaturdayCheckInTime,
+            BiometricAttendanceTypes.DefaultSaturdayCheckIn);
+        row.SaturdayCheckOutTime = ParseTimeOrDefault(
+            request.SaturdayCheckOutTime,
+            BiometricAttendanceTypes.DefaultSaturdayCheckOut);
         row.ShowCreditStudent = request.ShowCreditStudent;
 
         await _context.SaveChangesAsync(cancellationToken);
@@ -131,6 +137,8 @@ public class CampusProfileService : ICampusProfileService
         AdminEarlyMinutes = BiometricAttendanceTypes.DefaultAdminEarlyMinutes,
         CoordinatorEarlyMinutes = BiometricAttendanceTypes.DefaultCoordinatorEarlyMinutes,
         FridayCheckOutTime = BiometricAttendanceTypes.DefaultFridayCheckOut,
+        SaturdayCheckInTime = BiometricAttendanceTypes.DefaultSaturdayCheckIn,
+        SaturdayCheckOutTime = BiometricAttendanceTypes.DefaultSaturdayCheckOut,
         ShowCreditStudent = false,
     };
 
@@ -173,6 +181,8 @@ public class CampusProfileService : ICampusProfileService
                 row.CoordinatorEarlyMinutes,
                 BiometricAttendanceTypes.DefaultCoordinatorEarlyMinutes),
             FridayCheckOutTime = FormatHhMm(row.FridayCheckOutTime),
+            SaturdayCheckInTime = FormatHhMm(row.SaturdayCheckInTime),
+            SaturdayCheckOutTime = FormatHhMm(row.SaturdayCheckOutTime),
             ShowCreditStudent = row.ShowCreditStudent,
         };
     }

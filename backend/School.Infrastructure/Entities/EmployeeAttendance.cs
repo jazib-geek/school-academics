@@ -9,6 +9,8 @@ public class EmployeeAttendance
     public string? Time { get; set; }
     public string? Type { get; set; }
     public string? Status { get; set; }
+    /// <summary>Frozen duty result: OT, LA, EL, or LE. Null on older rows.</summary>
+    public string? DutyResult { get; set; }
     public int? LateComings { get; set; }
     public decimal? CurrentSalary { get; set; }
     public decimal? LateDeduction { get; set; }

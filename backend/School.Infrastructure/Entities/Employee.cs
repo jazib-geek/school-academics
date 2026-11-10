@@ -66,6 +66,9 @@ public class Employee
     /// <summary>Employee portal: academic oversight / coordinator proforma monitoring.</summary>
     public bool IsAcademicHead { get; set; }
 
+    /// <summary>Employee portal: discipline rounds, findings, and day report.</summary>
+    public bool IsDisciplineIncharge { get; set; }
+
     public Designation? Designation { get; set; }
     public Locality? Locality { get; set; }
     public ICollection<EmployeeQualification> Qualifications { get; set; } = [];

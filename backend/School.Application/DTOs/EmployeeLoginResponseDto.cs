@@ -10,6 +10,7 @@ public class EmployeeLoginResponseDto
     public bool IsCoordinator { get; set; }
     public string? WingCode { get; set; }
     public bool IsAcademicHead { get; set; }
+    public bool IsDisciplineIncharge { get; set; }
     public string Token { get; set; } = string.Empty;
     public EmployeeAppAccessDto AppAccess { get; set; } = new();
     public CampusProfileDto? CampusProfile { get; set; }

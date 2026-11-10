@@ -52,6 +52,7 @@ public class EmployeeAuthRepository : IEmployeeAuthRepository
                 CanViewTeacherConduct = employee.CanViewTeacherConduct,
                 WingCode = employee.WingCode,
                 IsAcademicHead = employee.IsAcademicHead,
+                IsDisciplineIncharge = employee.IsDisciplineIncharge,
             })
             .FirstOrDefaultAsync();
     }
@@ -89,6 +90,7 @@ public class EmployeeAuthRepository : IEmployeeAuthRepository
                 CanViewTeacherConduct = employee.CanViewTeacherConduct,
                 WingCode = employee.WingCode,
                 IsAcademicHead = employee.IsAcademicHead,
+                IsDisciplineIncharge = employee.IsDisciplineIncharge,
             })
             .FirstOrDefaultAsync(cancellationToken);
 

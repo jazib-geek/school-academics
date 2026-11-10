@@ -8,4 +8,5 @@ public class EmployeeSessionDto
     public string? Designation { get; set; }
     public string? WingCode { get; set; }
     public bool IsAcademicHead { get; set; }
+    public bool IsDisciplineIncharge { get; set; }
 }

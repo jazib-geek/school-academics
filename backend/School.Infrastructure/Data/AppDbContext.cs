@@ -162,6 +162,11 @@ public class AppDbContext : DbContext
         Set<EmployeeAttendanceChangeRequest>();
     public DbSet<StudentConductNoteTag> StudentConductNoteTags => Set<StudentConductNoteTag>();
     public DbSet<StudentConductParentAck> StudentConductParentAcks => Set<StudentConductParentAck>();
+    public DbSet<DisciplineRound> DisciplineRounds => Set<DisciplineRound>();
+    public DbSet<DisciplineDayRound> DisciplineDayRounds => Set<DisciplineDayRound>();
+    public DbSet<DisciplineFinding> DisciplineFindings => Set<DisciplineFinding>();
+    public DbSet<DisciplineFindingStudent> DisciplineFindingStudents => Set<DisciplineFindingStudent>();
+    public DbSet<DisciplineDayReport> DisciplineDayReports => Set<DisciplineDayReport>();
     public DbSet<TeacherConductType> TeacherConductTypes => Set<TeacherConductType>();
     public DbSet<TeacherConductTag> TeacherConductTags => Set<TeacherConductTag>();
     public DbSet<TeacherConductNote> TeacherConductNotes => Set<TeacherConductNote>();
@@ -706,6 +711,7 @@ public class AppDbContext : DbContext
             entity.Property(e => e.CanViewTeacherConduct).HasDefaultValue(false);
             entity.Property(e => e.WingCode).HasConversion<string>().HasMaxLength(64).IsUnicode(false);
             entity.Property(e => e.IsAcademicHead).HasDefaultValue(false);
+            entity.Property(e => e.IsDisciplineIncharge).HasDefaultValue(false);
             entity.ToTable("tblEmployee", "dbo", t => t.HasCheckConstraint(
                 ProformaWingCodeRules.EmployeeCheckConstraintName,
                 $"[WingCode] IS NULL OR [WingCode] IN ({ProformaWingCodeRules.SqlInList})"));
@@ -740,6 +746,7 @@ public class AppDbContext : DbContext
             entity.Property(e => e.Time).HasMaxLength(50);
             entity.Property(e => e.Type).HasMaxLength(50);
             entity.Property(e => e.Status).HasMaxLength(50);
+            entity.Property(e => e.DutyResult).HasMaxLength(2);
             entity.Property(e => e.UpdatedBy).HasMaxLength(50);
             entity.Property(e => e.CurrentSalary).HasColumnType("decimal(18,0)");
             entity.Property(e => e.LateDeduction).HasColumnType("decimal(18,0)");
@@ -837,6 +844,8 @@ public class AppDbContext : DbContext
             entity.Property(e => e.TeacherCheckInTime).HasColumnType("time");
             entity.Property(e => e.TeacherCheckOutTime).HasColumnType("time");
             entity.Property(e => e.FridayCheckOutTime).HasColumnType("time");
+            entity.Property(e => e.SaturdayCheckInTime).HasColumnType("time");
+            entity.Property(e => e.SaturdayCheckOutTime).HasColumnType("time");
             entity.Property(e => e.IsFranchise).HasDefaultValue(false);
             entity.Property(e => e.RoyaltySharePercent).HasColumnType("decimal(5, 2)");
         });
@@ -1156,6 +1165,11 @@ public class AppDbContext : DbContext
         modelBuilder.ApplyConfiguration(new StudentConductNoteConfiguration());
         modelBuilder.ApplyConfiguration(new StudentConductNoteTagConfiguration());
         modelBuilder.ApplyConfiguration(new StudentConductParentAckConfiguration());
+        modelBuilder.ApplyConfiguration(new DisciplineRoundConfiguration());
+        modelBuilder.ApplyConfiguration(new DisciplineDayRoundConfiguration());
+        modelBuilder.ApplyConfiguration(new DisciplineFindingConfiguration());
+        modelBuilder.ApplyConfiguration(new DisciplineFindingStudentConfiguration());
+        modelBuilder.ApplyConfiguration(new DisciplineDayReportConfiguration());
         modelBuilder.ApplyConfiguration(new TeacherConductTypeConfiguration());
         modelBuilder.ApplyConfiguration(new TeacherConductTagConfiguration());
         modelBuilder.ApplyConfiguration(new TeacherConductNoteConfiguration());

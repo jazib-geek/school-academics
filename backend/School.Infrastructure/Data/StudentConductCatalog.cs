@@ -11,6 +11,7 @@ public static class StudentConductCatalog
     public const int PunctualityId = 2;
     public const int HomeworkId = 3;
     public const int ClassBehaviourId = 4;
+    public const int DisciplineId = 5;
 
     public static IReadOnlyList<StudentConductType> Types { get; } =
     [
@@ -18,6 +19,7 @@ public static class StudentConductCatalog
         Type(PunctualityId, "Punctuality", 20),
         Type(HomeworkId, "Homework", 30),
         Type(ClassBehaviourId, "Class Behaviour", 40),
+        Type(DisciplineId, "Discipline", 50),
     ];
 
     public static IReadOnlyList<StudentConductTag> Tags { get; } =

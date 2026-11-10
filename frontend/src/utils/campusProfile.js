@@ -235,6 +235,10 @@ export function normalizeCampusProfile(raw) {
     ),
     fridayCheckOutTime:
       toTimeInputValue(raw?.fridayCheckOutTime ?? raw?.FridayCheckOutTime) || '12:30',
+    saturdayCheckInTime:
+      toTimeInputValue(raw?.saturdayCheckInTime ?? raw?.SaturdayCheckInTime) || '07:15',
+    saturdayCheckOutTime:
+      toTimeInputValue(raw?.saturdayCheckOutTime ?? raw?.SaturdayCheckOutTime) || '13:30',
     showCreditStudent: Boolean(raw?.showCreditStudent ?? raw?.ShowCreditStudent),
   }
 }

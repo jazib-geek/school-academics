@@ -10,6 +10,7 @@ import {
   NotebookPen,
   PenLine,
   RefreshCw,
+  ShieldAlert,
   ShieldCheck,
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
@@ -23,6 +24,7 @@ import {
   getEmployeeDesignation,
   getEmployeeGender,
   isEmployeeAcademicHead,
+  isEmployeeDisciplineIncharge,
 } from '../../services/employeeAuthService'
 import { hasAnyEmployeeAppAccess, isEmployeeCoordinator } from '../../services/employeeAppAccess'
 
@@ -112,6 +114,15 @@ const HOME_TILES = [
   },
 ]
 
+const DISCIPLINE_HOME_TILE = {
+  id: 'discipline',
+  title: 'Discipline',
+  description: 'Rounds and day report',
+  icon: ShieldAlert,
+  path: '/employee/discipline',
+  color: '#1a4d8f',
+}
+
 const DIARY_HOME_TILE = {
   id: 'diary',
   title: 'Daily diary',
@@ -155,19 +166,23 @@ function EmployeeDashboardPage() {
   const navigate = useNavigate()
   const isCoordinator = isEmployeeCoordinator()
   const isAcademicHead = isEmployeeAcademicHead()
+  const isDisciplineIncharge = isEmployeeDisciplineIncharge()
   const homeTiles = useMemo(() => {
+    let tiles
     if (isAcademicHead) {
-      return HOME_TILES.filter((tile) => HEAD_HOME_TILE_IDS.includes(tile.id))
+      tiles = HOME_TILES.filter((tile) => HEAD_HOME_TILE_IDS.includes(tile.id))
+    } else {
+      tiles = [...HOME_TILES]
+      if (!isCoordinator) {
+        tiles = tiles.filter((tile) => tile.id !== 'my-attendance')
+      }
+      if (hasAnyEmployeeAppAccess('canViewDiary', 'canEditDiary')) {
+        tiles.push(DIARY_HOME_TILE)
+      }
     }
-    let tiles = [...HOME_TILES]
-    if (!isCoordinator) {
-      tiles = tiles.filter((tile) => tile.id !== 'my-attendance')
-    }
-    if (hasAnyEmployeeAppAccess('canViewDiary', 'canEditDiary')) {
-      tiles.push(DIARY_HOME_TILE)
-    }
+    if (isDisciplineIncharge) tiles = [...tiles, DISCIPLINE_HOME_TILE]
     return tiles
-  }, [isAcademicHead, isCoordinator])
+  }, [isAcademicHead, isCoordinator, isDisciplineIncharge])
   const todayIso = useMemo(() => getPakistanToday(), [])
   const dateLabel = useMemo(() => formatPakistanBarDate(todayIso), [todayIso])
 

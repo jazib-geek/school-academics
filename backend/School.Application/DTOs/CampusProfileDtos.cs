@@ -32,6 +32,8 @@ public class CampusProfileDto
     public int AdminEarlyMinutes { get; set; }
     public int CoordinatorEarlyMinutes { get; set; }
     public string? FridayCheckOutTime { get; set; }
+    public string? SaturdayCheckInTime { get; set; }
+    public string? SaturdayCheckOutTime { get; set; }
 
     public bool ShowCreditStudent { get; set; }
 }
@@ -65,6 +67,8 @@ public class UpdateCampusProfileDto
     public int? AdminEarlyMinutes { get; set; }
     public int? CoordinatorEarlyMinutes { get; set; }
     public string? FridayCheckOutTime { get; set; }
+    public string? SaturdayCheckInTime { get; set; }
+    public string? SaturdayCheckOutTime { get; set; }
 
     public bool ShowCreditStudent { get; set; }
 }

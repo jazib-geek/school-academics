@@ -69,6 +69,8 @@ const FIELD_LABELS = {
   adminMinutesBefore: 'Admin minutes before',
   coordinatorMinutesBefore: 'Coordinator minutes before',
   fridayCheckOut: 'Friday check-out',
+  saturdayCheckIn: 'Saturday check-in',
+  saturdayCheckOut: 'Saturday check-out',
   dates: 'Dates',
   unknownEmployeeCodes: 'Unknown employee codes',
   source: 'Source',

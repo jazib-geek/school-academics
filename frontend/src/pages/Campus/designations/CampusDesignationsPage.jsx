@@ -18,6 +18,10 @@ const emptyForm = {
   mustCheckinMinutesDifference: '',
   mustCheckinTime: '',
   leavingTime: '',
+  saturdayMustCheckinTime: '',
+  saturdayLeavingTime: '',
+  fridayMustCheckinTime: '07:45',
+  fridayLeavingTime: '12:30',
   isActive: true,
 }
 
@@ -29,6 +33,10 @@ const normalizeForm = (row) => ({
   mustCheckinMinutesDifference: row?.mustCheckinMinutesDifference ?? '',
   mustCheckinTime: row?.mustCheckinTime || '',
   leavingTime: row?.leavingTime || '',
+  saturdayMustCheckinTime: row?.saturdayMustCheckinTime || '',
+  saturdayLeavingTime: row?.saturdayLeavingTime || '',
+  fridayMustCheckinTime: row?.fridayMustCheckinTime || '',
+  fridayLeavingTime: row?.fridayLeavingTime || '',
   isActive: row?.isActive ?? true,
 })
 
@@ -40,18 +48,49 @@ const buildPayload = (form) => ({
       : Number(form.mustCheckinMinutesDifference),
   mustCheckinTime: form.mustCheckinTime || null,
   leavingTime: form.leavingTime || null,
+  saturdayMustCheckinTime: form.saturdayMustCheckinTime || null,
+  saturdayLeavingTime: form.saturdayLeavingTime || null,
+  fridayMustCheckinTime: form.fridayMustCheckinTime || null,
+  fridayLeavingTime: form.fridayLeavingTime || null,
   isActive: Boolean(form.isActive),
 })
 
-const formatTime = (value) => {
-  if (!value) return '-'
+const parseClock = (value) => {
+  if (!value) return null
   const [hStr, mStr = '00'] = value.split(':')
   const h = Number.parseInt(hStr, 10)
   const m = Number.parseInt(mStr, 10)
-  if (Number.isNaN(h) || Number.isNaN(m)) return value
-  const period = h >= 12 ? 'PM' : 'AM'
-  const h12 = h % 12 || 12
-  return `${h12}:${String(m).padStart(2, '0')} ${period}`
+  if (Number.isNaN(h) || Number.isNaN(m)) return { time: value, period: '' }
+  return {
+    time: `${h % 12 || 12}:${String(m).padStart(2, '0')}`,
+    period: h >= 12 ? 'PM' : 'AM',
+  }
+}
+
+function ClockLabel({ value }) {
+  const clock = parseClock(value)
+  if (!clock) return null
+  return (
+    <span className="whitespace-nowrap">
+      {clock.time}
+      {clock.period ? (
+        <span className="ml-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-400">{clock.period}</span>
+      ) : null}
+    </span>
+  )
+}
+
+function TimeRange({ checkIn, checkOut }) {
+  const hasStart = Boolean(parseClock(checkIn))
+  const hasEnd = Boolean(parseClock(checkOut))
+  if (!hasStart && !hasEnd) return '-'
+  return (
+    <span className="whitespace-nowrap">
+      {hasStart ? <ClockLabel value={checkIn} /> : null}
+      {hasStart && hasEnd ? <span className="mx-1 text-slate-400">to</span> : null}
+      {hasEnd ? <ClockLabel value={checkOut} /> : null}
+    </span>
+  )
 }
 
 function CampusDesignationsPage() {
@@ -192,12 +231,13 @@ function CampusDesignationsPage() {
 
           <section className="overflow-hidden bg-white shadow-sm">
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[760px] text-left text-[13px] leading-snug">
+                <table className="w-full min-w-[920px] text-left text-[13px] leading-snug">
                   <thead className="bg-slate-50 text-xs uppercase text-slate-500">
                     <tr>
                       <th className="px-3 py-2 font-medium">Designation</th>
-                      <th className="px-3 py-2 font-medium">Check-in</th>
-                      <th className="px-3 py-2 font-medium">Checkout</th>
+                      <th className="px-3 py-2 font-medium">Regular days</th>
+                      <th className="px-3 py-2 font-medium">Friday</th>
+                      <th className="px-3 py-2 font-medium">Saturday</th>
                       <th className="px-3 py-2 font-medium">Grace</th>
                       <th className="px-3 py-2 font-medium">Employees</th>
                       <th className="px-3 py-2 font-medium">Status</th>
@@ -215,8 +255,9 @@ function CampusDesignationsPage() {
                             <span className="font-semibold text-slate-900">{row.name || '-'}</span>
                           </div>
                         </td>
-                        <td className="px-3 py-1.5 font-mono text-xs text-slate-700">{formatTime(row.mustCheckinTime)}</td>
-                        <td className="px-3 py-1.5 font-mono text-xs text-slate-700">{formatTime(row.leavingTime)}</td>
+                        <td className="px-3 py-1.5 text-slate-700"><TimeRange checkIn={row.mustCheckinTime} checkOut={row.leavingTime} /></td>
+                        <td className="px-3 py-1.5 text-slate-700"><TimeRange checkIn={row.fridayMustCheckinTime} checkOut={row.fridayLeavingTime} /></td>
+                        <td className="px-3 py-1.5 text-slate-700"><TimeRange checkIn={row.saturdayMustCheckinTime} checkOut={row.saturdayLeavingTime} /></td>
                         <td className="px-3 py-1.5">{row.mustCheckinMinutesDifference ?? '-'}</td>
                         <td className="px-3 py-1.5">{row.employeeCount || 0}</td>
                         <td className="px-3 py-1.5">
@@ -297,7 +338,7 @@ function CampusDesignationsPage() {
                     {editingId ? 'Edit designation' : 'Add designation'}
                   </h2>
                   <p className="text-sm text-slate-500">
-                    Set check-in, checkout, and grace.
+                    Set check-in, checkout, Friday and Saturday times, and grace.
                   </p>
                 </div>
               </div>
@@ -340,6 +381,60 @@ function CampusDesignationsPage() {
                       className={`${inputClass} pl-9`}
                       value={form.leavingTime}
                       onChange={(event) => setValue('leavingTime', event.target.value)}
+                    />
+                  </div>
+                </label>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="block text-xs font-semibold uppercase text-slate-500">
+                  Friday check-in
+                  <div className="relative mt-1">
+                    <Clock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="time"
+                      className={`${inputClass} pl-9`}
+                      value={form.fridayMustCheckinTime}
+                      onChange={(event) => setValue('fridayMustCheckinTime', event.target.value)}
+                    />
+                  </div>
+                </label>
+                <label className="block text-xs font-semibold uppercase text-slate-500">
+                  Friday checkout
+                  <div className="relative mt-1">
+                    <Clock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="time"
+                      className={`${inputClass} pl-9`}
+                      value={form.fridayLeavingTime}
+                      onChange={(event) => setValue('fridayLeavingTime', event.target.value)}
+                    />
+                  </div>
+                </label>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="block text-xs font-semibold uppercase text-slate-500">
+                  Saturday check-in
+                  <div className="relative mt-1">
+                    <Clock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="time"
+                      className={`${inputClass} pl-9`}
+                      value={form.saturdayMustCheckinTime}
+                      onChange={(event) => setValue('saturdayMustCheckinTime', event.target.value)}
+                    />
+                  </div>
+                </label>
+                <label className="block text-xs font-semibold uppercase text-slate-500">
+                  Saturday checkout
+                  <div className="relative mt-1">
+                    <Clock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="time"
+                      className={`${inputClass} pl-9`}
+                      value={form.saturdayLeavingTime}
+                      onChange={(event) => setValue('saturdayLeavingTime', event.target.value)}
                     />
                   </div>
                 </label>

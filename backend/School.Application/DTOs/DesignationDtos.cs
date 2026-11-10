@@ -10,6 +10,10 @@ public class DesignationDto
     public bool IsActive { get; set; }
     public string? MustCheckinTime { get; set; }
     public string? LeavingTime { get; set; }
+    public string? SaturdayMustCheckinTime { get; set; }
+    public string? SaturdayLeavingTime { get; set; }
+    public string? FridayMustCheckinTime { get; set; }
+    public string? FridayLeavingTime { get; set; }
     public int EmployeeCount { get; set; }
 }
 
@@ -26,6 +30,18 @@ public class DesignationUpsertDto
 
     [RegularExpression(@"^([01]\d|2[0-3]):[0-5]\d$", ErrorMessage = "Checkout time must use HH:mm format.")]
     public string? LeavingTime { get; set; }
+
+    [RegularExpression(@"^([01]\d|2[0-3]):[0-5]\d$", ErrorMessage = "Saturday check-in time must use HH:mm format.")]
+    public string? SaturdayMustCheckinTime { get; set; }
+
+    [RegularExpression(@"^([01]\d|2[0-3]):[0-5]\d$", ErrorMessage = "Saturday checkout time must use HH:mm format.")]
+    public string? SaturdayLeavingTime { get; set; }
+
+    [RegularExpression(@"^([01]\d|2[0-3]):[0-5]\d$", ErrorMessage = "Friday check-in time must use HH:mm format.")]
+    public string? FridayMustCheckinTime { get; set; }
+
+    [RegularExpression(@"^([01]\d|2[0-3]):[0-5]\d$", ErrorMessage = "Friday checkout time must use HH:mm format.")]
+    public string? FridayLeavingTime { get; set; }
 }
 
 public class DesignationStatusUpdateDto
