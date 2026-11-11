@@ -848,6 +848,11 @@ public class AppDbContext : DbContext
             entity.Property(e => e.SaturdayCheckOutTime).HasColumnType("time");
             entity.Property(e => e.IsFranchise).HasDefaultValue(false);
             entity.Property(e => e.RoyaltySharePercent).HasColumnType("decimal(5, 2)");
+            entity.Property(e => e.CleanSheetBonusEnabled).HasDefaultValue(false);
+            entity.Property(e => e.CleanSheetBonusName).HasMaxLength(100).HasDefaultValue("Clean sheet bonus");
+            entity.Property(e => e.CleanSheetBonusDescription).HasMaxLength(500)
+                .HasDefaultValue("Paid for a month with no late comings and no absences.");
+            entity.Property(e => e.CleanSheetBonusAmount).HasColumnType("decimal(18,2)").HasDefaultValue(500m);
         });
         modelBuilder.Entity<FeeReceiptSequence>(entity =>
         {

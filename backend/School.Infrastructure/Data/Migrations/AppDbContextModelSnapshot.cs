@@ -667,6 +667,29 @@ namespace School.Infrastructure.Data.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<decimal>("CleanSheetBonusAmount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("decimal(18,2)")
+                        .HasDefaultValue(500m);
+
+                    b.Property<string>("CleanSheetBonusDescription")
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasDefaultValue("Paid for a month with no late comings and no absences.");
+
+                    b.Property<bool>("CleanSheetBonusEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<string>("CleanSheetBonusName")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasDefaultValue("Clean sheet bonus");
+
                     b.Property<int>("CoordinatorEarlyMinutes")
                         .HasColumnType("int");
 

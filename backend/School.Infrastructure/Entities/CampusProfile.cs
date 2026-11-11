@@ -36,6 +36,15 @@ public class CampusProfile
 
     public bool ShowCreditStudent { get; set; }
 
+    public bool CleanSheetBonusEnabled { get; set; }
+
+    public string CleanSheetBonusName { get; set; } = "Clean sheet bonus";
+
+    public string? CleanSheetBonusDescription { get; set; } =
+        "Paid for a month with no late comings and no absences.";
+
+    public decimal CleanSheetBonusAmount { get; set; } = 500m;
+
     public bool IsFranchise { get; set; }
 
     public decimal? RoyaltySharePercent { get; set; }

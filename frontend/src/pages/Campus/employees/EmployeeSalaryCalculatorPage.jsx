@@ -30,6 +30,18 @@ function countSundaysInMonth(year, month) {
   return count
 }
 
+function bonusTotal(row) {
+  return Number(row.bonus || 0) + Number(row.cleanSheetBonus || 0)
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
 function printReport(rows, monthLabel, year) {
   const tableRows = rows
     .map(
@@ -44,7 +56,7 @@ function printReport(rows, monthLabel, year) {
         <td>${formatAmount(row.absentDeduction)}</td>
         <td>${formatAmount(row.workingDaysSalary)}</td>
         <td>${formatAmount(row.loanAndSecurityCharges ?? Number(row.loan || 0) + Number(row.securityCharges || 0) + Number(row.advance || 0))}</td>
-        <td>${formatAmount(row.bonus)}</td>
+        <td>${formatAmount(bonusTotal(row))}</td>
         <td>${formatAmount(row.netSalary)}</td>
       </tr>`,
     )
@@ -95,13 +107,24 @@ function printSlips(rows, monthLabel, year) {
         '<div class="slip-page" style="display:flex;flex-wrap:wrap;page-break-after:always;">'
     }
 
+    const bonusAmount = Number(row.bonus || 0)
+    const cleanSheetAmount = Number(row.cleanSheetBonus || 0)
+    const bonusLine =
+      bonusAmount > 0 || cleanSheetAmount <= 0
+        ? `<tr><td style="border:1px solid #000;padding:3px 5px;">Bonus:</td><td style="border:1px solid #000;padding:3px 5px;">${formatAmount(bonusAmount)}</td></tr>`
+        : ''
+    const cleanSheetLine =
+      cleanSheetAmount > 0
+        ? `<tr><td style="border:1px solid #000;padding:3px 5px;">${escapeHtml(row.cleanSheetBonusName || 'Clean sheet bonus')}:</td><td style="border:1px solid #000;padding:3px 5px;">${formatAmount(cleanSheetAmount)}</td></tr>`
+        : ''
+
     slipsHtml += `
       <div class="salary-slip" style="width:48%;border:1px solid #000;margin:1%;padding:6px;border-radius:6px;font-size:11px;box-sizing:border-box;page-break-inside:avoid;">
         <div style="text-align:center;font-weight:bold;font-size:13px;margin-bottom:8px;">Salary for ${monthLabel} ${year}</div>
         <table style="width:100%;border-collapse:collapse;">
           <tbody>
             <tr><td style="border:1px solid #000;padding:3px 5px;">Account No:</td><td style="border:1px solid #000;padding:3px 5px;">${row.employeeId}</td></tr>
-            <tr><td style="border:1px solid #000;padding:3px 5px;">Name:</td><td style="border:1px solid #000;padding:3px 5px;">${row.employeeName || ''}</td></tr>
+            <tr><td style="border:1px solid #000;padding:3px 5px;">Name:</td><td style="border:1px solid #000;padding:3px 5px;">${escapeHtml(row.employeeName || '')}</td></tr>
             <tr><td style="border:1px solid #000;padding:3px 5px;">Basic Pay:</td><td style="border:1px solid #000;padding:3px 5px;">${formatAmount(row.basicSalary)}</td></tr>
             <tr><td style="border:1px solid #000;padding:3px 5px;">Days Present:</td><td style="border:1px solid #000;padding:3px 5px;">${row.presentDaysCount}</td></tr>
             <tr><td style="border:1px solid #000;padding:3px 5px;">Late Comings:</td><td style="border:1px solid #000;padding:3px 5px;">${row.lateComingsCount}</td></tr>
@@ -109,7 +132,8 @@ function printSlips(rows, monthLabel, year) {
             <tr><td style="border:1px solid #000;padding:3px 5px;">Absent Deduction:</td><td style="border:1px solid #000;padding:3px 5px;">${formatAmount(row.absentDeduction)}</td></tr>
             <tr><td style="border:1px solid #000;padding:3px 5px;">Working Days Salary:</td><td style="border:1px solid #000;padding:3px 5px;">${formatAmount(row.workingDaysSalary)}</td></tr>
             <tr><td style="border:1px solid #000;padding:3px 5px;">Loan / SC / Advance:</td><td style="border:1px solid #000;padding:3px 5px;">${formatAmount(row.loanAndSecurityCharges ?? Number(row.loan || 0) + Number(row.securityCharges || 0) + Number(row.advance || 0))}</td></tr>
-            <tr><td style="border:1px solid #000;padding:3px 5px;">Bonus:</td><td style="border:1px solid #000;padding:3px 5px;">${formatAmount(row.bonus)}</td></tr>
+            ${bonusLine}
+            ${cleanSheetLine}
             <tr><td style="border:1px solid #000;padding:3px 5px;font-weight:bold;">Net Salary:</td><td style="border:1px solid #000;padding:3px 5px;font-weight:bold;">${formatAmount(row.netSalary)}</td></tr>
           </tbody>
         </table>
@@ -381,7 +405,7 @@ function EmployeeSalaryCalculatorPage() {
                                 Number(row.loan || 0) + Number(row.securityCharges || 0) + Number(row.advance || 0),
                             )}
                           </td>
-                          <td className="px-3 py-1.5 text-right tabular-nums">{formatAmount(row.bonus)}</td>
+                          <td className="px-3 py-1.5 text-right tabular-nums">{formatAmount(bonusTotal(row))}</td>
                           <td className="px-3 py-1.5 text-right tabular-nums font-semibold">{formatAmount(row.netSalary)}</td>
                         </tr>
                       ))

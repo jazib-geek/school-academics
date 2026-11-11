@@ -84,6 +84,15 @@ public class CampusProfileService : ICampusProfileService
             request.SaturdayCheckOutTime,
             BiometricAttendanceTypes.DefaultSaturdayCheckOut);
         row.ShowCreditStudent = request.ShowCreditStudent;
+        if (request.CleanSheetBonusAmount < 0)
+            throw new ArgumentException("Clean sheet bonus amount cannot be negative.");
+        row.CleanSheetBonusEnabled = request.CleanSheetBonusEnabled;
+        var bonusName = TrimOrNull(request.CleanSheetBonusName, 100);
+        row.CleanSheetBonusName = string.IsNullOrWhiteSpace(bonusName)
+            ? CleanSheetBonusDefaults.Name
+            : bonusName;
+        row.CleanSheetBonusDescription = TrimOrNull(request.CleanSheetBonusDescription, 500);
+        row.CleanSheetBonusAmount = Math.Round(request.CleanSheetBonusAmount, 2);
 
         await _context.SaveChangesAsync(cancellationToken);
         return Map(row);
@@ -140,6 +149,10 @@ public class CampusProfileService : ICampusProfileService
         SaturdayCheckInTime = BiometricAttendanceTypes.DefaultSaturdayCheckIn,
         SaturdayCheckOutTime = BiometricAttendanceTypes.DefaultSaturdayCheckOut,
         ShowCreditStudent = false,
+        CleanSheetBonusEnabled = false,
+        CleanSheetBonusName = CleanSheetBonusDefaults.Name,
+        CleanSheetBonusDescription = CleanSheetBonusDefaults.Description,
+        CleanSheetBonusAmount = CleanSheetBonusDefaults.Amount,
     };
 
     private static CampusProfileDto Map(CampusProfile row)
@@ -184,6 +197,12 @@ public class CampusProfileService : ICampusProfileService
             SaturdayCheckInTime = FormatHhMm(row.SaturdayCheckInTime),
             SaturdayCheckOutTime = FormatHhMm(row.SaturdayCheckOutTime),
             ShowCreditStudent = row.ShowCreditStudent,
+            CleanSheetBonusEnabled = row.CleanSheetBonusEnabled,
+            CleanSheetBonusName = string.IsNullOrWhiteSpace(row.CleanSheetBonusName)
+                ? CleanSheetBonusDefaults.Name
+                : row.CleanSheetBonusName,
+            CleanSheetBonusDescription = row.CleanSheetBonusDescription,
+            CleanSheetBonusAmount = row.CleanSheetBonusAmount,
         };
     }
 

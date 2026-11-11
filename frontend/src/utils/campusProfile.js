@@ -240,6 +240,20 @@ export function normalizeCampusProfile(raw) {
     saturdayCheckOutTime:
       toTimeInputValue(raw?.saturdayCheckOutTime ?? raw?.SaturdayCheckOutTime) || '13:30',
     showCreditStudent: Boolean(raw?.showCreditStudent ?? raw?.ShowCreditStudent),
+    cleanSheetBonusEnabled: Boolean(
+      raw?.cleanSheetBonusEnabled ?? raw?.CleanSheetBonusEnabled,
+    ),
+    cleanSheetBonusName:
+      trimStr(raw?.cleanSheetBonusName ?? raw?.CleanSheetBonusName) || 'Clean sheet bonus',
+    cleanSheetBonusDescription:
+      trimStr(raw?.cleanSheetBonusDescription ?? raw?.CleanSheetBonusDescription) ||
+      'Paid for a month with no late comings and no absences.',
+    cleanSheetBonusAmount: (() => {
+      const value = raw?.cleanSheetBonusAmount ?? raw?.CleanSheetBonusAmount
+      if (value == null || value === '') return 500
+      const amount = Number(value)
+      return Number.isFinite(amount) ? amount : 500
+    })(),
   }
 }
 

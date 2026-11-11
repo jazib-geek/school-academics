@@ -84,6 +84,8 @@ public class EmployeeSalaryRowDto
     public decimal Fine { get; set; }
     public decimal Advance { get; set; }
     public decimal Bonus { get; set; }
+    public decimal CleanSheetBonus { get; set; }
+    public string? CleanSheetBonusName { get; set; }
     public decimal TeaAllowance { get; set; }
     public decimal NetSalary { get; set; }
 }

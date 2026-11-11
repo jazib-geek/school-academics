@@ -36,6 +36,10 @@ public class CampusProfileDto
     public string? SaturdayCheckOutTime { get; set; }
 
     public bool ShowCreditStudent { get; set; }
+    public bool CleanSheetBonusEnabled { get; set; }
+    public string CleanSheetBonusName { get; set; } = "Clean sheet bonus";
+    public string? CleanSheetBonusDescription { get; set; }
+    public decimal CleanSheetBonusAmount { get; set; } = 500m;
 }
 
 public class UpdateCampusProfileDto
@@ -71,4 +75,8 @@ public class UpdateCampusProfileDto
     public string? SaturdayCheckOutTime { get; set; }
 
     public bool ShowCreditStudent { get; set; }
+    public bool CleanSheetBonusEnabled { get; set; }
+    public string? CleanSheetBonusName { get; set; }
+    public string? CleanSheetBonusDescription { get; set; }
+    public decimal CleanSheetBonusAmount { get; set; }
 }

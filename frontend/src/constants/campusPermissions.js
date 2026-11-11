@@ -175,6 +175,7 @@ export const CAMPUS_ROUTE_PERMISSIONS = [
   { prefix: '/campus/fee/dashboard', permission: 'view_fee_dashboard' },
   { prefix: '/campus/fee/reports', permission: 'rpt_fee' },
   { prefix: '/campus/fee/reminder-notices', permission: 'rpt_fee' },
+  { prefix: '/campus/fee/custom-notices', permission: 'rpt_fee' },
   { prefix: '/campus/fee/balance-sheet', permission: 'rpt_fee_balance_sheet' },
   { prefix: '/campus/fee/collection-sheet', permission: 'rpt_fee_balance_sheet' },
   { prefix: '/campus/reports/income', permission: 'view_profit_loss' },

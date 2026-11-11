@@ -82,27 +82,29 @@ export default function VoidFeeReceiptPage() {
   return (
     <CampusShell headerContext="Void Receipt">
       <div className="min-h-screen bg-slate-100 p-4 pt-[4.25rem] md:p-6 md:pt-[4.5rem]">
-        <div className="mx-auto max-w-6xl">
-          <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-            <div className="flex items-start gap-3">
-              <div className="grid h-10 w-10 place-items-center rounded-xl bg-rose-600 text-white">
-                <Ban size={18} />
+        <div className="mx-auto max-w-6xl space-y-4">
+          <section className="rounded-2xl bg-white p-4 shadow-sm">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5 rounded-xl bg-rose-50 p-2 text-rose-700">
+                  <Ban className="h-5 w-5" />
+                </div>
+                <div>
+                  <h1 className="text-lg font-semibold text-slate-900">Void Receipt</h1>
+                  <p className="mt-0.5 text-[13px] text-slate-500">
+                    Enter a receipt number, check the preview, then confirm to void it.
+                  </p>
+                </div>
               </div>
-              <div>
-                <h1 className="text-2xl font-bold text-slate-800">Void Receipt</h1>
-                <p className="text-sm text-slate-500">
-                  Enter a receipt number, check the preview, then confirm to void it.
-                </p>
-              </div>
+              <Link
+                to="/campus/activity-logs/void-receipts"
+                className="inline-flex h-9 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 text-[13px] font-medium text-slate-700 hover:bg-slate-50"
+              >
+                <History size={16} />
+                Void history
+              </Link>
             </div>
-            <Link
-              to="/campus/activity-logs/void-receipts"
-              className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50"
-            >
-              <History size={16} />
-              Void history
-            </Link>
-          </div>
+          </section>
 
           <div className="grid gap-4 lg:grid-cols-2">
             <section className="space-y-4 rounded-2xl bg-white p-5 shadow-sm">

@@ -12,7 +12,6 @@ import {
   ClipboardCheck,
   FileBarChart,
   HandCoins,
-  History,
   Home,
   KeyRound,
   LayoutGrid,
@@ -167,9 +166,18 @@ export const CAMPUS_SHELL_NAV = [
       { label: 'Transaction History', to: '/campus/fee/transactions', permission: 'submit_fee' },
       { label: 'Void Receipt', to: '/campus/fee/void-receipt', permission: 'void_rcpt' },
       { label: 'Fee Reports', to: '/campus/fee/reports', permission: 'rpt_fee' },
-      { label: 'Fee Reminder Notice', to: '/campus/fee/reminder-notices', permission: 'rpt_fee' },
       { label: 'Balance Sheet', to: '/campus/fee/balance-sheet', permission: 'rpt_fee_balance_sheet' },
       { label: 'Collection Sheet', to: '/campus/fee/collection-sheet', permission: 'rpt_fee_balance_sheet' },
+    ],
+  },
+  {
+    id: 'notices',
+    label: 'Notice Management',
+    icon: Bell,
+    iconClass: 'text-rose-300',
+    children: [
+      { label: 'Fee Reminder Notice', to: '/campus/fee/reminder-notices', permission: 'rpt_fee' },
+      { label: 'Custom Notice', to: '/campus/fee/custom-notices', permission: 'rpt_fee' },
     ],
   },
   {
@@ -242,7 +250,7 @@ export const CAMPUS_SHELL_NAV = [
   },
   {
     id: 'employees',
-    label: 'Employees',
+    label: 'Staff & Payroll',
     icon: UsersRound,
     iconClass: 'text-cyan-300',
     children: [
@@ -329,15 +337,14 @@ export const CAMPUS_SHELL_NAV = [
       { label: 'Allowances', to: '/campus/settings/allowances', permission: 'manage_payroll_allowances' },
     ],
   },
-  { id: 'users', label: 'User Management', icon: UserCog, iconClass: 'text-blue-300', to: '/campus/users', anyOf: ['user_list', 'user_mgmt'] },
   {
-    id: 'activity-logs',
-    label: 'Activity Logs',
-    icon: History,
-    iconClass: 'text-amber-300',
+    id: 'users-and-logs',
+    label: 'User and Logs',
+    icon: UserCog,
+    iconClass: 'text-blue-300',
     children: [
+      { label: 'User Management', to: '/campus/users', anyOf: ['user_list', 'user_mgmt'] },
       { label: 'Activity Logs', to: '/campus/activity-logs', permission: 'view_activity_logs' },
-      { label: 'Void Receipts', to: '/campus/activity-logs/void-receipts', permission: 'void_rcpt' },
     ],
   },
 ]

@@ -38,6 +38,7 @@ import BalanceSheetPage from './pages/Campus/fee/BalanceSheetPage.jsx'
 import CollectionSheetPage from './pages/Campus/fee/CollectionSheetPage.jsx'
 import FeeDashboardPage from './pages/Campus/fee/FeeDashboardPage.jsx'
 import FeeReminderNoticePage from './pages/Campus/fee/FeeReminderNoticePage.jsx'
+import CustomNoticePage from './pages/Campus/fee/CustomNoticePage.jsx'
 import GenerateFeePage from './pages/Campus/fee/GenerateFeePage.jsx'
 import FeeTransactionHistoryPage from './pages/Campus/fee/FeeTransactionHistoryPage.jsx'
 import VoidFeeReceiptPage from './pages/Campus/fee/VoidFeeReceiptPage.jsx'
@@ -504,6 +505,14 @@ function App() {
         element={
           <ProtectedRoute>
             <FeeReminderNoticePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/campus/fee/custom-notices"
+        element={
+          <ProtectedRoute>
+            <CustomNoticePage />
           </ProtectedRoute>
         }
       />

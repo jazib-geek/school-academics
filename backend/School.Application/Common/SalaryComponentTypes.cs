@@ -8,6 +8,7 @@ public static class SalaryComponentTypes
     public const string Loan = "Loan";
     public const string SecurityCharges = "SecurityCharges";
     public const string Bonus = "Bonus";
+    public const string CleanSheetBonus = "CleanSheetBonus";
     public const string Fine = "Fine";
     public const string Advance = "Advance";
 
@@ -28,6 +29,13 @@ public static class SalaryComponentTypes
     public static bool IsAdjustmentManaged(string? type) =>
         IsEditable(type) ||
         string.Equals(type, BasicSalary, StringComparison.OrdinalIgnoreCase);
+}
+
+public static class CleanSheetBonusDefaults
+{
+    public const string Name = "Clean sheet bonus";
+    public const string Description = "Paid for a month with no late comings and no absences.";
+    public const decimal Amount = 500m;
 }
 
 public static class SpecialDesignations

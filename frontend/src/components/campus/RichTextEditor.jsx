@@ -1,11 +1,14 @@
-import { useEffect, useRef } from 'react'
-import { Bold, Italic, List, ListOrdered, Underline } from 'lucide-react'
+import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
+import { AlignCenter, AlignLeft, AlignRight, Bold, Italic, List, ListOrdered, Underline } from 'lucide-react'
 
 /**
  * Lightweight HTML rich-text editor (contentEditable).
  * Value is HTML stored in news/announcement Description.
  */
-export default function RichTextEditor({ value, onChange, disabled = false, placeholder = 'Write details…', className = '' }) {
+const RichTextEditor = forwardRef(function RichTextEditor(
+  { value, onChange, disabled = false, placeholder = 'Write details…', className = '' },
+  forwardedRef,
+) {
   const ref = useRef(null)
   const lastHtml = useRef('')
 
@@ -34,6 +37,17 @@ export default function RichTextEditor({ value, onChange, disabled = false, plac
     emit()
   }
 
+  useImperativeHandle(forwardedRef, () => ({
+    insertText(text) {
+      if (disabled) return
+      const el = ref.current
+      if (!el) return
+      el.focus()
+      document.execCommand('insertText', false, text)
+      emit()
+    },
+  }))
+
   return (
     <div className={`overflow-hidden rounded-lg border border-slate-300 bg-white ${className}`}>
       <div className="flex flex-wrap gap-1 border-b border-slate-200 bg-slate-50 px-2 py-1.5">
@@ -52,6 +66,15 @@ export default function RichTextEditor({ value, onChange, disabled = false, plac
         <ToolbarButton label="Numbered list" onClick={() => run('insertOrderedList')} disabled={disabled}>
           <ListOrdered className="h-3.5 w-3.5" />
         </ToolbarButton>
+        <ToolbarButton label="Align left" onClick={() => run('justifyLeft')} disabled={disabled}>
+          <AlignLeft className="h-3.5 w-3.5" />
+        </ToolbarButton>
+        <ToolbarButton label="Align center" onClick={() => run('justifyCenter')} disabled={disabled}>
+          <AlignCenter className="h-3.5 w-3.5" />
+        </ToolbarButton>
+        <ToolbarButton label="Align right" onClick={() => run('justifyRight')} disabled={disabled}>
+          <AlignRight className="h-3.5 w-3.5" />
+        </ToolbarButton>
       </div>
       <div
         ref={ref}
@@ -66,7 +89,11 @@ export default function RichTextEditor({ value, onChange, disabled = false, plac
       />
     </div>
   )
-}
+})
+
+RichTextEditor.displayName = 'RichTextEditor'
+
+export default RichTextEditor
 
 function ToolbarButton({ label, onClick, disabled, children }) {
   return (
@@ -75,6 +102,7 @@ function ToolbarButton({ label, onClick, disabled, children }) {
       title={label}
       aria-label={label}
       disabled={disabled}
+      onMouseDown={(event) => event.preventDefault()}
       onClick={onClick}
       className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-600 hover:bg-white hover:text-slate-900 disabled:opacity-40"
     >

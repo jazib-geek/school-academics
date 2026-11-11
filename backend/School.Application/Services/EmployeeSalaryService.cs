@@ -98,6 +98,7 @@ public class EmployeeSalaryService : IEmployeeSalaryService
             .OrderBy(x => x.ID)
             .Select(x => (decimal?)x.TeaAllowance)
             .FirstOrDefaultAsync(cancellationToken) ?? 0m;
+        var cleanSheet = await LoadCleanSheetBonusSettingsAsync(context, cancellationToken);
 
         var monthStart = new DateTime(year, month, 1);
         var monthEnd = monthStart.AddMonths(1);
@@ -133,7 +134,8 @@ public class EmployeeSalaryService : IEmployeeSalaryService
             year,
             teaAllowance,
             resolvedSundays,
-            empAttendance);
+            empAttendance,
+            cleanSheet);
 
         return BuildDisplayRow(
             employee.ID,
@@ -143,7 +145,8 @@ public class EmployeeSalaryService : IEmployeeSalaryService
             year,
             resolvedSundays,
             empAttendance,
-            await LoadComponentsAsync(context, employee.ID, month, year));
+            await LoadComponentsAsync(context, employee.ID, month, year),
+            cleanSheet);
     }
 
     public Task<EmployeeSalaryCalculationResultDto?> GetCalculationResultAsync(
@@ -185,6 +188,7 @@ public class EmployeeSalaryService : IEmployeeSalaryService
             .OrderBy(x => x.ID)
             .Select(x => (decimal?)x.TeaAllowance)
             .FirstOrDefaultAsync() ?? 0m;
+        var cleanSheet = await LoadCleanSheetBonusSettingsAsync(context);
 
         var monthStart = new DateTime(year, month, 1);
         var monthEnd = monthStart.AddMonths(1);
@@ -236,7 +240,8 @@ public class EmployeeSalaryService : IEmployeeSalaryService
                 year,
                 teaAllowance,
                 sundaysToInclude,
-                empAttendance);
+                empAttendance,
+                cleanSheet);
 
             var display = BuildDisplayRow(
                 employee.ID,
@@ -246,7 +251,8 @@ public class EmployeeSalaryService : IEmployeeSalaryService
                 year,
                 sundaysToInclude,
                 empAttendance,
-                await LoadComponentsAsync(context, employee.ID, month, year));
+                await LoadComponentsAsync(context, employee.ID, month, year),
+                cleanSheet);
 
             rows.Add(display);
 
@@ -305,7 +311,8 @@ public class EmployeeSalaryService : IEmployeeSalaryService
         int year,
         decimal teaAllowance,
         int sundaysToInclude,
-        IReadOnlyList<AttendanceSlice> attendance)
+        IReadOnlyList<AttendanceSlice> attendance,
+        CleanSheetBonusSettings cleanSheet)
     {
         var daysInMonth = DateTime.DaysInMonth(year, month);
         var workingAndHolidaySalary = ComputeWorkingAndHolidaySalary(
@@ -365,6 +372,8 @@ public class EmployeeSalaryService : IEmployeeSalaryService
             }
         }
 
+        await ApplyCleanSheetBonusAsync(context, employeeId, month, year, attendance, cleanSheet);
+
         var components = await LoadComponentsAsync(context, employeeId, month, year);
         decimal AmountOf(string type) => ComponentAmount(components, type);
 
@@ -373,10 +382,11 @@ public class EmployeeSalaryService : IEmployeeSalaryService
         var fine = AmountOf(SalaryComponentTypes.Fine);
         var advance = AmountOf(SalaryComponentTypes.Advance);
         var bonus = AmountOf(SalaryComponentTypes.Bonus);
+        var cleanSheetBonus = AmountOf(SalaryComponentTypes.CleanSheetBonus);
         var tea = AmountOf(SalaryComponentTypes.TeaAllowance);
 
         var netSalary = RoundMoney(
-            workingAndHolidaySalary + tea + bonus - loan - fine - advance - securityCharges);
+            workingAndHolidaySalary + tea + bonus + cleanSheetBonus - loan - fine - advance - securityCharges);
 
         var existingSalary = await context.EmployeeSalaries
             .FirstOrDefaultAsync(x => x.EmpID == employeeId && x.Month == month && x.Year == year);
@@ -409,7 +419,8 @@ public class EmployeeSalaryService : IEmployeeSalaryService
         int year,
         int sundaysToInclude,
         IReadOnlyList<AttendanceSlice> attendance,
-        IReadOnlyList<EmployeeSalaryComponent> components)
+        IReadOnlyList<EmployeeSalaryComponent> components,
+        CleanSheetBonusSettings cleanSheet)
     {
         var daysInMonth = DateTime.DaysInMonth(year, month);
         var holidayDates = attendance
@@ -443,12 +454,13 @@ public class EmployeeSalaryService : IEmployeeSalaryService
         var fine = RoundMoney(AmountOf(SalaryComponentTypes.Fine));
         var advance = RoundMoney(AmountOf(SalaryComponentTypes.Advance));
         var bonus = RoundMoney(AmountOf(SalaryComponentTypes.Bonus));
+        var cleanSheetBonus = RoundMoney(AmountOf(SalaryComponentTypes.CleanSheetBonus));
         var teaAllowance = RoundMoney(AmountOf(SalaryComponentTypes.TeaAllowance));
         var absentDeduction = RoundMoney(
             GetAbsentDeduction(basicSalary, presentDays, workingDaysInMonth, daysInMonth));
 
         var netSalary = RoundMoney(
-            workingDaysSalary + bonus + teaAllowance - loan - fine - advance - securityCharges);
+            workingDaysSalary + bonus + cleanSheetBonus + teaAllowance - loan - fine - advance - securityCharges);
 
         return new EmployeeSalaryRowDto
         {
@@ -465,6 +477,8 @@ public class EmployeeSalaryService : IEmployeeSalaryService
             Fine = fine,
             Advance = advance,
             Bonus = bonus,
+            CleanSheetBonus = cleanSheetBonus,
+            CleanSheetBonusName = cleanSheetBonus > 0 ? cleanSheet.Name : null,
             TeaAllowance = teaAllowance,
             NetSalary = netSalary,
         };
@@ -476,7 +490,9 @@ public class EmployeeSalaryService : IEmployeeSalaryService
         int month,
         int year,
         string componentType,
-        decimal amount)
+        decimal amount,
+        string? description = null,
+        bool setDescription = false)
     {
         var matches = await context.EmployeeSalaryComponents
             .Where(x =>
@@ -496,16 +512,123 @@ public class EmployeeSalaryService : IEmployeeSalaryService
                 Year = year,
                 ComponentType = componentType,
                 Amount = amount,
+                Description = setDescription ? description : null,
             });
         }
         else
         {
             matches[0].Amount = amount;
+            if (setDescription)
+                matches[0].Description = description;
             if (matches.Count > 1)
                 context.EmployeeSalaryComponents.RemoveRange(matches.Skip(1));
         }
 
         await context.SaveChangesAsync();
+    }
+
+    private static async Task ApplyCleanSheetBonusAsync(
+        AppDbContext context,
+        int employeeId,
+        int month,
+        int year,
+        IReadOnlyList<AttendanceSlice> attendance,
+        CleanSheetBonusSettings settings)
+    {
+        var amount = RoundMoney(settings.Amount);
+        var eligible = settings.Enabled && amount > 0 && HasCleanSheet(month, year, attendance);
+        if (!eligible)
+        {
+            var existing = await context.EmployeeSalaryComponents
+                .Where(x =>
+                    x.EmpID == employeeId &&
+                    x.Month == month &&
+                    x.Year == year &&
+                    x.ComponentType == SalaryComponentTypes.CleanSheetBonus)
+                .ToListAsync();
+            if (existing.Count == 0)
+                return;
+
+            context.EmployeeSalaryComponents.RemoveRange(existing);
+            await context.SaveChangesAsync();
+            return;
+        }
+
+        await UpsertComponentAsync(
+            context,
+            employeeId,
+            month,
+            year,
+            SalaryComponentTypes.CleanSheetBonus,
+            amount,
+            BuildCleanSheetDescription(settings),
+            setDescription: true);
+    }
+
+    private static bool HasCleanSheet(int month, int year, IReadOnlyList<AttendanceSlice> attendance)
+    {
+        if (attendance.Sum(x => x.LateComings ?? 0) != 0)
+            return false;
+
+        var presentDays = attendance.Count(x => x.Status == "P");
+        if (presentDays == 0)
+            return false;
+
+        var daysInMonth = DateTime.DaysInMonth(year, month);
+        var holidayDates = attendance
+            .Where(x => x.Status == "H" && x.Date.HasValue)
+            .Select(x => x.Date!.Value.Date)
+            .ToHashSet();
+        var workingDaysInMonth = Enumerable.Range(1, daysInMonth)
+            .Select(day => new DateTime(year, month, day))
+            .Count(date => date.DayOfWeek != DayOfWeek.Sunday && !holidayDates.Contains(date));
+
+        return workingDaysInMonth - presentDays <= 0;
+    }
+
+    private static string BuildCleanSheetDescription(CleanSheetBonusSettings settings)
+    {
+        var name = string.IsNullOrWhiteSpace(settings.Name)
+            ? CleanSheetBonusDefaults.Name
+            : settings.Name.Trim();
+        var description = settings.Description?.Trim();
+        var text = string.IsNullOrEmpty(description) ? name : $"{name} — {description}";
+        return text.Length <= 500 ? text : text[..500];
+    }
+
+    private static async Task<CleanSheetBonusSettings> LoadCleanSheetBonusSettingsAsync(
+        AppDbContext context,
+        CancellationToken cancellationToken = default)
+    {
+        var row = await context.CampusProfiles
+            .AsNoTracking()
+            .OrderBy(x => x.ID)
+            .Select(x => new
+            {
+                x.CleanSheetBonusEnabled,
+                x.CleanSheetBonusName,
+                x.CleanSheetBonusDescription,
+                x.CleanSheetBonusAmount,
+            })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (row == null)
+        {
+            return new CleanSheetBonusSettings(
+                false,
+                CleanSheetBonusDefaults.Name,
+                CleanSheetBonusDefaults.Description,
+                0m);
+        }
+
+        var name = string.IsNullOrWhiteSpace(row.CleanSheetBonusName)
+            ? CleanSheetBonusDefaults.Name
+            : row.CleanSheetBonusName.Trim();
+        return new CleanSheetBonusSettings(
+            row.CleanSheetBonusEnabled,
+            name,
+            row.CleanSheetBonusDescription,
+            row.CleanSheetBonusAmount);
     }
 
     private static decimal ComponentAmount(
@@ -651,4 +774,10 @@ public class EmployeeSalaryService : IEmployeeSalaryService
         int? LateComings,
         decimal? LateDeduction,
         decimal? TodaySalary);
+
+    private sealed record CleanSheetBonusSettings(
+        bool Enabled,
+        string Name,
+        string? Description,
+        decimal Amount);
 }

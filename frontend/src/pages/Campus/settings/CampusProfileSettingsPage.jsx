@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
+  Banknote,
   Building2,
   CalendarRange,
   Fingerprint,
@@ -34,12 +35,17 @@ import {
 } from '../../../utils/campusProfile'
 import {
   INTEGER_INPUT_ATTRS,
+  DECIMAL_INPUT_ATTRS,
   sanitizeIntegerInput,
+  readDecimalInput,
   withIntegerInputValue,
 } from '../../../utils/numericInput.js'
 import { getPakistanDateParts } from '../../../utils/pakistanDate.js'
 
 const inputClass = settingsInputClass
+
+const CLEAN_SHEET_BONUS_NAME = 'Clean sheet bonus'
+const CLEAN_SHEET_BONUS_DESCRIPTION = 'Paid for a month with no late comings and no absences.'
 
 const SETTINGS_SECTIONS = [
   { id: 'general', label: 'School profile', icon: Building2 },
@@ -48,6 +54,7 @@ const SETTINGS_SECTIONS = [
   { id: 'fees', label: 'Fees & receipts', icon: Receipt },
   { id: 'notices', label: 'Fee reminder notices', icon: Mail },
   { id: 'attendance', label: 'Attendance', icon: Fingerprint },
+  { id: 'salary', label: 'Salary', icon: Banknote },
 ]
 
 const emptyForm = () => {
@@ -83,6 +90,10 @@ const emptyForm = () => {
     saturdayCheckInTime: '07:15',
     saturdayCheckOutTime: '13:30',
     showCreditStudent: false,
+    cleanSheetBonusEnabled: false,
+    cleanSheetBonusName: CLEAN_SHEET_BONUS_NAME,
+    cleanSheetBonusDescription: CLEAN_SHEET_BONUS_DESCRIPTION,
+    cleanSheetBonusAmount: '500',
   }
 }
 
@@ -119,6 +130,13 @@ const mapDtoToForm = (dto) => {
     saturdayCheckInTime: n.saturdayCheckInTime || '07:15',
     saturdayCheckOutTime: n.saturdayCheckOutTime || '13:30',
     showCreditStudent: n.showCreditStudent,
+    cleanSheetBonusEnabled: n.cleanSheetBonusEnabled,
+    cleanSheetBonusName: n.cleanSheetBonusName || CLEAN_SHEET_BONUS_NAME,
+    cleanSheetBonusDescription: n.cleanSheetBonusDescription || '',
+    cleanSheetBonusAmount:
+      n.cleanSheetBonusAmount != null && n.cleanSheetBonusAmount !== ''
+        ? String(n.cleanSheetBonusAmount)
+        : '500',
   }
 }
 
@@ -258,6 +276,12 @@ function CampusProfileSettingsPage() {
       return
     }
 
+    const bonusAmount = Number(form.cleanSheetBonusAmount)
+    if (!Number.isFinite(bonusAmount) || bonusAmount < 0) {
+      toast.error('Enter a valid clean sheet bonus amount.')
+      return
+    }
+
     setIsSaving(true)
     try {
       const payload = {
@@ -291,6 +315,10 @@ function CampusProfileSettingsPage() {
         saturdayCheckInTime: form.saturdayCheckInTime || '07:15',
         saturdayCheckOutTime: form.saturdayCheckOutTime || '13:30',
         showCreditStudent: form.showCreditStudent,
+        cleanSheetBonusEnabled: form.cleanSheetBonusEnabled,
+        cleanSheetBonusName: form.cleanSheetBonusName.trim() || CLEAN_SHEET_BONUS_NAME,
+        cleanSheetBonusDescription: form.cleanSheetBonusDescription.trim() || null,
+        cleanSheetBonusAmount: Number(form.cleanSheetBonusAmount || 0),
       }
       const saved = await updateCampusProfile(payload)
       const mapped = mapDtoToForm(saved)
@@ -533,6 +561,60 @@ function CampusProfileSettingsPage() {
               </div>
             </SettingsCard>
           </>
+        )
+      case 'salary':
+        return (
+          <SettingsCard
+            title="Clean sheet bonus"
+            description="A clean sheet means the employee had no late comings and no absences in the month."
+          >
+            <div className="-mt-3 divide-y divide-slate-100 border-b border-slate-100">
+              <SettingsToggle
+                name="cleanSheetBonusEnabled"
+                checked={form.cleanSheetBonusEnabled}
+                disabled={!canManage}
+                onChange={onChange}
+                label="Clean sheet bonus"
+                description="Add this bonus when salaries are calculated for employees with a clean sheet."
+              />
+            </div>
+            <div className={`mt-4 grid gap-4 sm:grid-cols-2 ${form.cleanSheetBonusEnabled ? '' : 'opacity-60'}`}>
+              <SettingsField label="Bonus name">
+                <input
+                  name="cleanSheetBonusName"
+                  className={inputClass}
+                  value={form.cleanSheetBonusName}
+                  disabled={!canManage || !form.cleanSheetBonusEnabled}
+                  onChange={onChange}
+                />
+              </SettingsField>
+              <SettingsField label="Amount">
+                <input
+                  {...DECIMAL_INPUT_ATTRS}
+                  name="cleanSheetBonusAmount"
+                  className={inputClass}
+                  value={form.cleanSheetBonusAmount}
+                  disabled={!canManage || !form.cleanSheetBonusEnabled}
+                  onChange={(event) =>
+                    setForm((previous) => ({
+                      ...previous,
+                      cleanSheetBonusAmount: readDecimalInput(event, 2),
+                    }))
+                  }
+                />
+              </SettingsField>
+              <SettingsField label="Description" className="sm:col-span-2">
+                <textarea
+                  name="cleanSheetBonusDescription"
+                  rows={3}
+                  className={`${inputClass} h-auto py-2`}
+                  value={form.cleanSheetBonusDescription}
+                  disabled={!canManage || !form.cleanSheetBonusEnabled}
+                  onChange={onChange}
+                />
+              </SettingsField>
+            </div>
+          </SettingsCard>
         )
       default:
         return null
