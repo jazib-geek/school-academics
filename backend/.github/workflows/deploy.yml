@@ -83,32 +83,42 @@ jobs:
 
       - name: Install lftp
         id: install-lftp
-        timeout-minutes: 6
+        timeout-minutes: 4
         run: |
           set -euo pipefail
-          # Hosted runners resolve azure.archive.ubuntu.com to an IPv6 address that
-          # accepts the connection and then sends nothing. apt waits on that mirror
-          # until the job timeout. Use the main archive over IPv4 and kill a hung attempt.
-          if [ -f /etc/apt/apt-mirrors.txt ]; then
-            echo "http://archive.ubuntu.com/ubuntu/" | sudo tee /etc/apt/apt-mirrors.txt >/dev/null
-          fi
-          sudo sed -i 's|azure\.archive\.ubuntu\.com|archive.ubuntu.com|g' /etc/apt/sources.list /etc/apt/sources.list.d/*.sources /etc/apt/sources.list.d/*.list 2>/dev/null || true
+          # archive.ubuntu.com does not resolve on the hosted runner.
+          # azure.archive.ubuntu.com does, but its IPv6 address accepts the connection
+          # and then sends nothing. Keep the image mirror, force IPv4, and skip
+          # apt-get update — the image already has the lftp package list.
           sudo tee /etc/apt/apt.conf.d/99-no-hang >/dev/null <<'EOF'
           Acquire::ForceIPv4 "true";
           Acquire::Retries "1";
-          Acquire::http::Timeout "15";
-          Acquire::https::Timeout "15";
+          Acquire::http::Timeout "20";
+          Acquire::https::Timeout "20";
           EOF
-          for attempt in 1 2 3; do
-            if sudo timeout 90 apt-get update && sudo timeout 90 env DEBIAN_FRONTEND=noninteractive apt-get install -y lftp; then
-              command -v lftp
-              exit 0
+          if sudo timeout 75 env DEBIAN_FRONTEND=noninteractive apt-get install -y lftp; then
+            command -v lftp
+            exit 0
+          fi
+          echo "::warning::apt-get install lftp failed; downloading the package directly."
+          deb="${RUNNER_TEMP}/lftp.deb"
+          urls=(
+            "http://azure.archive.ubuntu.com/ubuntu/pool/universe/l/lftp/lftp_4.9.2-2ubuntu1.1_amd64.deb"
+            "http://azure.archive.ubuntu.com/ubuntu/pool/main/l/lftp/lftp_4.9.2-2ubuntu1.1_amd64.deb"
+          )
+          ok=0
+          for url in "${urls[@]}"; do
+            if curl -4fsSL --connect-timeout 15 --max-time 60 -o "$deb" "$url"; then
+              ok=1
+              break
             fi
-            echo "::warning::lftp install failed (attempt ${attempt}/3). Retrying..."
-            sleep 5
           done
-          echo "::error::Could not install lftp after 3 attempts."
-          exit 1
+          if [ "$ok" -ne 1 ]; then
+            echo "::error::Could not download lftp."
+            exit 1
+          fi
+          sudo dpkg -i "$deb" || sudo timeout 75 env DEBIAN_FRONTEND=noninteractive apt-get install -y -f
+          command -v lftp
 
       - name: Stop IIS and upload publish (lftp)
         env:
