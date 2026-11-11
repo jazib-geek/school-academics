@@ -42,7 +42,6 @@ jobs:
   deploy:
     needs: build
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
-    # ubuntu-latest is rolling to 26.04 through 19 Nov 2026; apt there has been failing the lftp install.
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -71,6 +70,7 @@ jobs:
           test -x scripts/ci-restore-api-ftp.sh || chmod +x scripts/ci-restore-api-ftp.sh
           bash -n scripts/ci-deploy-api-ftp.sh
           bash -n scripts/ci-restore-api-ftp.sh
+          python3 -m py_compile scripts/ftp_site.py
           head -1 scripts/ci-deploy-api-ftp.sh | grep -q '^#!/usr/bin/env bash$'
 
       - id: ftp-config
@@ -81,46 +81,7 @@ jobs:
           protocol="${FTP_PROTOCOL:-ftp}"
           echo "protocol=$protocol" >> "$GITHUB_OUTPUT"
 
-      - name: Install lftp
-        id: install-lftp
-        timeout-minutes: 4
-        run: |
-          set -euo pipefail
-          # archive.ubuntu.com does not resolve on the hosted runner.
-          # azure.archive.ubuntu.com does, but its IPv6 address accepts the connection
-          # and then sends nothing. Keep the image mirror, force IPv4, and skip
-          # apt-get update — the image already has the lftp package list.
-          sudo tee /etc/apt/apt.conf.d/99-no-hang >/dev/null <<'EOF'
-          Acquire::ForceIPv4 "true";
-          Acquire::Retries "1";
-          Acquire::http::Timeout "20";
-          Acquire::https::Timeout "20";
-          EOF
-          if sudo timeout 75 env DEBIAN_FRONTEND=noninteractive apt-get install -y lftp; then
-            command -v lftp
-            exit 0
-          fi
-          echo "::warning::apt-get install lftp failed; downloading the package directly."
-          deb="${RUNNER_TEMP}/lftp.deb"
-          urls=(
-            "http://azure.archive.ubuntu.com/ubuntu/pool/universe/l/lftp/lftp_4.9.2-2ubuntu1.1_amd64.deb"
-            "http://azure.archive.ubuntu.com/ubuntu/pool/main/l/lftp/lftp_4.9.2-2ubuntu1.1_amd64.deb"
-          )
-          ok=0
-          for url in "${urls[@]}"; do
-            if curl -4fsSL --connect-timeout 15 --max-time 60 -o "$deb" "$url"; then
-              ok=1
-              break
-            fi
-          done
-          if [ "$ok" -ne 1 ]; then
-            echo "::error::Could not download lftp."
-            exit 1
-          fi
-          sudo dpkg -i "$deb" || sudo timeout 75 env DEBIAN_FRONTEND=noninteractive apt-get install -y -f
-          command -v lftp
-
-      - name: Stop IIS and upload publish (lftp)
+      - name: Stop IIS and upload publish
         env:
           FTP_SERVER: ${{ secrets.FTP_SERVER }}
           FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
@@ -131,7 +92,7 @@ jobs:
           scripts/ci-deploy-api-ftp.sh "${{ env.PUBLISH_DIR }}"
 
       - name: Start IIS app (restore web.config)
-        if: always() && steps.install-lftp.outcome == 'success'
+        if: always()
         env:
           FTP_SERVER: ${{ secrets.FTP_SERVER }}
           FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
