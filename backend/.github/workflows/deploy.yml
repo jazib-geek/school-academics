@@ -42,7 +42,8 @@ jobs:
   deploy:
     needs: build
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
-    runs-on: ubuntu-latest
+    # ubuntu-latest is rolling to 26.04 through 19 Nov 2026; apt there has been failing the lftp install.
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
@@ -81,7 +82,25 @@ jobs:
           echo "protocol=$protocol" >> "$GITHUB_OUTPUT"
 
       - name: Install lftp
-        run: sudo apt-get update && sudo apt-get install -y lftp
+        id: install-lftp
+        timeout-minutes: 10
+        run: |
+          set -euo pipefail
+          sudo tee /etc/apt/apt.conf.d/80-retries >/dev/null <<'EOF'
+          Acquire::Retries "5";
+          Acquire::http::Timeout "30";
+          Acquire::https::Timeout "30";
+          EOF
+          for attempt in 1 2 3; do
+            if sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y lftp; then
+              command -v lftp
+              exit 0
+            fi
+            echo "lftp install failed (attempt ${attempt}/3). Retrying..."
+            sleep 15
+          done
+          echo "::error::Could not install lftp after 3 attempts."
+          exit 1
 
       - name: Stop IIS and upload publish (lftp)
         env:
@@ -94,7 +113,7 @@ jobs:
           scripts/ci-deploy-api-ftp.sh "${{ env.PUBLISH_DIR }}"
 
       - name: Start IIS app (restore web.config)
-        if: always()
+        if: always() && steps.install-lftp.outcome == 'success'
         env:
           FTP_SERVER: ${{ secrets.FTP_SERVER }}
           FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
