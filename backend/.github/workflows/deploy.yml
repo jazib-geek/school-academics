@@ -83,21 +83,29 @@ jobs:
 
       - name: Install lftp
         id: install-lftp
-        timeout-minutes: 10
+        timeout-minutes: 6
         run: |
           set -euo pipefail
-          sudo tee /etc/apt/apt.conf.d/80-retries >/dev/null <<'EOF'
-          Acquire::Retries "5";
-          Acquire::http::Timeout "30";
-          Acquire::https::Timeout "30";
+          # Hosted runners resolve azure.archive.ubuntu.com to an IPv6 address that
+          # accepts the connection and then sends nothing. apt waits on that mirror
+          # until the job timeout. Use the main archive over IPv4 and kill a hung attempt.
+          if [ -f /etc/apt/apt-mirrors.txt ]; then
+            echo "http://archive.ubuntu.com/ubuntu/" | sudo tee /etc/apt/apt-mirrors.txt >/dev/null
+          fi
+          sudo sed -i 's|azure\.archive\.ubuntu\.com|archive.ubuntu.com|g' /etc/apt/sources.list /etc/apt/sources.list.d/*.sources /etc/apt/sources.list.d/*.list 2>/dev/null || true
+          sudo tee /etc/apt/apt.conf.d/99-no-hang >/dev/null <<'EOF'
+          Acquire::ForceIPv4 "true";
+          Acquire::Retries "1";
+          Acquire::http::Timeout "15";
+          Acquire::https::Timeout "15";
           EOF
           for attempt in 1 2 3; do
-            if sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y lftp; then
+            if sudo timeout 90 apt-get update && sudo timeout 90 env DEBIAN_FRONTEND=noninteractive apt-get install -y lftp; then
               command -v lftp
               exit 0
             fi
-            echo "lftp install failed (attempt ${attempt}/3). Retrying..."
-            sleep 15
+            echo "::warning::lftp install failed (attempt ${attempt}/3). Retrying..."
+            sleep 5
           done
           echo "::error::Could not install lftp after 3 attempts."
           exit 1
