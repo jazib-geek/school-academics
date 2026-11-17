@@ -843,6 +843,9 @@ export default function EmployeesPage() {
   const [isStatusSaving, setIsStatusSaving] = useState(false)
   const [printEmployees, setPrintEmployees] = useState([])
   const [isPrinting, setIsPrinting] = useState(false)
+  const [printShowSalary, setPrintShowSalary] = useState(false)
+  const [printBlankColumn, setPrintBlankColumn] = useState(false)
+  const [printBlankColumnName, setPrintBlankColumnName] = useState('')
 
   const closeActionMenu = () => {
     setOpenActionId(null)
@@ -975,6 +978,13 @@ export default function EmployeesPage() {
   }
 
   const printSubtitle = `As on Date : ${formatReportPrintDate(new Date())}`
+  const printCols = printShowSalary && printBlankColumn
+    ? { id: '8%', name: '20%', father: '18%', join: '12%', duration: '12%', salary: '14%', blank: '16%' }
+    : printShowSalary
+      ? { id: '8%', name: '24%', father: '22%', join: '14%', duration: '14%', salary: '18%' }
+      : printBlankColumn
+        ? { id: '8%', name: '24%', father: '22%', join: '14%', duration: '14%', blank: '18%' }
+        : { id: '10%', name: '30%', father: '28%', join: '16%', duration: '16%' }
 
   return (
     <div className="print-page-root min-h-screen bg-slate-100">
@@ -1004,17 +1014,50 @@ export default function EmployeesPage() {
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <PermissionControl allowed={canViewEmployees}>
-                    <button
-                      type="button"
-                      onClick={handlePrint}
-                      disabled={isPrinting}
-                      className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 disabled:opacity-50"
-                    >
-                      {isPrinting ? <Loader2 size={16} className="animate-spin" /> : <Printer size={16} />}
-                      Print
-                    </button>
-                  </PermissionControl>
+                  <div className="inline-flex items-stretch overflow-hidden rounded-lg border border-slate-300 bg-white text-sm text-slate-700">
+                    {canViewEmployees ? (
+                      <>
+                        <label className="inline-flex items-center gap-2 border-r border-slate-300 px-3 py-2">
+                          <input
+                            type="checkbox"
+                            checked={printShowSalary}
+                            onChange={(e) => setPrintShowSalary(e.target.checked)}
+                          />
+                          Show salary
+                        </label>
+                        <label className="inline-flex items-center gap-2 border-r border-slate-300 px-3 py-2">
+                          <input
+                            type="checkbox"
+                            checked={printBlankColumn}
+                            onChange={(e) => setPrintBlankColumn(e.target.checked)}
+                          />
+                          Blank column
+                        </label>
+                        {printBlankColumn ? (
+                          <input
+                            type="text"
+                            value={printBlankColumnName}
+                            onChange={(e) => setPrintBlankColumnName(e.target.value)}
+                            placeholder="Column name"
+                            aria-label="Blank column name"
+                            className="w-36 border-r border-slate-300 bg-white px-3 text-sm outline-none placeholder:text-slate-400"
+                            {...FILTER_INPUT_AUTOCOMPLETE_PROPS}
+                          />
+                        ) : null}
+                      </>
+                    ) : null}
+                    <PermissionControl allowed={canViewEmployees}>
+                      <button
+                        type="button"
+                        onClick={handlePrint}
+                        disabled={isPrinting}
+                        className="inline-flex items-center gap-2 bg-slate-50 px-4 py-2 font-medium hover:bg-slate-100 disabled:opacity-50"
+                      >
+                        {isPrinting ? <Loader2 size={16} className="animate-spin" /> : <Printer size={16} />}
+                        Print
+                      </button>
+                    </PermissionControl>
+                  </div>
                   <PermissionControl allowed={canManageEmployees}>
                     <button
                       type="button"
@@ -1191,12 +1234,15 @@ export default function EmployeesPage() {
               <table className="legacy-print-table">
                 <thead>
                   <tr>
-                    <th style={{ width: '8%' }}>ID</th>
-                    <th style={{ width: '24%', textAlign: 'left' }}>Name</th>
-                    <th style={{ width: '22%', textAlign: 'left' }}>Father Name</th>
-                    <th style={{ width: '14%' }}>Joining</th>
-                    <th style={{ width: '14%' }}>Duration</th>
-                    <th style={{ width: '18%' }}>Salary</th>
+                    <th style={{ width: printCols.id }}>ID</th>
+                    <th style={{ width: printCols.name, textAlign: 'left' }}>Name</th>
+                    <th style={{ width: printCols.father, textAlign: 'left' }}>Father Name</th>
+                    <th style={{ width: printCols.join }}>Joining</th>
+                    <th style={{ width: printCols.duration }}>Duration</th>
+                    {printShowSalary ? <th style={{ width: printCols.salary }}>Salary</th> : null}
+                    {printBlankColumn ? (
+                      <th style={{ width: printCols.blank }}>{printBlankColumnName.trim()}</th>
+                    ) : null}
                   </tr>
                 </thead>
                 <tbody>
@@ -1207,19 +1253,25 @@ export default function EmployeesPage() {
                       <td style={{ textAlign: 'left' }}>{employee.fatherName || '—'}</td>
                       <td style={{ textAlign: 'center' }}>{formatReportPrintDate(employee.joining_Date)}</td>
                       <td style={{ textAlign: 'center' }}>{formatEmploymentDuration(employee.joining_Date)}</td>
-                      <td style={{ textAlign: 'right' }}>{formatReportPrintMoney(employee.salary)}</td>
+                      {printShowSalary ? (
+                        <td style={{ textAlign: 'right' }}>{formatReportPrintMoney(employee.salary)}</td>
+                      ) : null}
+                      {printBlankColumn ? <td /> : null}
                     </tr>
                   ))}
-                  <tr className="total-row">
-                    <td colSpan={5} style={{ textAlign: 'center' }}>
-                      TOTAL
-                    </td>
-                    <td style={{ textAlign: 'right' }}>
-                      {formatReportPrintMoney(
-                        printEmployees.reduce((sum, employee) => sum + Number(employee.salary || 0), 0),
-                      )}
-                    </td>
-                  </tr>
+                  {printShowSalary ? (
+                    <tr className="total-row">
+                      <td colSpan={5} style={{ textAlign: 'center' }}>
+                        TOTAL
+                      </td>
+                      <td style={{ textAlign: 'right' }}>
+                        {formatReportPrintMoney(
+                          printEmployees.reduce((sum, employee) => sum + Number(employee.salary || 0), 0),
+                        )}
+                      </td>
+                      {printBlankColumn ? <td /> : null}
+                    </tr>
+                  ) : null}
                 </tbody>
               </table>
             </div>

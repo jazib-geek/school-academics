@@ -1,0 +1,19 @@
+---
+description: Deep reference — tuition & fund generation (only when editing generate services/pages)
+globs: "{backend/School.Application/Services/FeeGenerateService.cs,backend/School.Application/Services/FundGenerateService.cs,backend/School.API/Controllers/FeeGenerateController.cs,backend/School.API/Controllers/FundGenerateController.cs,frontend/src/pages/Campus/fee/GenerateFeePage.jsx,frontend/src/pages/Campus/fee/GenerateFundPage.jsx,frontend/src/services/feeGenerateService.js,frontend/src/services/fundGenerateService.js}"
+alwaysApply: false
+---
+
+# Campus fee & fund generation (implementation)
+
+**Start with `campus-fee-domain.mdc`** for contracts. Open this file only when editing the globs above or `SPstudentfee` behavior.
+
+## Tuition (`FundTypeID = 1`)
+
+- All: `EXEC SPstudentfee` — 180s timeout; log `FeeGenerateAll`.
+- Single upsert: charge row where `(Recieved ?? 0) == 0` and `(Discount ?? 0) == 0` for same student/month/year.
+- `amount === -1` → `Student.TutionFee`.
+
+## Annual funds (2–5)
+
+- Upsert match: `Payment > 0` OR `(Payment ?? 0) + (Recieved ?? 0) == 0`; `Month = 0`.

@@ -27,6 +27,7 @@ public class FeeTransactionReportItemDto
     public int? Year { get; set; }
     public decimal Received { get; set; }
     public string PaymentMode { get; set; } = "Cash";
+    public string? ReceivedBy { get; set; }
 }
 
 public class FeeDefaulterItemDto

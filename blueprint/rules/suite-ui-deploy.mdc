@@ -1,0 +1,48 @@
+---
+description: Frontend production deploy via lint + subtree push to the UI deploy repo
+alwaysApply: true
+---
+
+# UI deploy (frontend → production)
+
+Production UI CD runs only on **{UiRepo}** (`git remote suite-ui`), not on the monorepo `origin`.
+
+CI (`frontend/.github/workflows/deploy.yml`) runs **`npm run lint`** before **`npm run build`**. **ESLint errors fail the pipeline** (warnings don't).
+
+## Before any UI subtree push
+
+```powershell
+cd frontend
+npm run lint
+```
+
+Fix **all errors** first. Optionally run `npm run build` and `npm run build:demo` (CI runs both).
+
+## Commit scope (default)
+
+When the user asks to push/deploy the UI and doesn't name files:
+
+1. `git add` **every** uncommitted change under `frontend/` (not `frontend/.vite/` or other generated caches).
+2. One commit covering them.
+3. Don't cherry-pick only this chat's files unless told "only these files".
+
+If nothing is uncommitted under `frontend/`, say so; run lint + subtree push only if they still want production updated.
+
+## Release steps
+
+1. Commit under `frontend/`.
+2. Lint (mandatory, 0 errors).
+3. From repo root:
+   ```powershell
+   .\backend\scripts\Push-SuiteDeploy.ps1 -Ui
+   ```
+   Or: `git subtree split --prefix=frontend -b frontend-ui-release` then `git push suite-ui frontend-ui-release:master`.
+4. Verify [{UiRepo} Actions](https://github.com/{GitHubOwner}/{UiRepo}/actions): **build** then **deploy** green.
+5. `git push origin` alone is not a frontend release.
+
+FTP secrets live on the UI repo; never commit FTP credentials.
+
+## Agent checklist
+
+- Check-in/push/deploy request → commit all `frontend/` changes, lint (fix errors), push `origin` if ahead, run `Push-SuiteDeploy.ps1 -Ui` in the same turn. Don't ask again.
+- "Everything up-to-date" on push means **no new Actions run** — only a new commit triggers CD.

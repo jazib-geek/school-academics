@@ -3,25 +3,44 @@
 Short handoff for Android. Auth: family login token (`Authorization: Bearer …`).  
 Campus on login via `X-Campus`.
 
+Login does **not** include conduct data — fetch unread after sign-in.
+
 ---
 
 ## Endpoints
 
 | Method | URL | Use |
 |--------|-----|-----|
-| — | Login response field `conductInbox` | Popup / badge after login |
-| GET | `/api/parent/conduct/inbox` | Refresh unread (sibling switch) |
+| GET | `/api/parent/conduct/students/{studentId}/unread-count` | Badge / login popup for one child |
+| GET | `/api/parent/conduct/inbox` | All siblings unread (optional) |
 | GET | `/api/parent/conduct/students/{studentId}?month=&year=` | Conduct screen (month) |
-| POST | `/api/parent/conduct/acknowledge` | Mark notes as seen |
+| POST | `/api/parent/conduct/acknowledge` | Mark specific notes as read |
+| POST | `/api/parent/conduct/students/{studentId}/acknowledge-all` | Mark all unread notes for child as read |
 
 `month` / `year` optional → current Pakistan month.
 
 ---
 
-## Login / inbox
+## Unread count (`data`)
 
 ```json
-"conductInbox": {
+{
+  "studentId": 79,
+  "unreadCount": 2,
+  "unreadNoteIds": [123, 456]
+}
+```
+
+`unreadNoteIds` are conduct note ids — pass them as `noteIds` on acknowledge.
+
+Show login popup when `unreadCount > 0` for the selected student.
+
+---
+
+## Inbox (`data`)
+
+```json
+{
   "totalUnread": 2,
   "shouldPrompt": true,
   "students": [
@@ -41,8 +60,6 @@ Campus on login via `X-Campus`.
   ]
 }
 ```
-
-Show login popup when `shouldPrompt` is true.
 
 ---
 
@@ -90,6 +107,8 @@ Show login popup when `shouldPrompt` is true.
 
 ## Acknowledge
 
+Read/unread is stored on each note (server column `ParentAcknowledgedAtPkt`; `null` = unread).
+
 ```http
 POST /api/parent/conduct/acknowledge
 ```
@@ -98,12 +117,18 @@ POST /api/parent/conduct/acknowledge
 { "noteIds": [123, 124] }
 ```
 
-Send unread note `id`s. Safe to repeat.
+```http
+POST /api/parent/conduct/students/{studentId}/acknowledge-all
+```
+
+```json
+{ "acknowledgedCount": 4 }
+```
 
 ---
 
 ## Suggested flow
 
-1. Login → if `conductInbox.shouldPrompt` → popup  
+1. Login → `GET …/students/{regId}/unread-count` → if `unreadCount > 0` → popup  
 2. Conduct screen → GET month for selected student  
-3. Acknowledge → POST `noteIds` → refresh inbox  
+3. Acknowledge → POST `noteIds` or POST `acknowledge-all` → refresh unread-count or inbox  

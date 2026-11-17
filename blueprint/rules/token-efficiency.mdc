@@ -1,0 +1,29 @@
+---
+description: Keep agent context small — search first, read narrowly, implement tightly
+alwaysApply: true
+---
+
+# Token efficiency
+
+Prefer finishing the ask with the smallest useful context. This rule is short on purpose — do not expand it.
+
+## Search before reading
+
+- Use `Grep` / `Glob` first; open only the few matching files.
+- Prefer `Read` with `offset`/`limit` on large files (e.g. `AppShell.jsx`). Do not dump whole controllers, services, or migrations.
+- Do not re-read a file already returned in this turn unless it changed.
+
+## No speculative exploration
+
+- Skip explore/subagents for narrow edits, single-symbol lookups, or 1–3 known files.
+- Do not crawl the whole backend/frontend when the path is already clear.
+
+## Implement tightly
+
+- Change only what the task needs. Prefer targeted edits over rewriting whole files.
+- No docs, README, comments, refactors, or drive-by cleanup unless asked.
+- Do not run broad builds, full test suites, or migrators unless required to verify this change or the user asked.
+
+## Responses
+
+- Answer in a few short sentences or bullets. Cite only the lines that matter.

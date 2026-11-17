@@ -1,0 +1,29 @@
+---
+description: Only push/deploy when the user asks; a check-in/push/deploy request is the confirmation
+alwaysApply: true
+---
+
+# Confirm before git push
+
+Never push to a remote unless the user asked to **check in**, **push**, or **deploy** in the current thread.
+
+## What counts as a push
+
+- `git push` (any remote/branch)
+- `backend/scripts/Push-SuiteDeploy.ps1` (`-Api`, `-Ui`, or both)
+- Manual subtree pushes (`git push suite-api …`, `git push suite-ui …`)
+
+Local commits, `git status`, `git diff`, `git log` don't need confirmation.
+
+## Required flow (request = confirmation; do not ask again)
+
+1. Commit pending `backend/` and `frontend/` changes per the deploy rules (lint frontend first; fix errors).
+2. `git push origin master` when ahead.
+3. Run both production deploys so Actions start:
+   ```powershell
+   .\backend\scripts\Push-SuiteDeploy.ps1 -Api -Ui
+   ```
+   Skip a side only when the user names just the API or just the UI.
+4. `git push origin` alone does not start the deploy workflows — the subtree pushes do.
+
+Do not push at the end of a task when the user did not ask.

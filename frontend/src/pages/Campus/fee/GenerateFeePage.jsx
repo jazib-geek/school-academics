@@ -95,21 +95,43 @@ function buildYearOptions() {
   return [current, current + 1]
 }
 
-function RadioCard({ name, checked, onChange, title, description, icon: Icon, iconClass, disabled }) {
+function Kbd({ children }) {
+  return (
+    <kbd className="inline-flex h-5 min-w-5 items-center justify-center rounded border border-slate-300 bg-white px-1 font-sans text-[11px] font-semibold leading-none text-slate-600 shadow-[0_1px_0_0_rgb(203,213,225)]">
+      {children}
+    </kbd>
+  )
+}
+
+function RadioCard({
+  name,
+  checked,
+  onChange,
+  title,
+  description,
+  icon: Icon,
+  iconClass,
+  disabled,
+  inputRef,
+  onKeyDown,
+  hint,
+}) {
   return (
     <label
-      className={`relative flex cursor-pointer items-start gap-3 rounded-xl border p-3.5 transition ${
+      className={`relative flex cursor-pointer items-start gap-3 rounded-xl border p-3.5 transition focus-within:ring-2 focus-within:ring-[var(--campus-primary)] focus-within:ring-offset-2 ${
         checked
           ? 'border-[var(--campus-primary)] bg-[#405189]/[0.06] shadow-sm ring-1 ring-[#405189]/30'
           : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/80'
       } ${disabled ? 'pointer-events-none opacity-50' : ''}`}
     >
       <input
+        ref={inputRef}
         type="radio"
         name={name}
         className="sr-only"
         checked={checked}
         onChange={onChange}
+        onKeyDown={onKeyDown}
         disabled={disabled}
       />
       {Icon ? (
@@ -120,6 +142,7 @@ function RadioCard({ name, checked, onChange, title, description, icon: Icon, ic
       <div className="min-w-0 flex-1">
         <p className="text-[13px] font-semibold text-slate-900">{title}</p>
         {description ? <p className="mt-0.5 text-[12px] leading-snug text-slate-500">{description}</p> : null}
+        {hint ? <div className="mt-2">{hint}</div> : null}
       </div>
       <span
         className={`mt-1 grid h-4 w-4 shrink-0 place-items-center rounded-full border-2 ${
@@ -190,6 +213,11 @@ export default function GenerateFeePage() {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [studentGeneratedOnce, setStudentGeneratedOnce] = useState(false)
   const customAmountRef = useRef(null)
+  const studentSelectRef = useRef(null)
+  const studentFormRef = useRef(null)
+  const tuitionAmountRef = useRef(null)
+  const focusSearchAfterSuccess = useRef(false)
+  const focusTuitionAfterSelect = useRef(false)
 
   useEffect(() => {
     if (!yearOptions.includes(year)) {
@@ -202,6 +230,19 @@ export default function GenerateFeePage() {
     const id = window.setTimeout(() => customAmountRef.current?.focus(), 0)
     return () => window.clearTimeout(id)
   }, [amountMode, studentModalOpen])
+
+  useEffect(() => {
+    if (!focusSearchAfterSuccess.current || isGenerating || confirmOpen || !studentModalOpen) return
+    focusSearchAfterSuccess.current = false
+    requestAnimationFrame(() => studentSelectRef.current?.focus())
+  }, [confirmOpen, isGenerating, studentModalOpen])
+
+  useEffect(() => {
+    if (!focusTuitionAfterSelect.current || !studentModalOpen || confirmOpen || isGenerating) return
+    if (isLoadingDetail || isLoadingPeriod || !detail) return
+    focusTuitionAfterSelect.current = false
+    requestAnimationFrame(() => tuitionAmountRef.current?.focus())
+  }, [confirmOpen, detail, isGenerating, isLoadingDetail, isLoadingPeriod, studentModalOpen])
 
   const loadStudentOptions = useRef(
     debouncePromise(async (inputValue) => {
@@ -255,13 +296,45 @@ export default function GenerateFeePage() {
   }, [])
 
   const onStudentChange = (option) => {
-    setSelectedStudent(option)
     const regId = Number(option?.value)
+    focusTuitionAfterSelect.current = Boolean(regId)
+    setSelectedStudent(option)
     if (regId) loadDetail(regId)
     else {
       setDetail(null)
       setPeriodContext(null)
     }
+  }
+
+  const focusTuitionCard = () => {
+    requestAnimationFrame(() => tuitionAmountRef.current?.focus())
+  }
+
+  const onAmountCardKeyDown = (event) => {
+    if (event.key === 'ArrowRight') {
+      event.preventDefault()
+      setAmountMode('custom')
+      return
+    }
+    if (event.key === 'ArrowLeft') {
+      event.preventDefault()
+      setAmountMode('tuition')
+      focusTuitionCard()
+      return
+    }
+    if (event.key === 'Enter' && canSubmitStudent) {
+      event.preventDefault()
+      studentFormRef.current?.requestSubmit()
+    }
+  }
+
+  const onCustomAmountKeyDown = (event) => {
+    if (event.key !== 'ArrowLeft') return
+    const field = event.currentTarget
+    if (field.selectionStart !== 0 || field.selectionEnd !== 0) return
+    event.preventDefault()
+    setAmountMode('tuition')
+    focusTuitionCard()
   }
 
   useEffect(() => {
@@ -458,6 +531,7 @@ export default function GenerateFeePage() {
           `Fee generated for #${detail.regId} — ${detail.fullName || 'student'} (${monthLabel} ${year}).`,
           { id: toastId },
         )
+        focusSearchAfterSuccess.current = true
         setConfirmOpen(false)
         setStudentGeneratedOnce(true)
         resetStudentForm()
@@ -640,7 +714,7 @@ export default function GenerateFeePage() {
               </button>
             </div>
 
-            <form onSubmit={openConfirmStudent} className="flex min-h-0 flex-1 flex-col">
+            <form ref={studentFormRef} onSubmit={openConfirmStudent} className="flex min-h-0 flex-1 flex-col">
               <div className="space-y-4 overflow-y-auto px-5 py-4">
                 <div className="grid gap-3 sm:grid-cols-2">
                   <label className="block text-[13px] font-medium text-slate-700">
@@ -677,6 +751,7 @@ export default function GenerateFeePage() {
 
                 <PrefixedSelectShell icon={UserRound} label="Student">
                   <AsyncSelect
+                    ref={studentSelectRef}
                     cacheOptions
                     defaultOptions={false}
                     loadOptions={loadStudentOptions}
@@ -735,10 +810,20 @@ export default function GenerateFeePage() {
                 )}
 
                 <div>
-                  <p className="mb-2 text-[13px] font-medium text-slate-700">Amount</p>
-                  <div className="grid gap-2.5 sm:grid-cols-2">
+                  <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-[13px] font-medium text-slate-700">Amount</p>
+                    {detail ? (
+                      <p className="inline-flex items-center gap-1.5 text-[11px] text-slate-500">
+                        <Kbd>Enter</Kbd>
+                        generate
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="grid gap-2.5 sm:grid-cols-2" role="radiogroup" aria-label="Amount">
                     <RadioCard
                       name="amount-mode"
+                      inputRef={tuitionAmountRef}
+                      onKeyDown={onAmountCardKeyDown}
                       checked={amountMode === 'tuition'}
                       onChange={() => setAmountMode('tuition')}
                       title="Student tuition"
@@ -747,16 +832,33 @@ export default function GenerateFeePage() {
                           ? `Use stored fee of ${money(detail.tuitionFee)}`
                           : 'Use the student’s saved tuition fee'
                       }
+                      hint={
+                        detail ? (
+                          <span className="inline-flex items-center gap-1.5 text-[11px] text-slate-500">
+                            <Kbd>→</Kbd>
+                            Custom amount
+                          </span>
+                        ) : null
+                      }
                       icon={Banknote}
                       iconClass="bg-emerald-50 text-emerald-700"
                       disabled={isGenerating || !detail}
                     />
                     <RadioCard
                       name="amount-mode"
+                      onKeyDown={onAmountCardKeyDown}
                       checked={amountMode === 'custom'}
                       onChange={() => setAmountMode('custom')}
                       title="Custom amount"
                       description="Enter a one-off charge for this month"
+                      hint={
+                        detail ? (
+                          <span className="inline-flex items-center gap-1.5 text-[11px] text-slate-500">
+                            <Kbd>←</Kbd>
+                            Student tuition
+                          </span>
+                        ) : null
+                      }
                       icon={Banknote}
                       iconClass="bg-amber-50 text-amber-700"
                       disabled={isGenerating || !detail}
@@ -771,9 +873,14 @@ export default function GenerateFeePage() {
                         className={inputClass}
                         value={customAmount}
                         onChange={(e) => setCustomAmount(readIntegerInput(e))}
+                        onKeyDown={onCustomAmountKeyDown}
                         placeholder="Enter amount"
                         disabled={isGenerating || !detail}
                       />
+                      <span className="mt-1.5 inline-flex items-center gap-1.5 text-[11px] font-normal text-slate-500">
+                        <Kbd>←</Kbd>
+                        back to student tuition
+                      </span>
                     </label>
                   ) : null}
                   {amountBelowReceived ? (
@@ -813,6 +920,7 @@ export default function GenerateFeePage() {
         description={confirmDescription}
         confirmLabel="Generate fee"
         busy={isGenerating}
+        confirmOnEnter={mode === 'student'}
         icon={<Banknote size={21} />}
         onCancel={() => !isGenerating && setConfirmOpen(false)}
         onConfirm={performGenerate}

@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Softelligent School ERP Pricing</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        margin: 0;
+        background: #c5c9d4;
+        font-family: Inter, system-ui, sans-serif;
+      }
+
+      .canvas {
+        width: 1200px;
+        height: 1550px;
+        margin: 0 auto;
+        background: linear-gradient(180deg, #e4e7ee 0%, #d8dce6 100%);
+        padding: 28px 32px 24px;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .canvas::before {
+        content: '';
+        position: absolute;
+        width: 280px;
+        height: 280px;
+        border-radius: 50%;
+        background: rgba(155, 114, 243, 0.15);
+        top: 40px;
+        left: -80px;
+      }
+
+      .canvas::after {
+        content: '';
+        position: absolute;
+        width: 200px;
+        height: 200px;
+        border-radius: 50%;
+        background: rgba(26, 188, 156, 0.12);
+        bottom: 200px;
+        right: -60px;
+      }
+
+      .header {
+        display: grid;
+        grid-template-columns: 1fr 320px;
+        gap: 20px;
+        align-items: start;
+        position: relative;
+        z-index: 1;
+        margin-bottom: 22px;
+      }
+
+      .brand-line {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-bottom: 18px;
+      }
+
+      .brand-line img {
+        width: 56px;
+        height: 56px;
+        object-fit: contain;
+      }
+
+      .brand-words {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+
+      .brand-words h1 {
+        font-size: 22px;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        color: #111;
+        line-height: 1.1;
+      }
+
+      .brand-words h1 span {
+        display: block;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.22em;
+        color: #333;
+      }
+
+      .divider {
+        width: 1px;
+        height: 36px;
+        background: #999;
+      }
+
+      .brand-tag {
+        font-size: 13px;
+        font-weight: 600;
+        color: #555;
+        max-width: 200px;
+        line-height: 1.35;
+      }
+
+      .hero h2 {
+        font-size: 13px;
+        font-weight: 800;
+        letter-spacing: 0.18em;
+        color: #444;
+        margin-bottom: 6px;
+      }
+
+      .hero .big {
+        font-size: 34px;
+        font-weight: 800;
+        color: #0f172a;
+        line-height: 1.12;
+        letter-spacing: -0.02em;
+        margin-bottom: 8px;
+      }
+
+      .hero .sub {
+        font-size: 14px;
+        font-weight: 500;
+        color: #475569;
+        line-height: 1.45;
+        max-width: 520px;
+      }
+
+      .illus {
+        position: relative;
+        height: 200px;
+      }
+
+      .illus svg {
+        width: 100%;
+        height: 100%;
+      }
+
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+        position: relative;
+        z-index: 1;
+      }
+
+      .card {
+        background: #fff;
+        border-radius: 14px;
+        overflow: hidden;
+        box-shadow: 0 8px 28px rgba(15, 23, 42, 0.1);
+        display: flex;
+        flex-direction: column;
+        min-height: 1080px;
+      }
+
+      .card-head {
+        padding: 14px 16px 12px;
+        color: #fff;
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+      }
+
+      .card-head .icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.25);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        flex-shrink: 0;
+      }
+
+      .card-head h3 {
+        font-size: 13px;
+        font-weight: 800;
+        line-height: 1.35;
+      }
+
+      .card-head.basic {
+        background: linear-gradient(135deg, #7c3aed, #6d28d9);
+      }
+      .card-head.standard {
+        background: linear-gradient(135deg, #0d9488, #0f766e);
+      }
+      .card-head.premium {
+        background: linear-gradient(135deg, #e11d48, #be123c);
+      }
+
+      .card-body {
+        padding: 16px 16px 14px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .price {
+        text-align: center;
+        margin-bottom: 14px;
+      }
+
+      .price .lbl {
+        font-size: 12px;
+        font-weight: 700;
+        color: #64748b;
+      }
+
+      .price .amt {
+        font-size: 38px;
+        font-weight: 800;
+        color: #0f172a;
+        letter-spacing: -0.03em;
+      }
+
+      .price .amt small {
+        font-size: 16px;
+        font-weight: 700;
+        color: #64748b;
+      }
+
+      .features {
+        list-style: none;
+        flex: 1;
+      }
+
+      .features li {
+        font-size: 10.5px;
+        font-weight: 600;
+        color: #334155;
+        line-height: 1.35;
+        padding: 5px 0 5px 22px;
+        position: relative;
+        border-bottom: 1px solid #f1f5f9;
+      }
+
+      .features li:last-child {
+        border-bottom: none;
+      }
+
+      .features li::before {
+        content: '✓';
+        position: absolute;
+        left: 2px;
+        top: 5px;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        font-size: 9px;
+        font-weight: 800;
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .card.basic .features li::before {
+        background: #7c3aed;
+      }
+      .card.standard .features li::before {
+        background: #0d9488;
+      }
+      .card.premium .features li::before {
+        background: #e11d48;
+      }
+
+      .features li.lead {
+        font-weight: 800;
+        color: #0f172a;
+        font-size: 11px;
+      }
+
+      .setup {
+        margin-top: 12px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 10px 12px;
+        text-align: center;
+        font-size: 11px;
+        font-weight: 700;
+        color: #475569;
+      }
+
+      .setup strong {
+        color: #0f172a;
+      }
+
+      .footer {
+        margin-top: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        position: relative;
+        z-index: 1;
+      }
+
+      .trust {
+        display: flex;
+        gap: 18px;
+        flex-wrap: wrap;
+      }
+
+      .trust div {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 11px;
+        font-weight: 700;
+        color: #334155;
+      }
+
+      .contact {
+        background: linear-gradient(90deg, #9f1239, #be123c);
+        color: #fff;
+        padding: 12px 20px;
+        border-radius: 12px;
+        display: flex;
+        gap: 20px;
+        font-size: 13px;
+        font-weight: 700;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="canvas" id="poster">
+      <header class="header">
+        <div>
+          <div class="brand-line">
+            <img src="softelligent-transparent.png" alt="" />
+            <div class="brand-words">
+              <h1>Softelligent<span>SOLUTIONS</span></h1>
+              <div class="divider"></div>
+              <p class="brand-tag">Smart Technology<br />for Better Education</p>
+            </div>
+          </div>
+          <div class="hero">
+            <h2>SCHOOL MANAGEMENT ERP</h2>
+            <p class="big">Simple Plans. Powerful Features.</p>
+            <p class="sub">
+              Admissions, fees, exams, timetables, employee &amp; family apps, biometric attendance, and live
+              chat — everything your school needs in one cloud platform.
+            </p>
+          </div>
+        </div>
+        <div class="illus" aria-hidden="true">
+          <svg viewBox="0 0 320 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <ellipse cx="160" cy="185" rx="120" ry="12" fill="#94a3b8" opacity="0.35" />
+            <rect x="70" y="55" width="180" height="115" rx="8" fill="#cbd5e1" />
+            <rect x="78" y="63" width="164" height="95" rx="4" fill="#f8fafc" />
+            <rect x="95" y="78" width="60" height="8" rx="2" fill="#7c3aed" opacity="0.5" />
+            <rect x="95" y="92" width="130" height="6" rx="2" fill="#e2e8f0" />
+            <rect x="95" y="104" width="110" height="6" rx="2" fill="#e2e8f0" />
+            <path d="M120 30 L200 30 L210 55 L110 55 Z" fill="#1e293b" />
+            <rect x="125" y="18" width="70" height="14" rx="2" fill="#1e293b" />
+            <rect x="230" y="100" width="28" height="70" rx="3" fill="#0d9488" />
+            <rect x="235" y="108" width="18" height="4" fill="#fff" opacity="0.6" />
+            <rect x="235" y="118" width="18" height="4" fill="#fff" opacity="0.4" />
+            <circle cx="50" cy="70" r="18" fill="#f43f5e" opacity="0.85" />
+            <text x="50" y="75" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">👥</text>
+            <circle cx="280" cy="60" r="14" fill="#7c3aed" opacity="0.8" />
+            <rect x="40" y="130" width="22" height="22" rx="4" fill="#f59e0b" opacity="0.9" />
+          </svg>
+        </div>
+      </header>
+
+      <div class="cards">
+        <article class="card basic">
+          <div class="card-head basic">
+            <div class="icon">👥</div>
+            <h3>Basic — Perfect for small schools</h3>
+          </div>
+          <div class="card-body">
+            <div class="price">
+              <div class="lbl">PKR</div>
+              <div class="amt">4,000 <small>/ month</small></div>
+            </div>
+            <ul class="features">
+              <li>Online admissions &amp; digital student profiles</li>
+              <li>Classes, sections &amp; family / sibling records</li>
+              <li>Daily attendance &amp; printable class registers</li>
+              <li>Fee generate, receive &amp; branded receipts</li>
+              <li>Cash &amp; online payment mode on collections</li>
+              <li>Campus dashboard &amp; enrollment reports</li>
+              <li>Secure cloud — phone, tablet &amp; laptop</li>
+              <li>Role-based staff logins &amp; permissions</li>
+            </ul>
+            <div class="setup">Setup fee: <strong>PKR 5,000</strong> (one-time)</div>
+          </div>
+        </article>
+
+        <article class="card standard">
+          <div class="card-head standard">
+            <div class="icon">🎓</div>
+            <h3>Standard — Ideal for growing schools</h3>
+          </div>
+          <div class="card-body">
+            <div class="price">
+              <div class="lbl">PKR</div>
+              <div class="amt">6,000 <small>/ month</small></div>
+            </div>
+            <ul class="features">
+              <li class="lead">All Basic features, plus:</li>
+              <li>Full exams — marks, result cards &amp; award lists</li>
+              <li>Timetables, subject allocation &amp; date sheets</li>
+              <li>Daily class diary (staff + parent-ready)</li>
+              <li>Accounts — vouchers, ledger, cash book &amp; day closing</li>
+              <li>Fee reminders, void control &amp; transaction history</li>
+              <li><strong>Employee app</strong> — attendance, timetable &amp; diary on mobile</li>
+              <li><strong>Family portal</strong> — news, leave requests &amp; fee view</li>
+              <li>Live alerts, absent follow-up &amp; student conduct</li>
+            </ul>
+            <div class="setup">Setup fee: <strong>PKR 5,000</strong> (one-time)</div>
+          </div>
+        </article>
+
+        <article class="card premium">
+          <div class="card-head premium">
+            <div class="icon">⭐</div>
+            <h3>Premium — Complete solution for larger institutions</h3>
+          </div>
+          <div class="card-body">
+            <div class="price">
+              <div class="lbl">PKR</div>
+              <div class="amt">10,000 <small>/ month</small></div>
+            </div>
+            <ul class="features">
+              <li class="lead">All Standard features, plus:</li>
+              <li><strong>Biometric staff attendance</strong> — import &amp; live kiosk</li>
+              <li>Monthly <strong>payroll</strong>, slips, loans &amp; allowances</li>
+              <li><strong>Live staff chat</strong> &amp; reminders in campus portal</li>
+              <li><strong>Multi-campus / branch</strong> dashboard</li>
+              <li>Coordinator <strong>proforma</strong> &amp; head monitoring</li>
+              <li><strong>Academics exam maker</strong> — question bank &amp; papers</li>
+              <li>Teacher conduct, performance &amp; advanced fee analytics</li>
+              <li>Parent <strong>mobile app API</strong>, store &amp; activity audit</li>
+            </ul>
+            <div class="setup">Setup fee: <strong>PKR 5,000</strong> (one-time)</div>
+          </div>
+        </article>
+      </div>
+
+      <footer class="footer">
+        <div class="trust">
+          <div>🛡 Secure &amp; Reliable</div>
+          <div>☁ Access Anywhere</div>
+          <div>🎧 Dedicated Support</div>
+        </div>
+        <div class="contact">
+          <span>📞 03214832357</span>
+          <span>🌐 softelligent.pk</span>
+        </div>
+      </footer>
+    </div>
+  </body>
+</html>

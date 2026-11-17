@@ -99,6 +99,32 @@ const toTimeInputValue = (value) => {
   return /^\d{2}:\d{2}$/.test(short) ? short : ''
 }
 
+const weekdayIndex = (dateValue) => {
+  const [year, month, day] = String(dateValue || '').split('-').map(Number)
+  if (!year || !month || !day) return null
+  return new Date(year, month - 1, day).getDay()
+}
+
+const dutyTimesForDate = (row, dateValue) => {
+  const day = weekdayIndex(dateValue)
+  if (day === 5) {
+    return {
+      checkInTime: row.fridayCheckInTime || row.weekdayCheckInTime || row.checkInTime,
+      checkOutTime: row.fridayCheckOutTime || row.weekdayCheckOutTime || row.checkOutTime,
+    }
+  }
+  if (day === 6) {
+    return {
+      checkInTime: row.saturdayCheckInTime || row.weekdayCheckInTime || row.checkInTime,
+      checkOutTime: row.saturdayCheckOutTime || row.weekdayCheckOutTime || row.checkOutTime,
+    }
+  }
+  return {
+    checkInTime: row.weekdayCheckInTime || row.checkInTime,
+    checkOutTime: row.weekdayCheckOutTime || row.checkOutTime,
+  }
+}
+
 const MARK_PRESENT_REQUEST_KIND = 'MarkPresent'
 
 function isMarkPresentRequestKind(kind) {
@@ -1228,13 +1254,16 @@ function CampusManageAttendancePage() {
       return
     }
     setDutyRows(
-      designationTimes.map((row) => ({
-        designationId: row.designationId,
-        designationName: row.designationName,
-        checkInTime: toTimeInputValue(row.checkInTime),
-        checkOutTime: toTimeInputValue(row.checkOutTime),
-        punchCount: row.punchCount || 0,
-      })),
+      designationTimes.map((row) => {
+        const times = dutyTimesForDate(row, dateValue)
+        return {
+          designationId: row.designationId,
+          designationName: row.designationName,
+          checkInTime: toTimeInputValue(times.checkInTime),
+          checkOutTime: toTimeInputValue(times.checkOutTime),
+          punchCount: row.punchCount || 0,
+        }
+      }),
     )
     setDutyModalOpen(true)
   }

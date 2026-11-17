@@ -1,0 +1,41 @@
+---
+description: Tenancy model, single login/layout, and UI copy/density rules
+alwaysApply: true
+---
+
+# Tenancy and frontend conventions
+
+## Backend: one `AppDbContext`, one DB per tenant
+
+- `AppDbContext` connection string comes per request from `TenantContext.ConnectionString`.
+- Tenants live in `appsettings.json` → `TenantSettings:Tenants` (`key → { Name, ConnectionString, Enabled, SortOrder, HideInProduction }`), `TenantSettings:DefaultTenant`. Read via `IOptionsMonitor` / `ITenantRegistry` (hot reload).
+- `TenantMiddleware` resolves: JWT claim **`Tenant`** → header **`X-Tenant`** → `DefaultTenant`. Unknown/disabled → 400 `Invalid tenant.`
+- The scoped `AppDbContext` sees **one** tenant. Cross-tenant work (dashboards, background jobs) opens a short-lived context per tenant via `TenantDbContextFactory` over `ITenantRegistry.GetActiveTenants()`.
+- Background services have no `TenantContext` — always use the factory.
+
+## Single login, single layout
+
+- One user table (`tblUser`), one login endpoint (`POST api/auth/login` + `X-Tenant`), one login page (`/login`), one shell (`AppShell`). Do not add portal-specific logins or shells unless explicitly requested.
+- Login page loads tenants at runtime from `GET api/auth/tenants` (never hardcode).
+
+## Permissions
+
+- Codes defined once in `PermissionCatalog` (backend) and mirrored in `frontend/src/constants/permissions.js`.
+- New page = permission code + `ROUTE_PERMISSIONS` entry + `APP_SHELL_NAV` entry + `<Route>` + `[RequirePermission]` on API actions.
+
+## UI copy
+
+- Plain staff language only. No IDs, table names, "null", "skipped", internal flags, or stack-ish explanations in toasts, empty states, dialogs, or validation.
+- If an option doesn't apply, omit it instead of explaining why.
+
+## Listing / CRUD density
+
+- Tables: `text-[13px] leading-snug`, `th` `px-3 py-2`, `td` `px-3 py-1.5`, row actions `h-7 w-7` (`.btn-table-action` / `.btn-icon-soft`).
+- Page content under the fixed `h-16` header: `pt-[4.25rem] md:pt-[4.5rem]`.
+- Thin, soft scrollbars (global in `index.css`).
+- Full rules: `docs/CRUD-UI-RULES.md` (modal vs off-canvas vs full page).
+
+## Agent checklist
+
+- Data access → `AppDbContext` + `TenantContext` (or the factory for cross-tenant).
+- Never put real connection strings, passwords, or keys in rules or commits.

@@ -1,0 +1,15 @@
+---
+description: Deep reference — receive, receipts, void (only when editing receive/receipt code)
+globs: "{backend/School.Application/Services/StudentService.cs,backend/School.Application/DTOs/StudentFeeReceiveDtos.cs,backend/School.API/Controllers/StudentController.cs,frontend/src/pages/Campus/students/StudentsPage.jsx,frontend/src/services/studentService.js,frontend/src/utils/feeReceiptPrint.js,backend/School.Application/Services/FeeReceiptHistoryService.cs,backend/School.API/Controllers/FeeReceiptsController.cs}"
+alwaysApply: false
+---
+
+# Campus fee receiving (implementation)
+
+**Start with `campus-fee-domain.mdc`** for contracts. Open this file only when editing receive/receipt/history code.
+
+## Implementation anchors
+
+- Balance: `GetFeeBalanceAsync` — family by `Family_Code` unless `singleStudent`.
+- Receive: `ReceiveFeeAsync` — serializable txn; `AllocateReceiptIdsAsync` / `tblFeeReceiptSequence`.
+- Void/edit: `FeeReceiptHistoryService` — affects regenerate (tuition charge floor).

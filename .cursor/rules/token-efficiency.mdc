@@ -13,6 +13,11 @@ Prefer finishing the ask with the smallest useful context. This rule is short on
 - Prefer `Read` with `offset`/`limit` on large files. Do not dump whole controllers, services, or migrations.
 - Do not re-read a file already returned in this turn unless it changed.
 
+## Campus fees
+
+- Use **`campus-fee-domain.mdc`** (always applied) for ledger semantics, routes, and permissions — not a full pass over `StudentService` / `FeeGenerateService` unless you are **changing** server logic or debugging an edge case.
+- Prefer `frontend/src/services/*fee*` + `studentService.js` for client wiring.
+
 ## No speculative exploration
 
 - Skip `Task` / explore / subagents for narrow edits, single-symbol lookups, or 1–3 known files — use tools directly.

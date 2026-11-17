@@ -7,9 +7,19 @@ alwaysApply: true
 
 Production API CD runs only on **SoftelligentSchoolSuitePro-API** (`git remote suite-api`), not on the monorepo `origin`.
 
+## Commit scope (default)
+
+When the user asks to **push / deploy the API** (or “push BE”) and does **not** name specific files:
+
+1. **`git add` every uncommitted change under `backend/`** (all modified and new files in that tree).
+2. Commit with a message that covers those changes (one commit is fine).
+3. Do **not** cherry-pick only the files from the current chat unless the user explicitly says “only these files” or similar.
+
+If there is **nothing** uncommitted under `backend/`, say so and still run the subtree push if they asked for production—remote may already be current.
+
 ## After any backend change that should go live
 
-1. Commit under `backend/` in the workspace (monorepo `master` if used).
+1. Commit under `backend/` in the workspace (monorepo `master` if used), following **Commit scope** above when deploying on request.
 2. **Subtree push API** (from repo root):
    ```powershell
    .\backend\scripts\Push-SuiteDeploy.ps1 -Api
@@ -22,5 +32,6 @@ Details: `backend/DEPLOY.md`. Do not reintroduce `FTP_REMOTE_DIR` / path `cd` in
 
 ## Agent checklist
 
-- Backend-only task done → remind or run **Push-SuiteDeploy.ps1 -Api** when the user wants production updated.
+- User asks to check in, push, or deploy → commit **all** uncommitted `backend/` changes (unless they limit scope), push `origin` if ahead, then run **Push-SuiteDeploy.ps1 -Api** in the same turn. Do not ask again. See [git-push-confirm.mdc](git-push-confirm.mdc).
+- Backend-only task done → offer deploy and **ask** before push when the user wants production updated.
 - Editing `backend/.github/workflows/deploy.yml` or `backend/scripts/ci-*-ftp.sh` → same push; warn that Plesk `appsettings.json` is never overwritten by FTP.

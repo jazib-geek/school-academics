@@ -1,0 +1,65 @@
+---
+description: Campus fee ledger, APIs, and UI map — use this instead of re-reading BE services for most fee tasks
+alwaysApply: true
+---
+
+# Campus fees (domain contract)
+
+**DB:** per-campus `AppDbContext` · **`dbo.tblFeeAndFundCollection`** (`FeeAndFundCollection`). **Not** academics DB.
+
+## Ledger (memorize this — do not re-derive from BE each time)
+
+- **Bucket key:** `(StudentID, FundTypeID, Month, Year)`.
+- **Charged:** sum of `Payment`. **Credited:** sum of `Recieved` + `Discount`. **Due** = charged − credited.
+- Ignore rows with `VoidAmount != 0`.
+- **Generate** sets/updates **charge** rows (`Payment > 0`, `Recieved = 0` on tuition upsert).
+- **Receive** **appends** rows (`Payment = 0`, `Recieved > 0`) — never edits old charge rows.
+
+| FundTypeID | Period | Generate |
+|------------|--------|----------|
+| **1** Tuition | `Month` 1–12, `Year` | Fee menu; all = `SPstudentfee` |
+| **2–5, 7** Annual funds | `Month = 0`, `Year` = calendar year | Fund menu; **7** = Security Deposit (admit + generate-fund). **5** = legacy transport |
+
+Names in `FundTypes`; IDs are canonical in services. **Student profile** (`Fee`, `TutionFee`, `FeeConcession`) = roster/concession display & increment-fee — **not** updated by generate/receive ledger posts.
+
+## API + FE map (default lookup — grep only if changing behavior)
+
+| Task | API | FE |
+|------|-----|-----|
+| Generate tuition | `POST api/fee/generate/all` `{month,year}`; `POST .../student` `{studentId,month,year,amount}` (`-1` = stored tuition); `GET .../student/{id}/period` | `/campus/fee/generate`, `feeGenerateService.js` |
+| Generate funds | `POST api/fund/generate/student`, `POST .../bulk`, `GET .../student/{id}` | `/campus/fee/generate-fund`, `fundGenerateService.js` |
+| Due lines / receive | `GET api/student/{id}/fee-balance?singleStudent=`; `POST api/student/receive-fee` | **Students** list modal, `studentService.js`, `feeReceiptPrint.js` |
+| Security deposit refund | `GET api/student/{id}/security-deposit`; `POST .../security-deposit/refund` | Students row menu, `SecurityDepositRefundModal.jsx`; log table survives session fee wipe |
+| Receipt void/edit/history | `api/fee/receipts/*` | `/campus/fee/void-receipt`, `/campus/fee/transactions` |
+| Reports | `api/feereports/*` | `/campus/fee/reports`, `feeReportService.js` |
+| Reminder notices | `api/fee-reminder-notices/*` | `/campus/fee/reminder-notices` |
+| Balance sheet | `api/feereports/balance-sheet` | `/campus/fee/balance-sheet` |
+| Increment roster fees | `api/student/fee-increment/*` | `/campus/students/increment-fee` — see `docs/increment-fee.md` |
+| Parent read-only | `fee-balance`, ledger on student | `docs/parent-app-api.md` |
+
+**Permissions (FE):** `generate_fee_*`, `generate_fund_*`, `submit_fee`, `submit_fee_prevdate`, `void_rcpt`, `rpt_fee`, `update_fee`, etc. — `campusPermissions.js` / `CampusShell.jsx`.
+
+## Business rules (already enforced in BE — don’t re-read services for UI/copy/docs)
+
+- Tuition single-generate: charge **≥** already **received** for that month/year; else void receipt first.
+- Receive: amounts floored; duplicate bucket keys rejected; amount ≤ due; manual receipt # → **one student**; date ≤ Pakistan today; family balance unless `singleStudent=true`.
+- Receipt print: tuition lines use student **Fee** / **FeeConcession**; other funds use bucket generated amount.
+- HTTP: **POST** for mutations (Plesk blocks PUT).
+
+## When to open backend code
+
+| Open BE | Skip BE (use this rule + FE service/DTO grep) |
+|---------|-----------------------------------------------|
+| Changing validation, transactions, SP, or ledger write shape | New button calling existing endpoint |
+| Void/edit receipt logic | Report column labels, print layout |
+| New fund type / migration | Wiring existing API in React |
+| Debugging production mismatch | Explaining how receive vs generate works |
+
+**Default services (only if editing):** `FeeGenerateService`, `FundGenerateService`, `StudentService` (`GetFeeBalanceAsync` / `ReceiveFeeAsync`), `FeeReceiptHistoryService`, `FeeReportService`, `StudentFeeIncrementService`.
+
+## Agent workflow for fee prompts
+
+1. Answer from **this rule** + matching **FE service** (`frontend/src/services/*fee*`, `studentService.js`) or user’s open file.
+2. **Do not** read full `StudentService.cs` / `FeeGenerateService.cs` unless the task changes server behavior or you hit an unknown edge case.
+3. File-specific detail: `.cursor/rules/campus-fee-generate.mdc` / `campus-fee-receiving.mdc` apply when those paths are in scope.
+4. Schema change → `dbo` + **School.Migrator** all campuses (`campus-migrations.mdc`).

@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Softelligent — School ERP Pricing Poster (enriched)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+        background: #e8eaef;
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+      }
+
+      .hint {
+        font-size: 13px;
+        color: #555;
+        max-width: 1200px;
+        text-align: center;
+        line-height: 1.5;
+      }
+
+      /* Export at 1200×1600 or scale 2× for print */
+      .poster {
+        width: 1200px;
+        min-height: 1680px;
+        background: linear-gradient(165deg, #f8f9fc 0%, #eef1f8 45%, #f5f6fa 100%);
+        position: relative;
+        overflow: hidden;
+        padding: 36px 40px 28px;
+        color: #1a1a2e;
+      }
+
+      .poster::before {
+        content: '';
+        position: absolute;
+        top: -80px;
+        right: -60px;
+        width: 420px;
+        height: 420px;
+        background: radial-gradient(circle, rgba(155, 114, 243, 0.12), transparent 70%);
+        pointer-events: none;
+      }
+
+      .poster::after {
+        content: '';
+        position: absolute;
+        bottom: 120px;
+        left: -40px;
+        width: 300px;
+        height: 300px;
+        background: radial-gradient(circle, rgba(26, 188, 156, 0.1), transparent 70%);
+        pointer-events: none;
+      }
+
+      .top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 24px;
+        position: relative;
+        z-index: 1;
+        margin-bottom: 20px;
+      }
+
+      .brand-block img {
+        height: 64px;
+        width: auto;
+        display: block;
+        margin-bottom: 6px;
+      }
+
+      .brand-tag {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: #6b6b80;
+      }
+
+      .hero-text {
+        flex: 1;
+        padding-top: 8px;
+      }
+
+      .eyebrow {
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.2em;
+        color: #7c6cf0;
+        margin-bottom: 8px;
+      }
+
+      .title {
+        font-size: 42px;
+        font-weight: 800;
+        line-height: 1.08;
+        letter-spacing: -0.03em;
+        color: #12122a;
+        margin-bottom: 10px;
+      }
+
+      .title .accent {
+        color: #1a9b84;
+      }
+
+      .subtitle {
+        font-size: 15px;
+        font-weight: 500;
+        color: #4a4a62;
+        line-height: 1.5;
+        max-width: 520px;
+      }
+
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 18px;
+        position: relative;
+        z-index: 1;
+        margin-top: 8px;
+      }
+
+      .card {
+        border-radius: 16px;
+        padding: 22px 20px 18px;
+        color: #fff;
+        display: flex;
+        flex-direction: column;
+        min-height: 520px;
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+      }
+
+      .card--basic {
+        background: linear-gradient(160deg, #8b5cf6 0%, #6d28d9 100%);
+      }
+      .card--standard {
+        background: linear-gradient(160deg, #14b8a6 0%, #0d9488 100%);
+      }
+      .card--premium {
+        background: linear-gradient(160deg, #f43f5e 0%, #e11d48 100%);
+      }
+
+      .card h3 {
+        font-size: 26px;
+        font-weight: 800;
+        margin-bottom: 4px;
+      }
+
+      .card .for {
+        font-size: 12px;
+        font-weight: 600;
+        opacity: 0.92;
+        margin-bottom: 14px;
+        line-height: 1.35;
+      }
+
+      .price-row {
+        display: flex;
+        align-items: baseline;
+        gap: 6px;
+        margin-bottom: 16px;
+        flex-wrap: wrap;
+      }
+
+      .currency {
+        font-size: 14px;
+        font-weight: 700;
+        opacity: 0.95;
+      }
+
+      .amount {
+        font-size: 36px;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+      }
+
+      .per {
+        font-size: 13px;
+        font-weight: 600;
+        opacity: 0.9;
+      }
+
+      .features {
+        list-style: none;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .features li {
+        font-size: 11.5px;
+        font-weight: 600;
+        line-height: 1.35;
+        padding-left: 22px;
+        position: relative;
+      }
+
+      .features li::before {
+        content: '✓';
+        position: absolute;
+        left: 0;
+        font-weight: 800;
+        font-size: 12px;
+      }
+
+      .features li.lead {
+        font-size: 12px;
+        font-weight: 800;
+        opacity: 1;
+        margin-bottom: 2px;
+      }
+
+      .setup {
+        margin-top: 14px;
+        padding-top: 12px;
+        border-top: 1px solid rgba(255, 255, 255, 0.35);
+        font-size: 11px;
+        font-weight: 700;
+        opacity: 0.95;
+      }
+
+      .footer {
+        margin-top: 22px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 20px;
+        position: relative;
+        z-index: 1;
+        flex-wrap: wrap;
+      }
+
+      .trust {
+        display: flex;
+        gap: 20px;
+        flex-wrap: wrap;
+      }
+
+      .trust span {
+        font-size: 12px;
+        font-weight: 700;
+        color: #3d3d52;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .contact-bar {
+        background: #1e1e2e;
+        color: #fff;
+        padding: 12px 22px;
+        border-radius: 12px;
+        display: flex;
+        gap: 24px;
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      .contact-bar a {
+        color: #a5f3fc;
+        text-decoration: none;
+      }
+    </style>
+  </head>
+  <body>
+    <p class="hint">
+      Enriched pricing poster · open in browser · screenshot at 100% (1200px wide) or use copy from
+      <code>pricing-tier-features.md</code> in your Canva design.
+    </p>
+
+    <article class="poster" id="poster">
+      <header class="top">
+        <div class="brand-block">
+          <img src="softelligent-transparent.png" alt="Softelligent Solutions" />
+          <p class="brand-tag">Smart technology for better education</p>
+        </div>
+        <div class="hero-text">
+          <p class="eyebrow">School management ERP</p>
+          <h1 class="title">Simple Plans.<br /><span class="accent">Powerful Features.</span></h1>
+          <p class="subtitle">
+            Admissions, fees, exams, timetables, staff &amp; family apps, biometric attendance, and live
+            collaboration — one cloud platform for Pakistani schools.
+          </p>
+        </div>
+      </header>
+
+      <div class="cards">
+        <section class="card card--basic">
+          <h3>Basic</h3>
+          <p class="for">Perfect for small schools going digital</p>
+          <div class="price-row">
+            <span class="currency">PKR</span>
+            <span class="amount">4,000</span>
+            <span class="per">/ month</span>
+          </div>
+          <ul class="features">
+            <li>Online admissions &amp; digital student profiles</li>
+            <li>Classes, sections &amp; family / sibling records</li>
+            <li>Daily attendance &amp; printable class registers</li>
+            <li>Fee generate, receive &amp; branded receipts</li>
+            <li>Cash &amp; online payment mode on collections</li>
+            <li>Campus dashboard &amp; enrollment reports</li>
+            <li>Secure cloud — phone, tablet &amp; laptop</li>
+            <li>Role-based staff logins &amp; permissions</li>
+          </ul>
+          <p class="setup">Setup fee: PKR 5,000 (one-time)</p>
+        </section>
+
+        <section class="card card--standard">
+          <h3>Standard</h3>
+          <p class="for">Ideal for growing schools — academics &amp; finance</p>
+          <div class="price-row">
+            <span class="currency">PKR</span>
+            <span class="amount">6,000</span>
+            <span class="per">/ month</span>
+          </div>
+          <ul class="features">
+            <li class="lead">Everything in Basic, plus:</li>
+            <li>Full exams — marks, result cards &amp; award lists</li>
+            <li>Timetables, subject allocation &amp; date sheets</li>
+            <li>Daily class diary (staff + parent-ready)</li>
+            <li>Accounts — vouchers, ledger, cash book &amp; day closing</li>
+            <li>Fee reminders, void control &amp; transaction history</li>
+            <li><strong>Employee app</strong> — mark attendance, timetable &amp; diary on mobile</li>
+            <li><strong>Family portal</strong> — news, leave requests &amp; fee view</li>
+            <li>Live alerts + absent follow-up &amp; student conduct</li>
+          </ul>
+          <p class="setup">Setup fee: PKR 5,000 (one-time)</p>
+        </section>
+
+        <section class="card card--premium">
+          <h3>Premium</h3>
+          <p class="for">Complete solution for larger schools &amp; groups</p>
+          <div class="price-row">
+            <span class="currency">PKR</span>
+            <span class="amount">10,000</span>
+            <span class="per">/ month</span>
+          </div>
+          <ul class="features">
+            <li class="lead">Everything in Standard, plus:</li>
+            <li><strong>Biometric staff attendance</strong> — import &amp; live kiosk</li>
+            <li>Monthly <strong>payroll</strong>, slips, loans &amp; allowances</li>
+            <li><strong>Live staff chat</strong> &amp; shared reminders in portal</li>
+            <li><strong>Multi-campus / branch</strong> dashboard</li>
+            <li>Coordinator <strong>proforma</strong> &amp; head monitoring</li>
+            <li><strong>Academics exam maker</strong> — question bank &amp; papers</li>
+            <li>Teacher conduct, performance &amp; advanced fee analytics</li>
+            <li>Parent <strong>mobile app API</strong>, store &amp; activity audit</li>
+          </ul>
+          <p class="setup">Setup fee: PKR 5,000 (one-time)</p>
+        </section>
+      </div>
+
+      <footer class="footer">
+        <div class="trust">
+          <span>🛡 Secure &amp; reliable</span>
+          <span>☁ Access anywhere</span>
+          <span>🎧 Dedicated support</span>
+        </div>
+        <div class="contact-bar">
+          <span>📞 03214832357</span>
+          <span>🌐 <a href="https://softelligent.pk">softelligent.pk</a></span>
+        </div>
+      </footer>
+    </article>
+  </body>
+</html>

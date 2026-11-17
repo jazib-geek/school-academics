@@ -104,33 +104,14 @@ Headers: `X-Campus: {campusKey}` (required unless server default campus is accep
       "tutionFee": 5000,
       "isActive": true
     }
-  ],
-  "conductInbox": {
-    "totalUnread": 2,
-    "shouldPrompt": true,
-    "students": [
-      {
-        "studentId": 1001,
-        "studentName": "Ali Khan",
-        "unreadCount": 2,
-        "latest": {
-          "noteId": 123,
-          "noteDate": "2026-09-14",
-          "polarity": "bad",
-          "conductTypeName": "Class Behaviour",
-          "itemLabels": ["Disruptive"],
-          "remarks": null
-        }
-      }
-    ]
-  }
+  ]
 }
 ```
 
 Use `students[].regId` as **`studentId`** on later calls.  
 Children are already in the login payload — `GET /api/student/family/{familyId}` is optional.
 
-If `conductInbox.shouldPrompt` / `totalUnread > 0`, show a login popup for unread conduct. Refresh via `GET /api/parent/conduct/inbox` on sibling switch if needed.
+After login (and on sibling switch), call `GET /api/parent/conduct/students/{studentId}/unread-count` for the selected child; if `unreadCount > 0`, show the conduct popup. Optional: `GET /api/parent/conduct/inbox` for all siblings at once.
 
 ### Errors
 
@@ -170,9 +151,54 @@ Auth: Bearer
 
 ---
 
-## 3. Attendance
+## 3. Dashboard (home)
 
-`GET /api/attendance/student/{studentId}`  
+`GET /api/Dashboard/{studentId}`  
+Auth: Bearer  
+
+| Param | In | Type | Notes |
+|-------|----|------|--------|
+| `studentId` | path | int | `regId` from login |
+
+Summary for the selected child: profile snippet, current-month attendance, fee balance, home announcements, and (family JWT only) unread conduct count.
+
+### Success `200` — `data`
+
+```json
+{
+  "student": {
+    "name": "Ali Khan",
+    "admissionNo": "1001",
+    "className": "Class 5-A"
+  },
+  "attendance": {
+    "totalDays": 18,
+    "presentDays": 16,
+    "percentage": 88.89
+  },
+  "fee": {
+    "balance": 2500
+  },
+  "announcements": [
+    {
+      "id": 1,
+      "title": "…",
+      "description": "…",
+      "date": "2026-09-20T00:00:00"
+    }
+  ],
+  "unreadConductCount": 2,
+  "unreadConductNoteIds": [123, 456]
+}
+```
+
+`unreadConductCount` / `unreadConductNoteIds` are included when the token is a family login (`FamilyDbId` + `FamilyID`, no campus staff `AuthSource`). Otherwise it is `0`. If `studentId` is not an active child of the family → `401`.
+
+---
+
+## 4. Attendance
+
+`GET /api/attendance/student/{studentId}/summary`  
 Auth: Bearer
 
 | Param | In | Type | Notes |
@@ -208,7 +234,7 @@ Auth: Bearer
 
 ---
 
-## 4. Fee ledger
+## 5. Fee ledger
 
 `GET /api/student/{studentId}/ledger`  
 Auth: Bearer
@@ -233,7 +259,7 @@ Auth: Bearer
 
 ---
 
-## 5. Fee balance
+## 6. Fee balance
 
 `GET /api/student/{studentId}/fee-balance`  
 Auth: Bearer
@@ -276,12 +302,14 @@ Auth: Bearer
 
 ---
 
-## 6. Exam types
+## 7. Exam types
 
 `GET /api/exam/types`  
-Auth: Bearer  
+Auth: Bearer (family login)
 
 **Not wrapped** in `ApiResponse` — response body is the array itself.
+
+Returns the **top 5 active** exam types, ordered by `priority` (lowest number first). Campus staff calls to the same URL still return the full active list.
 
 ```json
 [
@@ -297,7 +325,7 @@ Use `id` as `examTypeId` for the result card.
 
 ---
 
-## 7. Result card
+## 8. Result card
 
 `GET /api/exam/{studentId}/result/{examTypeId}`  
 Auth: Bearer  
@@ -351,7 +379,7 @@ Auth: Bearer
 
 ---
 
-## 8. Class diary
+## 9. Class diary
 
 `GET /api/class-diary/student/{studentId}`  
 Auth: Bearer
@@ -376,7 +404,7 @@ Diaries for the student’s class (via section).
 
 ---
 
-## 9. News & events
+## 10. News & events
 
 `GET /api/NewsAndEvents` — all active  
 `GET /api/NewsAndEvents/home` — home-only (`showOnHome`)  
@@ -400,7 +428,7 @@ Auth: Bearer
 
 ---
 
-## 10. Student conduct (Family Portal)
+## 11. Student conduct (Family Portal)
 
 Family-scoped. Requires family JWT (`FamilyID` + `FamilyDbId` claims; no `AuthSource`).
 
@@ -413,12 +441,42 @@ Family-scoped. Requires family JWT (`FamilyID` + `FamilyDbId` claims; no `AuthSo
 | `mixed` | Both good and needs-work tags |
 | `none` | No tags |
 
-### Inbox (sibling switch / refresh)
+### Unread count (selected student)
+
+`GET /api/parent/conduct/students/{studentId}/unread-count`  
+Auth: Bearer  
+
+Student must be an active child of the signed-in family.
+
+```json
+{
+  "studentId": 1001,
+  "unreadCount": 2,
+  "unreadNoteIds": [123, 456]
+}
+```
+
+Use `unreadNoteIds` as `noteIds` on `POST /api/parent/conduct/acknowledge`.
+
+### Inbox (all siblings)
 
 `GET /api/parent/conduct/inbox`  
 Auth: Bearer  
 
-Same shape as login `conductInbox`.
+```json
+{
+  "totalUnread": 2,
+  "shouldPrompt": true,
+  "students": [
+    {
+      "studentId": 1001,
+      "studentName": "Ali Khan",
+      "unreadCount": 2,
+      "latest": { "noteId": 123, "noteDate": "2026-09-14", "polarity": "bad", "conductTypeName": "Class Behaviour", "itemLabels": ["Disruptive"], "remarks": null }
+    }
+  ]
+}
+```
 
 ### Month report
 
@@ -470,6 +528,8 @@ Defaults to current Pakistan month/year if omitted. Student must be an active ch
 
 ### Acknowledge notes
 
+Read state is stored on each conduct note (`ParentAcknowledgedAtPkt` on the server). Unread = not yet acknowledged by the family.
+
 `POST /api/parent/conduct/acknowledge`  
 Auth: Bearer  
 
@@ -479,7 +539,116 @@ Auth: Bearer
 }
 ```
 
-Marks notes as seen for this family. Until acknowledged, they stay in inbox / drive `shouldPrompt`. Safe to call repeatedly (idempotent).
+Marks the given notes as read. Safe to call repeatedly (idempotent).
+
+### Acknowledge all for one student
+
+`POST /api/parent/conduct/students/{studentId}/acknowledge-all`  
+Auth: Bearer  
+Body: none
+
+Marks **every** unread conduct note for that child as read.
+
+```json
+{
+  "acknowledgedCount": 4
+}
+```
+
+---
+
+## 12. Leave applications (Family Portal)
+
+Parents submit leave for a selected child; campus staff approve or reject on the web portal. Attendance is updated when a decision is made (`Lv` approved, `A` rejected).
+
+### Reason catalog
+
+`GET /api/parent/leave/reasons`  
+Auth: Bearer (family JWT only)
+
+### Success `200` — `data` array
+
+```json
+[
+  { "code": "sick", "label": "Sick" },
+  { "code": "transport_issue", "label": "Transport issue" },
+  { "code": "domestic_issue", "label": "Domestic issue" },
+  { "code": "out_of_city", "label": "Out of city" },
+  { "code": "family_function", "label": "Family function" },
+  { "code": "weather_road", "label": "Weather / road condition" },
+  { "code": "other", "label": "Other" }
+]
+```
+
+| Code | Label |
+|------|--------|
+| `sick` | Sick |
+| `transport_issue` | Transport issue |
+| `domestic_issue` | Domestic issue |
+| `out_of_city` | Out of city |
+| `family_function` | Family function |
+| `weather_road` | Weather / road condition |
+| `other` | Other (details required) |
+
+### List (readonly)
+
+`GET /api/parent/leave/students/{studentId}`  
+Auth: Bearer
+
+Newest leave date first.
+
+### Success `200` — `data`
+
+```json
+{
+  "items": [
+    {
+      "id": 10,
+      "leaveDate": "2026-09-12",
+      "reasonCode": "sick",
+      "reasonLabel": "Sick",
+      "reasonDetails": "Fever since morning",
+      "status": "pending",
+      "statusLabel": "Pending",
+      "submittedAtPkt": "2026-09-12T08:15:00",
+      "reviewedAtPkt": null
+    }
+  ]
+}
+```
+
+### Status values
+
+| `status` | Meaning |
+|----------|---------|
+| `pending` | Awaiting campus decision |
+| `approved` | Approved; attendance marked leave (`Lv`) |
+| `rejected` | Rejected; attendance marked absent (`A`) |
+
+### Submit
+
+`POST /api/parent/leave/students/{studentId}`  
+Auth: Bearer
+
+```json
+{
+  "leaveDate": "2026-09-12",
+  "reasonCode": "sick",
+  "reasonDetails": "Optional; required when reason is other (max 500 chars)"
+}
+```
+
+- `leaveDate` must be **today or a future date** (campus timezone / PKT on server).
+- Only one **pending** request per student per date.
+
+### Success `200` — `data`
+
+```json
+{
+  "id": 10,
+  "status": "pending"
+}
+```
 
 ---
 
@@ -487,17 +656,19 @@ Marks notes as seen for this family. Until acknowledged, they stay in inbox / dr
 
 1. User picks campus → `X-Campus`.
 2. `POST /api/Auth/login` with Family ID + password.
-3. Store `token` + `students` + `conductInbox`.
-4. If `conductInbox.shouldPrompt`, show conduct popup; acknowledge after parent dismisses/views.
-5. Send `Authorization: Bearer {token}` on later calls.
-6. On sibling switch: `GET /api/parent/conduct/inbox` and/or month report for that child.
-7. Per selected child (`regId`):
+3. Store `token` + `students`.
+4. `GET /api/Dashboard/{regId}` for home summary (includes `unreadConductCount` for conduct badge/popup).
+5. If `unreadConductCount > 0`, show conduct popup; acknowledge after parent dismisses/views.
+6. Send `Authorization: Bearer {token}` on later calls.
+7. On sibling switch: dashboard and/or `GET /api/parent/conduct/students/{id}/unread-count` / inbox / month report.
+8. Per selected child (`regId`):
    - Conduct → `/api/parent/conduct/students/{id}?month=&year=`
+   - Leave → `/api/parent/leave/reasons`, `POST /api/parent/leave/students/{id}`, `GET /api/parent/leave/students/{id}`
    - Attendance → `/api/attendance/student/{id}`
    - Fees → `/ledger` and/or `/fee-balance`
-   - Results → `/api/exam/types` then `/api/exam/{id}/result/{examTypeId}`
+   - Results → `/api/exam/types` (top 5 by priority) then `/api/exam/{id}/result/{examTypeId}`
    - Diary → `/api/class-diary/student/{id}`
-8. Optional home feed: `/api/NewsAndEvents/home`
+9. Optional home feed: `/api/NewsAndEvents/home`
 
 ---
 

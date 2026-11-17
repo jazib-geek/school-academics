@@ -45,6 +45,13 @@ When adding or changing **printable campus reports** (ledger, cash book, fee, st
 - `@page`: A4 portrait, `8mm` margins
 - Hide chrome with `.no-print`; never print sidebar/header/modals
 
+## Class order (reports and print)
+
+When a campus report or print sheet lists **classes, class sections, or students grouped by class**, sort rows using [`frontend/src/services/classSort.js`](frontend/src/services/classSort.js) (`sortClassesByCustomOrder`, `getClassGradeRank`, or `compareClassNames` built from them). Do not use plain `localeCompare` on class names for report/print ordering.
+
+- Apply the same order on **screen and print** for the same dataset.
+- Within a class, use the report’s secondary sort (name, date, counts, etc.).
+
 ## Do not
 
 - Print the on-screen blue (`#405189`) table header as the paper header

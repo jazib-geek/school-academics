@@ -1,0 +1,21 @@
+---
+description: All tenant DB tables, indexes and migration history must live in dbo
+alwaysApply: true
+---
+
+# Tenant DB tables must use `dbo`
+
+SQL logins on hosted databases often have a **non-dbo default schema** (e.g. `site_admin1`). Unqualified `CREATE TABLE` then lands under that login schema.
+
+## Code enforcement
+
+- `AppDbContext.OnModelCreating` calls `modelBuilder.HasDefaultSchema("dbo")`.
+- Every configuration maps explicitly: `e.ToTable("tblSomething", "dbo")`.
+- Migrations history is pinned with `UseProductMigrationsHistory` → `dbo.__EFMigrationsHistory`; `EfMigrationsHistorySchemaFix.EnsureInDboAsync` runs before `MigrateAsync`.
+
+## Rules for migrations
+
+- Every `CreateTable`, schema-qualified `CreateIndex`, `CreateSequence`, `InsertData`, etc. uses `schema: "dbo"` (and `EnsureSchema("dbo")` where needed).
+- After `dotnet ef migrations add`, grep the new file for `CreateTable(` and confirm `schema: "dbo"`.
+- Raw SQL in migrations qualifies names as `dbo.TableName`.
+- If a table is ever created under a login schema, move it with `ALTER SCHEMA dbo TRANSFER <schema>.<table>` (preserve data) in a targeted migration — never casually drop production objects.

@@ -1,0 +1,17 @@
+---
+description: Start local FE and BE on the ports the app already uses
+alwaysApply: true
+---
+
+# Local FE and BE startup
+
+When asked to start, run, or trigger the frontend and backend (or either one):
+
+- **Frontend** (from `frontend/`): `npm run dev` → **http://localhost:5010/**
+- **Backend** (from repo root): `dotnet run --project backend/School.API --launch-profile https`
+
+The `https` profile listens on **https://localhost:7093** and **http://localhost:5020**. The UI defaults to `https://localhost:7093` (`VITE_API_BASE_URL`). Dev CORS allows `http://localhost:5010`.
+
+Do not start the API with `--launch-profile http` alone. That profile is only port 5020, so the frontend cannot reach it.
+
+If a server is already running on the wrong profile or port, stop it and start it with the commands above. Leave a server that is already on the correct port.

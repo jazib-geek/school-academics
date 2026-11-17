@@ -407,7 +407,7 @@ const printStudentFeeLedger = ({ student, items }) => {
             margin-top: 10px;
           }
           .summary {
-            min-width: 220px;
+            min-width: 260px;
             background: #e5e7eb;
             padding: 10px 14px;
             font-size: 13px;
@@ -451,7 +451,7 @@ const printStudentFeeLedger = ({ student, items }) => {
               <th>Fee Month</th>
               <th>Recpt #</th>
               <th>Due</th>
-              <th>Received</th>
+              <th>Paid</th>
               <th>Balance</th>
             </tr>
           </thead>
@@ -465,7 +465,7 @@ const printStudentFeeLedger = ({ student, items }) => {
             <div><span>Total Receiveable :</span><span>${Math.round(totalReceivable)}</span></div>
             <div><span>Total Paid :</span><span>${Math.round(totalPaid)}</span></div>
             <div class="rule"></div>
-            <div><span>Balance :</span><span>${Math.round(balance)}</span></div>
+            <div><span>Closing Balance :</span><span>${Math.round(balance)}</span></div>
           </div>
         </div>
 
@@ -2737,6 +2737,11 @@ function StudentsPage() {
                 <h2 className="text-xl font-semibold text-slate-800">
                   Ledger - {selectedStudent.fullName || selectedStudent.reg_Id}
                 </h2>
+                {selectedStudent.className || selectedStudent.ClassName ? (
+                  <p className="text-sm text-slate-600">
+                    {selectedStudent.className || selectedStudent.ClassName}
+                  </p>
+                ) : null}
                 <p className="text-sm text-slate-500">Reg ID: {selectedStudent.reg_Id}</p>
               </div>
               <div className="flex items-center gap-1">
@@ -2781,7 +2786,7 @@ function StudentsPage() {
                         <th className="px-3 py-2">Description</th>
                         <th className="px-3 py-2">Rcpt #</th>
                         <th className="px-3 py-2 text-right">Due</th>
-                        <th className="px-3 py-2 text-right">Received</th>
+                        <th className="px-3 py-2 text-right">Paid</th>
                         <th className="px-3 py-2 text-right">Balance</th>
                       </tr>
                     </thead>

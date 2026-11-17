@@ -46,7 +46,8 @@ public class FeeReportService : IFeeReportService
                 Month = x.Month,
                 Year = x.Year,
                 Received = x.Recieved ?? 0,
-                PaymentMode = x.PaymentMode == "Online" ? "Online" : "Cash"
+                PaymentMode = x.PaymentMode == "Online" ? "Online" : "Cash",
+                ReceivedBy = x.ReceivedBy
             })
             .ToListAsync();
 
@@ -88,7 +89,8 @@ public class FeeReportService : IFeeReportService
                 Month = x.Month,
                 Year = x.Year,
                 Received = x.Recieved ?? 0,
-                PaymentMode = x.PaymentMode == "Online" ? "Online" : "Cash"
+                PaymentMode = x.PaymentMode == "Online" ? "Online" : "Cash",
+                ReceivedBy = x.ReceivedBy
             })
             .ToListAsync();
 

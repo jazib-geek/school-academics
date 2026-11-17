@@ -1,0 +1,41 @@
+---
+description: How to add and apply EF migrations across all tenant databases
+alwaysApply: true
+---
+
+# Tenant migrations
+
+One EF context: `AppDbContext` (`{Product}.Infrastructure/Data/Migrations`). **One database per tenant** (`TenantSettings:Tenants`). Each tenant DB has its own `dbo.__EFMigrationsHistory`; applying on local does **not** update other tenants.
+
+## Add a migration (design-time → local tenant only)
+
+`dotnet ef` uses `AppDbContextFactory` / `DesignTimeConfiguration`, which targets `TenantSettings:Tenants:local` (fallback: first tenant). Scaffolding only.
+
+```bash
+dotnet ef migrations add <Name> \
+  --project backend/{Product}.Infrastructure \
+  --startup-project backend/{Product}.API \
+  --context AppDbContext \
+  --output-dir Data/Migrations
+```
+
+Do not use `dotnet ef database update` for anything but local.
+
+## Apply migrations (all tenants)
+
+```bash
+dotnet run --project backend/{Product}.Migrator                         # all enabled tenants + seed
+dotnet run --project backend/{Product}.Migrator -- --tenant local       # one tenant
+dotnet run --project backend/{Product}.Migrator -- --tenant a --tenant b --no-seed
+powershell -File backend/scripts/Update-AllTenantDatabases.ps1
+```
+
+Or set `Database:MigrateOnStartup: true` — the API migrates every enabled tenant at boot (failures are logged per tenant, API still starts).
+
+## Agent checklist
+
+- After adding a migration, remind the user to run the Migrator (or restart with `MigrateOnStartup`) so **all** tenants update.
+- Follow `dbo-schema-for-new-tables.mdc`; verify `schema: "dbo"` in the scaffolded file.
+- Data migrations (`migrationBuilder.Sql`) run per tenant — make them idempotent (`IF NOT EXISTS`).
+- Permission seed rows live in `PermissionCatalog` (EF `HasData`); never renumber existing IDs.
+- Never put real connection strings or passwords in rules or commits.

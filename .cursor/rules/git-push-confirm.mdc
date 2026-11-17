@@ -1,0 +1,32 @@
+---
+description: Require user confirmation before any git push to a remote
+alwaysApply: true
+---
+
+# Confirm before git push
+
+Never run a **push to a remote** until the user has **explicitly confirmed** in the current thread.
+
+## What counts as a push
+
+- `git push` (any remote or branch)
+- `Push-SuiteDeploy.ps1` (`-Api`, `-Ui`, or both)
+- Manual subtree push (`git push suite-api …`, `git push suite-ui …`, etc.)
+- `gh` commands that push branches as part of release/deploy
+
+Committing locally, `git status`, `git diff`, and `git log` do **not** require push confirmation.
+
+## Required flow
+
+A request to **check in**, **push**, or **deploy** is the confirmation. Do not ask again.
+
+1. Commit pending `backend/` and `frontend/` changes per the deploy rules (lint the frontend first; fix errors).
+2. `git push origin master` when that branch is ahead.
+3. Run **both** production deploys so Actions start:
+   ```powershell
+   .\backend\scripts\Push-SuiteDeploy.ps1 -Api -Ui
+   ```
+   Skip a side only when the user names just the API or just the UI.
+4. `git push origin` alone does not start those workflows. The subtree pushes do.
+
+Do not push at the end of a task when the user did not ask to check in, push, or deploy.

@@ -1,0 +1,77 @@
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import { HashRouter } from 'react-router-dom'
+import { Toaster } from 'sonner'
+import './index.css'
+import App from './App.jsx'
+import { AcademicInstituteSettingsProvider } from './contexts/AcademicInstituteSettingsContext.jsx'
+import { CampusRealtimeProvider } from './contexts/CampusRealtimeContext.jsx'
+import { CAMPUS_REALTIME_TOASTER_ID } from './hooks/useCampusNotifications.jsx'
+import { EMPLOYEE_REALTIME_TOASTER_ID } from './hooks/useEmployeeNotifications.jsx'
+import { applyTableHeaderTheme, loadSidebarTheme } from './utils/sidebarTheme'
+
+applyTableHeaderTheme(loadSidebarTheme())
+
+createRoot(document.getElementById('root')).render(
+    <StrictMode>
+    <AcademicInstituteSettingsProvider>
+      <HashRouter>
+        <CampusRealtimeProvider>
+          <App />
+        </CampusRealtimeProvider>
+        <Toaster
+          position="top-center"
+          richColors={false}
+          closeButton
+          offset="0.85rem"
+          toastOptions={{
+            duration: 4200,
+            classNames: {
+              toast:
+                '!rounded-2xl !border !p-3.5 !shadow-md !shadow-slate-200/40 !backdrop-blur-sm',
+              title: '!text-sm !font-medium !leading-snug',
+              description: '!text-xs !opacity-90',
+              closeButton:
+                '!border-0 !bg-transparent !text-slate-500 hover:!bg-slate-100/80',
+              icon: '!size-5 !shrink-0',
+              success:
+                '!border-emerald-200/90 !bg-emerald-50/95 !text-emerald-900 [&_[data-icon]]:!text-emerald-600',
+              error:
+                '!border-rose-300/90 !bg-rose-50/95 !text-rose-900 !shadow-rose-200/40 [&_[data-icon]]:!text-rose-600 [&_[data-close-button]]:!text-rose-600 hover:[&_[data-close-button]]:!bg-rose-100',
+            },
+          }}
+        />
+        <Toaster
+          id={CAMPUS_REALTIME_TOASTER_ID}
+          position="top-center"
+          richColors={false}
+          closeButton={false}
+          offset="0.85rem"
+          gap={10}
+          toastOptions={{
+            duration: 5000,
+            unstyled: true,
+            classNames: {
+              toast: 'campus-realtime-toast-host',
+            },
+          }}
+        />
+        <Toaster
+          id={EMPLOYEE_REALTIME_TOASTER_ID}
+          position="top-center"
+          richColors={false}
+          closeButton={false}
+          offset="0.85rem"
+          gap={10}
+          toastOptions={{
+            duration: 6000,
+            unstyled: true,
+            classNames: {
+              toast: 'campus-realtime-toast-host',
+            },
+          }}
+        />
+      </HashRouter>
+    </AcademicInstituteSettingsProvider>
+  </StrictMode>,
+)

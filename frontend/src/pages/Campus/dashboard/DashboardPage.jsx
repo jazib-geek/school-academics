@@ -464,11 +464,13 @@ function DashboardPage() {
 
   const feeTrendRows = useMemo(() => {
     const rows = pick(data, 'feeCollectionTrendLast30Days', 'FeeCollectionTrendLast30Days') || []
-    return rows.map((row) => ({
-      label: pick(row, 'label', 'Label') || '',
-      date: pick(row, 'date', 'Date'),
-      amount: Number(pick(row, 'amount', 'Amount') ?? 0),
-    }))
+    return rows
+      .map((row) => ({
+        label: pick(row, 'label', 'Label') || '',
+        date: pick(row, 'date', 'Date'),
+        amount: Number(pick(row, 'amount', 'Amount') ?? 0),
+      }))
+      .filter((row) => row.amount > 0)
   }, [data])
 
   const birthdays = useMemo(() => {

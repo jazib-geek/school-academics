@@ -602,6 +602,31 @@ function collectionRowsHaveOnline(rows) {
   return (rows || []).some(rowIsOnlinePayment)
 }
 
+function ColumnToggle({ label, checked, onChange }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={onChange}
+      className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-2.5 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+    >
+      <span>{label}</span>
+      <span
+        className={`relative h-5 w-9 shrink-0 rounded-full transition ${
+          checked ? 'bg-[var(--campus-primary)]' : 'bg-slate-300'
+        }`}
+      >
+        <span
+          className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition ${
+            checked ? 'left-4' : 'left-0.5'
+          }`}
+        />
+      </span>
+    </button>
+  )
+}
+
 function SnapshotCard({ label, value, hint, icon: Icon, accent }) {
   const accentMap = {
     violet: { border: 'border-violet-500', icon: 'text-violet-600' },
@@ -738,6 +763,8 @@ function FeeReportsPage() {
   const [attendanceByStudent, setAttendanceByStudent] = useState({})
   const [attendanceLoading, setAttendanceLoading] = useState(false)
   const [includeAttendanceOnPrint, setIncludeAttendanceOnPrint] = useState(false)
+  const [showReceivedBy, setShowReceivedBy] = useState(false)
+  const [showPaymentMode, setShowPaymentMode] = useState(true)
   const attendanceRequestRef = useRef(0)
 
   const selectedReport = useMemo(
@@ -866,6 +893,8 @@ function FeeReportsPage() {
   }, [receivableClassWiseSections, result?.layoutPayload, result?.extraKpis, result?.totalAmount])
 
   useEffect(() => {
+    setShowReceivedBy(false)
+    setShowPaymentMode(true)
     if (!result) {
       setPrintLayoutMode('default')
       return
@@ -1289,15 +1318,17 @@ function FeeReportsPage() {
       result?.reportId === 'fund-defaulters'
         ? source.filter((col) => col.key !== 'month' && col.key !== 'year')
         : source
-    if (COLLECTION_REPORT_IDS.has(result?.reportId) && !collectionRowsHaveOnline(result?.rows)) {
-      cols = cols.filter((col) => col.key !== 'paymentMode')
+    if (COLLECTION_REPORT_IDS.has(result?.reportId)) {
+      const showPayModeColumn = showPaymentMode && collectionRowsHaveOnline(result?.rows)
+      if (!showPayModeColumn) cols = cols.filter((col) => col.key !== 'paymentMode')
+      if (!showReceivedBy) cols = cols.filter((col) => col.key !== 'receivedBy')
     }
     if (!ATTENDANCE_REPORT_IDS.has(result?.reportId)) return cols
     const attendanceCol = { key: 'recentAttendance', label: 'Attendance', format: 'attendance' }
     const moneyIndex = cols.findIndex((col) => col.format === 'money')
     if (moneyIndex < 0) return [...cols, attendanceCol]
     return [...cols.slice(0, moneyIndex), attendanceCol, ...cols.slice(moneyIndex)]
-  }, [result])
+  }, [result, showPaymentMode, showReceivedBy])
 
   const printColumns = useMemo(
     () =>
@@ -1779,9 +1810,25 @@ function FeeReportsPage() {
                                 : ''}
                         </p>
                       </div>
-                      <div className="flex shrink-0 items-center gap-2">
+                      <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
                         {!isLoading && result ? (
                           <>
+                            {isCollectionPrint ? (
+                              <>
+                                <ColumnToggle
+                                  label="Received by"
+                                  checked={showReceivedBy}
+                                  onChange={() => setShowReceivedBy((value) => !value)}
+                                />
+                                {collectionShowPaymentMode ? (
+                                  <ColumnToggle
+                                    label="Pay mode"
+                                    checked={showPaymentMode}
+                                    onChange={() => setShowPaymentMode((value) => !value)}
+                                  />
+                                ) : null}
+                              </>
+                            ) : null}
                             {showsRecentAttendance ? (
                               <button
                                 type="button"
@@ -2084,6 +2131,8 @@ function FeeReportsPage() {
                   date={params.date}
                   dateFrom={params.dateFrom}
                   dateTo={params.dateTo}
+                  showReceivedBy={showReceivedBy}
+                  showPaymentMode={collectionShowPaymentMode && showPaymentMode}
                 />
               ) : null}
 

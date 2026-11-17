@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Softelligent Solutions — School ERP SaaS Banners</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #050508;
+        --text: #f4f4f8;
+        --muted: #a8a8b8;
+        --purple: #9b72f3;
+        --teal: #1abc9c;
+        --yellow: #f1c40f;
+        --magenta: #ff4d6d;
+        --card: rgba(255, 255, 255, 0.04);
+        --border: rgba(255, 255, 255, 0.1);
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+        background: #111;
+        color: var(--text);
+        padding: 24px;
+      }
+
+      .page-intro {
+        max-width: 960px;
+        margin: 0 auto 32px;
+        font-size: 14px;
+        line-height: 1.6;
+        color: var(--muted);
+      }
+
+      .page-intro h1 {
+        font-size: 20px;
+        color: var(--text);
+        margin-bottom: 8px;
+      }
+
+      .page-intro code {
+        background: rgba(255, 255, 255, 0.08);
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 12px;
+      }
+
+      .artboard-wrap {
+        margin: 0 auto 48px;
+        overflow: auto;
+      }
+
+      .artboard-label {
+        text-align: center;
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 12px;
+      }
+
+      /* Shared banner chrome */
+      .banner {
+        position: relative;
+        overflow: hidden;
+        background: var(--bg);
+        color: var(--text);
+      }
+
+      .banner::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background:
+          radial-gradient(ellipse 55% 80% at 8% 20%, rgba(155, 114, 243, 0.22), transparent 55%),
+          radial-gradient(ellipse 45% 70% at 92% 15%, rgba(26, 188, 156, 0.18), transparent 50%),
+          radial-gradient(ellipse 40% 60% at 75% 95%, rgba(255, 77, 109, 0.14), transparent 50%),
+          radial-gradient(ellipse 35% 50% at 20% 90%, rgba(241, 196, 15, 0.1), transparent 45%);
+        pointer-events: none;
+      }
+
+      .banner-inner {
+        position: relative;
+        z-index: 1;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .brand-row {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+
+      .brand-row img {
+        height: 52px;
+        width: auto;
+        display: block;
+      }
+
+      .brand-text {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .brand-name {
+        font-weight: 800;
+        font-size: 22px;
+        letter-spacing: -0.02em;
+        line-height: 1.1;
+      }
+
+      .brand-sub {
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      .headline {
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        line-height: 1.08;
+      }
+
+      .headline em {
+        font-style: normal;
+        background: linear-gradient(90deg, var(--purple), var(--teal), var(--magenta));
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+
+      .tagline {
+        color: var(--muted);
+        font-weight: 500;
+        line-height: 1.45;
+      }
+
+      .pill-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .pill {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        padding: 6px 12px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: rgba(0, 0, 0, 0.35);
+      }
+
+      .pill--purple {
+        border-color: rgba(155, 114, 243, 0.55);
+        color: #d4c4ff;
+      }
+      .pill--teal {
+        border-color: rgba(26, 188, 156, 0.55);
+        color: #9ef0dc;
+      }
+      .pill--magenta {
+        border-color: rgba(255, 77, 109, 0.55);
+        color: #ffb8c8;
+      }
+
+      .tiers {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 14px;
+      }
+
+      .tier {
+        border-radius: 14px;
+        border: 1px solid var(--border);
+        background: var(--card);
+        padding: 16px 16px 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        min-height: 0;
+      }
+
+      .tier--basic {
+        border-top: 3px solid var(--purple);
+      }
+      .tier--standard {
+        border-top: 3px solid var(--teal);
+        box-shadow: 0 0 0 1px rgba(26, 188, 156, 0.15);
+      }
+      .tier--premium {
+        border-top: 3px solid var(--magenta);
+      }
+
+      .tier-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 8px;
+      }
+
+      .tier-name {
+        font-size: 15px;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+      }
+
+      .tier-price {
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--muted);
+        white-space: nowrap;
+      }
+
+      .tier-hook {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--text);
+        opacity: 0.92;
+      }
+
+      .tier ul {
+        list-style: none;
+        font-size: 11px;
+        line-height: 1.45;
+        color: #c8c8d4;
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+      }
+
+      .tier li {
+        padding-left: 14px;
+        position: relative;
+      }
+
+      .tier li::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0.55em;
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: currentColor;
+        opacity: 0.7;
+      }
+
+      .tier--basic li::before {
+        color: var(--purple);
+      }
+      .tier--standard li::before {
+        color: var(--teal);
+      }
+      .tier--premium li::before {
+        color: var(--magenta);
+      }
+
+      .cta-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-top: auto;
+        padding-top: 12px;
+      }
+
+      .cta-text {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--muted);
+      }
+
+      .cta-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 10px 20px;
+        border-radius: 10px;
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+        color: #050508;
+        background: linear-gradient(95deg, var(--yellow), #ffe566);
+        border: none;
+        white-space: nowrap;
+      }
+
+      .features-strip {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px 18px;
+        font-size: 11px;
+        font-weight: 600;
+        color: #d0d0dc;
+      }
+
+      .features-strip span {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--teal);
+        flex-shrink: 0;
+      }
+
+      /* Website hero — 1920 × 600 */
+      #hero-website {
+        width: 1920px;
+        height: 600px;
+        margin: 0 auto;
+      }
+
+      #hero-website .banner-inner {
+        padding: 40px 56px 36px;
+        gap: 22px;
+      }
+
+      #hero-website .headline {
+        font-size: 46px;
+        max-width: 900px;
+      }
+
+      #hero-website .tagline {
+        font-size: 17px;
+        max-width: 820px;
+      }
+
+      #hero-website .tiers {
+        flex: 1;
+        align-items: stretch;
+      }
+
+      #hero-website .tier ul {
+        font-size: 12px;
+      }
+
+      /* Facebook link — 1200 × 628 */
+      #hero-fb-link {
+        width: 1200px;
+        height: 628px;
+        margin: 0 auto;
+      }
+
+      #hero-fb-link .banner-inner {
+        padding: 28px 36px 24px;
+        gap: 14px;
+      }
+
+      #hero-fb-link .brand-row img {
+        height: 44px;
+      }
+
+      #hero-fb-link .brand-name {
+        font-size: 18px;
+      }
+
+      #hero-fb-link .headline {
+        font-size: 34px;
+        max-width: 700px;
+      }
+
+      #hero-fb-link .tagline {
+        font-size: 14px;
+        max-width: 680px;
+      }
+
+      #hero-fb-link .tier {
+        padding: 12px 12px 10px;
+        gap: 6px;
+      }
+
+      #hero-fb-link .tier-name {
+        font-size: 13px;
+      }
+
+      #hero-fb-link .tier ul {
+        font-size: 10px;
+        gap: 3px;
+      }
+
+      #hero-fb-link .tier-hook {
+        font-size: 10px;
+      }
+
+      #hero-fb-link .cta-btn {
+        padding: 8px 16px;
+        font-size: 11px;
+      }
+
+      /* Facebook square — 1080 × 1080 */
+      #hero-fb-square {
+        width: 1080px;
+        height: 1080px;
+        margin: 0 auto;
+      }
+
+      #hero-fb-square .banner-inner {
+        padding: 44px 40px 40px;
+        gap: 28px;
+      }
+
+      #hero-fb-square .brand-row {
+        justify-content: center;
+        flex-direction: column;
+        text-align: center;
+      }
+
+      #hero-fb-square .brand-row img {
+        height: 72px;
+      }
+
+      #hero-fb-square .brand-name {
+        font-size: 28px;
+      }
+
+      #hero-fb-square .headline {
+        font-size: 38px;
+        text-align: center;
+        max-width: 100%;
+      }
+
+      #hero-fb-square .tagline {
+        font-size: 16px;
+        text-align: center;
+        max-width: 720px;
+        margin: 0 auto;
+      }
+
+      #hero-fb-square .tiers {
+        grid-template-columns: 1fr;
+        gap: 16px;
+        flex: 1;
+      }
+
+      #hero-fb-square .tier {
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 20px;
+        padding: 18px 20px;
+      }
+
+      #hero-fb-square .tier-head {
+        flex-direction: column;
+        min-width: 140px;
+      }
+
+      #hero-fb-square .tier-name {
+        font-size: 18px;
+      }
+
+      #hero-fb-square .tier ul {
+        font-size: 13px;
+        flex: 1;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px 16px;
+      }
+
+      #hero-fb-square .cta-bar {
+        justify-content: center;
+        flex-direction: column;
+      }
+
+      #hero-fb-square .cta-btn {
+        font-size: 14px;
+        padding: 14px 32px;
+      }
+
+      @media print {
+        body {
+          background: #000;
+          padding: 0;
+        }
+        .page-intro {
+          display: none;
+        }
+        .artboard-wrap {
+          page-break-after: always;
+          margin: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page-intro">
+      <h1>Export instructions</h1>
+      <p>
+        Open this file in Chrome or Edge. Zoom so each banner fits the screen, then screenshot or use a capture
+        extension at <strong>100% scale</strong>. Sizes: website <code>1920×600</code>, Facebook link
+        <code>1200×628</code>, square <code>1080×1080</code>. Logo:
+        <code>docs/marketing/softelligent-transparent.png</code>.
+      </p>
+    </div>
+
+    <div class="artboard-wrap">
+      <p class="artboard-label">Website hero · 1920 × 600</p>
+      <div id="hero-website" class="banner">
+        <div class="banner-inner">
+          <div class="brand-row">
+            <img src="softelligent-transparent.png" alt="Softelligent" width="52" height="52" />
+            <div class="brand-text">
+              <span class="brand-name">Softelligent Solutions</span>
+              <span class="brand-sub">School management ERP · SaaS for Pakistan</span>
+            </div>
+          </div>
+          <h2 class="headline">One platform for <em>admissions, fees, exams &amp; payroll</em></h2>
+          <p class="tagline">
+            Cloud school ERP with mobile staff portal, live alerts, and plans that grow with your campus—from a single
+            building to multi-branch groups.
+          </p>
+          <div class="tiers">
+            <article class="tier tier--basic">
+              <div class="tier-head">
+                <span class="tier-name">Basic</span>
+                <span class="tier-price">from PKR 12k/mo</span>
+              </div>
+              <p class="tier-hook">Run the front office</p>
+              <ul>
+                <li>Admissions &amp; student records</li>
+                <li>Attendance &amp; class reports</li>
+                <li>Fee generate, receive &amp; receipts</li>
+                <li>Core exams &amp; dashboard</li>
+                <li>Up to 400 students · 1 campus</li>
+              </ul>
+            </article>
+            <article class="tier tier--standard">
+              <div class="tier-head">
+                <span class="tier-name">Standard</span>
+                <span class="tier-price">from PKR 35k/mo</span>
+              </div>
+              <p class="tier-hook">Full single-campus operations</p>
+              <ul>
+                <li>Exams, timetables, diary &amp; datesheets</li>
+                <li>Accounts, vouchers &amp; day closing</li>
+                <li>Employee portal &amp; family portal</li>
+                <li>Fee voids, reminders &amp; analytics</li>
+                <li>Up to 1,500 students · live notifications</li>
+              </ul>
+            </article>
+            <article class="tier tier--premium">
+              <div class="tier-head">
+                <span class="tier-name">Premium</span>
+                <span class="tier-price">from PKR 85k/mo</span>
+              </div>
+              <p class="tier-hook">Groups, franchises &amp; depth</p>
+              <ul>
+                <li>Payroll, salary slips &amp; adjustments</li>
+                <li>Multi-campus dashboard (up to 5)</li>
+                <li>Coordinator proforma &amp; teacher conduct</li>
+                <li>Campus chat, parent API &amp; exam maker</li>
+                <li>Up to 5,000 students · priority support</li>
+              </ul>
+            </article>
+          </div>
+          <div class="cta-bar">
+            <p class="cta-text">21-day trial on Standard · Annual plans available · Hosted in Pakistan</p>
+            <span class="cta-btn">Book a demo</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="artboard-wrap">
+      <p class="artboard-label">Facebook / Meta link ad · 1200 × 628</p>
+      <div id="hero-fb-link" class="banner">
+        <div class="banner-inner">
+          <div class="brand-row">
+            <img src="softelligent-transparent.png" alt="Softelligent" width="44" height="44" />
+            <div class="brand-text">
+              <span class="brand-name">Softelligent Solutions</span>
+              <span class="brand-sub">School ERP SaaS</span>
+            </div>
+          </div>
+          <h2 class="headline">School ERP plans for <em>every campus size</em></h2>
+          <p class="tagline">Fees · attendance · exams · payroll — pick Basic, Standard, or Premium.</p>
+          <div class="tiers">
+            <article class="tier tier--basic">
+              <div class="tier-head">
+                <span class="tier-name">Basic</span>
+                <span class="tier-price">12k+</span>
+              </div>
+              <ul>
+                <li>Students &amp; fees</li>
+                <li>Attendance</li>
+                <li>400 students</li>
+              </ul>
+            </article>
+            <article class="tier tier--standard">
+              <div class="tier-head">
+                <span class="tier-name">Standard</span>
+                <span class="tier-price">35k+</span>
+              </div>
+              <ul>
+                <li>Exams &amp; accounts</li>
+                <li>Staff &amp; family portal</li>
+                <li>1,500 students</li>
+              </ul>
+            </article>
+            <article class="tier tier--premium">
+              <div class="tier-head">
+                <span class="tier-name">Premium</span>
+                <span class="tier-price">85k+</span>
+              </div>
+              <ul>
+                <li>Payroll &amp; multi-campus</li>
+                <li>Chat &amp; proforma</li>
+                <li>5,000 students</li>
+              </ul>
+            </article>
+          </div>
+          <div class="cta-bar">
+            <div class="pill-row">
+              <span class="pill pill--purple">Basic</span>
+              <span class="pill pill--teal">Standard</span>
+              <span class="pill pill--magenta">Premium</span>
+            </div>
+            <span class="cta-btn">Start free trial</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="artboard-wrap">
+      <p class="artboard-label">Facebook / Instagram square · 1080 × 1080</p>
+      <div id="hero-fb-square" class="banner">
+        <div class="banner-inner">
+          <div class="brand-row">
+            <img src="softelligent-transparent.png" alt="Softelligent" width="72" height="72" />
+            <div class="brand-text">
+              <span class="brand-name">Softelligent Solutions</span>
+              <span class="brand-sub">School Management ERP</span>
+            </div>
+          </div>
+          <h2 class="headline"><em>Basic</em> · <em>Standard</em> · <em>Premium</em></h2>
+          <p class="tagline">Everything your school team needs—priced for Pakistani private schools.</p>
+          <div class="features-strip" style="justify-content: center">
+            <span><i class="dot"></i> Fee collection</span>
+            <span><i class="dot" style="background: var(--purple)"></i> Attendance</span>
+            <span><i class="dot" style="background: var(--yellow)"></i> Exams &amp; results</span>
+            <span><i class="dot" style="background: var(--magenta)"></i> Employee app</span>
+          </div>
+          <div class="tiers">
+            <article class="tier tier--basic">
+              <div class="tier-head">
+                <span class="tier-name">Basic</span>
+                <span class="tier-price">PKR 12–18k/mo</span>
+              </div>
+              <ul>
+                <li>Admissions &amp; profiles</li>
+                <li>Mark attendance</li>
+                <li>Generate &amp; receive fees</li>
+                <li>Printable receipts</li>
+              </ul>
+            </article>
+            <article class="tier tier--standard">
+              <div class="tier-head">
+                <span class="tier-name">Standard</span>
+                <span class="tier-price">PKR 35–55k/mo</span>
+              </div>
+              <ul>
+                <li>Full exams &amp; timetables</li>
+                <li>Day closing &amp; vouchers</li>
+                <li>Family &amp; staff portals</li>
+                <li>Fee reminders &amp; reports</li>
+              </ul>
+            </article>
+            <article class="tier tier--premium">
+              <div class="tier-head">
+                <span class="tier-name">Premium</span>
+                <span class="tier-price">PKR 85–140k/mo</span>
+              </div>
+              <ul>
+                <li>Monthly payroll &amp; slips</li>
+                <li>Up to 5 campuses</li>
+                <li>Coordinator proforma</li>
+                <li>Live chat &amp; conduct</li>
+              </ul>
+            </article>
+          </div>
+          <div class="cta-bar">
+            <span class="cta-btn">softelligent.com · Book a demo</span>
+            <p class="cta-text">PKR pricing · 21-day trial · Made for local schools</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

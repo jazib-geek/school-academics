@@ -1,0 +1,17 @@
+---
+description: Do not use HTTP PUT/DELETE — production is on Plesk, which blocks them
+alwaysApply: true
+---
+
+# No HTTP PUT / DELETE (Plesk hosting)
+
+Production runs on **Plesk**. **PUT (and often DELETE) requests are blocked** at the edge (typically **403** with an **HTML** body, not JSON). **GET and POST work.**
+
+## Rules
+
+- **Backend:** never rely on `[HttpPut]` / `[HttpDelete]` for client-facing routes. Use `[HttpPost]` with explicit routes: `POST api/<resource>/create`, `POST api/<resource>/{id}/update`, `POST api/<resource>/{id}/delete`.
+- **Frontend:** never use `api.put`, `api.delete`, or `fetch(..., { method: 'PUT' | 'DELETE' })`.
+
+## Quick check
+
+Before merging, grep for `HttpPut`, `HttpDelete`, `.put(`, `.delete(`, `method: 'PUT'`, `method: 'DELETE'` and replace with POST routes.

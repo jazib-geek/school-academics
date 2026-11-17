@@ -24,23 +24,28 @@ export default function ConfirmDialog({
 
   useEffect(() => {
     if (!open || !confirmOnEnter) return undefined
-    let armed = false
-    const arm = (event) => {
-      if (event.key === 'Enter') armed = true
+    // Ignore key-repeat from the Enter that opened the dialog. A fresh press confirms.
+    let blockUntilKeyup = false
+    const onKeyUp = (event) => {
+      if (event.key === 'Enter') blockUntilKeyup = false
     }
     const onKeyDown = (event) => {
       if (event.key !== 'Enter' || busy) return
       event.preventDefault()
       event.stopPropagation()
-      if (!armed || event.repeat) return
+      if (event.repeat) {
+        blockUntilKeyup = true
+        return
+      }
+      if (blockUntilKeyup) return
       onConfirmRef.current?.()
     }
-    window.addEventListener('keyup', arm, true)
+    window.addEventListener('keyup', onKeyUp, true)
     window.addEventListener('keydown', onKeyDown, true)
     const focusId = requestAnimationFrame(() => confirmButtonRef.current?.focus())
     return () => {
       cancelAnimationFrame(focusId)
-      window.removeEventListener('keyup', arm, true)
+      window.removeEventListener('keyup', onKeyUp, true)
       window.removeEventListener('keydown', onKeyDown, true)
     }
   }, [open, confirmOnEnter, busy])

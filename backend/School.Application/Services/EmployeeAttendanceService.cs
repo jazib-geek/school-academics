@@ -72,6 +72,10 @@ public class EmployeeAttendanceService : IEmployeeAttendanceService
                 changeJson = attendance.ChangeJson,
                 mustCheckinTime = designation != null ? designation.MustCheckinTime : null,
                 leavingTime = designation != null ? designation.LeavingTime : null,
+                fridayMustCheckinTime = designation != null ? designation.FridayMustCheckinTime : null,
+                fridayLeavingTime = designation != null ? designation.FridayLeavingTime : null,
+                saturdayMustCheckinTime = designation != null ? designation.SaturdayMustCheckinTime : null,
+                saturdayLeavingTime = designation != null ? designation.SaturdayLeavingTime : null,
                 graceMinutes = designation != null ? designation.MustCheckinMinutesDifference : null,
             })
             .ToListAsync(cancellationToken);
@@ -79,12 +83,20 @@ public class EmployeeAttendanceService : IEmployeeAttendanceService
         var entries = rows
             .Select(row =>
             {
+                var (expectedIn, expectedOut) = SourcesForDate(
+                    targetDate,
+                    row.mustCheckinTime,
+                    row.leavingTime,
+                    row.fridayMustCheckinTime,
+                    row.fridayLeavingTime,
+                    row.saturdayMustCheckinTime,
+                    row.saturdayLeavingTime);
                 var penalty = ResolvePenaltyBreakdown(
                     row.attendanceDate,
                     row.checkInTime,
                     row.checkOutTime,
-                    DesignationTimeHelper.ToTimeOfDay(row.mustCheckinTime),
-                    DesignationTimeHelper.ToTimeOfDay(row.leavingTime),
+                    expectedIn,
+                    expectedOut,
                     row.graceMinutes,
                     row.changeJson);
                 var lateComings = row.lateComings ?? 0;
@@ -259,8 +271,6 @@ public class EmployeeAttendanceService : IEmployeeAttendanceService
                 g => g.Key,
                 g => g.OrderByDescending(a => a.ID).First());
 
-        var expectedCheckIn = DesignationTimeHelper.ToTimeOfDay(employee.Designation?.MustCheckinTime);
-        var expectedCheckOut = DesignationTimeHelper.ToTimeOfDay(employee.Designation?.LeavingTime);
         var graceMinutes = employee.Designation?.MustCheckinMinutesDifference;
 
         var days = new List<EmployeeMyAttendanceDayDto>(lastVisibleDay);
@@ -273,7 +283,14 @@ public class EmployeeAttendanceService : IEmployeeAttendanceService
         {
             var date = new DateTime(targetYear, targetMonth, day);
             byDate.TryGetValue(date, out var row);
-            var mapped = MapMyDay(date, row, expectedCheckIn, expectedCheckOut, graceMinutes, row?.ChangeJson);
+            var (checkInSource, checkOutSource) = DesignationTimeHelper.SourcesForDate(employee.Designation, date);
+            var mapped = MapMyDay(
+                date,
+                row,
+                DesignationTimeHelper.ToTimeOfDay(checkInSource),
+                DesignationTimeHelper.ToTimeOfDay(checkOutSource),
+                graceMinutes,
+                row?.ChangeJson);
             days.Add(mapped);
 
             if (mapped.IsHoliday) holidayDays++;
@@ -385,18 +402,7 @@ public class EmployeeAttendanceService : IEmployeeAttendanceService
             .FirstOrDefaultAsync(e => e.Thumb_ID == code && e.IsActive == true, cancellationToken)
             ?? throw new KeyNotFoundException($"Employee with code '{code}' was not found.");
 
-        var isSaturday = today.DayOfWeek == DayOfWeek.Saturday;
-        var isFriday = today.DayOfWeek == DayOfWeek.Friday;
-        var checkInSource = isSaturday && employee.Designation?.SaturdayMustCheckinTime != null
-            ? employee.Designation.SaturdayMustCheckinTime
-            : isFriday && employee.Designation?.FridayMustCheckinTime != null
-                ? employee.Designation.FridayMustCheckinTime
-                : employee.Designation?.MustCheckinTime;
-        var checkOutSource = isSaturday && employee.Designation?.SaturdayLeavingTime != null
-            ? employee.Designation.SaturdayLeavingTime
-            : isFriday && employee.Designation?.FridayLeavingTime != null
-                ? employee.Designation.FridayLeavingTime
-                : employee.Designation?.LeavingTime;
+        var (checkInSource, checkOutSource) = DesignationTimeHelper.SourcesForDate(employee.Designation, today);
         var defaultCheckIn = DesignationTimeHelper.ToTimeOfDay(checkInSource);
         var defaultCheckOut = DesignationTimeHelper.ToTimeOfDay(checkOutSource);
         var graceMinutes = employee.Designation?.MustCheckinMinutesDifference;
@@ -594,6 +600,10 @@ public class EmployeeAttendanceService : IEmployeeAttendanceService
                 designationId = designation != null ? (int?)designation.ID : null,
                 mustCheckinTime = designation != null ? designation.MustCheckinTime : null,
                 leavingTime = designation != null ? designation.LeavingTime : null,
+                fridayMustCheckinTime = designation != null ? designation.FridayMustCheckinTime : null,
+                fridayLeavingTime = designation != null ? designation.FridayLeavingTime : null,
+                saturdayMustCheckinTime = designation != null ? designation.SaturdayMustCheckinTime : null,
+                saturdayLeavingTime = designation != null ? designation.SaturdayLeavingTime : null,
                 graceMinutes = designation != null ? designation.MustCheckinMinutesDifference : null,
             })
             .ToListAsync(cancellationToken);
@@ -631,14 +641,31 @@ public class EmployeeAttendanceService : IEmployeeAttendanceService
             .ToDictionary(g => g.Key, g => g.Count());
 
         var designationTimes = designations
-            .Select(d => new EmployeeAttendanceDayDesignationTimingDto
+            .Select(d =>
             {
-                DesignationId = d.ID,
-                DesignationName = d.DesignationName ?? $"Designation {d.ID}",
-                CheckInTime = FormatHhMm(d.MustCheckinTime),
-                CheckOutTime = FormatHhMm(d.LeavingTime),
-                GraceMinutes = d.MustCheckinMinutesDifference,
-                PunchCount = punchCountByDesignation.GetValueOrDefault(d.ID),
+                var duty = SourcesForDate(
+                    targetDate,
+                    d.MustCheckinTime,
+                    d.LeavingTime,
+                    d.FridayMustCheckinTime,
+                    d.FridayLeavingTime,
+                    d.SaturdayMustCheckinTime,
+                    d.SaturdayLeavingTime);
+                return new EmployeeAttendanceDayDesignationTimingDto
+                {
+                    DesignationId = d.ID,
+                    DesignationName = d.DesignationName ?? $"Designation {d.ID}",
+                    CheckInTime = FormatHhMm(duty.CheckIn),
+                    CheckOutTime = FormatHhMm(duty.CheckOut),
+                    WeekdayCheckInTime = FormatHhMm(d.MustCheckinTime),
+                    WeekdayCheckOutTime = FormatHhMm(d.LeavingTime),
+                    FridayCheckInTime = FormatHhMm(d.FridayMustCheckinTime),
+                    FridayCheckOutTime = FormatHhMm(d.FridayLeavingTime),
+                    SaturdayCheckInTime = FormatHhMm(d.SaturdayMustCheckinTime),
+                    SaturdayCheckOutTime = FormatHhMm(d.SaturdayLeavingTime),
+                    GraceMinutes = d.MustCheckinMinutesDifference,
+                    PunchCount = punchCountByDesignation.GetValueOrDefault(d.ID),
+                };
             })
             .ToList();
 
@@ -678,12 +705,20 @@ public class EmployeeAttendanceService : IEmployeeAttendanceService
         var entries = punched
             .Select(row =>
             {
+                var (expectedIn, expectedOut) = SourcesForDate(
+                    row.attendanceDate,
+                    row.mustCheckinTime,
+                    row.leavingTime,
+                    row.fridayMustCheckinTime,
+                    row.fridayLeavingTime,
+                    row.saturdayMustCheckinTime,
+                    row.saturdayLeavingTime);
                 var penalty = ResolvePenaltyBreakdown(
                     row.attendanceDate,
                     row.checkInTime,
                     row.checkOutTime,
-                    DesignationTimeHelper.ToTimeOfDay(row.mustCheckinTime),
-                    DesignationTimeHelper.ToTimeOfDay(row.leavingTime),
+                    expectedIn,
+                    expectedOut,
                     row.graceMinutes,
                     row.changeJson);
                 var lateComings = row.lateComings ?? 0;
@@ -1649,6 +1684,34 @@ public class EmployeeAttendanceService : IEmployeeAttendanceService
         }
     }
 
+    private static (TimeSpan? CheckIn, TimeSpan? CheckOut) SourcesForDate(
+        DateTime date,
+        DateTime? weekdayCheckIn,
+        DateTime? weekdayCheckOut,
+        DateTime? fridayCheckIn,
+        DateTime? fridayCheckOut,
+        DateTime? saturdayCheckIn,
+        DateTime? saturdayCheckOut)
+    {
+        if (date.DayOfWeek == DayOfWeek.Saturday)
+        {
+            return (
+                DesignationTimeHelper.ToTimeOfDay(saturdayCheckIn ?? weekdayCheckIn),
+                DesignationTimeHelper.ToTimeOfDay(saturdayCheckOut ?? weekdayCheckOut));
+        }
+
+        if (date.DayOfWeek == DayOfWeek.Friday)
+        {
+            return (
+                DesignationTimeHelper.ToTimeOfDay(fridayCheckIn ?? weekdayCheckIn),
+                DesignationTimeHelper.ToTimeOfDay(fridayCheckOut ?? weekdayCheckOut));
+        }
+
+        return (
+            DesignationTimeHelper.ToTimeOfDay(weekdayCheckIn),
+            DesignationTimeHelper.ToTimeOfDay(weekdayCheckOut));
+    }
+
     private static bool ResolveIsLate(string? dutyResult, bool liveIsLate) =>
         EmployeeDutyResults.IsLateArrival(dutyResult) ?? liveIsLate;
 
@@ -1825,12 +1888,13 @@ public class EmployeeAttendanceService : IEmployeeAttendanceService
         TimeSpan? overrideCheckOut = null,
         bool useOverrideTimes = false)
     {
+        var (checkInSource, checkOutSource) = DesignationTimeHelper.SourcesForDate(employee.Designation, date);
         var defaultCheckIn = useOverrideTimes
             ? overrideCheckIn
-            : DesignationTimeHelper.ToTimeOfDay(employee.Designation?.MustCheckinTime);
+            : DesignationTimeHelper.ToTimeOfDay(checkInSource);
         var defaultCheckOut = useOverrideTimes
             ? overrideCheckOut
-            : DesignationTimeHelper.ToTimeOfDay(employee.Designation?.LeavingTime);
+            : DesignationTimeHelper.ToTimeOfDay(checkOutSource);
 
         var calc = EmployeeAttendanceCalculator.Apply(
             row,
@@ -1838,6 +1902,8 @@ public class EmployeeAttendanceService : IEmployeeAttendanceService
             date,
             defaultCheckIn,
             defaultCheckOut);
+        if (!string.Equals(row.Status, "H", StringComparison.OrdinalIgnoreCase))
+            row.DutyResult = EmployeeDutyResults.FromMinutes(calc.LateMinutes, calc.EarlyMinutes);
         return new AttendanceCalcResult(
             calc.LateMinutes,
             calc.EarlyMinutes,

@@ -1,0 +1,17 @@
+---
+description: CRUD listing, modal, off-canvas and confirm patterns for admin screens
+globs: frontend/src/pages/**/*.jsx,frontend/src/components/**/*.jsx
+alwaysApply: false
+---
+
+# CRUD UI
+
+Follow `docs/CRUD-UI-RULES.md`. Short version:
+
+- **Page:** `<AppShell headerContext="…">` → `min-h-screen bg-slate-100 p-4 pt-[4.25rem] md:p-6 md:pt-[4.5rem]` → `mx-auto max-w-6xl space-y-4` → header card (`rounded-2xl bg-white p-4 shadow-sm`, icon tile `h-10 w-10 rounded-xl bg-[var(--app-primary)]`, `h1 text-2xl font-bold text-slate-800`, Refresh + primary Add) → table card (`overflow-hidden bg-white shadow-sm`).
+- **Table:** dense (`text-[13px]`, `px-3 py-2` / `px-3 py-1.5`), row hover `hover:bg-slate-50`, actions right-aligned `h-7 w-7` buttons, status pills, loading row, empty state, `Pagination`.
+- **Editor surface:** ≤ 8 fields → `Modal` (`z-[80]`, `max-w-lg`); long/detail/permissions → `Drawer` (right off-canvas, `w-[min(100vw,28rem|40rem)]`); wizard/> 25 fields → full page; destructive → `ConfirmDialog` (`z-[90]`).
+- **Forms:** `<Modal as="form">`, labels `text-xs font-semibold uppercase text-slate-500`, inputs `h-10 rounded-lg border-slate-300`, Save with spinner, backdrop click doesn't close forms, toast on success, reload list keeping filters.
+- **Permissions:** wrap actions in `PermissionControl`; API re-checks with `[RequirePermission]`.
+- **HTTP:** service functions `list/get/create/update/delete` using GET + POST only.
+- **Copy:** plain language; toasts like "User saved." / "Couldn't save. Try again."

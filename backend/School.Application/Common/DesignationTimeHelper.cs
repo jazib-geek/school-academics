@@ -1,9 +1,36 @@
+using School.Infrastructure.Entities;
+
 namespace School.Application.Common;
 
 public static class DesignationTimeHelper
 {
     public static TimeSpan? ToTimeOfDay(DateTime? value) =>
         value.HasValue ? value.Value.TimeOfDay : null;
+
+    /// <summary>
+    /// Weekday duty times, with Friday and Saturday columns when that date uses them.
+    /// </summary>
+    public static (DateTime? CheckIn, DateTime? CheckOut) SourcesForDate(Designation? designation, DateTime date)
+    {
+        if (designation is null)
+            return (null, null);
+
+        if (date.DayOfWeek == DayOfWeek.Saturday)
+        {
+            return (
+                designation.SaturdayMustCheckinTime ?? designation.MustCheckinTime,
+                designation.SaturdayLeavingTime ?? designation.LeavingTime);
+        }
+
+        if (date.DayOfWeek == DayOfWeek.Friday)
+        {
+            return (
+                designation.FridayMustCheckinTime ?? designation.MustCheckinTime,
+                designation.FridayLeavingTime ?? designation.LeavingTime);
+        }
+
+        return (designation.MustCheckinTime, designation.LeavingTime);
+    }
 
     public static string? FormatTime(DateTime? value) =>
         value.HasValue ? value.Value.ToString("hh:mm tt") : null;

@@ -41,6 +41,7 @@ const PRINT_WIDTHS = {
   fundTypeName: '14%',
   month: '10.5%',
   year: '5.5%',
+  receivedBy: '12%',
   paymentMode: '8%',
   received: '11.5%',
 }
@@ -121,8 +122,8 @@ function matchSummaryColumn(row, column) {
 function cellStyle(key) {
   const width = PRINT_WIDTHS[key] || '8%'
   const isMoney = key === 'received'
-  const leftAlign = key === 'studentName' || key === 'className' || key === 'fundTypeName'
-  const wrap = key === 'studentName' || key === 'className'
+  const leftAlign = key === 'studentName' || key === 'className' || key === 'fundTypeName' || key === 'receivedBy'
+  const wrap = key === 'studentName' || key === 'className' || key === 'receivedBy'
   return {
     width,
     maxWidth: width,
@@ -149,7 +150,14 @@ export function collectionPrintSubtitle({ date, dateFrom, dateTo, reportId }) {
  * Portrait FEE Collection sheet shared by Fee Reports and Transaction History.
  * Hidden on screen (`.print-only`); `window.print()` shows it.
  */
-export default function FeeCollectionPrintSheet({ result, date, dateFrom, dateTo }) {
+export default function FeeCollectionPrintSheet({
+  result,
+  date,
+  dateFrom,
+  dateTo,
+  showReceivedBy = false,
+  showPaymentMode: showPaymentModeProp,
+}) {
   const meta = getCampusPrintMeta()
   const rows = result?.rows
   const reportId = result?.reportId
@@ -170,7 +178,8 @@ export default function FeeCollectionPrintSheet({ result, date, dateFrom, dateTo
   }, [rows])
 
   const showManualRcpt = useMemo(() => rowsHaveManualRcpt(rows), [rows])
-  const showPaymentMode = useMemo(() => (rows || []).some(rowIsOnlinePayment), [rows])
+  const hasOnlinePayment = useMemo(() => (rows || []).some(rowIsOnlinePayment), [rows])
+  const showPaymentMode = hasOnlinePayment && (showPaymentModeProp ?? true)
   const paymentTotals = useMemo(() => {
     let cash = 0
     let online = 0
@@ -182,7 +191,7 @@ export default function FeeCollectionPrintSheet({ result, date, dateFrom, dateTo
     })
     return { cash, online }
   }, [rows])
-  const columnCount = 9 + (showManualRcpt ? 1 : 0) + (showPaymentMode ? 1 : 0)
+  const columnCount = 9 + (showManualRcpt ? 1 : 0) + (showReceivedBy ? 1 : 0) + (showPaymentMode ? 1 : 0)
   const subtitle = collectionPrintSubtitle({ date, dateFrom, dateTo, reportId })
 
   if (!result) return null
@@ -316,6 +325,7 @@ export default function FeeCollectionPrintSheet({ result, date, dateFrom, dateTo
             <th style={cellStyle('fundTypeName')}>Type</th>
             <th style={cellStyle('month')}>Month</th>
             <th style={cellStyle('year')}>Year</th>
+            {showReceivedBy ? <th style={cellStyle('receivedBy')}>Received by</th> : null}
             {showPaymentMode ? <th style={cellStyle('paymentMode')}>Pay mode</th> : null}
             <th style={cellStyle('received')}>Amount</th>
           </tr>
@@ -339,6 +349,9 @@ export default function FeeCollectionPrintSheet({ result, date, dateFrom, dateTo
                 <td style={cellStyle('fundTypeName')}>{dash(row.fundTypeName)}</td>
                 <td style={cellStyle('month')}>{dash(displayMonth(row))}</td>
                 <td style={cellStyle('year')}>{dash(displayYear(row))}</td>
+                {showReceivedBy ? (
+                  <td style={cellStyle('receivedBy')}>{dash(row.receivedBy ?? row.ReceivedBy)}</td>
+                ) : null}
                 {showPaymentMode ? (
                   <td style={cellStyle('paymentMode')}>{rowIsOnlinePayment(row) ? 'Online' : 'Cash'}</td>
                 ) : null}

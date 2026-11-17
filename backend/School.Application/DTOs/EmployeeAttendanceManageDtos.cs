@@ -20,6 +20,12 @@ public class EmployeeAttendanceDayDesignationTimingDto
     public string DesignationName { get; set; } = string.Empty;
     public string? CheckInTime { get; set; }
     public string? CheckOutTime { get; set; }
+    public string? WeekdayCheckInTime { get; set; }
+    public string? WeekdayCheckOutTime { get; set; }
+    public string? FridayCheckInTime { get; set; }
+    public string? FridayCheckOutTime { get; set; }
+    public string? SaturdayCheckInTime { get; set; }
+    public string? SaturdayCheckOutTime { get; set; }
     public int? GraceMinutes { get; set; }
     public int PunchCount { get; set; }
 }

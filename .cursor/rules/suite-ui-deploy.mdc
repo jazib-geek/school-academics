@@ -1,0 +1,52 @@
+---
+description: Frontend release must pass ESLint then subtree-push to SoftelligentSchoolSuitePro-UI (Plesk CD)
+alwaysApply: true
+---
+
+# Suite UI deploy (frontend → production)
+
+Production UI CD runs only on **SoftelligentSchoolSuitePro-UI** (`git remote suite-ui`), not on the monorepo `origin`.
+
+CI workflow (`frontend/.github/workflows/deploy.yml`) runs **`npm run lint`** before **`npm run build`**. **ESLint errors fail the pipeline** (warnings do not).
+
+## Before any UI subtree push
+
+From repo root, run lint and fix **all errors** (not warnings):
+
+```powershell
+cd frontend
+npm run lint
+```
+
+Do not push to **suite-ui** until lint exits **0 errors**. Optionally run `npm run build` and `npm run build:demo` locally—the workflow runs both in the build job.
+
+## Commit scope (default)
+
+When the user asks to **push / deploy the UI** (or “push FE”) and does **not** name specific files:
+
+1. **`git add` every uncommitted change under `frontend/`** (all modified and new files in that tree). Do not add `frontend/.vite/` or other generated cache unless it is intentionally tracked.
+2. Commit with a message that covers those changes (one commit is fine).
+3. Do **not** cherry-pick only the files from the current chat unless the user explicitly says “only these files” or similar.
+
+If there is **nothing** uncommitted under `frontend/`, say so; run lint + subtree push only if they still want production updated.
+
+## After frontend changes that should go live
+
+1. Commit under `frontend/` in the workspace (monorepo `master` if used), following **Commit scope** above when deploying on request.
+2. **Lint check** (above)—mandatory.
+3. **Subtree push UI** (from repo root):
+   ```powershell
+   .\backend\scripts\Push-SuiteDeploy.ps1 -Ui
+   ```
+   Or: `git subtree split --prefix=frontend -b frontend-ui-release` then `git push suite-ui frontend-ui-release:master`.
+4. Verify [SoftelligentSchoolSuitePro-UI Actions](https://github.com/jazib-geek/SoftelligentSchoolSuitePro-UI/actions): **build** then **deploy** green.
+5. Do not treat `git push origin` alone as a frontend release.
+
+Details: `backend/DEPLOY.md` (UI section). Plesk FTP deploy uses secrets on the UI repo; do not commit FTP credentials.
+
+## Agent checklist
+
+- User asks to check in, push, or deploy → commit **all** uncommitted `frontend/` changes (unless they limit scope), **lint** (fix errors), push `origin` if ahead, then run **Push-SuiteDeploy.ps1 -Ui** in the same turn. Do not ask again. See [git-push-confirm.mdc](git-push-confirm.mdc).
+- Frontend task done and the user asked to check in or push → run **`npm run lint`** in `frontend/`, fix errors, then **Push-SuiteDeploy.ps1 -Ui**.
+- User asks to “push FE” / deploy UI → lint first; if lint fails, fix before subtree push.
+- “Everything up-to-date” on push means **no new Actions run**—only a new commit on `master` after lint passes triggers CD.
