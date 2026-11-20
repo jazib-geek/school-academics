@@ -3,7 +3,12 @@ import {
   CAMPUS_LANDING_CANDIDATES,
   resolveCampusRoutePermission,
 } from '../constants/campusPermissions'
-import { clearCampusProfile, persistCampusProfile } from '../utils/campusProfile'
+import {
+  clearCampusProfile,
+  getStoredCampusProfile,
+  normalizeBiometricAttendanceType,
+  persistCampusProfile,
+} from '../utils/campusProfile'
 
 const LOGIN_PATH = import.meta.env.VITE_LOGIN_PATH || '/api/auth/login'
 const CAMPUS_HEADER = import.meta.env.VITE_CAMPUS_HEADER || 'X-Campus'
@@ -129,30 +134,48 @@ export const canAccessCampusPath = (pathname) => {
   return hasCampusPermission(rule.permission)
 }
 
+const campusPathname = (value) => String(value || '').split('?')[0]
+
+/** Listing routes stay open for the in-page restriction panel, but are not a home page. */
+const isUngrantedListingPath = (pathname) => {
+  const path = campusPathname(pathname)
+  if (path === '/campus/students') return !hasCampusPermission('list_std')
+  if (path === '/campus/employees') return !hasCampusPermission('view_employees')
+  return false
+}
+
+const isLandingCandidateAllowed = (candidate) => {
+  if (candidate.attendanceType) {
+    const current = normalizeBiometricAttendanceType(getStoredCampusProfile()?.biometricAttendanceType)
+    if (candidate.attendanceType !== current) return false
+  }
+  if (candidate.anyOf?.length) return hasAnyCampusPermission(...candidate.anyOf)
+  if (candidate.permission) return hasCampusPermission(candidate.permission)
+  return false
+}
+
 export const getCampusLandingPath = () => {
   if (isCampusSuperAdmin()) return '/campus/dashboard'
 
   for (const candidate of CAMPUS_LANDING_CANDIDATES) {
-    if (candidate.anyOf?.length) {
-      if (hasAnyCampusPermission(...candidate.anyOf)) return candidate.path
-      continue
-    }
-    if (hasCampusPermission(candidate.permission)) return candidate.path
+    if (isLandingCandidateAllowed(candidate)) return candidate.path
   }
 
   return '/campus/students'
 }
 
-/** Prefer intended path when allowed; otherwise first suitable landing page. */
+/** Prefer a real allowed page; otherwise the first sidebar page this user can open. */
 export const resolveCampusPostLoginPath = (intendedPath) => {
-  if (intendedPath && canAccessCampusPath(intendedPath)) {
+  const path = campusPathname(intendedPath)
+  const isCampusPage = path.startsWith('/campus/')
+  if (isCampusPage && canAccessCampusPath(path) && !isUngrantedListingPath(path)) {
     if (
-      (intendedPath === '/campus/dashboard' || intendedPath.startsWith('/campus/dashboard/')) &&
+      (path === '/campus/dashboard' || path.startsWith('/campus/dashboard/')) &&
       !hasCampusPermission('stats_home')
     ) {
       return getCampusLandingPath()
     }
-    return intendedPath
+    return path
   }
   return getCampusLandingPath()
 }

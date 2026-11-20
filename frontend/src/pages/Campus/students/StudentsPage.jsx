@@ -52,7 +52,7 @@ import { FILTER_INPUT_AUTOCOMPLETE_PROPS } from '../../../utils/filterInputProps
 import { INTEGER_INPUT_ATTRS, readIntegerInput, sanitizeIntegerInput } from '../../../utils/numericInput.js'
 import { clampToPakistanToday, getPakistanTodayIso } from '../../../utils/pakistanDate.js'
 import { getSecurityDepositProfileInfo } from '../../../utils/studentSecurityDepositDisplay.js'
-import { hasCampusPermission } from '../../../services/authService'
+import { getCampusLandingPath, hasCampusPermission } from '../../../services/authService'
 import StudentProfileModal from './StudentProfileModal.jsx'
 import StudentActivityLogsModal from './StudentActivityLogsModal.jsx'
 import StudentAttendanceModal from './StudentAttendanceModal.jsx'
@@ -1196,6 +1196,13 @@ function StudentsPage() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const canListStudents = hasCampusPermission('list_std')
+  const landingPath = getCampusLandingPath()
+
+  useEffect(() => {
+    if (!canListStudents && landingPath && landingPath !== '/campus/students') {
+      navigate(landingPath, { replace: true })
+    }
+  }, [canListStudents, landingPath, navigate])
   const canAddStudent = hasCampusPermission('add_std')
   const canEditStudent = hasCampusPermission('edit_std')
   const canReceiveFee = hasCampusPermission('submit_fee')
