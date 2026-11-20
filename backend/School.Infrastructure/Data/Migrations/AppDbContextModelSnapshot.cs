@@ -6505,6 +6505,13 @@ namespace School.Infrastructure.Data.Migrations
                     b.Property<decimal?>("FeeConcession")
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<string>("FeeTime")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("FeeTimeUpdatedAtPkt")
+                        .HasColumnType("datetime2(3)");
+
                     b.Property<string>("FullName")
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");

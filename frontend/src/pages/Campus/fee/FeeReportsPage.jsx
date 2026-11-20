@@ -187,6 +187,10 @@ const yearOptions = [currentYear - 1, currentYear, currentYear + 1].map((value) 
 
 const COLLECTION_REPORT_IDS = new Set(['collection-by-date', 'collection-by-interval'])
 const RECEIVABLE_REPORT_IDS = new Set(['overall-receivable', 'overall-receivable-class-wise'])
+const FEE_TIME_REPORT_IDS = new Set(['tuition-defaulters', ...RECEIVABLE_REPORT_IDS])
+const reportHasFeeTime = (report) =>
+  FEE_TIME_REPORT_IDS.has(report?.reportId) &&
+  (report?.rows || []).some((row) => String(row.feeTime ?? '').trim().length > 0)
 
 const filterFeeCatalogByPermission = (items) =>
   (items || []).filter((item) => {
@@ -449,6 +453,7 @@ const formatAttendancePrint = (days, marks) => {
 const screenColumnClass = (col) => {
   const numeric = col.format === 'money' || col.format === 'number' || col.format === 'percent'
   if (col.key === 'recentAttendance') return 'w-[168px] whitespace-nowrap px-2 py-2'
+  if (col.key === 'feeTime') return 'w-40 whitespace-pre-wrap break-words px-3 py-2'
   if (col.key === 'studentId') return 'w-[4.5rem] whitespace-nowrap px-3 py-2'
   if (col.key === 'year') return 'w-16 whitespace-nowrap px-3 py-2'
   if (col.key === 'month') return 'w-24 whitespace-nowrap px-3 py-2'
@@ -550,6 +555,7 @@ const getPrintColumnWidth = (key, format, columnCount = 5) => {
 
   if (k === 'month') return '12%'
   if (k === 'recentattendance') return '16%'
+  if (k === 'feetime') return '16%'
 
   if (PRINT_WIDE_KEYS.test(k) || (format === 'text' && (k === 'students' || k.endsWith('name')))) {
     if (columnCount >= 6) return '24%'
@@ -584,6 +590,7 @@ const printCellStyle = (key, format, columnCount) => {
   const textAlign = getPrintColumnAlign(key, format)
   const k = String(key || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase()
   const isName = PRINT_WIDE_KEYS.test(k) || k.endsWith('name')
+  if (k === 'feetime') return { width, textAlign, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }
   return {
     ...(width ? { width } : null),
     textAlign,
@@ -763,6 +770,7 @@ function FeeReportsPage() {
   const [attendanceByStudent, setAttendanceByStudent] = useState({})
   const [attendanceLoading, setAttendanceLoading] = useState(false)
   const [includeAttendanceOnPrint, setIncludeAttendanceOnPrint] = useState(false)
+  const [showFeeTime, setShowFeeTime] = useState(false)
   const [showReceivedBy, setShowReceivedBy] = useState(false)
   const [showPaymentMode, setShowPaymentMode] = useState(true)
   const attendanceRequestRef = useRef(0)
@@ -969,6 +977,7 @@ function FeeReportsPage() {
               if (!cancelled) {
                 const normalized = applyBalanceFilter(normalizeCollectionResult(data), cleaned)
                 setIncludeAttendanceOnPrint(false)
+                setShowFeeTime(reportHasFeeTime(normalized))
                 setResult(normalized)
                 loadRecentAttendance(normalized)
               }
@@ -1020,6 +1029,7 @@ function FeeReportsPage() {
     setParams(nextParams)
     setResult(null)
     setIncludeAttendanceOnPrint(false)
+    setShowFeeTime(false)
     attendanceRequestRef.current += 1
     setRunError('')
     setIsResultOpen(false)
@@ -1038,6 +1048,7 @@ function FeeReportsPage() {
     setRunError('')
     setResult(null)
     setIncludeAttendanceOnPrint(false)
+    setShowFeeTime(false)
     const requestId = attendanceRequestRef.current + 1
     attendanceRequestRef.current = requestId
     setAttendanceByStudent({})
@@ -1051,6 +1062,7 @@ function FeeReportsPage() {
       const data = await runSmartFeeReport(reportId, cleaned)
       if (requestId !== attendanceRequestRef.current) return
       const normalized = applyBalanceFilter(normalizeCollectionResult(data), cleaned)
+      setShowFeeTime(reportHasFeeTime(normalized))
       setResult(normalized)
       loadRecentAttendance(normalized)
     } catch (requestError) {
@@ -1313,7 +1325,7 @@ function FeeReportsPage() {
   const showsRecentAttendance = ATTENDANCE_REPORT_IDS.has(result?.reportId)
 
   const screenColumns = useMemo(() => {
-    const source = result?.columns || []
+    const source = (result?.columns || []).filter((col) => col.key !== 'feeTime' || showFeeTime)
     let cols =
       result?.reportId === 'fund-defaulters'
         ? source.filter((col) => col.key !== 'month' && col.key !== 'year')
@@ -1328,7 +1340,7 @@ function FeeReportsPage() {
     const moneyIndex = cols.findIndex((col) => col.format === 'money')
     if (moneyIndex < 0) return [...cols, attendanceCol]
     return [...cols.slice(0, moneyIndex), attendanceCol, ...cols.slice(moneyIndex)]
-  }, [result, showPaymentMode, showReceivedBy])
+  }, [result, showPaymentMode, showReceivedBy, showFeeTime])
 
   const printColumns = useMemo(
     () =>
@@ -1829,6 +1841,13 @@ function FeeReportsPage() {
                                 ) : null}
                               </>
                             ) : null}
+                            {FEE_TIME_REPORT_IDS.has(result?.reportId) ? (
+                              <ColumnToggle
+                                label="Show fee time"
+                                checked={showFeeTime}
+                                onChange={() => setShowFeeTime((value) => !value)}
+                              />
+                            ) : null}
                             {showsRecentAttendance ? (
                               <button
                                 type="button"
@@ -2171,19 +2190,20 @@ function FeeReportsPage() {
                         <thead>
                           <tr>
                             <th style={{ width: '8%' }}>Reg. No.</th>
-                            <th style={{ width: '28%' }}>Student Name</th>
-                            <th style={{ width: '10%' }}>Actual Fee</th>
-                            <th style={{ width: '11%' }}>{prevFundLabel}</th>
-                            <th style={{ width: '11%' }}>{admissionFundLabel}</th>
-                            <th style={{ width: '11%' }}>{miscFundLabel}</th>
-                            <th style={{ width: '9%' }}>T.F</th>
-                            <th style={{ width: '12%' }}>Total</th>
+                            <th style={{ width: showFeeTime ? '22%' : '28%' }}>Student Name</th>
+                            {showFeeTime && <th style={{ width: '16%' }}>Fee time</th>}
+                            <th style={{ width: showFeeTime ? '8%' : '10%' }}>Actual Fee</th>
+                            <th style={{ width: showFeeTime ? '9%' : '11%' }}>{prevFundLabel}</th>
+                            <th style={{ width: showFeeTime ? '9%' : '11%' }}>{admissionFundLabel}</th>
+                            <th style={{ width: showFeeTime ? '9%' : '11%' }}>{miscFundLabel}</th>
+                            <th style={{ width: showFeeTime ? '8%' : '9%' }}>T.F</th>
+                            <th style={{ width: showFeeTime ? '11%' : '12%' }}>Total</th>
                           </tr>
                         </thead>
                         <tbody>
                           {receivableClassWiseSections.length === 0 ? (
                             <tr>
-                              <td colSpan={8} style={{ textAlign: 'center' }}>
+                              <td colSpan={showFeeTime ? 9 : 8} style={{ textAlign: 'center' }}>
                                 No report rows found.
                               </td>
                             </tr>
@@ -2192,12 +2212,17 @@ function FeeReportsPage() {
                               {receivableClassWiseSections.map((section) => (
                                 <Fragment key={`cls-${section.className}`}>
                                   <tr className="class-header-row">
-                                    <td colSpan={8}>{section.className}</td>
+                                    <td colSpan={showFeeTime ? 9 : 8}>{section.className}</td>
                                   </tr>
                                   {section.students.map((row) => (
                                     <tr key={`cw-${section.className}-${row.studentId}`}>
                                       <td style={{ textAlign: 'center' }}>{dash(row.studentId)}</td>
                                       <td>{dash(row.studentName)}</td>
+                                      {showFeeTime && (
+                                        <td style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
+                                          {dash(row.feeTime)}
+                                        </td>
+                                      )}
                                       <td style={{ textAlign: 'right' }}>{printAmount(row.actualFee)}</td>
                                       <td style={{ textAlign: 'right' }}>{printAmount(row.prevBalance)}</td>
                                       <td style={{ textAlign: 'right' }}>{printAmount(row.admissionFee)}</td>
@@ -2213,6 +2238,7 @@ function FeeReportsPage() {
                                   <tr className="total-row">
                                     <td />
                                     <td style={{ textAlign: 'right', fontWeight: 700 }}>Total</td>
+                                    {showFeeTime && <td />}
                                     <td style={{ textAlign: 'right', fontWeight: 700 }}>
                                       {printAmount(section.totals.actualFee)}
                                     </td>
@@ -2237,6 +2263,7 @@ function FeeReportsPage() {
                               <tr className="total-row">
                                 <td />
                                 <td style={{ textAlign: 'right', fontWeight: 700 }}>Grand Total</td>
+                                {showFeeTime && <td />}
                                 <td style={{ textAlign: 'right', fontWeight: 700 }}>
                                   {printAmount(receivableClassWiseMasterTotals.actualFee)}
                                 </td>

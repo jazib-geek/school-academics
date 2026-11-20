@@ -163,6 +163,7 @@ export const CAMPUS_SHELL_NAV = [
       },
       { label: 'Update Fee', to: '/campus/students/update-fee', permission: 'update_fee' },
       { label: 'Increment Fee', to: '/campus/students/increment-fee', permission: 'update_fee' },
+      { label: 'Fee Time', to: '/campus/fee/time', permission: 'fee_time' },
       { label: 'Transaction History', to: '/campus/fee/transactions', permission: 'submit_fee' },
       { label: 'Void Receipt', to: '/campus/fee/void-receipt', permission: 'void_rcpt' },
       { label: 'Fee Reports', to: '/campus/fee/reports', permission: 'rpt_fee' },

@@ -27,7 +27,13 @@ If API deploy fails with FTP **550 / file in use**, check the deploy job log for
 
 ## Push commands (from dev workspace root)
 
-Helper script:
+Interactive check-in (asks backend, frontend, or both, then a commit message, commits only those folders, pushes `origin` `master`, and starts the subtree deploy):
+
+```powershell
+.\Publish-Web.cmd
+```
+
+Subtree-only helper (does not commit):
 
 ```powershell
 .\backend\scripts\Push-SuiteDeploy.ps1 -Api          # backend only

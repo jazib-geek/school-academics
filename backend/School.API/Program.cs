@@ -211,6 +211,7 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddMemoryCache();
 builder.Services.AddScoped<StudentFeeIncrementService>();
+builder.Services.AddScoped<FeeTimeService>();
 
 builder.Services.AddAuthorization(options =>
 {

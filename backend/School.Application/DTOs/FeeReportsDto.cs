@@ -32,6 +32,7 @@ public class FeeTransactionReportItemDto
 
 public class FeeDefaulterItemDto
 {
+    public string? FeeTime { get; set; }
     public int StudentId { get; set; }
     public string StudentName { get; set; } = string.Empty;
     public string? ClassName { get; set; }
@@ -44,6 +45,7 @@ public class FeeDefaulterItemDto
 
 public class ReceivableItemDto
 {
+    public string? FeeTime { get; set; }
     public int StudentId { get; set; }
     public string StudentName { get; set; } = string.Empty;
     public string? ClassName { get; set; }

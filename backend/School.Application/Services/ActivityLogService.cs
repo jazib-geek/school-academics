@@ -167,6 +167,7 @@ public class ActivityLogService : IActivityLogService
                 new ActivityLogTypeOptionDto { Value = ActivityLogTypes.StudentBulkEdit, Label = "Student bulk edit" },
                 new ActivityLogTypeOptionDto { Value = ActivityLogTypes.StudentTransfer, Label = "Student transfer" },
                 new ActivityLogTypeOptionDto { Value = ActivityLogTypes.StudentFeeUpdate, Label = "Fee update" },
+                new ActivityLogTypeOptionDto { Value = ActivityLogTypes.StudentFeeTimeUpdate, Label = "Fee time update / removal" },
                 new ActivityLogTypeOptionDto { Value = ActivityLogTypes.FeeGenerateAll, Label = "Fee generate (all)" },
                 new ActivityLogTypeOptionDto { Value = ActivityLogTypes.FeeGenerateSingle, Label = "Fee generate (one student)" },
                 new ActivityLogTypeOptionDto { Value = ActivityLogTypes.FundGenerateBulk, Label = "Fund generate (bulk)" },

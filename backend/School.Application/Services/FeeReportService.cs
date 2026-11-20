@@ -116,6 +116,7 @@ public class FeeReportService : IFeeReportService
             {
                 StudentId = x.StudentID ?? 0,
                 StudentName = x.Student != null ? x.Student.FullName : null,
+                FeeTime = x.Student != null ? x.Student.FeeTime : null,
                 ClassName = x.Student != null && x.Student.Section != null ? x.Student.Section.ClassName : null,
                 x.FundTypeID,
                 FundTypeName = x.FundType != null ? x.FundType.FundTypeName : null,
@@ -124,6 +125,7 @@ public class FeeReportService : IFeeReportService
             })
             .Select(g => new FeeDefaulterItemDto
             {
+                FeeTime = g.Key.FeeTime,
                 StudentId = g.Key.StudentId,
                 StudentName = g.Key.StudentName ?? "N/A",
                 ClassName = g.Key.ClassName,
@@ -203,7 +205,8 @@ public class FeeReportService : IFeeReportService
                 x.Reg_Id,
                 x.FullName,
                 ClassName = x.Section != null ? x.Section.ClassName : null,
-                ActualFee = x.TutionFee ?? 0m
+                ActualFee = x.TutionFee ?? 0m,
+                x.FeeTime
             })
             .ToListAsync();
 
@@ -270,6 +273,7 @@ public class FeeReportService : IFeeReportService
 
             rows.Add(new ReceivableItemDto
             {
+                FeeTime = student.FeeTime,
                 StudentId = student.Reg_Id,
                 StudentName = student.FullName ?? "N/A",
                 ClassName = student.ClassName,

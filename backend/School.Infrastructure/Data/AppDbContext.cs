@@ -252,6 +252,8 @@ public class AppDbContext : DbContext
             entity.Property(e => e.ClassCompositeID).HasColumnName("ClassCompositeID");
             entity.Property(e => e.FeeConcession).HasColumnType("decimal(18,2)");
             entity.Property(e => e.TutionFee).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.FeeTime).HasMaxLength(500);
+            entity.Property(e => e.FeeTimeUpdatedAtPkt).HasColumnType("datetime2(3)");
 
             entity.HasOne(e => e.Family)
                 .WithMany(f => f.Students)

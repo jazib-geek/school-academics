@@ -28,6 +28,8 @@ public class Student
     public int? Fee { get; set; }
     public decimal? FeeConcession { get; set; }
     public decimal? TutionFee { get; set; }
+    public string? FeeTime { get; set; }
+    public DateTime? FeeTimeUpdatedAtPkt { get; set; }
 
     public string? PrevSchoolName { get; set; }
     public string? PrevSchoolClass { get; set; }

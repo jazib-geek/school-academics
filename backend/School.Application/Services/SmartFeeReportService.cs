@@ -380,6 +380,7 @@ public class SmartFeeReportService : ISmartFeeReportService
             .Select(x => Row(
                 ("studentId", x.StudentId),
                 ("studentName", x.StudentName),
+                ("feeTime", x.FeeTime),
                 ("className", x.ClassName),
                 ("month", x.Month),
                 ("year", x.Year),
@@ -391,7 +392,8 @@ public class SmartFeeReportService : ISmartFeeReportService
             ("className", "Class", "text"),
             ("month", "Month", "number"),
             ("year", "Year", "number"),
-            ("outstandingAmount", "Outstanding", "money")), "className", rows.Sum(r => Dec(r, "outstandingAmount")));
+            ("outstandingAmount", "Outstanding", "money"),
+            ("feeTime", "Fee time", "text")), "className", rows.Sum(r => Dec(r, "outstandingAmount")));
     }
 
     private async Task<SmartFeeReportResultDto> FundDefaultersAsync(SmartFeeReportCatalogItemDto cat, Dictionary<string, object?> p)
@@ -610,6 +612,7 @@ public class SmartFeeReportService : ISmartFeeReportService
             .Select(x => Row(
                 ("studentId", x.StudentId),
                 ("studentName", x.StudentName),
+                ("feeTime", x.FeeTime),
                 ("className", x.ClassName),
                 ("totalGenerated", x.TotalGenerated),
                 ("totalReceived", x.TotalReceived),
@@ -626,6 +629,7 @@ public class SmartFeeReportService : ISmartFeeReportService
             ("studentId", "Reg #", "number"),
             ("studentName", "Student", "text"),
             ("className", "Class", "text"),
+            ("feeTime", "Fee time", "text"),
             ("totalGenerated", "Generated", "money"),
             ("totalReceived", "Received", "money"),
             ("outstandingAmount", "Outstanding", "money")), "className", data.TotalAmount);
@@ -639,6 +643,7 @@ public class SmartFeeReportService : ISmartFeeReportService
             .Select(x => Row(
                 ("studentId", x.StudentId),
                 ("studentName", x.StudentName),
+                ("feeTime", x.FeeTime),
                 ("className", x.ClassName),
                 ("actualFee", x.ActualFee),
                 ("prevBalance", x.PrevBalance),
@@ -656,6 +661,7 @@ public class SmartFeeReportService : ISmartFeeReportService
             ("studentId", "Reg. No.", "number"),
             ("studentName", "Student Name", "text"),
             ("className", "Class", "text"),
+            ("feeTime", "Fee time", "text"),
             ("actualFee", "Actual Fee", "money"),
             ("prevBalance", "Prev Balance", "money"),
             ("admissionFee", "Admission Fee", "money"),
