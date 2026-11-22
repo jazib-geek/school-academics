@@ -15,4 +15,7 @@ public class StudentListItemDto
     public DateTime? RegDate { get; set; }
     public bool IsCreditStudent { get; set; }
     public decimal TuitionFee { get; set; }
+
+    /// <summary>Public photo URL when a profile image is stored. Null when the student has no photo.</summary>
+    public string? ProfileImageUrl { get; set; }
 }

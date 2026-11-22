@@ -29,6 +29,21 @@ public interface IStudentService
         int studentId,
         CancellationToken cancellationToken = default);
 
+    Task<StudentProfileImageResultDto> UploadProfileImageAsync(
+        int studentId,
+        Stream content,
+        string? contentType,
+        long length,
+        CancellationToken cancellationToken = default);
+
+    Task<StudentProfileImageResultDto> DeleteProfileImageAsync(
+        int studentId,
+        CancellationToken cancellationToken = default);
+
+    Task<StudentProfileImageImportPreviewDto> PreviewProfileImageImportAsync(
+        Stream zipStream,
+        CancellationToken cancellationToken = default);
+
     Task<StudentUpdateResultDto> UpdateStudentAsync(
         int studentId,
         StudentUpdateRequestDto request,

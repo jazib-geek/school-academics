@@ -97,6 +97,7 @@ export const CAMPUS_ROUTE_PERMISSIONS = [
   { prefix: '/campus/students/admit', permission: 'add_std', exact: true },
   { prefix: '/campus/students/admit/', permission: 'edit_std' },
   { prefix: '/campus/students/bulk-edit', permission: 'edit_std' },
+  { prefix: '/campus/students/profile-photos', permission: 'edit_std' },
   { prefix: '/campus/students/transfer', permission: 'trasnfer_std' },
   { prefix: '/campus/students/update-fee', permission: 'update_fee' },
   { prefix: '/campus/students/increment-fee', permission: 'update_fee' },

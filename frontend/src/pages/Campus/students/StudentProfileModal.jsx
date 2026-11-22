@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import {
   BadgeCheck,
   BookOpen,
@@ -57,11 +58,24 @@ const formatDateTime = (value = new Date()) => {
   return `${date} • ${time}`
 }
 
-function ProfileAvatar({ gender, size = 'lg' }) {
+function ProfileAvatar({ gender, profileImageUrl, size = 'lg' }) {
   const normalized = String(gender || '').toLowerCase()
   const isFemale = normalized === 'female'
   const sizeClass = size === 'lg' ? 'h-20 w-20 sm:h-24 sm:w-24' : 'h-12 w-12'
   const svgClass = size === 'lg' ? 'h-14 w-14 sm:h-16 sm:w-16' : 'h-8 w-8'
+  const [photoFailed, setPhotoFailed] = useState(false)
+  const photoUrl = typeof profileImageUrl === 'string' ? profileImageUrl.trim() : ''
+
+  if (photoUrl && !photoFailed) {
+    return (
+      <img
+        src={photoUrl}
+        alt=""
+        className={`rounded-full object-cover ring-4 ring-white shadow-md ${sizeClass}`}
+        onError={() => setPhotoFailed(true)}
+      />
+    )
+  }
 
   return (
     <span
@@ -345,7 +359,7 @@ export default function StudentProfileModal({
               <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch lg:justify-between">
                 <div className="flex min-w-0 flex-1 flex-col gap-4 sm:flex-row sm:items-start">
                   <div className="flex flex-col items-center gap-2 sm:items-start">
-                    <ProfileAvatar gender={detail.gender} />
+                    <ProfileAvatar gender={detail.gender} profileImageUrl={detail.profileImageUrl} />
                     <span
                       className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
                         isActive

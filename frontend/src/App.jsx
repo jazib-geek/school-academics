@@ -4,6 +4,7 @@ import DashboardPage from './pages/Campus/dashboard/DashboardPage.jsx'
 import StudentsPage from './pages/Campus/students/StudentsPage.jsx'
 import CampusStudentAdmitPage from './pages/Campus/students/CampusStudentAdmitPage.jsx'
 import CampusStudentBulkEditPage from './pages/Campus/students/CampusStudentBulkEditPage.jsx'
+import CampusStudentProfilePhotoImportPage from './pages/Campus/students/CampusStudentProfilePhotoImportPage.jsx'
 import CampusStudentTransferPage from './pages/Campus/students/CampusStudentTransferPage.jsx'
 import CampusStudentUpdateFeePage from './pages/Campus/students/CampusStudentUpdateFeePage.jsx'
 import CampusStudentIncrementFeePage from './pages/Campus/students/CampusStudentIncrementFeePage.jsx'
@@ -410,6 +411,14 @@ function App() {
         element={
           <ProtectedRoute>
             <CampusStudentAdmitPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/campus/students/profile-photos"
+        element={
+          <ProtectedRoute>
+            <CampusStudentProfilePhotoImportPage />
           </ProtectedRoute>
         }
       />

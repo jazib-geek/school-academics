@@ -1192,6 +1192,81 @@ const printStudentProfile = ({
   printWindow.document.close()
 }
 
+function GenderAvatar({ gender, profileImageUrl }) {
+  const normalized = (gender || '').toLowerCase()
+  const isFemale = normalized === 'female'
+  const [photoFailed, setPhotoFailed] = useState(false)
+  const photoUrl = typeof profileImageUrl === 'string' ? profileImageUrl.trim() : ''
+
+  if (photoUrl && !photoFailed) {
+    return (
+      <img
+        src={photoUrl}
+        alt=""
+        width={20}
+        height={20}
+        loading="lazy"
+        decoding="async"
+        className="inline-block h-5 w-5 shrink-0 rounded-full object-cover"
+        onError={() => setPhotoFailed(true)}
+      />
+    )
+  }
+
+  return (
+    <span
+      className={`inline-flex h-5 w-5 items-center justify-center rounded-full ${
+        isFemale ? 'bg-pink-100 text-pink-600' : 'bg-blue-100 text-blue-600'
+      }`}
+      title={gender || 'Male'}
+    >
+      {isFemale ? (
+        <svg viewBox="0 0 100 100" className="h-3.5 w-3.5" aria-hidden="true">
+          <path
+            style={{ fill: '#5F3E20', stroke: '#311710' }}
+            d="M 24,57 C 31,49 25,27 28,19 32,8 36,1 47,1 c 13,0 20,10 24,20 1,2 0,8 2,14 2,5 -1,10 -1,12 0,5 -1,3 3,10 -7,17 -40,13 -51,0 z"
+          />
+          <path
+            style={{ fill: '#E78FB3', stroke: '#B85D87' }}
+            d="m 40,51 c -5,6 -22,4 -25,17 -2,7 -1,30 14,28 -1,-18 -3,-27 -3,-27 0,0 2,17 3,25 11,6 28,6 42,-1 0,-8 -1,-15 0,-22 1,-6 0,24 0,24 0,0 9,2 12,-7 C 85,77 88,61 74,57 63,54 62,51 60,51 58,51 40,51 40,51 z"
+          />
+          <path
+            style={{ fill: '#DEB89F', stroke: '#693311' }}
+            d="m 40,45 c 0,0 1,4 -1,7 4,4 13,10 21,0 -1,-3 -1,-3 -1,-7 0,0 -19,0 -19,0 z"
+          />
+          <path
+            style={{ fill: '#DBBFA8', stroke: '#693311' }}
+            d="M 50,50 C 33,50 22,4 49,3.4 73,5 66,50 50,50 z"
+          />
+          <path
+            style={{ fill: '#5F3E20' }}
+            d="M 46,12 C 42,17 37,21 32,22 27,23 34,2 47,2 54,2 64,6 66,20 58,21 48,15 46,12"
+          />
+        </svg>
+      ) : (
+        <svg viewBox="0 0 100 100" className="h-3.5 w-3.5" aria-hidden="true">
+          <path
+            style={{ fill: '#427794', stroke: '#2A424F' }}
+            d="m 39,52 c -5,6 -20,3 -23,16 -2,7 -2,30 13,28 -1,-18 -3,-27 -3,-27 0,0 2,17 3,25 11,6 28,6 42,-1 0,-8 -1,-15 0,-22 1,-6 0,24 0,24 0,0 9,2 12,-7 C 85,77 88,59 70,55 59,53 62,52 60,52 58,52 39,52 39,52 z"
+          />
+          <path
+            style={{ fill: '#C29B82', stroke: '#693311' }}
+            d="m 40,45 c 0,0 1,4 -1,7 4,4 13,10 21,0 -1,-3 -1,-3 -1,-7 0,0 -19,0 -19,0 z"
+          />
+          <path
+            style={{ fill: '#CDA68E', stroke: '#693311' }}
+            d="M 50,50 C 33,50 21,4.1 49,3.4 79,3.3 66,50 50,50 z"
+          />
+          <path
+            style={{ fill: '#553932', stroke: '#311710' }}
+            d="M 33,30 C 29,19 29,2.2 49,1.2 66,2.1 72,18 66,30 66,25 67,23 64,19 59,18 52,19 46,12 44,18 30,15 33,30 z"
+          />
+        </svg>
+      )}
+    </span>
+  )
+}
+
 function StudentsPage() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -1872,64 +1947,6 @@ function StudentsPage() {
   )
   const hasReceiveAmount = receiveTotal > 0
 
-  const GenderAvatar = ({ gender }) => {
-    const normalized = (gender || '').toLowerCase()
-    const isFemale = normalized === 'female'
-
-    return (
-      <span
-        className={`inline-flex h-5 w-5 items-center justify-center rounded-full ${
-          isFemale ? 'bg-pink-100 text-pink-600' : 'bg-blue-100 text-blue-600'
-        }`}
-        title={gender || 'Male'}
-      >
-        {isFemale ? (
-          <svg viewBox="0 0 100 100" className="h-3.5 w-3.5" aria-hidden="true">
-            <path
-              style={{ fill: '#5F3E20', stroke: '#311710' }}
-              d="M 24,57 C 31,49 25,27 28,19 32,8 36,1 47,1 c 13,0 20,10 24,20 1,2 0,8 2,14 2,5 -1,10 -1,12 0,5 -1,3 3,10 -7,17 -40,13 -51,0 z"
-            />
-            <path
-              style={{ fill: '#E78FB3', stroke: '#B85D87' }}
-              d="m 40,51 c -5,6 -22,4 -25,17 -2,7 -1,30 14,28 -1,-18 -3,-27 -3,-27 0,0 2,17 3,25 11,6 28,6 42,-1 0,-8 -1,-15 0,-22 1,-6 0,24 0,24 0,0 9,2 12,-7 C 85,77 88,61 74,57 63,54 62,51 60,51 58,51 40,51 40,51 z"
-            />
-            <path
-              style={{ fill: '#DEB89F', stroke: '#693311' }}
-              d="m 40,45 c 0,0 1,4 -1,7 4,4 13,10 21,0 -1,-3 -1,-3 -1,-7 0,0 -19,0 -19,0 z"
-            />
-            <path
-              style={{ fill: '#DBBFA8', stroke: '#693311' }}
-              d="M 50,50 C 33,50 22,4 49,3.4 73,5 66,50 50,50 z"
-            />
-            <path
-              style={{ fill: '#5F3E20' }}
-              d="M 46,12 C 42,17 37,21 32,22 27,23 34,2 47,2 54,2 64,6 66,20 58,21 48,15 46,12"
-            />
-          </svg>
-        ) : (
-          <svg viewBox="0 0 100 100" className="h-3.5 w-3.5" aria-hidden="true">
-            <path
-              style={{ fill: '#427794', stroke: '#2A424F' }}
-              d="m 39,52 c -5,6 -20,3 -23,16 -2,7 -2,30 13,28 -1,-18 -3,-27 -3,-27 0,0 2,17 3,25 11,6 28,6 42,-1 0,-8 -1,-15 0,-22 1,-6 0,24 0,24 0,0 9,2 12,-7 C 85,77 88,59 70,55 59,53 62,52 60,52 58,52 39,52 39,52 z"
-            />
-            <path
-              style={{ fill: '#C29B82', stroke: '#693311' }}
-              d="m 40,45 c 0,0 1,4 -1,7 4,4 13,10 21,0 -1,-3 -1,-3 -1,-7 0,0 -19,0 -19,0 z"
-            />
-            <path
-              style={{ fill: '#CDA68E', stroke: '#693311' }}
-              d="M 50,50 C 33,50 21,4.1 49,3.4 79,3.3 66,50 50,50 z"
-            />
-            <path
-              style={{ fill: '#553932', stroke: '#311710' }}
-              d="M 33,30 C 29,19 29,2.2 49,1.2 66,2.1 72,18 66,30 66,25 67,23 64,19 59,18 52,19 46,12 44,18 30,15 33,30 z"
-            />
-          </svg>
-        )}
-      </span>
-    )
-  }
-
   return (
     <>
       <CampusShell>
@@ -2175,7 +2192,7 @@ function StudentsPage() {
                             <td className="px-3 py-1.5">{student.reg_Id}</td>
                             <td className="px-3 py-1.5">
                               <div className="flex items-center gap-1.5">
-                                <GenderAvatar gender={student.gender} />
+                                <GenderAvatar gender={student.gender} profileImageUrl={student.profileImageUrl} />
                                 <span>{student.fullName || '-'}</span>
                               </div>
                             </td>
@@ -2272,7 +2289,7 @@ function StudentsPage() {
                                 )}
                               </div>
                               <p className="flex items-center gap-2 font-medium text-slate-700">
-                                <GenderAvatar gender={student.gender} />
+                                <GenderAvatar gender={student.gender} profileImageUrl={student.profileImageUrl} />
                                 <span className="truncate">{student.fullName || '-'}</span>
                               </p>
                             </div>

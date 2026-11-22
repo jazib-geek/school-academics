@@ -20,10 +20,13 @@ import {
   getAdmissionLookups,
   getNextFamilyCode,
   getStudentAdmissionDetail,
+  deleteStudentProfileImage,
   registerStudent,
   searchFamilies,
   updateStudent,
+  uploadStudentProfileImage,
 } from '../../../services/studentService'
+import { compressProfileImage } from '../../../utils/imageCompress.js'
 import {
   CAMPUS_PROFILE_CHANGED_EVENT,
   getStoredCampusProfile,
@@ -235,6 +238,23 @@ function CampusStudentAdmitPage() {
   const [tfAmount, setTfAmount] = useState('')
   const [errors, setErrors] = useState({})
   const [showErrors, setShowErrors] = useState(false)
+  const [photoFile, setPhotoFile] = useState(null)
+  const [photoPreview, setPhotoPreview] = useState('')
+  const [removePhoto, setRemovePhoto] = useState(false)
+  const photoInputRef = useRef(null)
+
+  const replacePhotoPreview = (next) => {
+    setPhotoPreview((current) => {
+      if (current.startsWith('blob:')) URL.revokeObjectURL(current)
+      return next || ''
+    })
+  }
+
+  const resetPhoto = (existingUrl = '') => {
+    setPhotoFile(null)
+    setRemovePhoto(false)
+    replacePhotoPreview(existingUrl)
+  }
 
   const yearOptions = useMemo(() => {
     const current = getPakistanDateParts().year
@@ -326,8 +346,10 @@ function CampusStudentAdmitPage() {
       if (isEdit) {
         const detail = await getStudentAdmissionDetail(editRegId)
         setForm(mapDetailToForm(detail))
+        resetPhoto(detail.profileImageUrl || detail.ProfileImageUrl || '')
       } else {
         setForm(emptyForm())
+        resetPhoto('')
       }
     } catch (error) {
       toast.error(error?.response?.data?.message || (isEdit ? 'Could not load student.' : 'Could not load admission form data.'))
@@ -462,12 +484,51 @@ function CampusStudentAdmitPage() {
     regDate: form.regDate || null,
   })
 
+  const onPhotoPick = async (event) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+    try {
+      const compressed = await compressProfileImage(file)
+      setPhotoFile(compressed)
+      setRemovePhoto(false)
+      replacePhotoPreview(URL.createObjectURL(compressed))
+    } catch (error) {
+      toast.error(error?.message || 'Could not use that photo.')
+    }
+  }
+
+  const clearPhoto = () => {
+    setPhotoFile(null)
+    setRemovePhoto(true)
+    replacePhotoPreview('')
+  }
+
+  const applyPhotoChange = async (regId) => {
+    if (photoFile) {
+      await uploadStudentProfileImage(regId, photoFile)
+      return
+    }
+    if (removePhoto && isEdit) {
+      await deleteStudentProfileImage(regId)
+    }
+  }
+
   const submitUpdate = async () => {
     setIsSaving(true)
     const toastId = 'student-update'
     toast.loading('Saving student...', { id: toastId })
     try {
       const result = await updateStudent(editRegId, buildProfilePayload())
+      try {
+        await applyPhotoChange(editRegId)
+      } catch (error) {
+        toast.error(
+          error?.response?.data?.message || 'Student was saved, but the photo was not. Try the photo again.',
+          { id: toastId },
+        )
+        return
+      }
       toast.success(`Updated #${result.regId} — ${result.fullName}`, { id: toastId })
       navigate('/campus/students')
     } catch (error) {
@@ -544,6 +605,20 @@ function CampusStudentAdmitPage() {
       }
 
       const result = await registerStudent(payload)
+      if (photoFile) {
+        try {
+          await uploadStudentProfileImage(result.regId, photoFile)
+        } catch (error) {
+          toast.error(
+            error?.response?.data?.message
+              || 'Student was registered, but the photo was not saved. Open the student and try the photo again.',
+            { id: toastId },
+          )
+          setGenerateOpen(false)
+          navigate(`/campus/students/admit/${result.regId}`)
+          return
+        }
+      }
       toast.success(`Registered #${result.regId} — ${result.fullName}`, { id: toastId })
       setGenerateOpen(false)
       navigate('/campus/students')
@@ -608,6 +683,43 @@ function CampusStudentAdmitPage() {
                     <User size={16} />
                   </div>
                   <h2 className="text-sm font-bold uppercase tracking-wide text-sky-700">Student info</h2>
+                </div>
+                <div className="flex items-center gap-3 rounded-lg border border-sky-100 bg-white px-3 py-2">
+                  <div className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-full border border-sky-200 bg-sky-50 text-sky-600">
+                    {photoPreview ? (
+                      <img src={photoPreview} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <User size={22} />
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <input
+                      ref={photoInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={onPhotoPick}
+                    />
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => photoInputRef.current?.click()}
+                        className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                      >
+                        {photoPreview ? 'Change photo' : 'Add photo'}
+                      </button>
+                      {photoPreview ? (
+                        <button
+                          type="button"
+                          onClick={clearPhoto}
+                          className="rounded-lg px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50"
+                        >
+                          Remove
+                        </button>
+                      ) : null}
+                    </div>
+                    <p className="mt-1 text-xs text-slate-500">Optional. Resized to a small JPEG before upload.</p>
+                  </div>
                 </div>
                 <div className={grid2}>
                   <label className={labelClass}>Full name

@@ -31,6 +31,10 @@ public class Student
     public string? FeeTime { get; set; }
     public DateTime? FeeTimeUpdatedAtPkt { get; set; }
 
+    /// <summary>Backblaze object key, e.g. dc/students/profile/1204/image.jpg.</summary>
+    public string? ProfileImageKey { get; set; }
+    public DateTime? ProfileImageUpdatedAt { get; set; }
+
     public string? PrevSchoolName { get; set; }
     public string? PrevSchoolClass { get; set; }
     public string? SMS_Contact { get; set; }

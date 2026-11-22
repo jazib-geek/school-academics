@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Amazon.Runtime;
 using Amazon.S3;
 using Amazon.S3.Model;
@@ -11,6 +12,10 @@ namespace School.API.Services;
 
 public class B2ObjectStorageService : IObjectStorageService
 {
+    private static readonly Regex StudentProfileImageKeyPattern = new(
+        @"^[a-z0-9][a-z0-9_-]*/students/profile/[1-9][0-9]*/image\.jpg$",
+        RegexOptions.CultureInvariant | RegexOptions.Compiled);
+
     private readonly BackblazeStorageOptions _options;
     private readonly ILogger<B2ObjectStorageService> _logger;
     private readonly B2NativeClient _nativeClient;
@@ -72,6 +77,59 @@ public class B2ObjectStorageService : IObjectStorageService
             Bucket = _options.BucketName,
             Key = key,
             PublicUrl = publicUrl,
+        };
+    }
+
+    public string BuildStudentProfileObjectKey(string campusKey, int regId)
+    {
+        if (regId <= 0)
+        {
+            throw new ArgumentException("Student id is required for profile storage.");
+        }
+
+        var safeCampus = SanitizePathSegment(campusKey).ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(safeCampus))
+        {
+            throw new ArgumentException("Campus is required for profile storage.");
+        }
+
+        var key = $"{safeCampus}/students/profile/{regId}/image.jpg";
+        if (!IsStudentProfileImageKey(key))
+        {
+            throw new ArgumentException("Campus key cannot be used in a profile image path.");
+        }
+
+        return key;
+    }
+
+    public async Task<ObjectStorageUploadResultDto?> UploadStudentProfileImageAsync(
+        Stream content,
+        string campusKey,
+        int regId,
+        CancellationToken cancellationToken = default)
+    {
+        if (!IsStorageConfigured())
+        {
+            return null;
+        }
+
+        var key = BuildStudentProfileObjectKey(campusKey, regId);
+        using var client = CreateS3Client();
+        var request = new PutObjectRequest
+        {
+            BucketName = _options.BucketName,
+            Key = key,
+            InputStream = content,
+            ContentType = "image/jpeg",
+        };
+
+        await client.PutObjectAsync(request, cancellationToken).ConfigureAwait(false);
+
+        return new ObjectStorageUploadResultDto
+        {
+            Bucket = _options.BucketName,
+            Key = key,
+            PublicUrl = BuildPublicUrlFromKey(key),
         };
     }
 
@@ -258,8 +316,7 @@ public class B2ObjectStorageService : IObjectStorageService
 
         var value = storedUrlOrKey.Trim().Replace('\\', '/');
 
-        if (value.StartsWith("class-diary/", StringComparison.Ordinal) ||
-            value.StartsWith("test-uploads/", StringComparison.Ordinal))
+        if (IsAllowedManagedKey(value))
         {
             return value;
         }
@@ -402,8 +459,12 @@ public class B2ObjectStorageService : IObjectStorageService
         }
 
         return k.StartsWith("test-uploads/", StringComparison.Ordinal) ||
-               k.StartsWith("class-diary/", StringComparison.Ordinal);
+               k.StartsWith("class-diary/", StringComparison.Ordinal) ||
+               IsStudentProfileImageKey(k);
     }
+
+    private static bool IsStudentProfileImageKey(string key) =>
+        StudentProfileImageKeyPattern.IsMatch(key);
 
     private static string? TryExtractManagedKey(string value)
     {

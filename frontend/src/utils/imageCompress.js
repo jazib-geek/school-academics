@@ -106,6 +106,58 @@ export const compressDiaryImages = async (input) => {
   return compressed
 }
 
+const PROFILE_MAX_EDGE = 480
+const PROFILE_TARGET_BYTES = 120 * 1024
+
+/**
+ * Compress one portrait to a small JPEG. Longest edge is at most 480px.
+ * @param {File} file
+ * @returns {Promise<File>}
+ */
+export const compressProfileImage = async (file) => {
+  if (!file?.type?.startsWith('image/')) {
+    throw new Error('Only image files are allowed.')
+  }
+
+  const img = await loadImage(file)
+  let width = img.naturalWidth || 1
+  let height = img.naturalHeight || 1
+  const scale = Math.min(1, PROFILE_MAX_EDGE / Math.max(width, height))
+  width = Math.max(1, Math.round(width * scale))
+  height = Math.max(1, Math.round(height * scale))
+
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  const ctx = canvas.getContext('2d')
+  if (!ctx) {
+    throw new Error('Canvas is not available in this browser.')
+  }
+  ctx.drawImage(img, 0, 0, width, height)
+
+  let quality = 0.82
+  let blob = await canvasToBlob(canvas, 'image/jpeg', quality)
+  while (blob.size > PROFILE_TARGET_BYTES && quality > 0.5) {
+    quality -= 0.08
+    blob = await canvasToBlob(canvas, 'image/jpeg', quality)
+  }
+
+  while (blob.size > PROFILE_TARGET_BYTES && Math.max(width, height) > 160) {
+    width = Math.max(1, Math.round(width * 0.85))
+    height = Math.max(1, Math.round(height * 0.85))
+    canvas.width = width
+    canvas.height = height
+    ctx.drawImage(img, 0, 0, width, height)
+    blob = await canvasToBlob(canvas, 'image/jpeg', quality)
+  }
+
+  if (blob.size > 200 * 1024) {
+    throw new Error('Photo is still too large after optimization. Choose a simpler image.')
+  }
+
+  return new File([blob], 'image.jpg', { type: 'image/jpeg', lastModified: Date.now() })
+}
+
 export const formatFileSize = (bytes) => {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`

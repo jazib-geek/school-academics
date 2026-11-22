@@ -6565,6 +6565,13 @@ namespace School.Infrastructure.Data.Migrations
                         .IsUnicode(false)
                         .HasColumnType("varchar(150)");
 
+                    b.Property<string>("ProfileImageKey")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<DateTime?>("ProfileImageUpdatedAt")
+                        .HasColumnType("datetime2(3)");
+
                     b.Property<DateTime?>("RegDate")
                         .HasColumnType("datetime2");
 

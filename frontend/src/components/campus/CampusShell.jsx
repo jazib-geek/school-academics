@@ -140,6 +140,7 @@ export const CAMPUS_SHELL_NAV = [
       { label: 'All Students', to: '/campus/students', permission: 'list_std' },
       { label: 'Add Student', to: '/campus/students/admit', permission: 'add_std' },
       { label: 'Bulk Edit', to: '/campus/students/bulk-edit', permission: 'edit_std' },
+      { label: 'Import Photos', to: '/campus/students/profile-photos', permission: 'edit_std' },
       { label: 'Transfer Student', to: '/campus/students/transfer', permission: 'trasnfer_std' },
       { label: 'Student Reports', to: '/campus/reports/students', permission: 'rpt_std' },
     ],

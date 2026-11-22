@@ -113,6 +113,25 @@ export const updateStudent = async (studentId, payload) => {
   return response?.data?.data
 }
 
+export const uploadStudentProfileImage = async (studentId, file) => {
+  const formData = new FormData()
+  formData.append('file', file)
+  const response = await api.post(`/api/student/${studentId}/profile-image`, formData, { timeout: 60_000 })
+  return response?.data?.data
+}
+
+export const deleteStudentProfileImage = async (studentId) => {
+  const response = await api.post(`/api/student/${studentId}/profile-image/delete`)
+  return response?.data?.data
+}
+
+export const previewStudentProfileImages = async (file) => {
+  const formData = new FormData()
+  formData.append('file', file)
+  const response = await api.post('/api/student/profile-images/preview', formData, { timeout: 120_000 })
+  return response?.data?.data
+}
+
 export const getBulkEditStudents = async (classCompositeId) => {
   const response = await api.get('/api/student/bulk-edit', {
     params: { classCompositeId },

@@ -207,6 +207,33 @@ public class StudentAdmissionDetailDto
     public decimal MiscCharges { get; set; }
     public decimal PrevBalance { get; set; }
     public decimal SecurityDeposit { get; set; }
+
+    /// <summary>Public photo URL when a profile image is stored. Null when the student has no photo.</summary>
+    public string? ProfileImageUrl { get; set; }
+}
+
+public class StudentProfileImageResultDto
+{
+    public int RegId { get; set; }
+    public string? ProfileImageUrl { get; set; }
+}
+
+public class StudentProfileImageImportPreviewDto
+{
+    public bool IsValid { get; set; }
+    public int FileCount { get; set; }
+    public int OverwriteCount { get; set; }
+    public List<string> Errors { get; set; } = [];
+    public List<StudentProfileImageImportFileDto> Files { get; set; } = [];
+}
+
+public class StudentProfileImageImportFileDto
+{
+    public string FileName { get; set; } = string.Empty;
+    public int RegId { get; set; }
+    public string StudentName { get; set; } = string.Empty;
+    public string? ClassName { get; set; }
+    public bool WillOverwrite { get; set; }
 }
 
 /// <summary>

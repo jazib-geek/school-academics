@@ -156,6 +156,105 @@ public class StudentController : ControllerBase
         }
     }
 
+    [HttpPost("{studentId:int}/profile-image")]
+    [RequestSizeLimit(524_288)]
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> UploadProfileImage(
+        int studentId,
+        IFormFile? file,
+        CancellationToken cancellationToken)
+    {
+        if (file == null || file.Length == 0)
+        {
+            return BadRequest(ApiResponse<object>.FailureResponse("Choose a profile photo."));
+        }
+
+        try
+        {
+            await using var stream = file.OpenReadStream();
+            var result = await _studentService.UploadProfileImageAsync(
+                studentId,
+                stream,
+                file.ContentType,
+                file.Length,
+                cancellationToken);
+            return Ok(ApiResponse<StudentProfileImageResultDto>.SuccessResponse(result, "Profile photo saved."));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiResponse<object>.FailureResponse(ex.Message));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ApiResponse<object>.FailureResponse(ex.Message));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                ApiResponse<object>.FailureResponse(ex.Message));
+        }
+    }
+
+    [HttpPost("profile-images/preview")]
+    [RequestSizeLimit(83_886_080)]
+    [RequestFormLimits(MultipartBodyLengthLimit = 83_886_080)]
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> PreviewProfileImageImport(IFormFile? file, CancellationToken cancellationToken)
+    {
+        if (file == null || file.Length == 0)
+        {
+            return BadRequest(ApiResponse<object>.FailureResponse("Choose a zip file."));
+        }
+
+        if (file.Length > 83_886_080)
+        {
+            return BadRequest(ApiResponse<object>.FailureResponse("The zip file must be 80 MB or smaller."));
+        }
+
+        if (!string.Equals(Path.GetExtension(file.FileName), ".zip", StringComparison.OrdinalIgnoreCase))
+        {
+            return BadRequest(ApiResponse<object>.FailureResponse("Choose a .zip file of student photos."));
+        }
+
+        try
+        {
+            await using var buffer = new MemoryStream();
+            await file.CopyToAsync(buffer, cancellationToken);
+            buffer.Position = 0;
+            var preview = await _studentService.PreviewProfileImageImportAsync(buffer, cancellationToken);
+            return Ok(ApiResponse<StudentProfileImageImportPreviewDto>.SuccessResponse(preview));
+        }
+        catch (InvalidDataException)
+        {
+            return BadRequest(ApiResponse<object>.FailureResponse("The file is not a valid zip archive."));
+        }
+    }
+
+    [HttpPost("{studentId:int}/profile-image/delete")]
+    public async Task<IActionResult> DeleteProfileImage(int studentId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _studentService.DeleteProfileImageAsync(studentId, cancellationToken);
+            return Ok(ApiResponse<StudentProfileImageResultDto>.SuccessResponse(result, "Profile photo removed."));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiResponse<object>.FailureResponse(ex.Message));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ApiResponse<object>.FailureResponse(ex.Message));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                ApiResponse<object>.FailureResponse(ex.Message));
+        }
+    }
+
     [HttpPost("{studentId:int}/update")]
     public async Task<IActionResult> UpdateStudent(
         int studentId,

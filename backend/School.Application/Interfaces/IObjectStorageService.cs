@@ -10,6 +10,15 @@ public interface IObjectStorageService
         string? contentType,
         CancellationToken cancellationToken = default);
 
+    /// <summary>Canonical key: {campus}/students/profile/{regId}/image.jpg.</summary>
+    string BuildStudentProfileObjectKey(string campusKey, int regId);
+
+    Task<ObjectStorageUploadResultDto?> UploadStudentProfileImageAsync(
+        Stream content,
+        string campusKey,
+        int regId,
+        CancellationToken cancellationToken = default);
+
     Task<ObjectStorageUploadResultDto?> UploadClassDiaryFileAsync(
         Stream content,
         string fileName,

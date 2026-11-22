@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using Microsoft.EntityFrameworkCore;
 using School.Application.Common;
 using School.Application.DTOs;
@@ -16,19 +17,27 @@ public class StudentService : IStudentService
     private readonly IActivityLogService _activityLogService;
     private readonly ICampusNotificationService _notificationService;
     private readonly IStudentSecurityDepositService _securityDepositService;
+    private readonly IObjectStorageService _objectStorage;
+
+    private const long MaxProfileImageBytes = 200 * 1024;
+    private const int MaxProfileImportFiles = 50;
+    private const int MaxProfileImportErrors = 40;
+    private const long MaxProfileImportEntryBytes = 8 * 1024 * 1024;
 
     public StudentService(
         AppDbContext context,
         TenantContext tenantContext,
         IActivityLogService activityLogService,
         ICampusNotificationService notificationService,
-        IStudentSecurityDepositService securityDepositService)
+        IStudentSecurityDepositService securityDepositService,
+        IObjectStorageService objectStorage)
     {
         _context = context;
         _tenantContext = tenantContext;
         _activityLogService = activityLogService;
         _notificationService = notificationService;
         _securityDepositService = securityDepositService;
+        _objectStorage = objectStorage;
     }
 
     public async Task<PagedResultDto<StudentListItemDto>> GetStudentsAsync(StudentListFilterDto filter)
@@ -125,26 +134,46 @@ public class StudentService : IStudentService
             _ => query.OrderByDescending(x => x.Reg_Id)
         };
 
-        var items = await query
+        var rows = await query
             .Skip((pageNumber - 1) * pageSize)
             .Take(pageSize)
-            .Select(x => new StudentListItemDto
+            .Select(x => new
             {
-                Reg_Id = x.Reg_Id,
-                FullName = x.FullName,
+                x.Reg_Id,
+                x.FullName,
                 ClassName = x.Section != null ? x.Section.ClassName : null,
                 FamilyID = x.Family != null ? x.Family.FamilyID : null,
                 FatherName = x.Family != null ? x.Family.FatherName : null,
                 MotherName = x.Family != null ? x.Family.MotherName : null,
                 FatherContact = x.Family != null ? x.Family.FatherMobileNo : null,
                 MotherContact = x.Family != null ? x.Family.MotherPhoneNo : null,
-                Gender = x.Gender,
-                IsActive = x.IsActive,
-                RegDate = x.RegDate,
-                IsCreditStudent = x.IsCreditStudent,
-                TuitionFee = x.TutionFee ?? Math.Max(0m, (x.Fee ?? 0) - (x.FeeConcession ?? 0m))
+                x.Gender,
+                x.IsActive,
+                x.RegDate,
+                x.IsCreditStudent,
+                TuitionFee = x.TutionFee ?? Math.Max(0m, (x.Fee ?? 0) - (x.FeeConcession ?? 0m)),
+                x.ProfileImageKey,
+                x.ProfileImageUpdatedAt
             })
             .ToListAsync();
+
+        var items = rows.Select(x => new StudentListItemDto
+        {
+            Reg_Id = x.Reg_Id,
+            FullName = x.FullName,
+            ClassName = x.ClassName,
+            FamilyID = x.FamilyID,
+            FatherName = x.FatherName,
+            MotherName = x.MotherName,
+            FatherContact = x.FatherContact,
+            MotherContact = x.MotherContact,
+            Gender = x.Gender,
+            IsActive = x.IsActive,
+            RegDate = x.RegDate,
+            IsCreditStudent = x.IsCreditStudent,
+            TuitionFee = x.TuitionFee,
+            ProfileImageUrl = BuildProfileImageUrl(x.ProfileImageKey, x.ProfileImageUpdatedAt, x.Reg_Id)
+        }).ToList();
 
         var totalPages = totalCount == 0 ? 0 : (int)Math.Ceiling(totalCount / (double)pageSize);
 
@@ -1071,7 +1100,194 @@ public class StudentService : IStudentService
             AdmissionFee = FundAmount(2),
             MiscCharges = FundAmount(3),
             PrevBalance = FundAmount(4),
-            SecurityDeposit = FundAmount(CampusFundTypes.SecurityDeposit)
+            SecurityDeposit = FundAmount(CampusFundTypes.SecurityDeposit),
+            ProfileImageUrl = BuildProfileImageUrl(
+                student.ProfileImageKey,
+                student.ProfileImageUpdatedAt,
+                student.Reg_Id)
+        };
+    }
+
+    public async Task<StudentProfileImageResultDto> UploadProfileImageAsync(
+        int studentId,
+        Stream content,
+        string? contentType,
+        long length,
+        CancellationToken cancellationToken = default)
+    {
+        if (length <= 0 || length > MaxProfileImageBytes)
+        {
+            throw new ArgumentException("Profile photo must be a JPEG under 200 KB.");
+        }
+
+        if (!IsJpegContentType(contentType))
+        {
+            throw new ArgumentException("Only JPEG images are allowed.");
+        }
+
+        using var buffer = new MemoryStream();
+        await content.CopyToAsync(buffer, cancellationToken);
+        if (buffer.Length <= 0 || buffer.Length > MaxProfileImageBytes || !StartsWithJpeg(buffer))
+        {
+            throw new ArgumentException("Only JPEG images under 200 KB are allowed.");
+        }
+
+        var student = await _context.Students
+            .FirstOrDefaultAsync(x => x.Reg_Id == studentId, cancellationToken)
+            ?? throw new KeyNotFoundException("Student not found.");
+
+        var key = _objectStorage.BuildStudentProfileObjectKey(_tenantContext.Campus, student.Reg_Id);
+        var removed = await _objectStorage.DeleteObjectAsync(key, cancellationToken);
+        buffer.Position = 0;
+        var upload = await _objectStorage.UploadStudentProfileImageAsync(
+            buffer,
+            _tenantContext.Campus,
+            student.Reg_Id,
+            cancellationToken);
+
+        if (upload == null)
+        {
+            throw new InvalidOperationException(
+                "Object storage is not configured. Set Backblaze credentials in appsettings.");
+        }
+
+        if (!removed)
+        {
+            throw new InvalidOperationException("Could not remove the previous profile photo from storage.");
+        }
+
+        var updatedAt = PakistanTime.Now;
+        student.ProfileImageKey = upload.Key;
+        student.ProfileImageUpdatedAt = updatedAt;
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return new StudentProfileImageResultDto
+        {
+            RegId = student.Reg_Id,
+            ProfileImageUrl = BuildProfileImageUrl(upload.Key, updatedAt, student.Reg_Id)
+        };
+    }
+
+    public async Task<StudentProfileImageResultDto> DeleteProfileImageAsync(
+        int studentId,
+        CancellationToken cancellationToken = default)
+    {
+        var student = await _context.Students
+            .FirstOrDefaultAsync(x => x.Reg_Id == studentId, cancellationToken)
+            ?? throw new KeyNotFoundException("Student not found.");
+
+        var key = _objectStorage.BuildStudentProfileObjectKey(_tenantContext.Campus, student.Reg_Id);
+        if (string.Equals(student.ProfileImageKey, key, StringComparison.Ordinal))
+        {
+            var removed = await _objectStorage.DeleteObjectAsync(key, cancellationToken);
+            if (!removed)
+            {
+                throw new InvalidOperationException("Could not delete the profile photo from storage.");
+            }
+        }
+
+        student.ProfileImageKey = null;
+        student.ProfileImageUpdatedAt = null;
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return new StudentProfileImageResultDto
+        {
+            RegId = student.Reg_Id,
+            ProfileImageUrl = null
+        };
+    }
+
+    public async Task<StudentProfileImageImportPreviewDto> PreviewProfileImageImportAsync(
+        Stream zipStream,
+        CancellationToken cancellationToken = default)
+    {
+        List<ProfileImportCandidate> candidates;
+        try
+        {
+            candidates = await ReadProfileImportZipAsync(zipStream, cancellationToken);
+        }
+        catch (InvalidDataException)
+        {
+            return InvalidProfileImport("The file is not a valid zip archive.");
+        }
+        catch (NotSupportedException)
+        {
+            return InvalidProfileImport("The zip uses a compression method this importer cannot read. Zip the images again with standard compression.");
+        }
+
+        var errors = candidates
+            .SelectMany(candidate => candidate.Errors)
+            .Take(MaxProfileImportErrors)
+            .ToList();
+        if (candidates.Count == 0 && errors.Count == 0)
+        {
+            errors.Add("The zip does not contain any files.");
+        }
+
+        if (errors.Count > 0 || candidates.Any(candidate => candidate.Errors.Count > 0))
+        {
+            return new StudentProfileImageImportPreviewDto
+            {
+                IsValid = false,
+                FileCount = candidates.Count,
+                Errors = errors
+            };
+        }
+
+        var regIds = candidates.Select(candidate => candidate.RegId).ToArray();
+        var students = await _context.Students
+            .AsNoTracking()
+            .Where(student => regIds.Contains(student.Reg_Id))
+            .Select(student => new
+            {
+                student.Reg_Id,
+                student.FullName,
+                ClassName = student.Section != null ? student.Section.ClassName : null,
+                student.ProfileImageKey
+            })
+            .ToListAsync(cancellationToken);
+        var byId = students.ToDictionary(student => student.Reg_Id);
+
+        foreach (var candidate in candidates)
+        {
+            if (!byId.ContainsKey(candidate.RegId))
+            {
+                errors.Add($"{candidate.FileName}: no student with registration number {candidate.RegId}.");
+            }
+        }
+
+        if (errors.Count > 0)
+        {
+            return new StudentProfileImageImportPreviewDto
+            {
+                IsValid = false,
+                FileCount = candidates.Count,
+                Errors = errors.Take(MaxProfileImportErrors).ToList()
+            };
+        }
+
+        var files = candidates
+            .OrderBy(candidate => candidate.RegId)
+            .Select(candidate =>
+            {
+                var student = byId[candidate.RegId];
+                return new StudentProfileImageImportFileDto
+                {
+                    FileName = candidate.FileName,
+                    RegId = candidate.RegId,
+                    StudentName = string.IsNullOrWhiteSpace(student.FullName) ? "Unnamed student" : student.FullName.Trim(),
+                    ClassName = student.ClassName,
+                    WillOverwrite = !string.IsNullOrWhiteSpace(student.ProfileImageKey)
+                };
+            })
+            .ToList();
+
+        return new StudentProfileImageImportPreviewDto
+        {
+            IsValid = true,
+            FileCount = files.Count,
+            OverwriteCount = files.Count(file => file.WillOverwrite),
+            Files = files
         };
     }
 
@@ -1859,6 +2075,281 @@ public class StudentService : IStudentService
             HomeAddress = !string.IsNullOrWhiteSpace(f.HomeAddress) ? f.HomeAddress : address,
             SiblingCount = siblings
         };
+    }
+
+    private static StudentProfileImageImportPreviewDto InvalidProfileImport(string error) =>
+        new()
+        {
+            IsValid = false,
+            Errors = [error]
+        };
+
+    private static async Task<List<ProfileImportCandidate>> ReadProfileImportZipAsync(
+        Stream zipStream,
+        CancellationToken cancellationToken)
+    {
+        if (zipStream.CanSeek)
+        {
+            zipStream.Position = 0;
+        }
+
+        using var archive = new ZipArchive(zipStream, ZipArchiveMode.Read, leaveOpen: true);
+        var fileEntries = archive.Entries
+            .Where(entry => !string.IsNullOrEmpty(entry.Name) &&
+                            !entry.FullName.Replace('\\', '/').EndsWith('/'))
+            .ToList();
+
+        if (fileEntries.Count > MaxProfileImportFiles)
+        {
+            return
+            [
+                ProfileImportCandidate.Failed(
+                    $"The zip contains {fileEntries.Count} files. Upload at most {MaxProfileImportFiles} images at a time.")
+            ];
+        }
+
+        var candidates = new List<ProfileImportCandidate>(fileEntries.Count);
+        var seenRegIds = new Dictionary<int, string>();
+        foreach (var entry in fileEntries)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            candidates.Add(await ReadProfileImportEntryAsync(entry, seenRegIds, cancellationToken));
+        }
+
+        return candidates;
+    }
+
+    private static async Task<ProfileImportCandidate> ReadProfileImportEntryAsync(
+        ZipArchiveEntry entry,
+        Dictionary<int, string> seenRegIds,
+        CancellationToken cancellationToken)
+    {
+        var fullName = entry.FullName.Replace('\\', '/');
+        var fileName = entry.Name;
+        var errors = new List<string>();
+
+        if (fullName.Contains("..", StringComparison.Ordinal) ||
+            fullName.StartsWith('/') ||
+            !string.Equals(fullName, fileName, StringComparison.Ordinal))
+        {
+            errors.Add($"{fullName}: put each image at the root of the zip, named with the registration number.");
+            return ProfileImportCandidate.Invalid(fileName, errors);
+        }
+
+        var extension = Path.GetExtension(fileName);
+        if (!IsAllowedProfileImportExtension(extension))
+        {
+            errors.Add($"{fileName}: only JPG, PNG, WEBP, GIF, and BMP images are allowed.");
+            return ProfileImportCandidate.Invalid(fileName, errors);
+        }
+
+        var stem = Path.GetFileNameWithoutExtension(fileName);
+        if (!int.TryParse(stem, out var regId) || regId <= 0 || !string.Equals(stem, regId.ToString(), StringComparison.Ordinal))
+        {
+            errors.Add($"{fileName}: the file name must be the registration number, for example 1204{extension.ToLowerInvariant()}.");
+            return ProfileImportCandidate.Invalid(fileName, errors);
+        }
+
+        if (seenRegIds.TryGetValue(regId, out var firstFile))
+        {
+            errors.Add($"{fileName}: registration number {regId} is already used by {firstFile}.");
+        }
+        else
+        {
+            seenRegIds[regId] = fileName;
+        }
+
+        if (entry.Length > MaxProfileImportEntryBytes)
+        {
+            errors.Add($"{fileName} is larger than 8 MB.");
+            return ProfileImportCandidate.Invalid(fileName, errors, regId);
+        }
+
+        byte[] header;
+        long total;
+        try
+        {
+            (header, total) = await ReadEntryPrefixAsync(entry, cancellationToken);
+        }
+        catch (InvalidDataException)
+        {
+            errors.Add($"{fileName} could not be read from the zip.");
+            return ProfileImportCandidate.Invalid(fileName, errors, regId);
+        }
+
+        if (total <= 0)
+        {
+            errors.Add($"{fileName} is empty.");
+        }
+        else if (total > MaxProfileImportEntryBytes)
+        {
+            errors.Add($"{fileName} is larger than 8 MB.");
+        }
+        else if (!HasMatchingImageSignature(header, extension))
+        {
+            errors.Add($"{fileName} is not a valid {extension.TrimStart('.').ToUpperInvariant()} image.");
+        }
+
+        return errors.Count > 0
+            ? ProfileImportCandidate.Invalid(fileName, errors, regId)
+            : new ProfileImportCandidate(fileName, regId, errors);
+    }
+
+    private static async Task<(byte[] Header, long Total)> ReadEntryPrefixAsync(
+        ZipArchiveEntry entry,
+        CancellationToken cancellationToken)
+    {
+        await using var stream = entry.Open();
+        var header = new byte[16];
+        var headerRead = 0;
+        long total = 0;
+        var buffer = new byte[81920];
+        while (true)
+        {
+            var read = await stream.ReadAsync(buffer.AsMemory(0, buffer.Length), cancellationToken);
+            if (read == 0)
+            {
+                break;
+            }
+
+            total += read;
+            if (total > MaxProfileImportEntryBytes)
+            {
+                break;
+            }
+
+            if (headerRead < header.Length)
+            {
+                var copy = Math.Min(header.Length - headerRead, read);
+                Buffer.BlockCopy(buffer, 0, header, headerRead, copy);
+                headerRead += copy;
+            }
+        }
+
+        if (headerRead < header.Length)
+        {
+            Array.Resize(ref header, headerRead);
+        }
+
+        return (header, total);
+    }
+
+    private static bool IsAllowedProfileImportExtension(string extension) =>
+        extension.Equals(".jpg", StringComparison.OrdinalIgnoreCase) ||
+        extension.Equals(".jpeg", StringComparison.OrdinalIgnoreCase) ||
+        extension.Equals(".png", StringComparison.OrdinalIgnoreCase) ||
+        extension.Equals(".webp", StringComparison.OrdinalIgnoreCase) ||
+        extension.Equals(".gif", StringComparison.OrdinalIgnoreCase) ||
+        extension.Equals(".bmp", StringComparison.OrdinalIgnoreCase);
+
+    private static bool HasMatchingImageSignature(byte[] data, string extension)
+    {
+        if (data.Length < 2)
+        {
+            return false;
+        }
+
+        if (extension.Equals(".jpg", StringComparison.OrdinalIgnoreCase) ||
+            extension.Equals(".jpeg", StringComparison.OrdinalIgnoreCase))
+        {
+            return data.Length >= 3 && data[0] == 0xFF && data[1] == 0xD8 && data[2] == 0xFF;
+        }
+
+        if (extension.Equals(".png", StringComparison.OrdinalIgnoreCase))
+        {
+            return data.Length >= 8 &&
+                   data[0] == 0x89 && data[1] == 0x50 && data[2] == 0x4E && data[3] == 0x47 &&
+                   data[4] == 0x0D && data[5] == 0x0A && data[6] == 0x1A && data[7] == 0x0A;
+        }
+
+        if (extension.Equals(".gif", StringComparison.OrdinalIgnoreCase))
+        {
+            return data.Length >= 6 &&
+                   data[0] == 0x47 && data[1] == 0x49 && data[2] == 0x46 && data[3] == 0x38 &&
+                   (data[4] == 0x37 || data[4] == 0x39) && data[5] == 0x61;
+        }
+
+        if (extension.Equals(".webp", StringComparison.OrdinalIgnoreCase))
+        {
+            return data.Length >= 12 &&
+                   data[0] == 0x52 && data[1] == 0x49 && data[2] == 0x46 && data[3] == 0x46 &&
+                   data[8] == 0x57 && data[9] == 0x45 && data[10] == 0x42 && data[11] == 0x50;
+        }
+
+        if (extension.Equals(".bmp", StringComparison.OrdinalIgnoreCase))
+        {
+            return data[0] == 0x42 && data[1] == 0x4D;
+        }
+
+        return false;
+    }
+
+    private sealed record ProfileImportCandidate(string FileName, int RegId, List<string> Errors)
+    {
+        public static ProfileImportCandidate Failed(string error) =>
+            new(string.Empty, 0, [error]);
+
+        public static ProfileImportCandidate Invalid(string fileName, List<string> errors, int regId = 0) =>
+            new(fileName, regId, errors);
+    }
+
+    private string? BuildProfileImageUrl(string? key, DateTime? updatedAt, int regId)
+    {
+        if (string.IsNullOrWhiteSpace(key) || regId <= 0)
+        {
+            return null;
+        }
+
+        string expected;
+        try
+        {
+            expected = _objectStorage.BuildStudentProfileObjectKey(_tenantContext.Campus, regId);
+        }
+        catch (ArgumentException)
+        {
+            return null;
+        }
+
+        if (!string.Equals(key, expected, StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        var url = _objectStorage.BuildPublicUrlFromKey(key);
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            return null;
+        }
+
+        return updatedAt is null ? url : $"{url}?v={updatedAt.Value.Ticks}";
+    }
+
+    private static bool IsJpegContentType(string? contentType)
+    {
+        if (string.IsNullOrWhiteSpace(contentType))
+        {
+            return false;
+        }
+
+        var type = contentType.Split(';', 2)[0].Trim();
+        return type.Equals("image/jpeg", StringComparison.OrdinalIgnoreCase) ||
+               type.Equals("image/jpg", StringComparison.OrdinalIgnoreCase) ||
+               type.Equals("image/pjpeg", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool StartsWithJpeg(MemoryStream buffer)
+    {
+        if (buffer.Length < 3)
+        {
+            return false;
+        }
+
+        var previous = buffer.Position;
+        buffer.Position = 0;
+        var header = new byte[3];
+        var read = buffer.Read(header, 0, 3);
+        buffer.Position = previous;
+        return read == 3 && header[0] == 0xFF && header[1] == 0xD8 && header[2] == 0xFF;
     }
 
     private static string? Clean(string? value)
