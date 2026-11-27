@@ -30,7 +30,7 @@ public class ParentPushDispatcher(AppDbContext db, IParentPushSender sender)
                 .SingleAsync(d => d.Id == id, ct);
             var device = delivery.Device;
             var familyActive = await db.StudentFamilyDetails.AnyAsync(f => f.ID == device.FamilyDbId
-                && f.IsActive == true && db.Students.Any(s => s.Family_Code == f.FamilyID && s.IsActive == true), ct);
+                && f.IsActive != false && db.Students.Any(s => s.Family_Code == f.FamilyID && s.IsActive == true), ct);
             var expired = delivery.Push.CreatedAtUtc < now.AddDays(-1);
             var isDiary = delivery.Push.DiaryClassId != null;
             if (isDiary)
@@ -41,7 +41,7 @@ public class ParentPushDispatcher(AppDbContext db, IParentPushSender sender)
                 delivery.StudentId = await (
                     from student in ClassDiaryAudience.ActiveStudentsForClass(db, delivery.Push.DiaryClassId!.Value)
                     join family in db.StudentFamilyDetails on student.Family_Code equals family.FamilyID
-                    where family.ID == device.FamilyDbId && family.IsActive == true
+                    where family.ID == device.FamilyDbId && family.IsActive != false
                     select (int?)student.Reg_Id).MinAsync(ct);
             }
             var contentAvailable = isDiary

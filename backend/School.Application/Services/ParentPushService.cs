@@ -17,8 +17,10 @@ public class ParentPushService(AppDbContext db, IOptions<ParentPushOptions> opti
     {
         if (installationId == Guid.Empty || string.IsNullOrWhiteSpace(token) || token.Length > 4096)
             throw new ArgumentException("A valid installation ID and FCM token are required.");
+        // Legacy families can have NULL status while their students are active.
+        // Reject an explicit inactive status; still require an active child.
         if (!await db.StudentFamilyDetails.AnyAsync(f => f.ID == familyDbId && f.FamilyID == familyId
-                && f.IsActive == true, ct)
+                && f.IsActive != false, ct)
             || !await db.Students.AnyAsync(s => s.Family_Code == familyId && s.IsActive == true, ct))
             throw new UnauthorizedAccessException("An active family and student are required.");
 
@@ -73,7 +75,7 @@ public class ParentPushService(AppDbContext db, IOptions<ParentPushOptions> opti
         var now = DateTime.UtcNow;
         var devices = await db.Set<ParentPushDevice>().AsNoTracking()
             .Where(d => d.IsActive && db.StudentFamilyDetails.Any(f => f.ID == d.FamilyDbId
-                && f.IsActive == true && db.Students.Any(s => s.Family_Code == f.FamilyID && s.IsActive == true)))
+                && f.IsActive != false && db.Students.Any(s => s.Family_Code == f.FamilyID && s.IsActive == true)))
             .Select(d => new { d.Id, d.RegistrationVersion }).ToListAsync(ct);
         db.Add(new ParentAnnouncementPush
         {
@@ -97,7 +99,7 @@ public class ParentPushService(AppDbContext db, IOptions<ParentPushOptions> opti
         var recipients = await (
             from device in db.Set<ParentPushDevice>().AsNoTracking()
             join family in db.StudentFamilyDetails on device.FamilyDbId equals family.ID
-            where device.IsActive && family.IsActive == true
+            where device.IsActive && family.IsActive != false
             let studentId = students.Where(s => s.Family_Code == family.FamilyID).Min(s => (int?)s.Reg_Id)
             where studentId != null
             select new { device.Id, device.RegistrationVersion, StudentId = studentId }

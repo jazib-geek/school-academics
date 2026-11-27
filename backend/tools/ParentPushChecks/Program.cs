@@ -35,7 +35,7 @@ await db.Database.ExecuteSqlRawAsync("""
     CREATE TABLE ParentPushDelivery (Id INTEGER PRIMARY KEY AUTOINCREMENT, PushId INTEGER, DeviceId INTEGER,
       RegistrationVersion TEXT, StudentId INTEGER, Attempts INTEGER, NextAttemptUtc TEXT, CompletedAtUtc TEXT,
       LeaseUntilUtc TEXT, LeaseId TEXT, Outcome TEXT, UNIQUE(PushId,DeviceId));
-    INSERT INTO tblStudentFamilyDetail VALUES(1,101,1),(2,202,1),(3,303,0);
+    INSERT INTO tblStudentFamilyDetail VALUES(1,101,NULL),(2,202,1),(3,303,0),(4,404,NULL);
     INSERT INTO tblSection VALUES(101,10),(102,10),(201,20);
     INSERT INTO tblStudent VALUES(1,101,1,101,999),(2,202,1,201,10),(3,303,1,101,10);
     """);
@@ -53,6 +53,9 @@ var install = Guid.NewGuid();
 await push.RegisterAsync(1, 101, install, "fake-token-one", ct);
 await push.RegisterAsync(1, 101, install, "fake-token-one", ct);
 Check(await db.Set<ParentPushDevice>().CountAsync() == 1, "repeat registration is idempotent");
+Pass("legacy NULL family status registers when the family has an active child");
+try { await push.RegisterAsync(4, 404, Guid.NewGuid(), "no-active-child", ct); throw new Exception("Childless legacy family accepted"); }
+catch (UnauthorizedAccessException) { Pass("legacy NULL family status still requires an active child"); }
 try { await push.RegisterAsync(3, 303, Guid.NewGuid(), "inactive", ct); throw new Exception("Inactive family accepted"); }
 catch (UnauthorizedAccessException) { Pass("inactive family rejected"); }
 try { await push.RegisterAsync(1, 202, Guid.NewGuid(), "wrong-family", ct); throw new Exception("Family mismatch accepted"); }
@@ -140,6 +143,7 @@ Check(await access.CanReadAsync(1, 101, 1, ct) && await access.CanReadAsync(1, 1
 Check(!await access.CanReadAsync(1, 101, 2, ct), "other family's student ID cannot be used to read diary");
 Check(!await access.CanReadAsync(2, 202, 7, ct), "inactive student cannot be used to read diary");
 Check(!await access.CanReadAsync(1, 202, 2, ct), "spoofed family DB ID/code combination cannot read diary");
+Check(!await access.CanReadAsync(3, 303, 3, ct), "explicitly inactive family cannot read diary even with an active child");
 
 sender.Result = ParentPushSendResult.Sent;
 var allClassesNews = await news.CreateAsync(Request("Campus-wide announcement"), ct);
@@ -215,7 +219,7 @@ var tableScripts = await db.Database.SqlQueryRaw<string>(
     "SELECT sql AS Value FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").ToListAsync(ct);
 foreach (var script in tableScripts) await otherDb.Database.ExecuteSqlRawAsync(script, ct);
 await otherDb.Database.ExecuteSqlRawAsync("""
-    INSERT INTO tblStudentFamilyDetail VALUES(1,101,1);
+    INSERT INTO tblStudentFamilyDetail VALUES(1,101,NULL);
     INSERT INTO tblSection VALUES(101,10);
     INSERT INTO tblStudent VALUES(1,101,1,101,10);
     """);
