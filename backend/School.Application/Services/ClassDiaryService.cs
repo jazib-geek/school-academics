@@ -22,6 +22,7 @@ public class ClassDiaryService : IClassDiaryService
     private readonly AppDbContext _context;
     private readonly TenantContext _tenantContext;
     private readonly ILogger<ClassDiaryService> _logger;
+    private readonly ParentPushService _parentPush;
 
     public ClassDiaryService(
         IClassDiaryRepository repository,
@@ -30,7 +31,8 @@ public class ClassDiaryService : IClassDiaryService
         IActivityLogService activityLogService,
         AppDbContext context,
         TenantContext tenantContext,
-        ILogger<ClassDiaryService> logger)
+        ILogger<ClassDiaryService> logger,
+        ParentPushService parentPush)
     {
         _repository = repository;
         _objectStorage = objectStorage;
@@ -39,6 +41,7 @@ public class ClassDiaryService : IClassDiaryService
         _context = context;
         _tenantContext = tenantContext;
         _logger = logger;
+        _parentPush = parentPush;
     }
 
     public async Task<IReadOnlyList<ClassDiaryListingDto>> GetListingAsync(
@@ -172,6 +175,8 @@ public class ClassDiaryService : IClassDiaryService
         }).ToList();
 
         await _repository.AddRangeAsync(newRows, cancellationToken);
+        if (!isReplace)
+            await _parentPush.QueueDiaryPublicationAsync(classId, date, className, cancellationToken);
 
         if (isReplace)
         {

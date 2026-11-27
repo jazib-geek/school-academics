@@ -4661,6 +4661,145 @@ namespace School.Infrastructure.Data.Migrations
                     b.ToTable("tblParameter", "dbo");
                 });
 
+            modelBuilder.Entity("School.Infrastructure.Entities.ParentAnnouncementPush", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<int?>("AnnouncementId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("DiaryClassId")
+                        .HasColumnType("int");
+
+                    b.Property<DateOnly?>("DiaryDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AnnouncementId")
+                        .IsUnique()
+                        .HasFilter("[AnnouncementId] IS NOT NULL");
+
+                    b.HasIndex("DiaryClassId", "DiaryDate")
+                        .IsUnique()
+                        .HasFilter("[DiaryClassId] IS NOT NULL AND [DiaryDate] IS NOT NULL");
+
+                    b.ToTable("ParentAnnouncementPush", "dbo", t =>
+                        {
+                            t.HasCheckConstraint("CK_ParentPush_Audience", "([AnnouncementId] IS NOT NULL AND [DiaryClassId] IS NULL AND [DiaryDate] IS NULL) OR ([AnnouncementId] IS NULL AND [DiaryClassId] IS NOT NULL AND [DiaryDate] IS NOT NULL)");
+                        });
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.ParentPushDelivery", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("CompletedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long>("DeviceId")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid?>("LeaseId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("LeaseUntilUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("NextAttemptUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Outcome")
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<long>("PushId")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid>("RegistrationVersion")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int?>("StudentId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeviceId");
+
+                    b.HasIndex("CompletedAtUtc", "NextAttemptUtc");
+
+                    b.HasIndex("PushId", "DeviceId")
+                        .IsUnique();
+
+                    b.ToTable("ParentPushDelivery", "dbo");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.ParentPushDevice", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<int>("FamilyDbId")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("InstallationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("RegistrationVersion")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasMaxLength(4096)
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InstallationId")
+                        .IsUnique();
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("IsActive", "FamilyDbId");
+
+                    b.ToTable("ParentPushDevice", "dbo");
+                });
+
             modelBuilder.Entity("School.Infrastructure.Entities.Permission", b =>
                 {
                     b.Property<int>("Id")
@@ -9371,6 +9510,35 @@ namespace School.Infrastructure.Data.Migrations
                     b.Navigation("Student");
                 });
 
+            modelBuilder.Entity("School.Infrastructure.Entities.ParentAnnouncementPush", b =>
+                {
+                    b.HasOne("School.Infrastructure.Entities.NewsAndEvent", "Announcement")
+                        .WithMany()
+                        .HasForeignKey("AnnouncementId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Announcement");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.ParentPushDelivery", b =>
+                {
+                    b.HasOne("School.Infrastructure.Entities.ParentPushDevice", "Device")
+                        .WithMany()
+                        .HasForeignKey("DeviceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("School.Infrastructure.Entities.ParentAnnouncementPush", "Push")
+                        .WithMany("Deliveries")
+                        .HasForeignKey("PushId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Device");
+
+                    b.Navigation("Push");
+                });
+
             modelBuilder.Entity("School.Infrastructure.Entities.StationeryBudgetLine", b =>
                 {
                     b.HasOne("School.Infrastructure.Entities.StationeryBudget", "Budget")
@@ -9730,6 +9898,11 @@ namespace School.Infrastructure.Data.Migrations
             modelBuilder.Entity("School.Infrastructure.Entities.Locality", b =>
                 {
                     b.Navigation("Employees");
+                });
+
+            modelBuilder.Entity("School.Infrastructure.Entities.ParentAnnouncementPush", b =>
+                {
+                    b.Navigation("Deliveries");
                 });
 
             modelBuilder.Entity("School.Infrastructure.Entities.Section", b =>

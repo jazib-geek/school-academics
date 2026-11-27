@@ -7,6 +7,7 @@ using School.Application.Common;
 using School.Application.DTOs;
 using School.Application.Interfaces;
 using School.Infrastructure.Data;
+using School.Application.Services;
 
 namespace School.API.Controllers;
 
@@ -29,6 +30,7 @@ public class ClassDiaryController : ControllerBase
 
     /// <summary>All class diaries grouped by class and date (image URLs comma-separated).</summary>
     [HttpGet("listing")]
+    [Authorize(Policy = "DiaryStaff")]
     public async Task<IActionResult> GetListing(CancellationToken cancellationToken)
     {
         var result = await _classDiaryService.GetListingAsync(cancellationToken);
@@ -36,6 +38,7 @@ public class ClassDiaryController : ControllerBase
     }
 
     [HttpGet("upload-history")]
+    [Authorize(Policy = "DiaryStaff")]
     public async Task<IActionResult> GetUploadHistory(
         [FromQuery] int classId,
         [FromQuery] string date,
@@ -62,6 +65,21 @@ public class ClassDiaryController : ControllerBase
     [HttpGet("student/{studentId}")]
     public async Task<IActionResult> GetByStudent(int studentId, CancellationToken cancellationToken)
     {
+        // Family tokens must own the requested active student. Never trust a
+        // notification payload/student ID as authorization to read a diary.
+        var familyCode = User.FindFirst("FamilyID")?.Value;
+        var source = User.FindFirst(AuthSourceClaims.ClaimType)?.Value;
+        if (int.TryParse(familyCode, out var familyId) && familyId > 0)
+        {
+            if (!string.IsNullOrWhiteSpace(source)
+                || !int.TryParse(User.FindFirst("FamilyDbId")?.Value, out var familyDbId)
+                || !await new ParentDiaryAccessService(_context).CanReadAsync(familyDbId, familyId, studentId, cancellationToken))
+                return Forbid();
+        }
+        else if (!string.IsNullOrWhiteSpace(familyCode)
+            || !int.TryParse(User.FindFirst("FamilyDbId")?.Value, out var staffId) || staffId <= 0
+            || (!string.IsNullOrWhiteSpace(source) && source != AuthSourceClaims.Employee))
+            return Forbid();
         try
         {
             var result = await _classDiaryService.GetByStudentIdAsync(studentId, cancellationToken);
@@ -76,6 +94,7 @@ public class ClassDiaryController : ControllerBase
     /// <summary>Upload 1–2 diary images (multipart). Replaces any existing diary for the same class and date.
     /// Date must be yesterday, today, or tomorrow in Pakistan time.</summary>
     [HttpPost("upload")]
+    [Authorize(Policy = "DiaryStaff")]
     [RequestSizeLimit(52_428_800)]
     [Consumes("multipart/form-data")]
     public async Task<IActionResult> Upload(
@@ -167,6 +186,7 @@ public class ClassDiaryController : ControllerBase
     }
 
     [HttpPost("delete")]
+    [Authorize(Policy = "DiaryStaff")]
     public async Task<IActionResult> Delete(
         [FromBody] ClassDiaryDeleteRequestDto request,
         CancellationToken cancellationToken)

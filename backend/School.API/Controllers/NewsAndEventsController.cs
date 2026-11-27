@@ -35,6 +35,7 @@ public class NewsAndEventsController : ControllerBase
     }
 
     [HttpGet("manage")]
+    [Authorize(Policy = "AnnouncementStaff")]
     public async Task<IActionResult> GetManageList(CancellationToken cancellationToken)
     {
         var result = await _service.GetManageListAsync(cancellationToken);
@@ -42,6 +43,7 @@ public class NewsAndEventsController : ControllerBase
     }
 
     [HttpGet("{id:int}")]
+    [Authorize(Policy = "AnnouncementStaff")]
     public async Task<IActionResult> GetById(int id, CancellationToken cancellationToken)
     {
         try
@@ -56,6 +58,7 @@ public class NewsAndEventsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = "AnnouncementStaff")]
     public async Task<IActionResult> Create(
         [FromBody] UpsertNewsAndEventRequestDto request,
         CancellationToken cancellationToken)
@@ -72,6 +75,7 @@ public class NewsAndEventsController : ControllerBase
     }
 
     [HttpPost("{id:int}/update")]
+    [Authorize(Policy = "AnnouncementStaff")]
     public async Task<IActionResult> Update(
         int id,
         [FromBody] UpsertNewsAndEventRequestDto request,
@@ -93,6 +97,7 @@ public class NewsAndEventsController : ControllerBase
     }
 
     [HttpPost("{id:int}/status")]
+    [Authorize(Policy = "AnnouncementStaff")]
     public async Task<IActionResult> SetStatus(
         int id,
         [FromBody] SetNewsAndEventStatusDto request,

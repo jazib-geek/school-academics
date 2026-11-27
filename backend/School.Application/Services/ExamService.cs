@@ -1240,6 +1240,8 @@ public class ExamService : IExamService
             .Where(x => x.ClassID == sectionId && x.ExamTypeID == examTypeId)
             .ToListAsync();
 
+        allExams = await WhereStudentStillInExamClassAsync(allExams);
+
         if (allExams.Count == 0)
             return null;
 
@@ -1443,6 +1445,8 @@ public class ExamService : IExamService
                 subjectIds.Contains(x.SubjectID.Value))
             .ToListAsync();
 
+        allExams = await WhereStudentStillInExamClassAsync(allExams);
+
         var studentLookup = await _context.Students
             .AsNoTracking()
             .Where(x => x.ClassCompositeID == sectionId && x.IsActive == true)
@@ -1571,6 +1575,8 @@ public class ExamService : IExamService
                 examTypeIds.Contains(x.ExamTypeID.Value))
             .ToListAsync();
 
+        allExams = await WhereStudentStillInExamClassAsync(allExams);
+
         var rows = examTypes
             .Select(examType => new ExamTeacherPerformanceRowDto
             {
@@ -1651,24 +1657,12 @@ public class ExamService : IExamService
         if (subjectIds.Count == 0 || students.Count == 0)
             return false;
 
-        foreach (var student in students)
-        {
-            foreach (var subjectId in subjectIds)
-            {
-                _context.Exams.Add(new Infrastructure.Entities.Exam
-                {
-                    ExamTypeID = examTypeId,
-                    SubjectID = subjectId,
-                    TotalMarks = 0,
-                    PassingMarks = 0,
-                    ObtainedMarks = 0,
-                    MaxMarks = 0,
-                    StudentID = student.Reg_Id,
-                    ClassID = student.ClassCompositeID,
-                    AttendanceRatio = "-/-"
-                });
-            }
-        }
+        await ExamTransferReconciler.AdoptSavedRowsForNewExamAsync(
+            _context,
+            sectionId,
+            examTypeId,
+            students.Select(x => x.Reg_Id).ToList(),
+            subjectIds);
 
         await _context.SaveChangesAsync();
         return true;
@@ -1700,6 +1694,8 @@ public class ExamService : IExamService
             .Include(x => x.Subject)
             .Where(x => x.ClassID == sectionId && x.ExamTypeID == examTypeId)
             .ToListAsync();
+
+        allExams = await WhereStudentStillInExamClassAsync(allExams);
 
         var subjectColumns = allExams
             .Where(x => x.SubjectID != null)
@@ -1848,6 +1844,8 @@ public class ExamService : IExamService
                 x.StudentID != null)
             .OrderBy(x => x.StudentID)
             .ToListAsync();
+
+        exams = await WhereStudentStillInExamClassAsync(exams);
 
         if (exams.Count == 0)
             return null;
@@ -2048,6 +2046,33 @@ public class ExamService : IExamService
             return normalizedClassName;
 
         return $"{normalizedClassName}-{normalizedSectionName}";
+    }
+
+    private async Task<List<Infrastructure.Entities.Exam>> WhereStudentStillInExamClassAsync(
+        List<Infrastructure.Entities.Exam> rows)
+    {
+        var studentIds = rows
+            .Where(x => x.StudentID != null)
+            .Select(x => x.StudentID!.Value)
+            .Distinct()
+            .ToList();
+
+        if (studentIds.Count == 0)
+            return rows;
+
+        var currentClassByStudent = await _context.Students
+            .AsNoTracking()
+            .Where(x => studentIds.Contains(x.Reg_Id) && x.ClassCompositeID != null)
+            .Select(x => new { x.Reg_Id, x.ClassCompositeID })
+            .ToDictionaryAsync(x => x.Reg_Id, x => x.ClassCompositeID!.Value);
+
+        return rows
+            .Where(x =>
+                x.StudentID != null &&
+                x.ClassID != null &&
+                currentClassByStudent.TryGetValue(x.StudentID.Value, out var classId) &&
+                classId == x.ClassID)
+            .ToList();
     }
 
     private static int GetConfiguredMarks(IEnumerable<int?> values)

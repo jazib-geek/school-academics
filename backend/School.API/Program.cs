@@ -123,6 +123,11 @@ builder.Services.AddScoped<ICampusSettingsService, CampusSettingsService>();
 builder.Services.AddScoped<IStudentLedgerService, StudentLedgerService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<INewsAndEventService, NewsAndEventService>();
+builder.Services.Configure<ParentPushOptions>(builder.Configuration.GetSection("ParentPush"));
+builder.Services.AddScoped<ParentPushService>();
+builder.Services.AddScoped<ParentPushDispatcher>();
+builder.Services.AddSingleton<IParentPushSender, FirebaseParentPushSender>();
+builder.Services.AddHostedService<ParentPushWorker>();
 builder.Services.AddScoped<IFamilyAccountService, FamilyAccountService>();
 builder.Services.AddScoped<IAttendanceService, AttendanceService>();
 builder.Services.AddScoped<IStudentShortLeaveService, StudentShortLeaveService>();
@@ -215,6 +220,17 @@ builder.Services.AddScoped<FeeTimeService>();
 
 builder.Services.AddAuthorization(options =>
 {
+    options.AddPolicy("DiaryStaff", policy => policy.RequireAssertion(context =>
+        int.TryParse(context.User.FindFirst("FamilyDbId")?.Value, out var id) && id > 0
+        && string.IsNullOrWhiteSpace(context.User.FindFirst("FamilyID")?.Value)
+        && (string.IsNullOrWhiteSpace(context.User.FindFirst(AuthSourceClaims.ClaimType)?.Value)
+            || context.User.FindFirst(AuthSourceClaims.ClaimType)?.Value == AuthSourceClaims.Employee)
+        && !string.IsNullOrWhiteSpace(context.User.FindFirst("Campus")?.Value)));
+    options.AddPolicy("AnnouncementStaff", policy => policy.RequireAssertion(context =>
+        int.TryParse(context.User.FindFirst("FamilyDbId")?.Value, out var id) && id > 0
+        && string.IsNullOrWhiteSpace(context.User.FindFirst("FamilyID")?.Value)
+        && string.IsNullOrWhiteSpace(context.User.FindFirst(AuthSourceClaims.ClaimType)?.Value)
+        && !string.IsNullOrWhiteSpace(context.User.FindFirst("Campus")?.Value)));
     options.AddPolicy("AcademicsOnly", policy =>
         policy.RequireClaim("App", "Academics"));
 });

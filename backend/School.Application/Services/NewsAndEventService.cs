@@ -10,10 +10,12 @@ namespace School.Application.Services;
 public class NewsAndEventService : INewsAndEventService
 {
     private readonly AppDbContext _context;
+    private readonly ParentPushService _push;
 
-    public NewsAndEventService(AppDbContext context)
+    public NewsAndEventService(AppDbContext context, ParentPushService push)
     {
         _context = context;
+        _push = push;
     }
 
     public async Task<List<NewsAndEventDto>> GetActiveAsync(bool onlyHome = false)
@@ -78,6 +80,7 @@ public class NewsAndEventService : INewsAndEventService
         };
 
         _context.NewsAndEvents.Add(entity);
+        await _push.QueueFirstPublicationAsync(entity, cancellationToken);
         await _context.SaveChangesAsync(cancellationToken);
         return Map(entity);
     }
@@ -93,6 +96,7 @@ public class NewsAndEventService : INewsAndEventService
             .FirstOrDefaultAsync(x => x.ID == id, cancellationToken)
             ?? throw new KeyNotFoundException("Announcement not found.");
 
+        var wasPublished = ParentPushService.IsHomeAnnouncement(entity);
         entity.Date = request.Date ?? entity.Date ?? PakistanTime.TodayStart;
         entity.Title = request.Title.Trim();
         entity.Type = NormalizeType(request.Type);
@@ -101,6 +105,7 @@ public class NewsAndEventService : INewsAndEventService
         entity.IsActive = request.IsActive;
         entity.ShowOnHome = request.ShowOnHome;
 
+        if (!wasPublished) await _push.QueueFirstPublicationAsync(entity, cancellationToken);
         await _context.SaveChangesAsync(cancellationToken);
         return Map(entity);
     }
@@ -111,7 +116,9 @@ public class NewsAndEventService : INewsAndEventService
             .FirstOrDefaultAsync(x => x.ID == id, cancellationToken)
             ?? throw new KeyNotFoundException("Announcement not found.");
 
+        var wasPublished = ParentPushService.IsHomeAnnouncement(entity);
         entity.IsActive = isActive;
+        if (!wasPublished) await _push.QueueFirstPublicationAsync(entity, cancellationToken);
         await _context.SaveChangesAsync(cancellationToken);
     }
 

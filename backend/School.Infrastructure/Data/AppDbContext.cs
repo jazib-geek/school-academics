@@ -202,6 +202,9 @@ public class AppDbContext : DbContext
         // Production campus SQL logins often use a non-dbo default schema. Force EF DDL/DML
         // to dbo so new migrations never CREATE TABLE under the login schema.
         modelBuilder.HasDefaultSchema("dbo");
+        modelBuilder.ApplyConfiguration(new ParentPushDeviceConfiguration());
+        modelBuilder.ApplyConfiguration(new ParentAnnouncementPushConfiguration());
+        modelBuilder.ApplyConfiguration(new ParentPushDeliveryConfiguration());
 
         modelBuilder.Entity<Attendance>(entity =>
         {

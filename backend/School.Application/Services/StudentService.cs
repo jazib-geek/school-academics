@@ -1602,6 +1602,16 @@ public class StudentService : IStudentService
         student.Section_ID = targetSection.SectionID;
         student.BranchID = targetSection.BranchID;
 
+        if (previousClassCompositeId is int fromClassId)
+        {
+            await ExamTransferReconciler.MoveSavedRowsToOpenExamsAsync(
+                _context,
+                student.Reg_Id,
+                fromClassId,
+                targetSection.ID,
+                cancellationToken);
+        }
+
         decimal? nextTuition = null;
         decimal? nextConcession = null;
         if (request.UpdateTuitionFee)
